@@ -46,6 +46,7 @@ import android.os.Process;
 import android.os.RemoteException;
 import android.os.TelephonyServiceManager;
 import android.os.UserHandle;
+import android.os.UserManager;
 import android.provider.Settings;
 import android.provider.Telephony.SimInfo;
 import android.service.carrier.CarrierIdentifier;
@@ -90,7 +91,6 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ProxyController;
 import com.android.internal.telephony.RILConstants;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyPermissions;
 import com.android.internal.telephony.data.PhoneSwitcher;
@@ -548,7 +548,6 @@ public class SubscriptionManagerService extends ISub.Stub {
         });
 
         SubscriptionManager.invalidateSubscriptionManagerServiceCaches();
-        SubscriptionManager.invalidateSubscriptionManagerServiceEnabledCaches();
 
         mContext.registerReceiver(new BroadcastReceiver() {
             @Override
@@ -997,8 +996,7 @@ public class SubscriptionManagerService extends ISub.Stub {
 
         int subId = mSubscriptionDatabaseManager.insertSubscriptionInfo(builder.build());
         logl("insertSubscriptionInfo: Inserted a new subscription. subId=" + subId
-                + ", slotIndex=" + slotIndex + ", iccId="
-                + SubscriptionInfo.givePrintableIccid(iccId)
+                + ", slotIndex=" + slotIndex + ", iccId=" + SubscriptionInfo.getPrintableId(iccId)
                 + ", displayName=" + displayName + ", type="
                 + SubscriptionManager.subscriptionTypeToString(subscriptionType));
         return subId;
@@ -1089,9 +1087,11 @@ public class SubscriptionManagerService extends ISub.Stub {
                     builder.setRemovableEmbedded(isRemovable);
 
                     // override DISPLAY_NAME if the priority of existing nameSource is <= carrier
-                    if (getNameSourcePriority(nameSource) <= getNameSourcePriority(
-                            SubscriptionManager.NAME_SOURCE_CARRIER)) {
-                        builder.setDisplayName(embeddedProfile.getNickname());
+                    String nickName = embeddedProfile.getNickname();
+                    if (nickName != null
+                            && getNameSourcePriority(nameSource) <= getNameSourcePriority(
+                                    SubscriptionManager.NAME_SOURCE_CARRIER)) {
+                        builder.setDisplayName(nickName);
                         builder.setDisplayNameSource(SubscriptionManager.NAME_SOURCE_CARRIER);
                     }
                     builder.setProfileClass(embeddedProfile.getProfileClass());
@@ -1159,11 +1159,14 @@ public class SubscriptionManagerService extends ISub.Stub {
             } else {
                 loge("The eSIM profiles update was not successful.");
             }
+            log("updateEmbeddedSubscriptions: Finished embedded subscription update.");
+            // The runnable will be executed in the main thread. Pre Android-U behavior.
+            mHandler.post(() -> {
+                if (callback != null) {
+                    callback.run();
+                }
+            });
         });
-        log("updateEmbeddedSubscriptions: Finished embedded subscription update.");
-        if (callback != null) {
-            callback.run();
-        }
     }
 
     /**
@@ -1274,7 +1277,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 + TelephonyManager.simStateToString(simState));
         for (UiccSlot slot : mUiccController.getUiccSlots()) {
             if (slot != null) {
-                log("  " + slot.toString());
+                log("  " + slot);
             }
         }
 
@@ -1309,16 +1312,13 @@ public class SubscriptionManagerService extends ISub.Stub {
                 log("updateSubscription: SIM_STATE_NOT_READY is not a final state. Will update "
                         + "subscription later.");
                 return;
-            }
-
-            if (!areUiccAppsEnabledOnCard(phoneId)) {
+            } else {
                 logl("updateSubscription: UICC app disabled on slot " + phoneId);
                 markSubscriptionsInactive(phoneId);
             }
         } else {
-
             String iccId = getIccId(phoneId);
-            log("updateSubscription: Found iccId=" + SubscriptionInfo.givePrintableIccid(iccId)
+            log("updateSubscription: Found iccId=" + SubscriptionInfo.getPrintableId(iccId)
                     + " on phone " + phoneId);
 
             // For eSIM switching, SIM absent will not happen. Below is to exam if we find ICCID
@@ -1953,7 +1953,6 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @see SubscriptionManager#requestEmbeddedSubscriptionInfoListRefresh
      */
     @Override
-    // TODO: Remove this after SubscriptionController is removed.
     public void requestEmbeddedSubscriptionInfoListRefresh(int cardId) {
         updateEmbeddedSubscriptions(List.of(cardId), null);
     }
@@ -1975,7 +1974,7 @@ public class SubscriptionManagerService extends ISub.Stub {
     public int addSubInfo(@NonNull String iccId, @NonNull String displayName, int slotIndex,
             @SubscriptionType int subscriptionType) {
         enforcePermissions("addSubInfo", Manifest.permission.MODIFY_PHONE_STATE);
-        logl("addSubInfo: iccId=" + SubscriptionInfo.givePrintableIccid(iccId) + ", slotIndex="
+        logl("addSubInfo: iccId=" + SubscriptionInfo.getPrintableId(iccId) + ", slotIndex="
                 + slotIndex + ", displayName=" + displayName + ", type="
                 + SubscriptionManager.subscriptionTypeToString(subscriptionType) + ", "
                 + getCallingPackage());
@@ -2022,18 +2021,17 @@ public class SubscriptionManagerService extends ISub.Stub {
      * subscription type.
      * @param subscriptionType the type of subscription to be removed.
      *
-     * // TODO: Remove this terrible return value once SubscriptionController is removed.
-     * @return 0 if success, < 0 on error.
+     * @return {@code true} if succeeded, otherwise {@code false}.
      *
      * @throws NullPointerException if {@code uniqueId} is {@code null}.
      * @throws SecurityException if callers do not hold the required permission.
      */
     @Override
     @RequiresPermission(Manifest.permission.MODIFY_PHONE_STATE)
-    public int removeSubInfo(@NonNull String uniqueId, int subscriptionType) {
+    public boolean removeSubInfo(@NonNull String uniqueId, int subscriptionType) {
         enforcePermissions("removeSubInfo", Manifest.permission.MODIFY_PHONE_STATE);
 
-        logl("removeSubInfo: uniqueId=" + SubscriptionInfo.givePrintableIccid(uniqueId) + ", "
+        logl("removeSubInfo: uniqueId=" + SubscriptionInfo.getPrintableId(uniqueId) + ", "
                 + SubscriptionManager.subscriptionTypeToString(subscriptionType) + ", "
                 + getCallingPackage());
         final long identity = Binder.clearCallingIdentity();
@@ -2042,15 +2040,15 @@ public class SubscriptionManagerService extends ISub.Stub {
                     .getSubscriptionInfoInternalByIccId(uniqueId);
             if (subInfo == null) {
                 loge("Cannot find subscription with uniqueId " + uniqueId);
-                return -1;
+                return false;
             }
             if (subInfo.getSubscriptionType() != subscriptionType) {
                 loge("The subscription type does not match.");
-                return -1;
+                return false;
             }
             mSlotIndexToSubId.remove(subInfo.getSimSlotIndex());
             mSubscriptionDatabaseManager.removeSubscriptionInfo(subInfo.getSubscriptionId());
-            return 0;
+            return true;
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
@@ -2956,9 +2954,6 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @param columnName Column name in the database. Note not all fields are supported.
      * @param value Value to store in the database.
      *
-     * // TODO: Remove return value after SubscriptionController is deleted.
-     * @return always 1
-     *
      * @throws IllegalArgumentException if {@code subscriptionId} is invalid, or the field is not
      * exposed.
      * @throws SecurityException if callers do not hold the required permission.
@@ -2968,7 +2963,7 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     @Override
     @RequiresPermission(Manifest.permission.MODIFY_PHONE_STATE)
-    public int setSubscriptionProperty(int subId, @NonNull String columnName,
+    public void setSubscriptionProperty(int subId, @NonNull String columnName,
             @NonNull String value) {
         enforcePermissions("setSubscriptionProperty", Manifest.permission.MODIFY_PHONE_STATE);
 
@@ -2989,7 +2984,6 @@ public class SubscriptionManagerService extends ISub.Stub {
             }
 
             mSubscriptionDatabaseManager.setSubscriptionProperty(subId, columnName, value);
-            return 1;
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -3579,12 +3573,6 @@ public class SubscriptionManagerService extends ISub.Stub {
     public UserHandle getSubscriptionUserHandle(int subId) {
         enforcePermissions("getSubscriptionUserHandle",
                 Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
-
-        if (!mContext.getResources().getBoolean(
-                com.android.internal.R.bool.config_enable_get_subscription_user_handle)) {
-            return null;
-        }
-
         long token = Binder.clearCallingIdentity();
         try {
             SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
@@ -3595,6 +3583,7 @@ public class SubscriptionManagerService extends ISub.Stub {
             }
 
             UserHandle userHandle = UserHandle.of(subInfo.getUserId());
+            logv("getSubscriptionUserHandle subId = " + subId + " userHandle = " + userHandle);
             if (userHandle.getIdentifier() == UserHandle.USER_NULL) {
                 return null;
             }
@@ -3614,7 +3603,6 @@ public class SubscriptionManagerService extends ISub.Stub {
      * else {@code false} if subscription is not associated with user.
      *
      * @throws SecurityException if the caller doesn't have permissions required.
-     * @throws IllegalStateException if subscription service is not available.
      *
      */
     @Override
@@ -3629,6 +3617,13 @@ public class SubscriptionManagerService extends ISub.Stub {
             List<SubscriptionInfo> subInfoList = getAllSubInfoList(
                     mContext.getOpPackageName(), mContext.getAttributionTag());
             if (subInfoList == null || subInfoList.isEmpty()) {
+                return true;
+            }
+
+            List<Integer> subIdList = subInfoList.stream().map(SubscriptionInfo::getSubscriptionId)
+                    .collect(Collectors.toList());
+            if (!subIdList.contains(subscriptionId)) {
+                // Return true as this subscription is not available on the device.
                 return true;
             }
 
@@ -3661,7 +3656,6 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @return list of subscriptionInfo associated with the user.
      *
      * @throws SecurityException if the caller doesn't have permissions required.
-     * @throws IllegalStateException if subscription service is not available.
      *
      */
     @Override
@@ -3692,21 +3686,20 @@ public class SubscriptionManagerService extends ISub.Stub {
                 }
             }
 
+            UserManager userManager = mContext.getSystemService(UserManager.class);
+            if ((userManager != null)
+                    && (userManager.isManagedProfile(userHandle.getIdentifier()))) {
+                // For work profile, return subscriptions associated only with work profile
+                return subscriptionsAssociatedWithUser;
+            }
+
+            // For all other profiles, if subscriptionsAssociatedWithUser is empty return all the
+            // subscriptionsWithNoAssociation.
             return subscriptionsAssociatedWithUser.isEmpty() ?
                     subscriptionsWithNoAssociation : subscriptionsAssociatedWithUser;
         } finally {
             Binder.restoreCallingIdentity(token);
         }
-    }
-
-    /**
-     * @return {@code true} if using {@link SubscriptionManagerService} instead of
-     * {@link SubscriptionController}.
-     */
-    //TODO: Removed before U AOSP public release.
-    @Override
-    public boolean isSubscriptionManagerServiceEnabled() {
-        return true;
     }
 
     /**
@@ -3817,7 +3810,7 @@ public class SubscriptionManagerService extends ISub.Stub {
     public void updateSimStateForInactivePort(int slotIndex, @NonNull String iccId) {
         mHandler.post(() -> {
             logl("updateSimStateForInactivePort: slotIndex=" + slotIndex + ", iccId="
-                    + SubscriptionInfo.givePrintableIccid(iccId));
+                    + SubscriptionInfo.getPrintableId(iccId));
             if (mSlotIndexToSubId.containsKey(slotIndex)) {
                 // Re-enable the UICC application , so it will be in enabled state when it becomes
                 // active again. (Pre-U behavior)
@@ -3973,6 +3966,15 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
+     * Log verbose messages.
+     *
+     * @param s verbose messages
+     */
+    private void logv(@NonNull String s) {
+        Rlog.v(LOG_TAG, s);
+    }
+
+    /**
      * Dump the state of {@link SubscriptionManagerService}.
      *
      * @param fd File descriptor
@@ -3981,79 +3983,87 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     public void dump(@NonNull FileDescriptor fd, @NonNull PrintWriter printWriter,
             @NonNull String[] args) {
-        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
-        pw.println(SubscriptionManagerService.class.getSimpleName() + ":");
-        pw.println("Active modem count=" + mTelephonyManager.getActiveModemCount());
-        pw.println("Logical SIM slot sub id mapping:");
-        pw.increaseIndent();
-        mSlotIndexToSubId.forEach((slotIndex, subId)
-                -> pw.println("Logical SIM slot " + slotIndex + ": subId=" + subId));
-        pw.decreaseIndent();
-        pw.println("ICCID:");
-        pw.increaseIndent();
-        for (int i = 0; i < mTelephonyManager.getActiveModemCount(); i++) {
-            pw.println("slot " + i + ": " + getIccId(i));
+        mContext.enforceCallingOrSelfPermission(android.Manifest.permission.DUMP,
+                "Requires android.Manifest.permission.DUMP");
+        final long token = Binder.clearCallingIdentity();
+        try {
+            IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
+            pw.println(SubscriptionManagerService.class.getSimpleName() + ":");
+            pw.println("Active modem count=" + mTelephonyManager.getActiveModemCount());
+            pw.println("Logical SIM slot sub id mapping:");
+            pw.increaseIndent();
+            mSlotIndexToSubId.forEach((slotIndex, subId)
+                    -> pw.println("Logical SIM slot " + slotIndex + ": subId=" + subId));
+            pw.decreaseIndent();
+            pw.println("ICCID:");
+            pw.increaseIndent();
+            for (int i = 0; i < mTelephonyManager.getActiveModemCount(); i++) {
+                pw.println("slot " + i + ": " + SubscriptionInfo.getPrintableId(getIccId(i)));
+            }
+            pw.decreaseIndent();
+            pw.println();
+            pw.println("defaultSubId=" + getDefaultSubId());
+            pw.println("defaultVoiceSubId=" + getDefaultVoiceSubId());
+            pw.println("defaultDataSubId=" + getDefaultDataSubId());
+            pw.println("activeDataSubId=" + getActiveDataSubscriptionId());
+            pw.println("defaultSmsSubId=" + getDefaultSmsSubId());
+            pw.println("areAllSubscriptionsLoaded=" + areAllSubscriptionsLoaded());
+            pw.println();
+            for (int i = 0; i < mSimState.length; i++) {
+                pw.println("mSimState[" + i + "]="
+                        + TelephonyManager.simStateToString(mSimState[i]));
+            }
+
+            pw.println();
+            pw.println("Active subscriptions:");
+            pw.increaseIndent();
+            mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                    .filter(SubscriptionInfoInternal::isActive).forEach(pw::println);
+            pw.decreaseIndent();
+
+            pw.println();
+            pw.println("All subscriptions:");
+            pw.increaseIndent();
+            mSubscriptionDatabaseManager.getAllSubscriptions().forEach(pw::println);
+            pw.decreaseIndent();
+            pw.println();
+
+            pw.print("Embedded subscriptions: [");
+            pw.println(mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                    .filter(SubscriptionInfoInternal::isEmbedded)
+                    .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
+                    .collect(Collectors.joining(", ")) + "]");
+
+            pw.print("Opportunistic subscriptions: [");
+            pw.println(mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                    .filter(SubscriptionInfoInternal::isOpportunistic)
+                    .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
+                    .collect(Collectors.joining(", ")) + "]");
+
+            pw.print("getAvailableSubscriptionInfoList: [");
+            pw.println(getAvailableSubscriptionInfoList(
+                    mContext.getOpPackageName(), mContext.getFeatureId()).stream()
+                    .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
+                    .collect(Collectors.joining(", ")) + "]");
+
+            pw.print("getSelectableSubscriptionInfoList: [");
+            pw.println(mSubscriptionManager.getSelectableSubscriptionInfoList().stream()
+                    .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
+                    .collect(Collectors.joining(", ")) + "]");
+
+            if (mEuiccManager != null) {
+                pw.println("Euicc enabled=" + mEuiccManager.isEnabled());
+            }
+            pw.println();
+            pw.println("Local log:");
+            pw.increaseIndent();
+            mLocalLog.dump(fd, pw, args);
+            pw.decreaseIndent();
+            pw.decreaseIndent();
+            pw.println();
+            mSubscriptionDatabaseManager.dump(fd, pw, args);
+        } finally {
+            Binder.restoreCallingIdentity(token);
         }
-        pw.decreaseIndent();
-        pw.println();
-        pw.println("defaultSubId=" + getDefaultSubId());
-        pw.println("defaultVoiceSubId=" + getDefaultVoiceSubId());
-        pw.println("defaultDataSubId=" + getDefaultDataSubId());
-        pw.println("activeDataSubId=" + getActiveDataSubscriptionId());
-        pw.println("defaultSmsSubId=" + getDefaultSmsSubId());
-        pw.println("areAllSubscriptionsLoaded=" + areAllSubscriptionsLoaded());
-        pw.println();
-        for (int i = 0; i < mSimState.length; i++) {
-            pw.println("mSimState[" + i + "]=" + TelephonyManager.simStateToString(mSimState[i]));
-        }
-
-        pw.println();
-        pw.println("Active subscriptions:");
-        pw.increaseIndent();
-        mSubscriptionDatabaseManager.getAllSubscriptions().stream()
-                .filter(SubscriptionInfoInternal::isActive).forEach(pw::println);
-        pw.decreaseIndent();
-
-        pw.println();
-        pw.println("All subscriptions:");
-        pw.increaseIndent();
-        mSubscriptionDatabaseManager.getAllSubscriptions().forEach(pw::println);
-        pw.decreaseIndent();
-        pw.println();
-
-        pw.print("Embedded subscriptions: [");
-        pw.println(mSubscriptionDatabaseManager.getAllSubscriptions().stream()
-                .filter(SubscriptionInfoInternal::isEmbedded)
-                .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
-                .collect(Collectors.joining(", ")) + "]");
-
-        pw.print("Opportunistic subscriptions: [");
-        pw.println(mSubscriptionDatabaseManager.getAllSubscriptions().stream()
-                .filter(SubscriptionInfoInternal::isOpportunistic)
-                .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
-                .collect(Collectors.joining(", ")) + "]");
-
-        pw.print("getAvailableSubscriptionInfoList: [");
-        pw.println(getAvailableSubscriptionInfoList(
-                mContext.getOpPackageName(), mContext.getFeatureId()).stream()
-                .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
-                .collect(Collectors.joining(", ")) + "]");
-
-        pw.print("getSelectableSubscriptionInfoList: [");
-        pw.println(mSubscriptionManager.getSelectableSubscriptionInfoList().stream()
-                .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
-                .collect(Collectors.joining(", ")) + "]");
-
-        if (mEuiccManager != null) {
-            pw.println("Euicc enabled=" + mEuiccManager.isEnabled());
-        }
-        pw.println();
-        pw.println("Local log:");
-        pw.increaseIndent();
-        mLocalLog.dump(fd, pw, args);
-        pw.decreaseIndent();
-        pw.decreaseIndent();
-        pw.println();
-        mSubscriptionDatabaseManager.dump(fd, pw, args);
     }
 }

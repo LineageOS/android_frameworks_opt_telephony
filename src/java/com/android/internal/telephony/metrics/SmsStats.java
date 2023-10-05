@@ -58,6 +58,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
+import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingShortCodeSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.telephony.Rlog;
 
@@ -155,44 +156,60 @@ public class SmsStats {
 
     /** Create a new atom when an outgoing SMS is sent. */
     public void onOutgoingSms(boolean isOverIms, boolean is3gpp2, boolean fallbackToCs,
-            @SmsManager.Result int errorCode, long messageId, boolean isFromDefaultApp,
+            @SmsManager.Result int sendErrorCode, long messageId, boolean isFromDefaultApp,
             long intervalMillis) {
-        onOutgoingSms(isOverIms, is3gpp2, fallbackToCs, errorCode, NO_ERROR_CODE,
+        onOutgoingSms(isOverIms, is3gpp2, fallbackToCs, sendErrorCode, NO_ERROR_CODE,
                 messageId, isFromDefaultApp, intervalMillis);
     }
 
     /** Create a new atom when an outgoing SMS is sent. */
     public void onOutgoingSms(boolean isOverIms, boolean is3gpp2, boolean fallbackToCs,
-            @SmsManager.Result int errorCode, int radioSpecificErrorCode, long messageId,
+            @SmsManager.Result int sendErrorCode, int networkErrorCode, long messageId,
             boolean isFromDefaultApp, long intervalMillis) {
         OutgoingSms proto =
                 getOutgoingDefaultProto(is3gpp2, isOverIms, messageId, isFromDefaultApp,
                         intervalMillis);
 
+        // The field errorCode is used for up-to-Android-13 devices. From Android 14, sendErrorCode
+        // and networkErrorCode will be used. The field errorCode will be deprecated when most
+        // devices use Android 14 or higher versions.
         if (isOverIms) {
             // Populate error code and result for IMS case
-            proto.errorCode = errorCode;
+            proto.errorCode = sendErrorCode;
             if (fallbackToCs) {
                 proto.sendResult = OUTGOING_SMS__SEND_RESULT__SMS_SEND_RESULT_ERROR_FALLBACK;
-            } else if (errorCode == SmsManager.RESULT_RIL_SMS_SEND_FAIL_RETRY) {
+            } else if (sendErrorCode == SmsManager.RESULT_RIL_SMS_SEND_FAIL_RETRY) {
                 proto.sendResult = OUTGOING_SMS__SEND_RESULT__SMS_SEND_RESULT_ERROR_RETRY;
-            } else if (errorCode != SmsManager.RESULT_ERROR_NONE) {
+            } else if (sendErrorCode != SmsManager.RESULT_ERROR_NONE) {
                 proto.sendResult = OUTGOING_SMS__SEND_RESULT__SMS_SEND_RESULT_ERROR;
             }
         } else {
             // Populate error code and result for CS case
-            if (errorCode == SmsManager.RESULT_RIL_SMS_SEND_FAIL_RETRY) {
+            if (sendErrorCode == SmsManager.RESULT_RIL_SMS_SEND_FAIL_RETRY) {
                 proto.sendResult = OUTGOING_SMS__SEND_RESULT__SMS_SEND_RESULT_ERROR_RETRY;
-            } else if (errorCode != SmsManager.RESULT_ERROR_NONE) {
+            } else if (sendErrorCode != SmsManager.RESULT_ERROR_NONE) {
                 proto.sendResult = OUTGOING_SMS__SEND_RESULT__SMS_SEND_RESULT_ERROR;
             }
-            proto.errorCode = radioSpecificErrorCode;
-            if (errorCode == SmsManager.RESULT_RIL_RADIO_NOT_AVAILABLE
-                    && radioSpecificErrorCode == NO_ERROR_CODE) {
+            proto.errorCode = networkErrorCode;
+            if (sendErrorCode == SmsManager.RESULT_RIL_RADIO_NOT_AVAILABLE
+                    && networkErrorCode == NO_ERROR_CODE) {
                 proto.errorCode = is3gpp2 ? NO_NETWORK_ERROR_3GPP2 : NO_NETWORK_ERROR_3GPP;
             }
         }
+
+        proto.sendErrorCode = sendErrorCode;
+        proto.networkErrorCode = networkErrorCode;
+
         mAtomsStorage.addOutgoingSms(proto);
+    }
+
+    /** Create a new atom when user attempted to send an outgoing short code sms. */
+    public void onOutgoingShortCodeSms(int category, int xmlVersion) {
+        OutgoingShortCodeSms proto = new OutgoingShortCodeSms();
+        proto.category = category;
+        proto.xmlVersion = xmlVersion;
+        proto.shortCodeSmsCount = 1;
+        mAtomsStorage.addOutgoingShortCodeSms(proto);
     }
 
     /** Creates a proto for a normal single-part {@code IncomingSms} with default values. */
@@ -216,6 +233,7 @@ public class SmsStats {
         // SMS messages (e.g. those handled by OS or error cases).
         proto.messageId = RANDOM.nextLong();
         proto.count = 1;
+        proto.isManagedProfile = mPhone.isManagedProfile();
         return proto;
     }
 
@@ -241,6 +259,7 @@ public class SmsStats {
         proto.retryId = 0;
         proto.intervalMillis = intervalMillis;
         proto.count = 1;
+        proto.isManagedProfile = mPhone.isManagedProfile();
         return proto;
     }
 

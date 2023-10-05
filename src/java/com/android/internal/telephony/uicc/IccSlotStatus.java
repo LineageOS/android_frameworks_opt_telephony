@@ -30,11 +30,46 @@ public class IccSlotStatus {
     /* Added state active to check slotState in old HAL case.*/
     public static final int STATE_ACTIVE = 1;
 
+    public enum MultipleEnabledProfilesMode {
+        /**
+         * If there is no jointly supported MEP mode, set supported MEP mode to NONE.
+         */
+        NONE,
+        /**
+         * In case of MEP-A1, the ISD-R is selected on eSIM port 0 only and profiles are selected
+         * on eSIM ports 1 and higher, with the eSIM port being assigned by the LPA or platform.
+         */
+        MEP_A1,
+        /**
+         * In case of MEP-A2, the ISD-R is selected on eSIM port 0 only and profiles are selected
+         * on eSIM ports 1 and higher, with the eSIM port being assigned by the eUICC.
+         */
+        MEP_A2,
+        /**
+         * In case of MEP-B, profiles are selected on eSIM ports 0 and higher, with the ISD-R being
+         * selectable on any of these eSIM ports.
+         */
+        MEP_B;
+
+        public boolean isMepAMode() {
+            return (this == MEP_A1 || this == MEP_A2);
+        }
+
+        public boolean isMepA1Mode() {
+            return this == MEP_A1;
+        }
+
+        public boolean isMepMode() {
+            return this != NONE;
+        }
+    }
+
     public IccCardStatus.CardState  cardState;
     public String     atr;
     public String     eid;
 
     public IccSimPortInfo[] mSimPortInfos;
+    public MultipleEnabledProfilesMode mSupportedMepMode = MultipleEnabledProfilesMode.NONE;
 
     /**
      * Set the cardState according to the input state.
@@ -58,6 +93,28 @@ public class IccSlotStatus {
         }
     }
 
+    /**
+     * Set the MultipleEnabledProfilesMode according to the input mode.
+     */
+    public void setMultipleEnabledProfilesMode(int mode) {
+        switch(mode) {
+            case 0:
+                mSupportedMepMode = MultipleEnabledProfilesMode.NONE;
+                break;
+            case 1:
+                mSupportedMepMode = MultipleEnabledProfilesMode.MEP_A1;
+                break;
+            case 2:
+                mSupportedMepMode = MultipleEnabledProfilesMode.MEP_A2;
+                break;
+            case 3:
+                mSupportedMepMode = MultipleEnabledProfilesMode.MEP_B;
+                break;
+            default:
+                throw new RuntimeException("Unrecognized RIL_MultipleEnabledProfilesMode: " + mode);
+        }
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
@@ -72,6 +129,7 @@ public class IccSlotStatus {
         } else {
             sb.append("num_ports=null");
         }
+        sb.append(", SupportedMepMode=" + mSupportedMepMode);
         sb.append("}");
         return sb.toString();
     }

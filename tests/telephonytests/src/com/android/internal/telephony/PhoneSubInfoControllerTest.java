@@ -16,13 +16,17 @@
 package com.android.internal.telephony;
 
 import static android.Manifest.permission.READ_PHONE_STATE;
+import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
+import static android.telephony.TelephonyManager.APPTYPE_ISIM;
+import static android.telephony.TelephonyManager.APPTYPE_USIM;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Matchers.anyInt;
-import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
@@ -31,17 +35,32 @@ import android.app.AppOpsManager;
 import android.app.PropertyInvalidatedCache;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
+import android.os.RemoteException;
 import android.test.suitebuilder.annotation.SmallTest;
+
+import com.android.internal.telephony.uicc.IsimUiccRecords;
+import com.android.internal.telephony.uicc.SIMRecords;
+import com.android.internal.telephony.uicc.UiccCardApplication;
+import com.android.internal.telephony.uicc.UiccPort;
+import com.android.internal.telephony.uicc.UiccProfile;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
+
+import java.util.List;
 
 public class PhoneSubInfoControllerTest extends TelephonyTest {
     private static final String FEATURE_ID = "myfeatureId";
+    private static final String PSI_SMSC_TEL1 = "tel:+91123456789";
+    private static final String PSI_SMSC_SIP1 = "sip:+1234567890@abc.pc.operetor1.com;user=phone";
+    private static final String PSI_SMSC_TEL2 = "tel:+91987654321";
+    private static final String PSI_SMSC_SIP2 = "sip:+19876543210@dcf.pc.operetor2.com;user=phone";
 
     private PhoneSubInfoController mPhoneSubInfoControllerUT;
     private AppOpsManager mAppOsMgr;
@@ -57,22 +76,15 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         PropertyInvalidatedCache.disableForTestMode();
         /* mPhone -> PhoneId: 0 -> SubId:0
            mSecondPhone -> PhoneId:1 -> SubId: 1*/
-        doReturn(0).when(mSubscriptionController).getPhoneId(eq(0));
         doReturn(0).when(mSubscriptionManagerService).getPhoneId(eq(0));
-        doReturn(1).when(mSubscriptionController).getPhoneId(eq(1));
         doReturn(1).when(mSubscriptionManagerService).getPhoneId(eq(1));
         doReturn(2).when(mTelephonyManager).getPhoneCount();
         doReturn(2).when(mTelephonyManager).getActiveModemCount();
-        doReturn(true).when(mSubscriptionController).isActiveSubId(0, TAG, FEATURE_ID);
         doReturn(true).when(mSubscriptionManagerService).isActiveSubId(0, TAG, FEATURE_ID);
-        doReturn(true).when(mSubscriptionController).isActiveSubId(1, TAG, FEATURE_ID);
         doReturn(true).when(mSubscriptionManagerService).isActiveSubId(1, TAG, FEATURE_ID);
         doReturn(new int[]{0, 1}).when(mSubscriptionManager)
                 .getCompleteActiveSubscriptionIdList();
 
-        mServiceManagerMockedServices.put("isub", mSubscriptionController);
-        doReturn(mSubscriptionController).when(mSubscriptionController)
-                .queryLocalInterface(anyString());
         doReturn(mContext).when(mSecondPhone).getContext();
 
         mAppOsMgr = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
@@ -925,5 +937,358 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
                 .getVoiceMailAlphaTagForSubscriber(0, TAG, FEATURE_ID));
         assertEquals("VM_SIM_1", mPhoneSubInfoControllerUT
                 .getVoiceMailAlphaTagForSubscriber(1, TAG, FEATURE_ID));
+    }
+
+    private void setUpInitials() {
+        UiccPort uiccPort1 = Mockito.mock(UiccPort.class);
+        UiccProfile uiccProfile1 = Mockito.mock(UiccProfile.class);
+        UiccCardApplication uiccCardApplication1 = Mockito.mock(UiccCardApplication.class);
+        SIMRecords simRecords1 = Mockito.mock(SIMRecords.class);
+        IsimUiccRecords isimUiccRecords1 = Mockito.mock(IsimUiccRecords.class);
+
+        doReturn(uiccPort1).when(mPhone).getUiccPort();
+        doReturn(uiccProfile1).when(uiccPort1).getUiccProfile();
+        doReturn(uiccCardApplication1).when(uiccProfile1).getApplicationByType(anyInt());
+        doReturn(simRecords1).when(uiccCardApplication1).getIccRecords();
+        doReturn(isimUiccRecords1).when(uiccCardApplication1).getIccRecords();
+        doReturn(PSI_SMSC_TEL1).when(simRecords1).getSmscIdentity();
+        doReturn(PSI_SMSC_TEL1).when(isimUiccRecords1).getSmscIdentity();
+
+        doReturn(mUiccPort).when(mSecondPhone).getUiccPort();
+        doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
+        doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
+        doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+        doReturn(mIsimUiccRecords).when(mUiccCardApplicationIms).getIccRecords();
+        doReturn(PSI_SMSC_TEL2).when(mSimRecords).getSmscIdentity();
+        doReturn(PSI_SMSC_TEL2).when(mIsimUiccRecords).getSmscIdentity();
+    }
+
+    @Test
+    public void testGetSmscIdentityForTelUri() {
+        try {
+            setUpInitials();
+            assertEquals(PSI_SMSC_TEL1, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(0, APPTYPE_ISIM).toString());
+            assertEquals(PSI_SMSC_TEL1, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(0, APPTYPE_USIM).toString());
+            assertEquals(PSI_SMSC_TEL2, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(1, APPTYPE_ISIM).toString());
+            assertEquals(PSI_SMSC_TEL2, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(1, APPTYPE_USIM).toString());
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testGetSmscIdentityForSipUri() {
+        try {
+            UiccPort uiccPort1 = Mockito.mock(UiccPort.class);
+            UiccProfile uiccProfile1 = Mockito.mock(UiccProfile.class);
+            UiccCardApplication uiccCardApplication1 = Mockito.mock(UiccCardApplication.class);
+            SIMRecords simRecords1 = Mockito.mock(SIMRecords.class);
+            IsimUiccRecords isimUiccRecords1 = Mockito.mock(IsimUiccRecords.class);
+
+            doReturn(uiccPort1).when(mPhone).getUiccPort();
+            doReturn(uiccProfile1).when(uiccPort1).getUiccProfile();
+            doReturn(uiccCardApplication1).when(uiccProfile1).getApplicationByType(anyInt());
+            doReturn(simRecords1).when(uiccCardApplication1).getIccRecords();
+            doReturn(isimUiccRecords1).when(uiccCardApplication1).getIccRecords();
+            doReturn(PSI_SMSC_SIP1).when(simRecords1).getSmscIdentity();
+            doReturn(PSI_SMSC_SIP1).when(isimUiccRecords1).getSmscIdentity();
+
+            doReturn(mUiccPort).when(mSecondPhone).getUiccPort();
+            doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
+            doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
+            doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+            doReturn(mIsimUiccRecords).when(mUiccCardApplicationIms).getIccRecords();
+            doReturn(PSI_SMSC_SIP2).when(mSimRecords).getSmscIdentity();
+            doReturn(PSI_SMSC_SIP2).when(mIsimUiccRecords).getSmscIdentity();
+
+            assertEquals(PSI_SMSC_SIP1, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(0, APPTYPE_ISIM).toString());
+            assertEquals(PSI_SMSC_SIP1, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(0, APPTYPE_USIM).toString());
+            assertEquals(PSI_SMSC_SIP2, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(1, APPTYPE_ISIM).toString());
+            assertEquals(PSI_SMSC_SIP2, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(1, APPTYPE_USIM).toString());
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testGetSmscIdentityWithOutPermissions() {
+        setUpInitials();
+
+        //case 1: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+        try {
+            mPhoneSubInfoControllerUT.getSmscIdentity(0, APPTYPE_ISIM);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getSmscIdentity"));
+        }
+
+        try {
+            mPhoneSubInfoControllerUT.getSmscIdentity(1, APPTYPE_ISIM);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getSmscIdentity"));
+        }
+
+        try {
+            mPhoneSubInfoControllerUT.getSmscIdentity(0, APPTYPE_USIM);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getSmscIdentity"));
+        }
+
+        try {
+            mPhoneSubInfoControllerUT.getSmscIdentity(1, APPTYPE_USIM);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getSmscIdentity"));
+        }
+
+        //case 2: no READ_PRIVILEGED_PHONE_STATE
+        mContextFixture.addCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE);
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
+                eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
+                nullable(String.class));
+
+        try {
+            assertEquals(PSI_SMSC_TEL1, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(0, APPTYPE_ISIM).toString());
+            assertEquals(PSI_SMSC_TEL1, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(0, APPTYPE_USIM).toString());
+            assertEquals(PSI_SMSC_TEL2, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(1, APPTYPE_ISIM).toString());
+            assertEquals(PSI_SMSC_TEL2, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(1, APPTYPE_USIM).toString());
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testGetSimServiceTable() throws RemoteException {
+        String refSst = "1234567";
+        doReturn(mUiccPort).when(mPhone).getUiccPort();
+        doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
+        doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
+        doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+
+        doReturn(refSst).when(mSimRecords).getSimServiceTable();
+
+        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+        assertEquals(refSst, resultSst);
+    }
+
+    @Test
+    public void testGetSimServiceTableEmpty() throws RemoteException {
+        String refSst = null;
+        doReturn(mUiccPort).when(mPhone).getUiccPort();
+        doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
+        doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
+        doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+
+        doReturn(refSst).when(mSimRecords).getSimServiceTable();
+
+        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+        assertEquals(refSst, resultSst);
+    }
+
+    @Test
+    public void testGetSstWhenNoUiccPort() throws RemoteException {
+            String refSst = "1234567";
+            doReturn(null).when(mPhone).getUiccPort();
+            doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
+            doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
+            doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+
+            doReturn(refSst).when(mSimRecords).getSimServiceTable();
+
+            String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+            assertEquals(null, resultSst);
+    }
+
+    @Test
+    public void testGetSstWhenNoUiccProfile() throws RemoteException {
+        String refSst = "1234567";
+        doReturn(mUiccPort).when(mPhone).getUiccPort();
+        doReturn(null).when(mUiccPort).getUiccProfile();
+        doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
+        doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+
+        doReturn(refSst).when(mSimRecords).getSimServiceTable();
+
+        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+        assertEquals(null, resultSst);
+    }
+
+    @Test
+    public void testGetSstWhenNoUiccApplication() throws RemoteException {
+        String refSst = "1234567";
+        doReturn(mUiccPort).when(mPhone).getUiccPort();
+        doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
+        doReturn(null).when(mUiccProfile).getApplicationByType(anyInt());
+        doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+
+        doReturn(refSst).when(mSimRecords).getSimServiceTable();
+
+        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+        assertEquals(null, resultSst);
+    }
+
+    @Test
+    public void testGetSimServiceTableWithOutPermissions() throws RemoteException {
+        String refSst = "1234567";
+        doReturn(mUiccPort).when(mPhone).getUiccPort();
+        doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
+        doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
+        doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+
+        doReturn(refSst).when(mSimRecords).getSimServiceTable();
+
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+        try {
+            mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getSimServiceTable"));
+        }
+
+        mContextFixture.addCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE);
+        assertEquals(refSst, mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt()));
+    }
+
+    @Test
+    public void getPrivateUserIdentity() {
+        String refImpi = "1234567890@example.com";
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(refImpi).when(mIsimUiccRecords).getIsimImpi();
+
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOpNoThrow(
+                eq(AppOpsManager.OPSTR_USE_ICC_AUTH_WITH_DEVICE_IDENTIFIER), anyInt(), eq(TAG),
+                eq(FEATURE_ID), nullable(String.class));
+
+        String impi = mPhoneSubInfoControllerUT.getImsPrivateUserIdentity(0, TAG, FEATURE_ID);
+        assertEquals(refImpi, impi);
+    }
+
+    @Test
+    public void getPrivateUserIdentity_NoPermission() {
+        String refImpi = "1234567890@example.com";
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(refImpi).when(mIsimUiccRecords).getIsimImpi();
+
+        try {
+            mPhoneSubInfoControllerUT.getImsPrivateUserIdentity(0, TAG, FEATURE_ID);
+            fail();
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("No permissions to the caller"));
+        }
+    }
+
+    @Test
+    public void getPrivateUserIdentity_InValidSubIdCheck() {
+        String refImpi = "1234567890@example.com";
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(refImpi).when(mIsimUiccRecords).getIsimImpi();
+
+        try {
+            mPhoneSubInfoControllerUT.getImsPrivateUserIdentity(-1, TAG, FEATURE_ID);
+            fail();
+        } catch (Exception ex) {
+            assertTrue(ex instanceof IllegalArgumentException);
+            assertTrue(ex.getMessage().contains("Invalid SubscriptionID"));
+        }
+    }
+
+    @Test
+    public void getImsPublicUserIdentities() {
+        String[] refImpuArray = new String[3];
+        refImpuArray[0] = "012345678";
+        refImpuArray[1] = "sip:test@verify.com";
+        refImpuArray[2] = "tel:+91987754324";
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(refImpuArray).when(mIsimUiccRecords).getIsimImpu();
+
+        List<Uri> impuList = mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG,
+                FEATURE_ID);
+
+        assertNotNull(impuList);
+        assertEquals(refImpuArray.length, impuList.size());
+        assertEquals(impuList.get(0).toString(), refImpuArray[0]);
+        assertEquals(impuList.get(1).toString(), refImpuArray[1]);
+        assertEquals(impuList.get(2).toString(), refImpuArray[2]);
+    }
+
+    @Test
+    public void getImsPublicUserIdentities_InvalidImpu() {
+        String[] refImpuArray = new String[3];
+        refImpuArray[0] = null;
+        refImpuArray[2] = "";
+        refImpuArray[2] = "tel:+91987754324";
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(refImpuArray).when(mIsimUiccRecords).getIsimImpu();
+        List<Uri> impuList = mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG,
+                FEATURE_ID);
+        assertNotNull(impuList);
+        // Null or Empty string cannot be converted to URI
+        assertEquals(refImpuArray.length - 2, impuList.size());
+    }
+
+    @Test
+    public void getImsPublicUserIdentities_IsimNotLoadedError() {
+        doReturn(null).when(mPhone).getIsimRecords();
+
+        try {
+            mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG, FEATURE_ID);
+            fail();
+        } catch (Exception ex) {
+            assertTrue(ex instanceof IllegalStateException);
+            assertTrue(ex.getMessage().contains("ISIM is not loaded"));
+        }
+    }
+
+    @Test
+    public void getImsPublicUserIdentities_InValidSubIdCheck() {
+        try {
+            mPhoneSubInfoControllerUT.getImsPublicUserIdentities(-1, TAG, FEATURE_ID);
+            fail();
+        } catch (Exception ex) {
+            assertTrue(ex instanceof IllegalArgumentException);
+            assertTrue(ex.getMessage().contains("Invalid SubscriptionID"));
+        }
+    }
+
+    @Test
+    public void getImsPublicUserIdentities_NoReadPrivilegedPermission() {
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+        String[] refImpuArray = new String[3];
+        refImpuArray[0] = "012345678";
+        refImpuArray[1] = "sip:test@verify.com";
+        refImpuArray[2] = "tel:+91987754324";
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(refImpuArray).when(mIsimUiccRecords).getIsimImpu();
+
+        List<Uri> impuList = mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG,
+                FEATURE_ID);
+
+        assertNotNull(impuList);
+        assertEquals(refImpuArray.length, impuList.size());
+        assertEquals(impuList.get(0).toString(), refImpuArray[0]);
+        assertEquals(impuList.get(1).toString(), refImpuArray[1]);
+        assertEquals(impuList.get(2).toString(), refImpuArray[2]);
+        mContextFixture.addCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE);
     }
 }

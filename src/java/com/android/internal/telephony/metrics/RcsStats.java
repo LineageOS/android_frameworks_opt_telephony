@@ -85,6 +85,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -129,48 +130,51 @@ public class RcsStats {
     private static final Map<String, Integer> FEATURE_TAGS = new HashMap<>();
 
     static {
-        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_STANDALONE_MSG.trim().toLowerCase(),
+        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_STANDALONE_MSG.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_STANDALONE_MSG);
-        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_CHAT_IM.trim().toLowerCase(),
+        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_CHAT_IM.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_CHAT_IM);
-        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_CHAT_SESSION.trim().toLowerCase(),
+        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_CHAT_SESSION.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_CHAT_SESSION);
-        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_FILE_TRANSFER.trim().toLowerCase(),
+        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_FILE_TRANSFER.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_FILE_TRANSFER);
-        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_FILE_TRANSFER_VIA_SMS.trim().toLowerCase(),
+        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_FILE_TRANSFER_VIA_SMS.trim()
+                        .toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_FILE_TRANSFER_VIA_SMS);
         FEATURE_TAGS.put(
-                FeatureTags.FEATURE_TAG_CALL_COMPOSER_ENRICHED_CALLING.trim().toLowerCase(),
+                FeatureTags.FEATURE_TAG_CALL_COMPOSER_ENRICHED_CALLING.trim()
+                        .toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_CALL_COMPOSER_ENRICHED_CALLING);
         FEATURE_TAGS.put(
-                FeatureTags.FEATURE_TAG_CALL_COMPOSER_VIA_TELEPHONY.trim().toLowerCase(),
+                FeatureTags.FEATURE_TAG_CALL_COMPOSER_VIA_TELEPHONY.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_CALL_COMPOSER_VIA_TELEPHONY);
-        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_POST_CALL.trim().toLowerCase(),
+        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_POST_CALL.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_POST_CALL);
-        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_SHARED_MAP.trim().toLowerCase(),
+        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_SHARED_MAP.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_SHARED_MAP);
-        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_SHARED_SKETCH.trim().toLowerCase(),
+        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_SHARED_SKETCH.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_SHARED_SKETCH);
-        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_GEO_PUSH.trim().toLowerCase(),
+        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_GEO_PUSH.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_GEO_PUSH);
-        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_GEO_PUSH_VIA_SMS.trim().toLowerCase(),
+        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_GEO_PUSH_VIA_SMS.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_GEO_PUSH_VIA_SMS);
         FEATURE_TAGS.put(
-                FeatureTags.FEATURE_TAG_CHATBOT_COMMUNICATION_USING_SESSION.trim().toLowerCase(),
+                FeatureTags.FEATURE_TAG_CHATBOT_COMMUNICATION_USING_SESSION.trim()
+                        .toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_CHATBOT_COMMUNICATION_USING_SESSION);
         String FeatureTag = FeatureTags.FEATURE_TAG_CHATBOT_COMMUNICATION_USING_STANDALONE_MSG;
-        FEATURE_TAGS.put(FeatureTag.trim().toLowerCase(),
+        FEATURE_TAGS.put(FeatureTag.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_CHATBOT_COMMUNICATION_USING_STANDALONE_MSG);
         FEATURE_TAGS.put(
-                FeatureTags.FEATURE_TAG_CHATBOT_VERSION_SUPPORTED.trim().toLowerCase(),
+                FeatureTags.FEATURE_TAG_CHATBOT_VERSION_SUPPORTED.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_CHATBOT_VERSION_SUPPORTED);
-        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_CHATBOT_ROLE.trim().toLowerCase(),
+        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_CHATBOT_ROLE.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_CHATBOT_ROLE);
-        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_MMTEL.trim().toLowerCase(),
+        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_MMTEL.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_MMTEL);
-        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_VIDEO.trim().toLowerCase(),
+        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_VIDEO.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_VIDEO);
-        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_PRESENCE.trim().toLowerCase(),
+        FEATURE_TAGS.put(FeatureTags.FEATURE_TAG_PRESENCE.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_PRESENCE);
     }
 
@@ -183,34 +187,42 @@ public class RcsStats {
     private static final Map<String, Integer> SERVICE_IDS = new HashMap<>();
 
     static {
-        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_MMTEL.trim().toLowerCase(),
+        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_MMTEL.trim().toLowerCase(Locale.ROOT),
                 IMS_REGISTRATION_SERVICE_DESC_STATS__SERVICE_ID_NAME__SERVICE_ID_MMTEL);
-        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_CHAT_V1.trim().toLowerCase(),
+        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_CHAT_V1.trim().toLowerCase(Locale.ROOT),
                 IMS_REGISTRATION_SERVICE_DESC_STATS__SERVICE_ID_NAME__SERVICE_ID_CHAT_V1);
-        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_CHAT_V2.trim().toLowerCase(),
+        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_CHAT_V2.trim().toLowerCase(Locale.ROOT),
                 IMS_REGISTRATION_SERVICE_DESC_STATS__SERVICE_ID_NAME__SERVICE_ID_CHAT_V2);
-        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_FT.trim().toLowerCase(),
+        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_FT.trim().toLowerCase(Locale.ROOT),
                 IMS_REGISTRATION_SERVICE_DESC_STATS__SERVICE_ID_NAME__SERVICE_ID_FT);
-        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_FT_OVER_SMS.trim().toLowerCase(),
+        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_FT_OVER_SMS.trim()
+                        .toLowerCase(Locale.ROOT),
                 IMS_REGISTRATION_SERVICE_DESC_STATS__SERVICE_ID_NAME__SERVICE_ID_FT_OVER_SMS);
-        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_GEO_PUSH.trim().toLowerCase(),
+        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_GEO_PUSH.trim().toLowerCase(Locale.ROOT),
                 IMS_REGISTRATION_SERVICE_DESC_STATS__SERVICE_ID_NAME__SERVICE_ID_GEO_PUSH);
-        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_GEO_PUSH_VIA_SMS.trim().toLowerCase(),
+        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_GEO_PUSH_VIA_SMS.trim()
+                        .toLowerCase(Locale.ROOT),
                 IMS_REGISTRATION_SERVICE_DESC_STATS__SERVICE_ID_NAME__SERVICE_ID_GEO_PUSH_VIA_SMS);
-        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_CALL_COMPOSER.trim().toLowerCase(),
+        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_CALL_COMPOSER.trim()
+                        .toLowerCase(Locale.ROOT),
                 IMS_REGISTRATION_SERVICE_DESC_STATS__SERVICE_ID_NAME__SERVICE_ID_CALL_COMPOSER);
-        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_POST_CALL.trim().toLowerCase(),
+        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_POST_CALL.trim()
+                        .toLowerCase(Locale.ROOT),
                 IMS_REGISTRATION_SERVICE_DESC_STATS__SERVICE_ID_NAME__SERVICE_ID_POST_CALL);
-        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_SHARED_MAP.trim().toLowerCase(),
+        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_SHARED_MAP.trim()
+                        .toLowerCase(Locale.ROOT),
                 IMS_REGISTRATION_SERVICE_DESC_STATS__SERVICE_ID_NAME__SERVICE_ID_SHARED_MAP);
-        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_SHARED_SKETCH.trim().toLowerCase(),
+        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_SHARED_SKETCH.trim()
+                        .toLowerCase(Locale.ROOT),
                 IMS_REGISTRATION_SERVICE_DESC_STATS__SERVICE_ID_NAME__SERVICE_ID_SHARED_SKETCH);
-        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_CHATBOT.trim().toLowerCase(),
+        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_CHATBOT.trim().toLowerCase(Locale.ROOT),
                 IMS_REGISTRATION_SERVICE_DESC_STATS__SERVICE_ID_NAME__SERVICE_ID_CHATBOT);
-        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_CHATBOT_STANDALONE.trim().toLowerCase(),
+        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_CHATBOT_STANDALONE.trim()
+                        .toLowerCase(Locale.ROOT),
                 IMS_REGISTRATION_SERVICE_DESC_STATS__SERVICE_ID_NAME__SERVICE_ID_CHATBOT_STANDALONE
         );
-        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_CHATBOT_ROLE.trim().toLowerCase(),
+        SERVICE_IDS.put(RcsContactPresenceTuple.SERVICE_ID_CHATBOT_ROLE.trim()
+                        .toLowerCase(Locale.ROOT),
                 IMS_REGISTRATION_SERVICE_DESC_STATS__SERVICE_ID_NAME__SERVICE_ID_CHATBOT_ROLE);
     }
 
@@ -221,33 +233,33 @@ public class RcsStats {
     private static final Map<String, Integer> MESSAGE_TYPE = new HashMap<>();
 
     static {
-        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_INVITE.trim().toLowerCase(),
+        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_INVITE.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.SIP_REQUEST_INVITE);
-        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_ACK.trim().toLowerCase(),
+        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_ACK.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.SIP_REQUEST_ACK);
-        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_OPTIONS.trim().toLowerCase(),
+        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_OPTIONS.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.SIP_REQUEST_OPTIONS);
-        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_BYE.trim().toLowerCase(),
+        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_BYE.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.SIP_REQUEST_BYE);
-        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_CANCEL.trim().toLowerCase(),
+        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_CANCEL.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.SIP_REQUEST_CANCEL);
-        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_REGISTER.trim().toLowerCase(),
+        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_REGISTER.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.SIP_REQUEST_REGISTER);
-        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_PRACK.trim().toLowerCase(),
+        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_PRACK.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.SIP_REQUEST_PRACK);
-        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_SUBSCRIBE.trim().toLowerCase(),
+        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_SUBSCRIBE.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.SIP_REQUEST_SUBSCRIBE);
-        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_NOTIFY.trim().toLowerCase(),
+        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_NOTIFY.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.SIP_REQUEST_NOTIFY);
-        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_PUBLISH.trim().toLowerCase(),
+        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_PUBLISH.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.SIP_REQUEST_PUBLISH);
-        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_INFO.trim().toLowerCase(),
+        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_INFO.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.SIP_REQUEST_INFO);
-        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_REFER.trim().toLowerCase(),
+        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_REFER.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.SIP_REQUEST_REFER);
-        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_MESSAGE.trim().toLowerCase(),
+        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_MESSAGE.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.SIP_REQUEST_MESSAGE);
-        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_UPDATE.trim().toLowerCase(),
+        MESSAGE_TYPE.put(SIP_REQUEST_MESSAGE_TYPE_UPDATE.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.SIP_REQUEST_UPDATE);
     }
 
@@ -1570,28 +1582,28 @@ public class RcsStats {
     /** Get a enum value from pre-defined feature tag name list */
     @VisibleForTesting
     public int convertTagNameToValue(@NonNull String tagName) {
-        return FEATURE_TAGS.getOrDefault(tagName.trim().toLowerCase(),
+        return FEATURE_TAGS.getOrDefault(tagName.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.IMS_FEATURE_TAG_CUSTOM);
     }
 
     /** Get a enum value from pre-defined service id list */
     @VisibleForTesting
     public int convertServiceIdToValue(@NonNull String serviceId) {
-        return SERVICE_IDS.getOrDefault(serviceId.trim().toLowerCase(),
+        return SERVICE_IDS.getOrDefault(serviceId.trim().toLowerCase(Locale.ROOT),
                 IMS_REGISTRATION_SERVICE_DESC_STATS__SERVICE_ID_NAME__SERVICE_ID_CUSTOM);
     }
 
     /** Get a enum value from pre-defined message type list */
     @VisibleForTesting
     public int convertMessageTypeToValue(@NonNull String messageType) {
-        return MESSAGE_TYPE.getOrDefault(messageType.trim().toLowerCase(),
+        return MESSAGE_TYPE.getOrDefault(messageType.trim().toLowerCase(Locale.ROOT),
                 TelephonyProtoEnums.SIP_REQUEST_CUSTOM);
     }
 
     /** Get a enum value from pre-defined reason list */
     @VisibleForTesting
     public int convertPresenceNotifyReason(@NonNull String reason) {
-        return NOTIFY_REASONS.getOrDefault(reason.trim().toLowerCase(),
+        return NOTIFY_REASONS.getOrDefault(reason.trim().toLowerCase(Locale.ROOT),
                 PRESENCE_NOTIFY_EVENT__REASON__REASON_CUSTOM);
     }
 

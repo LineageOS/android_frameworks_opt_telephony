@@ -225,6 +225,11 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
         }
     }
 
+    @VisibleForTesting
+    public EfIsimIstLoaded getIsimIstObject() {
+        return new EfIsimIstLoaded();
+    }
+
     private class EfIsimSmssLoaded implements IccRecords.IccRecordLoaded {
 
         @Override
@@ -484,11 +489,11 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
         pw.println("IsimRecords: " + this);
         pw.println(" extends:");
         super.dump(fd, pw, args);
+        pw.println(" mIsimServiceTable=" + getIsimServiceTable());
         if (DUMP_RECORDS) {
             pw.println(" mIsimImpi=" + mIsimImpi);
             pw.println(" mIsimDomain=" + mIsimDomain);
             pw.println(" mIsimImpu[]=" + Arrays.toString(mIsimImpu));
-            pw.println(" mIsimIst" + mIsimIst);
             pw.println(" mIsimPcscf" + Arrays.toString(mIsimPcscf));
             pw.println(" mPsismsc=" + mPsiSmsc);
             pw.println(" mSmss TPMR=" + getSmssTpmrValue());
@@ -496,6 +501,14 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
         pw.flush();
     }
 
+    // Just to return the Enums of service table to print in DUMP
+    private IsimServiceTable getIsimServiceTable() {
+        if (mIsimIst != null) {
+            byte[] istTable = IccUtils.hexStringToBytes(mIsimIst);
+            return new IsimServiceTable(istTable);
+        }
+        return null;
+    }
     @Override
     public int getVoiceMessageCount() {
         return 0; // Not applicable to Isim

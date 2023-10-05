@@ -85,7 +85,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[7];
+                Message message = (Message) invocation.getArguments()[8];
                 IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(hexString));
                 AsyncResult ar = new AsyncResult(null, iir, null);
                 message.obj = ar;
@@ -93,16 +93,16 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 return null;
             }
         }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
-                anyInt(), anyInt(), anyString(), any(Message.class));
+                anyInt(), anyInt(), anyString(), eq(false) /*isEs10Command*/, any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[1];
+                Message message = (Message) invocation.getArguments()[2];
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), eq(false), any(Message.class));
 
         mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
         processAllMessages();
@@ -327,7 +327,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[7];
+                Message message = (Message) invocation.getArguments()[8];
                 IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(hexString));
                 AsyncResult ar = new AsyncResult(null, iir, null);
                 message.obj = ar;
@@ -335,16 +335,16 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 return null;
             }
         }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
-                anyInt(), anyInt(), anyString(), any(Message.class));
+                anyInt(), anyInt(), anyString(), eq(false) /*isEs10Command*/, any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[1];
+                Message message = (Message) invocation.getArguments()[2];
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), eq(false), any(Message.class));
 
 
         mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
@@ -388,7 +388,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[7];
+                Message message = (Message) invocation.getArguments()[8];
                 IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(hexString));
                 AsyncResult ar = new AsyncResult(null, iir, null);
                 message.obj = ar;
@@ -396,16 +396,16 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 return null;
             }
         }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
-                anyInt(), anyInt(), anyString(), any(Message.class));
+                anyInt(), anyInt(), anyString(), eq(false) /*isEs10Command*/, any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[1];
+                Message message = (Message) invocation.getArguments()[2];
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), eq(false), any(Message.class));
 
         mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
         processAllMessages();
@@ -445,7 +445,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[7];
+                Message message = (Message) invocation.getArguments()[8];
                 IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(hexString));
                 AsyncResult ar = new AsyncResult(null, iir, null);
                 message.obj = ar;
@@ -453,16 +453,16 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 return null;
             }
         }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
-                anyInt(), anyInt(), anyString(), any(Message.class));
+                anyInt(), anyInt(), anyString(), eq(false /*isEs10Command*/), any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[1];
+                Message message = (Message) invocation.getArguments()[2];
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), eq(false), any(Message.class));
 
         mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
         processAllMessages();
@@ -509,11 +509,11 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[1];
+                Message message = (Message) invocation.getArguments()[2];
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), eq(false), any(Message.class));
 
         mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
         processAllMessages();
@@ -569,14 +569,14 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
                 currentFileId.set((String) invocation.getArguments()[6]);
-                Message message = (Message) invocation.getArguments()[7];
+                Message message = (Message) invocation.getArguments()[8];
                 AsyncResult ar = new AsyncResult(null, new int[]{2}, null);
                 message.obj = ar;
                 message.sendToTarget();
                 return null;
             }
         }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xA4), eq(0x00),
-                eq(0x04), eq(0x02), anyString(), any(Message.class));
+                eq(0x04), eq(0x02), anyString(), eq(false /*isEs10Command*/), any(Message.class));
 
         // Read binary - since params are identical across files, we need to keep track of which
         // file was selected most recently and give back that content.
@@ -597,7 +597,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[7];
+                Message message = (Message) invocation.getArguments()[8];
                 IccIoResult iir =
                         new IccIoResult(0x90, 0x00,
                                 IccUtils.hexStringToBytes(binaryContent.get(currentFileId.get())));
@@ -607,16 +607,16 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 return null;
             }
         }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
-                eq(0x00), eq(0x00), eq(""), any(Message.class));
+                eq(0x00), eq(0x00), eq(""), eq(false /*isEs10Command*/), any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[1];
+                Message message = (Message) invocation.getArguments()[2];
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), eq(false), any(Message.class));
 
         mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
         processAllMessages();
@@ -667,14 +667,14 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
                 currentFileId.set((String) invocation.getArguments()[6]);
-                Message message = (Message) invocation.getArguments()[7];
+                Message message = (Message) invocation.getArguments()[8];
                 AsyncResult ar = new AsyncResult(null, new int[]{2}, null);
                 message.obj = ar;
                 message.sendToTarget();
                 return null;
             }
         }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xA4), eq(0x00),
-                eq(0x04), eq(0x02), anyString(), any(Message.class));
+                eq(0x04), eq(0x02), anyString(), eq(false /*isEs10Command*/), any(Message.class));
 
         // Read binary - since params are identical across files, we need to keep track of which
         // file was selected most recently and give back that content.
@@ -690,7 +690,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[7];
+                Message message = (Message) invocation.getArguments()[8];
                 IccIoResult iir =
                         new IccIoResult(0x90, 0x00,
                                 IccUtils.hexStringToBytes(binaryContent.get(currentFileId.get())));
@@ -700,16 +700,16 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 return null;
             }
         }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
-                eq(0x00), eq(0x00), eq(""), any(Message.class));
+                eq(0x00), eq(0x00), eq(""), eq(false /*isEs10Command*/), any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[1];
+                Message message = (Message) invocation.getArguments()[2];
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), eq(false), any(Message.class));
 
         mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
         processAllMessages();
@@ -766,7 +766,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[7];
+                Message message = (Message) invocation.getArguments()[8];
                 IccIoResult iir = new IccIoResult(0x90, 0x00,
                         IccUtils.hexStringToBytes(hexString1));
                 AsyncResult ar = new AsyncResult(null, iir, null);
@@ -775,12 +775,12 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 return null;
             }
         }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
-                eq(P2), anyInt(), anyString(), any(Message.class));
+                eq(P2), anyInt(), anyString(), eq(false), any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[7];
+                Message message = (Message) invocation.getArguments()[8];
                 IccIoResult iir = new IccIoResult(0x90, 0x00,
                         IccUtils.hexStringToBytes(hexString2));
                 AsyncResult ar = new AsyncResult(null, iir, null);
@@ -789,16 +789,16 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 return null;
             }
         }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
-                eq(P2_EXTENDED_DATA), anyInt(), anyString(), any(Message.class));
+                eq(P2_EXTENDED_DATA), anyInt(), anyString(), eq(false), any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[1];
+                Message message = (Message) invocation.getArguments()[2];
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), eq(false), any(Message.class));
 
         mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
         processAllMessages();

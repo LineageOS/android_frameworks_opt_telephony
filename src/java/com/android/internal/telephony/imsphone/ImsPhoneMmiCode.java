@@ -58,6 +58,7 @@ import com.android.ims.ImsException;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CallStateException;
+import com.android.internal.telephony.CallWaitingController;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MmiCode;
@@ -1102,10 +1103,25 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 int serviceClass = siToServiceClass(mSia);
 
                 if (isActivate() || isDeactivate()) {
+                    if (serviceClass == SERVICE_CLASS_NONE
+                            || (serviceClass & SERVICE_CLASS_VOICE) == SERVICE_CLASS_VOICE) {
+                        if (mPhone.getTerminalBasedCallWaitingState(false)
+                                != CallWaitingController.TERMINAL_BASED_NOT_SUPPORTED) {
+                            mPhone.getDefaultPhone().setCallWaiting(isActivate(), serviceClass,
+                                    obtainMessage(EVENT_SET_COMPLETE, this));
+                            return;
+                        }
+                    }
                     mPhone.setCallWaiting(isActivate(), serviceClass,
                             obtainMessage(EVENT_SET_COMPLETE, this));
                 } else if (isInterrogate()) {
-                    mPhone.getCallWaiting(obtainMessage(EVENT_QUERY_COMPLETE, this));
+                    if (mPhone.getTerminalBasedCallWaitingState(false)
+                            != CallWaitingController.TERMINAL_BASED_NOT_SUPPORTED) {
+                        mPhone.getDefaultPhone()
+                                .getCallWaiting(obtainMessage(EVENT_QUERY_COMPLETE, this));
+                    } else {
+                        mPhone.getCallWaiting(obtainMessage(EVENT_QUERY_COMPLETE, this));
+                    }
                 } else {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");
                 }

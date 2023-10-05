@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -119,7 +120,7 @@ public class ApduSenderTest {
         assertNull(mResponseCaptor.response);
         assertNull(mResponseCaptor.exception);
         verify(mMockCi).iccOpenLogicalChannel(eq(AID), anyInt(), any());
-        verify(mMockCi).iccCloseLogicalChannel(eq(channel), any());
+        verify(mMockCi).iccCloseLogicalChannel(eq(channel), eq(true /*isEs10*/), any());
     }
 
     @Test
@@ -149,7 +150,7 @@ public class ApduSenderTest {
 
         assertEquals("A1A1A1", IccUtils.bytesToHexString(mResponseCaptor.response));
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
-                eq(3), eq(0), eq("a"), any());
+                eq(3), eq(0), eq("a"), anyBoolean(), any());
     }
 
     @Test
@@ -169,13 +170,13 @@ public class ApduSenderTest {
 
         assertEquals("A4", IccUtils.bytesToHexString(mResponseCaptor.response));
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
-                eq(3), eq(0), eq("a"), any());
+                eq(3), eq(0), eq("a"), anyBoolean(), any());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
-                eq(3), eq(1), eq("ab"), any());
+                eq(3), eq(1), eq("ab"), anyBoolean(), any());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
-                eq(3), eq(0), eq(""), any());
+                eq(3), eq(0), eq(""), anyBoolean(), any());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(0x81), eq(0xE2), eq(0x91),
-                eq(0), eq(2), eq("abcd"), any());
+                eq(0), eq(2), eq("abcd"), anyBoolean(), any());
     }
 
     @Test
@@ -196,11 +197,11 @@ public class ApduSenderTest {
 
         assertEquals("A3", IccUtils.bytesToHexString(mResponseCaptor.response));
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
-                eq(3), eq(0), eq("a"), any());
+                eq(3), eq(0), eq("a"), anyBoolean(), any());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
-                eq(3), eq(1), eq("ab"), any());
+                eq(3), eq(1), eq("ab"), anyBoolean(), any());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
-                eq(3), eq(0), eq(""), any());
+                eq(3), eq(0), eq(""), anyBoolean(), any());
     }
 
     @Test
@@ -216,11 +217,11 @@ public class ApduSenderTest {
 
         assertEquals("A1A1A1B2B2B2B2C3C3", IccUtils.bytesToHexString(mResponseCaptor.response));
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
-                eq(3), eq(0), eq("a"), any());
+                eq(3), eq(0), eq("a"), anyBoolean(), any());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel), eq(0xC0), eq(0),
-                eq(0), eq(4), eq(""), any());
+                eq(0), eq(4), eq(""), anyBoolean(), any());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel), eq(0xC0), eq(0),
-                eq(0), eq(2), eq(""), any());
+                eq(0), eq(2), eq(""), anyBoolean(), any());
     }
 
     @Test
@@ -244,15 +245,15 @@ public class ApduSenderTest {
 
         assertEquals("C3", IccUtils.bytesToHexString(mResponseCaptor.response));
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
-                eq(3), eq(0), eq("a"), any());
+                eq(3), eq(0), eq("a"), anyBoolean(), any());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
-                eq(3), eq(0), eq("b"), any());
+                eq(3), eq(0), eq("b"), anyBoolean(), any());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(0x81), eq(0xE2), eq(0x11),
-                eq(0), eq(0xFF), eq(s1), any());
+                eq(0), eq(0xFF), eq(s1), anyBoolean(), any());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(0x81), eq(0xE2), eq(0x11),
-                eq(1), eq(0xFF), eq(s2), any());
+                eq(1), eq(0xFF), eq(s2), anyBoolean(), any());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(0x81), eq(0xE2), eq(0x91),
-                eq(2), eq(16), eq(s3), any());
+                eq(2), eq(16), eq(s3), anyBoolean(), any());
     }
 
     @Test
@@ -272,9 +273,9 @@ public class ApduSenderTest {
 
         assertEquals("B2222B", IccUtils.bytesToHexString(mResponseCaptor.response));
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(0x81), eq(0xE2), eq(0x11),
-                eq(0), eq(0xFF), eq(s1), any());
+                eq(0), eq(0xFF), eq(s1), anyBoolean(), any());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(0x81), eq(0xE2), eq(0x91),
-                eq(1), eq(0xFF), eq(s2), any());
+                eq(1), eq(0xFF), eq(s2), anyBoolean(), any());
     }
 
     @Test
@@ -290,7 +291,7 @@ public class ApduSenderTest {
 
         assertEquals("B2222B", IccUtils.bytesToHexString(mResponseCaptor.response));
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(0x81), eq(0xE2), eq(0x91),
-                eq(0), eq(0), eq(""), any());
+                eq(0), eq(0), eq(""), anyBoolean(), any());
     }
 
     @Test
@@ -313,13 +314,13 @@ public class ApduSenderTest {
 
         assertEquals(0x6985, ((ApduException) mResponseCaptor.exception).getApduStatus());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
-                eq(3), eq(0), eq("a"), any());
+                eq(3), eq(0), eq("a"), anyBoolean(), any());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(0x81), eq(0xE2), eq(0x11),
-                eq(0), eq(0xFF), eq(s1), any());
+                eq(0), eq(0xFF), eq(s1), anyBoolean(), any());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(0x81), eq(0xE2), eq(0x11),
-                eq(1), eq(0xFF), eq(s2), any());
+                eq(1), eq(0xFF), eq(s2), anyBoolean(), any());
         verify(mMockCi, never()).iccTransmitApduLogicalChannel(eq(channel), eq(0x81), eq(0xE2),
-                eq(0x91), eq(2), eq(16), eq(s3), any());
+                eq(0x91), eq(2), eq(16), eq(s3), anyBoolean(), any());
     }
 
     @Test

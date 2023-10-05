@@ -16,15 +16,12 @@
 
 package com.android.internal.telephony.metrics;
 
-import static android.text.format.DateUtils.HOUR_IN_MILLIS;
-import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
-import static android.text.format.DateUtils.SECOND_IN_MILLIS;
-
 import static com.android.internal.telephony.TelephonyStatsLog.CARRIER_ID_TABLE_VERSION;
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_DATA_SERVICE_SWITCH;
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_SERVICE_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION;
 import static com.android.internal.telephony.TelephonyStatsLog.DEVICE_TELEPHONY_PROPERTIES;
+import static com.android.internal.telephony.TelephonyStatsLog.EMERGENCY_NUMBERS_INFO;
 import static com.android.internal.telephony.TelephonyStatsLog.GBA_EVENT;
 import static com.android.internal.telephony.TelephonyStatsLog.IMS_DEDICATED_BEARER_EVENT;
 import static com.android.internal.telephony.TelephonyStatsLog.IMS_DEDICATED_BEARER_LISTENER_EVENT;
@@ -33,11 +30,18 @@ import static com.android.internal.telephony.TelephonyStatsLog.IMS_REGISTRATION_
 import static com.android.internal.telephony.TelephonyStatsLog.IMS_REGISTRATION_STATS;
 import static com.android.internal.telephony.TelephonyStatsLog.IMS_REGISTRATION_TERMINATION;
 import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS;
+import static com.android.internal.telephony.TelephonyStatsLog.OUTGOING_SHORT_CODE_SMS;
 import static com.android.internal.telephony.TelephonyStatsLog.OUTGOING_SMS;
 import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS;
 import static com.android.internal.telephony.TelephonyStatsLog.PRESENCE_NOTIFY_EVENT;
 import static com.android.internal.telephony.TelephonyStatsLog.RCS_ACS_PROVISIONING_STATS;
 import static com.android.internal.telephony.TelephonyStatsLog.RCS_CLIENT_PROVISIONING_STATS;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_CONTROLLER;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_INCOMING_DATAGRAM;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_OUTGOING_DATAGRAM;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_PROVISION;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_SESSION;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_SOS_MESSAGE_RECOMMENDER;
 import static com.android.internal.telephony.TelephonyStatsLog.SIM_SLOT_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.SIP_DELEGATE_STATS;
 import static com.android.internal.telephony.TelephonyStatsLog.SIP_MESSAGE_RESPONSE;
@@ -52,16 +56,20 @@ import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSIO
 
 import android.app.StatsManager;
 import android.content.Context;
+import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.util.StatsEvent;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyStatsLog;
+import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
+import com.android.internal.telephony.nano.PersistAtomsProto.EmergencyNumbersInfo;
 import com.android.internal.telephony.nano.PersistAtomsProto.GbaEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsDedicatedBearerEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsDedicatedBearerListenerEvent;
@@ -71,10 +79,17 @@ import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationStat
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTermination;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.NetworkRequestsV2;
+import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingShortCodeSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PresenceNotifyEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsAcsProvisioningStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsClientProvisioningStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteController;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteIncomingDatagram;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteOutgoingDatagram;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteProvision;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteSession;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteSosMessageRecommender;
 import com.android.internal.telephony.nano.PersistAtomsProto.SipDelegateStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.SipMessageResponse;
 import com.android.internal.telephony.nano.PersistAtomsProto.SipTransportFeatureTagStats;
@@ -85,6 +100,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
 import com.android.internal.util.ConcurrentUtils;
 import com.android.telephony.Rlog;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -104,6 +120,10 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     /** Disables various restrictions to ease debugging during development. */
     private static final boolean DBG = false; // STOPSHIP if true
 
+    private static final long MILLIS_PER_HOUR = Duration.ofHours(1).toMillis();
+    private static final long MILLIS_PER_MINUTE = Duration.ofMinutes(1).toMillis();
+    private static final long MILLIS_PER_SECOND = Duration.ofSeconds(1).toMillis();
+
     /**
      * Sets atom pull cool down to 23 hours to help enforcing privacy requirement.
      *
@@ -111,7 +131,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
      * that occur once a day.
      */
     private static final long MIN_COOLDOWN_MILLIS =
-            DBG ? 10L * SECOND_IN_MILLIS : 23L * HOUR_IN_MILLIS;
+            DBG ? 10L * MILLIS_PER_SECOND : 23L * MILLIS_PER_HOUR;
 
     /**
      * Buckets with less than these many calls will be dropped.
@@ -122,25 +142,28 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
 
     /** Bucket size in milliseconds to round call durations into. */
     private static final long DURATION_BUCKET_MILLIS =
-            DBG ? 2L * SECOND_IN_MILLIS : 5L * MINUTE_IN_MILLIS;
+            DBG ? 2L * MILLIS_PER_SECOND : 5L * MILLIS_PER_MINUTE;
 
     private final PersistAtomsStorage mStorage;
+    private final DeviceStateHelper mDeviceStateHelper;
     private final StatsManager mStatsManager;
     private final AirplaneModeStats mAirplaneModeStats;
     private final Set<DataCallSessionStats> mOngoingDataCallStats = ConcurrentHashMap.newKeySet();
     private static final Random sRandom = new Random();
 
     public MetricsCollector(Context context) {
-        this(context, new PersistAtomsStorage(context));
+        this(context, new PersistAtomsStorage(context), new DeviceStateHelper(context));
     }
 
     /** Allows dependency injection. Used during unit tests. */
     @VisibleForTesting
-    public MetricsCollector(Context context,
-                            PersistAtomsStorage storage) {
+    public MetricsCollector(
+            Context context, PersistAtomsStorage storage, DeviceStateHelper deviceStateHelper) {
         mStorage = storage;
+        mDeviceStateHelper = deviceStateHelper;
         mStatsManager = (StatsManager) context.getSystemService(Context.STATS_MANAGER);
         if (mStatsManager != null) {
+            // Most (but not all) of these are subject to cooldown specified by MIN_COOLDOWN_MILLIS.
             registerAtom(CELLULAR_DATA_SERVICE_SWITCH);
             registerAtom(CELLULAR_SERVICE_STATE);
             registerAtom(SIM_SLOT_STATE);
@@ -169,6 +192,14 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             registerAtom(PRESENCE_NOTIFY_EVENT);
             registerAtom(GBA_EVENT);
             registerAtom(PER_SIM_STATUS);
+            registerAtom(OUTGOING_SHORT_CODE_SMS);
+            registerAtom(SATELLITE_CONTROLLER);
+            registerAtom(SATELLITE_SESSION);
+            registerAtom(SATELLITE_INCOMING_DATAGRAM);
+            registerAtom(SATELLITE_OUTGOING_DATAGRAM);
+            registerAtom(SATELLITE_PROVISION);
+            registerAtom(SATELLITE_SOS_MESSAGE_RECOMMENDER);
+            registerAtom(EMERGENCY_NUMBERS_INFO);
             Rlog.d(TAG, "registered");
         } else {
             Rlog.e(TAG, "could not get StatsManager, atoms not registered");
@@ -243,6 +274,22 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 return pullGbaEvent(data);
             case PER_SIM_STATUS:
                 return pullPerSimStatus(data);
+            case OUTGOING_SHORT_CODE_SMS:
+                return pullOutgoingShortCodeSms(data);
+            case SATELLITE_CONTROLLER:
+                return pullSatelliteController(data);
+            case SATELLITE_SESSION:
+                return pullSatelliteSession(data);
+            case SATELLITE_INCOMING_DATAGRAM:
+                return pullSatelliteIncomingDatagram(data);
+            case SATELLITE_OUTGOING_DATAGRAM:
+                return pullSatelliteOutgoingDatagram(data);
+            case SATELLITE_PROVISION:
+                return pullSatelliteProvision(data);
+            case SATELLITE_SOS_MESSAGE_RECOMMENDER:
+                return pullSatelliteSosMessageRecommender(data);
+            case EMERGENCY_NUMBERS_INFO:
+                return pullEmergencyNumbersInfo(data);
             default:
                 Rlog.e(TAG, String.format("unexpected atom ID %d", atomTag));
                 return StatsManager.PULL_SKIP;
@@ -252,6 +299,23 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     /** Returns the {@link PersistAtomsStorage} backing the puller. */
     public PersistAtomsStorage getAtomsStorage() {
         return mStorage;
+    }
+
+    /** Returns the {@link DeviceStateHelper}. */
+    public DeviceStateHelper getDeviceStateHelper() {
+        return mDeviceStateHelper;
+    }
+
+    /** Updates duration segments and calls {@link PersistAtomsStorage#flushAtoms()}. */
+    public void flushAtomsStorage() {
+        concludeAll();
+        mStorage.flushAtoms();
+    }
+
+    /** Updates duration segments and calls {@link PersistAtomsStorage#clearAtoms()}. */
+    public void clearAtomsStorage() {
+        concludeAll();
+        mStorage.clearAtoms();
     }
 
     /**
@@ -265,6 +329,44 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     /** Unregisters a {@link DataCallSessionStats} when it no longer handles an active data call. */
     public void unregisterOngoingDataCallStat(DataCallSessionStats call) {
         mOngoingDataCallStats.remove(call);
+    }
+
+    private void concludeDataCallSessionStats() {
+        for (DataCallSessionStats stats : mOngoingDataCallStats) {
+            stats.conclude();
+        }
+    }
+
+    private void concludeImsStats() {
+        for (Phone phone : getPhonesIfAny()) {
+            ImsPhone imsPhone = (ImsPhone) phone.getImsPhone();
+            if (imsPhone != null) {
+                imsPhone.getImsStats().conclude();
+            }
+        }
+    }
+
+    private void concludeServiceStateStats() {
+        for (Phone phone : getPhonesIfAny()) {
+            phone.getServiceStateTracker().getServiceStateStats().conclude();
+        }
+    }
+
+    private void concludeRcsStats() {
+        RcsStats rcsStats = RcsStats.getInstance();
+        if (rcsStats != null) {
+            rcsStats.concludeSipTransportFeatureTagsStat();
+            rcsStats.onFlushIncompleteRcsAcsProvisioningStats();
+            rcsStats.onFlushIncompleteImsRegistrationServiceDescStats();
+            rcsStats.onFlushIncompleteImsRegistrationFeatureTagStats();
+        }
+    }
+
+    private void concludeAll() {
+        concludeDataCallSessionStats();
+        concludeImsStats();
+        concludeServiceStateStats();
+        concludeRcsStats();
     }
 
     private static int pullSimSlotState(List<StatsEvent> data) {
@@ -374,10 +476,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
 
     private int pullDataCallSession(List<StatsEvent> data) {
         // Include ongoing data call segments
-        for (DataCallSessionStats stats : mOngoingDataCallStats) {
-            stats.conclude();
-        }
-
+        concludeDataCallSessionStats();
         DataCallSession[] dataCallSessions = mStorage.getDataCallSessions(MIN_COOLDOWN_MILLIS);
         if (dataCallSessions != null) {
             Arrays.stream(dataCallSessions)
@@ -405,10 +504,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
 
     private int pullCellularServiceState(List<StatsEvent> data) {
         // Include the latest durations
-        for (Phone phone : getPhonesIfAny()) {
-            phone.getServiceStateTracker().getServiceStateStats().conclude();
-        }
-
+        concludeServiceStateStats();
         CellularServiceState[] persistAtoms =
                 mStorage.getCellularServiceStates(MIN_COOLDOWN_MILLIS);
         if (persistAtoms != null) {
@@ -424,13 +520,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
 
     private int pullImsRegistrationStats(List<StatsEvent> data) {
         // Include the latest durations
-        for (Phone phone : getPhonesIfAny()) {
-            ImsPhone imsPhone = (ImsPhone) phone.getImsPhone();
-            if (imsPhone != null) {
-                imsPhone.getImsStats().conclude();
-            }
-        }
-
+        concludeImsStats();
         ImsRegistrationStats[] persistAtoms = mStorage.getImsRegistrationStats(MIN_COOLDOWN_MILLIS);
         if (persistAtoms != null) {
             // list is already shuffled when instances were inserted
@@ -469,13 +559,22 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         }
     }
 
-    private static int pullDeviceTelephonyProperties(List<StatsEvent> data) {
+    private int pullDeviceTelephonyProperties(List<StatsEvent> data) {
         Phone[] phones = getPhonesIfAny();
         if (phones.length == 0) {
             return StatsManager.PULL_SKIP;
         }
+        boolean isAutoDataSwitchOn = Arrays.stream(phones)
+                .anyMatch(phone ->
+                        phone.getSubId() != SubscriptionManager.getDefaultDataSubscriptionId()
+                                && phone.getDataSettingsManager().isMobileDataPolicyEnabled(
+                        TelephonyManager.MOBILE_DATA_POLICY_AUTO_DATA_SWITCH));
+        boolean hasDedicatedManagedProfileSub = Arrays.stream(phones)
+                .anyMatch(Phone::isManagedProfile);
 
-        data.add(TelephonyStatsLog.buildStatsEvent(DEVICE_TELEPHONY_PROPERTIES, true));
+        data.add(TelephonyStatsLog.buildStatsEvent(DEVICE_TELEPHONY_PROPERTIES, true,
+                isAutoDataSwitchOn, mStorage.getAutoDataSwitchToggleCount(),
+                hasDedicatedManagedProfileSub));
         return StatsManager.PULL_SUCCESS;
     }
 
@@ -677,11 +776,120 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                     perSimStatus.pin1Enabled, // isPin1Enabled
                     perSimStatus.minimumVoltageClass, // simVoltageClass
                     perSimStatus.userModifiedApnTypes, // userModifiedApnTypeBitmask
-                    perSimStatus.unmeteredNetworks); // unmeteredNetworks
+                    perSimStatus.unmeteredNetworks, // unmeteredNetworks
+                    perSimStatus.vonrEnabled); // vonrEnabled
             data.add(statsEvent);
             result = StatsManager.PULL_SUCCESS;
         }
         return result;
+    }
+
+    private int pullOutgoingShortCodeSms(List<StatsEvent> data) {
+        OutgoingShortCodeSms[] outgoingShortCodeSmsList = mStorage
+                .getOutgoingShortCodeSms(MIN_COOLDOWN_MILLIS);
+        if (outgoingShortCodeSmsList != null) {
+            // Outgoing short code SMS list is already shuffled when SMS were inserted
+            Arrays.stream(outgoingShortCodeSmsList).forEach(sms -> data.add(buildStatsEvent(sms)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "OUTGOING_SHORT_CODE_SMS pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+    private int pullSatelliteController(List<StatsEvent> data) {
+        SatelliteController[] controllerAtoms =
+                mStorage.getSatelliteControllerStats(MIN_COOLDOWN_MILLIS);
+        if (controllerAtoms != null) {
+            Arrays.stream(controllerAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "SATELLITE_CONTROLLER pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+    private int pullSatelliteSession(List<StatsEvent> data) {
+        SatelliteSession[] sessionAtoms =
+                mStorage.getSatelliteSessionStats(MIN_COOLDOWN_MILLIS);
+        if (sessionAtoms != null) {
+            Arrays.stream(sessionAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "SATELLITE_SESSION pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+    private int pullSatelliteIncomingDatagram(List<StatsEvent> data) {
+        SatelliteIncomingDatagram[] incomingDatagramAtoms =
+                mStorage.getSatelliteIncomingDatagramStats(MIN_COOLDOWN_MILLIS);
+        if (incomingDatagramAtoms != null) {
+            Arrays.stream(incomingDatagramAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "SATELLITE_INCOMING_DATAGRAM pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+
+    private int pullSatelliteOutgoingDatagram(List<StatsEvent> data) {
+        SatelliteOutgoingDatagram[] outgoingDatagramAtoms =
+                mStorage.getSatelliteOutgoingDatagramStats(MIN_COOLDOWN_MILLIS);
+        if (outgoingDatagramAtoms != null) {
+            Arrays.stream(outgoingDatagramAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "SATELLITE_OUTGOING_DATAGRAM pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+
+    private int pullSatelliteProvision(List<StatsEvent> data) {
+        SatelliteProvision[] provisionAtoms =
+                mStorage.getSatelliteProvisionStats(MIN_COOLDOWN_MILLIS);
+        if (provisionAtoms != null) {
+            Arrays.stream(provisionAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "SATELLITE_PROVISION pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+    private int pullSatelliteSosMessageRecommender(List<StatsEvent> data) {
+        SatelliteSosMessageRecommender[] sosMessageRecommenderAtoms =
+                mStorage.getSatelliteSosMessageRecommenderStats(MIN_COOLDOWN_MILLIS);
+        if (sosMessageRecommenderAtoms != null) {
+            Arrays.stream(sosMessageRecommenderAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "SATELLITE_SOS_MESSAGE_RECOMMENDER pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+    private int pullEmergencyNumbersInfo(List<StatsEvent> data) {
+        boolean isDataLogged = false;
+        for (Phone phone : getPhonesIfAny()) {
+            if (phone != null) {
+                EmergencyNumberTracker tracker = phone.getEmergencyNumberTracker();
+                if (tracker != null) {
+                    EmergencyNumbersInfo[] numList = tracker.getEmergencyNumbersProtoArray();
+                    Arrays.stream(numList).forEach(number -> data.add(buildStatsEvent(number)));
+                    isDataLogged = true;
+                }
+            }
+        }
+        return isDataLogged ? StatsManager.PULL_SUCCESS : StatsManager.PULL_SKIP;
     }
 
     /** Registers a pulled atom ID {@code atomId}. */
@@ -712,8 +920,10 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 state.simSlotIndex,
                 state.isMultiSim,
                 state.carrierId,
-                (int) (round(state.totalTimeMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
-                state.isEmergencyOnly);
+                roundAndConvertMillisToSeconds(state.totalTimeMillis),
+                state.isEmergencyOnly,
+                state.isInternetPdnUp,
+                state.foldState);
     }
 
     private static StatsEvent buildStatsEvent(VoiceCallRatUsage usage) {
@@ -721,7 +931,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 VOICE_CALL_RAT_USAGE,
                 usage.carrierId,
                 usage.rat,
-                round(usage.totalDurationMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS,
+                roundAndConvertMillisToSeconds(usage.totalDurationMillis),
                 usage.callCount);
     }
 
@@ -764,7 +974,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 session.ratAtConnected,
                 session.isMultiparty,
                 session.callDuration,
-                session.lastKnownRat);
+                session.lastKnownRat,
+                session.foldState);
     }
 
     private static StatsEvent buildStatsEvent(IncomingSms sms) {
@@ -784,7 +995,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 sms.isEsim,
                 sms.carrierId,
                 sms.messageId,
-                sms.count);
+                sms.count,
+                sms.isManagedProfile);
     }
 
     private static StatsEvent buildStatsEvent(OutgoingSms sms) {
@@ -804,7 +1016,10 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 sms.messageId,
                 sms.retryId,
                 sms.intervalMillis,
-                sms.count);
+                sms.count,
+                sms.sendErrorCode,
+                sms.networkErrorCode,
+                sms.isManagedProfile);
     }
 
     private static StatsEvent buildStatsEvent(DataCallSession dataCallSession) {
@@ -826,7 +1041,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 dataCallSession.failureCause,
                 dataCallSession.suggestedRetryMillis,
                 dataCallSession.deactivateReason,
-                round(dataCallSession.durationMinutes, DURATION_BUCKET_MILLIS / MINUTE_IN_MILLIS),
+                roundAndConvertMillisToMinutes(
+                        dataCallSession.durationMinutes * MILLIS_PER_MINUTE),
                 dataCallSession.ongoing,
                 dataCallSession.bandAtEnd,
                 dataCallSession.handoverFailureCauses,
@@ -840,19 +1056,15 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.carrierId,
                 stats.simSlotIndex,
                 stats.rat,
-                (int) (round(stats.registeredMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
-                (int) (round(stats.voiceCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
-                (int)
-                        (round(stats.voiceAvailableMillis, DURATION_BUCKET_MILLIS)
-                                / SECOND_IN_MILLIS),
-                (int) (round(stats.smsCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
-                (int) (round(stats.smsAvailableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
-                (int) (round(stats.videoCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
-                (int)
-                        (round(stats.videoAvailableMillis, DURATION_BUCKET_MILLIS)
-                                / SECOND_IN_MILLIS),
-                (int) (round(stats.utCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
-                (int) (round(stats.utAvailableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS));
+                roundAndConvertMillisToSeconds(stats.registeredMillis),
+                roundAndConvertMillisToSeconds(stats.voiceCapableMillis),
+                roundAndConvertMillisToSeconds(stats.voiceAvailableMillis),
+                roundAndConvertMillisToSeconds(stats.smsCapableMillis),
+                roundAndConvertMillisToSeconds(stats.smsAvailableMillis),
+                roundAndConvertMillisToSeconds(stats.videoCapableMillis),
+                roundAndConvertMillisToSeconds(stats.videoAvailableMillis),
+                roundAndConvertMillisToSeconds(stats.utCapableMillis),
+                roundAndConvertMillisToSeconds(stats.utAvailableMillis));
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationTermination termination) {
@@ -883,7 +1095,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.slotId,
                 stats.featureTagName,
                 stats.registrationTech,
-                (int) (round(stats.registeredMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS));
+                roundAndConvertMillisToSeconds(stats.registeredMillis));
     }
 
     private static StatsEvent buildStatsEvent(RcsClientProvisioningStats stats) {
@@ -904,7 +1116,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.responseType,
                 stats.isSingleRegistrationEnabled,
                 stats.count,
-                (int) (round(stats.stateTimerMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS));
+                roundAndConvertMillisToSeconds(stats.stateTimerMillis));
     }
 
     private static StatsEvent buildStatsEvent(SipDelegateStats stats) {
@@ -913,7 +1125,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.dimension,
                 stats.carrierId,
                 stats.slotId,
-                (int) (round(stats.uptimeMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
+                roundAndConvertMillisToSeconds(stats.uptimeMillis),
                 stats.destroyReason);
     }
 
@@ -925,7 +1137,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.featureTagName,
                 stats.sipTransportDeniedReason,
                 stats.sipTransportDeregisteredReason,
-                (int) (round(stats.associatedMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS));
+                roundAndConvertMillisToSeconds(stats.associatedMillis));
     }
 
     private static StatsEvent buildStatsEvent(SipMessageResponse stats) {
@@ -985,7 +1197,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.serviceIdName,
                 stats.serviceIdVersion,
                 stats.registrationTech,
-                (int) (round(stats.publishedMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS));
+                roundAndConvertMillisToSeconds(stats.publishedMillis));
     }
 
     private static StatsEvent buildStatsEvent(UceEventStats stats) {
@@ -1023,8 +1235,97 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.count);
     }
 
+    private static StatsEvent buildStatsEvent(OutgoingShortCodeSms shortCodeSms) {
+        return TelephonyStatsLog.buildStatsEvent(
+                OUTGOING_SHORT_CODE_SMS,
+                shortCodeSms.category,
+                shortCodeSms.xmlVersion,
+                shortCodeSms.shortCodeSmsCount);
+    }
+
+    private static StatsEvent buildStatsEvent(SatelliteController satelliteController) {
+        return TelephonyStatsLog.buildStatsEvent(
+                SATELLITE_CONTROLLER,
+                satelliteController.countOfSatelliteServiceEnablementsSuccess,
+                satelliteController.countOfSatelliteServiceEnablementsFail,
+                satelliteController.countOfOutgoingDatagramSuccess,
+                satelliteController.countOfOutgoingDatagramFail,
+                satelliteController.countOfIncomingDatagramSuccess,
+                satelliteController.countOfIncomingDatagramFail,
+                satelliteController.countOfDatagramTypeSosSmsSuccess,
+                satelliteController.countOfDatagramTypeSosSmsFail,
+                satelliteController.countOfDatagramTypeLocationSharingSuccess,
+                satelliteController.countOfDatagramTypeLocationSharingFail,
+                satelliteController.countOfProvisionSuccess,
+                satelliteController.countOfProvisionFail,
+                satelliteController.countOfDeprovisionSuccess,
+                satelliteController.countOfDeprovisionFail,
+                satelliteController.totalServiceUptimeSec,
+                satelliteController.totalBatteryConsumptionPercent,
+                satelliteController.totalBatteryChargedTimeSec);
+    }
+
+    private static StatsEvent buildStatsEvent(SatelliteSession satelliteSession) {
+        return TelephonyStatsLog.buildStatsEvent(
+                SATELLITE_SESSION,
+                satelliteSession.satelliteServiceInitializationResult,
+                satelliteSession.satelliteTechnology,
+                satelliteSession.count);
+    }
+
+    private static StatsEvent buildStatsEvent(SatelliteIncomingDatagram stats) {
+        return TelephonyStatsLog.buildStatsEvent(
+                SATELLITE_INCOMING_DATAGRAM,
+                stats.resultCode,
+                stats.datagramSizeBytes,
+                stats.datagramTransferTimeMillis);
+    }
+
+    private static StatsEvent buildStatsEvent(SatelliteOutgoingDatagram stats) {
+        return TelephonyStatsLog.buildStatsEvent(
+                SATELLITE_OUTGOING_DATAGRAM,
+                stats.datagramType,
+                stats.resultCode,
+                stats.datagramSizeBytes,
+                stats.datagramTransferTimeMillis);
+    }
+
+    private static StatsEvent buildStatsEvent(SatelliteProvision stats) {
+        return TelephonyStatsLog.buildStatsEvent(
+                SATELLITE_PROVISION,
+                stats.resultCode,
+                stats.provisioningTimeSec,
+                stats.isProvisionRequest,
+                stats.isCanceled);
+    }
+
+    private static StatsEvent buildStatsEvent(SatelliteSosMessageRecommender stats) {
+        return TelephonyStatsLog.buildStatsEvent(
+                SATELLITE_SOS_MESSAGE_RECOMMENDER,
+                stats.isDisplaySosMessageSent,
+                stats.countOfTimerStarted,
+                stats.isImsRegistered,
+                stats.cellularServiceState,
+                stats.count);
+    }
+
+    private static StatsEvent buildStatsEvent(EmergencyNumbersInfo emergencyNumber) {
+        return TelephonyStatsLog.buildStatsEvent(
+                EMERGENCY_NUMBERS_INFO,
+                emergencyNumber.isDbVersionIgnored,
+                emergencyNumber.assetVersion,
+                emergencyNumber.otaVersion,
+                emergencyNumber.number,
+                emergencyNumber.countryIso,
+                emergencyNumber.mnc,
+                emergencyNumber.route,
+                emergencyNumber.urns,
+                emergencyNumber.serviceCategories,
+                emergencyNumber.sources);
+    }
+
     /** Returns all phones in {@link PhoneFactory}, or an empty array if phones not made yet. */
-    private static Phone[] getPhonesIfAny() {
+    static Phone[] getPhonesIfAny() {
         try {
             return PhoneFactory.getPhones();
         } catch (IllegalStateException e) {
@@ -1033,8 +1334,21 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         }
     }
 
-    /** Returns the value rounded to the bucket. */
-    private static long round(long value, long bucket) {
-        return bucket == 0 ? value : ((value + bucket / 2) / bucket) * bucket;
+    /**
+     * Rounds the duration and converts it from milliseconds to seconds.
+     */
+    private static int roundAndConvertMillisToSeconds(long valueMillis) {
+        long roundedValueMillis = Math.round((double) valueMillis / DURATION_BUCKET_MILLIS)
+                * DURATION_BUCKET_MILLIS;
+        return (int) (roundedValueMillis / MILLIS_PER_SECOND);
+    }
+
+    /**
+     * Rounds the duration and converts it from milliseconds to minutes.
+     */
+    private static int roundAndConvertMillisToMinutes(long valueMillis) {
+        long roundedValueMillis = Math.round((double) valueMillis / DURATION_BUCKET_MILLIS)
+                * DURATION_BUCKET_MILLIS;
+        return (int) (roundedValueMillis / MILLIS_PER_MINUTE);
     }
 }

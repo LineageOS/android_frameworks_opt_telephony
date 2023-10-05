@@ -85,14 +85,49 @@ public class ImsServiceController {
 
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            if (mHandler.getLooper().isCurrentThread()) {
+                onServiceConnectedInternal(name, service);
+            } else {
+                mHandler.post(() -> onServiceConnectedInternal(name, service));
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            if (mHandler.getLooper().isCurrentThread()) {
+                onServiceDisconnectedInternal(name);
+            } else {
+                mHandler.post(() -> onServiceDisconnectedInternal(name));
+            }
+        }
+
+        @Override
+        public void onBindingDied(ComponentName name) {
+            if (mHandler.getLooper().isCurrentThread()) {
+                onBindingDiedInternal(name);
+            } else {
+                mHandler.post(() -> onBindingDiedInternal(name));
+            }
+        }
+
+        @Override
+        public void onNullBinding(ComponentName name) {
+            if (mHandler.getLooper().isCurrentThread()) {
+                onNullBindingInternal(name);
+            } else {
+                mHandler.post(() -> onNullBindingInternal(name));
+            }
+        }
+
+        private void onServiceConnectedInternal(ComponentName name, IBinder service) {
             synchronized (mLock) {
                 mBackoff.stop();
                 mIsBound = true;
                 mIsBinding = false;
                 try {
-                    mLocalLog.log("onServiceConnected");
-                    Log.d(LOG_TAG, "ImsService(" + name + "): onServiceConnected with binder: "
-                            + service);
+                    mLocalLog.log("onServiceConnectedInternal");
+                    Log.d(LOG_TAG, "ImsService(" + name
+                            + "): onServiceConnectedInternal with binder: " + service);
                     setServiceController(service);
                     notifyImsServiceReady();
                     retrieveStaticImsServiceCapabilities();
@@ -118,20 +153,18 @@ public class ImsServiceController {
             }
         }
 
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
+        private void onServiceDisconnectedInternal(ComponentName name) {
             synchronized (mLock) {
                 mIsBinding = false;
                 cleanupConnection();
             }
-            mLocalLog.log("onServiceDisconnected");
-            Log.w(LOG_TAG, "ImsService(" + name + "): onServiceDisconnected. Waiting...");
+            mLocalLog.log("onServiceDisconnectedInternal");
+            Log.w(LOG_TAG, "ImsService(" + name + "): onServiceDisconnectedInternal. Waiting...");
             // Service disconnected, but we are still technically bound. Waiting for reconnect.
             checkAndReportAnomaly(name);
         }
 
-        @Override
-        public void onBindingDied(ComponentName name) {
+        private void onBindingDiedInternal(ComponentName name) {
             mIsServiceConnectionDead = true;
             synchronized (mLock) {
                 mIsBinding = false;
@@ -141,15 +174,15 @@ public class ImsServiceController {
                 unbindService();
                 startDelayedRebindToService();
             }
-            Log.w(LOG_TAG, "ImsService(" + name + "): onBindingDied. Starting rebind...");
-            mLocalLog.log("onBindingDied, retrying in " + mBackoff.getCurrentDelay() + " mS");
+            Log.w(LOG_TAG, "ImsService(" + name + "): onBindingDiedInternal. Starting rebind...");
+            mLocalLog.log("onBindingDiedInternal, retrying in "
+                    + mBackoff.getCurrentDelay() + " mS");
         }
 
-        @Override
-        public void onNullBinding(ComponentName name) {
-            Log.w(LOG_TAG, "ImsService(" + name + "): onNullBinding. Is service dead = "
+        private void onNullBindingInternal(ComponentName name) {
+            Log.w(LOG_TAG, "ImsService(" + name + "): onNullBindingInternal. Is service dead = "
                     + mIsServiceConnectionDead);
-            mLocalLog.log("onNullBinding, is service dead = " + mIsServiceConnectionDead);
+            mLocalLog.log("onNullBindingInternal, is service dead = " + mIsServiceConnectionDead);
             // onNullBinding will happen after onBindingDied. In this case, we should not
             // permanently unbind and instead let the automatic rebind occur.
             if (mIsServiceConnectionDead) return;
@@ -230,6 +263,7 @@ public class ImsServiceController {
     private static final boolean ENFORCE_SINGLE_SERVICE_FOR_SIP_TRANSPORT = false;
     private final ComponentName mComponentName;
     private final HandlerThread mHandlerThread = new HandlerThread("ImsServiceControllerHandler");
+    private final Handler mHandler;
     private final LegacyPermissionManager mPermissionManager;
     private ImsFeatureBinderRepository mRepo;
     private ImsServiceControllerCallbacks mCallbacks;
@@ -241,6 +275,7 @@ public class ImsServiceController {
     private Set<ImsFeatureConfiguration.FeatureSlotPair> mImsFeatures;
     private SparseIntArray mSlotIdToSubIdMap;
     private IImsServiceController mIImsServiceController;
+    private final ImsEnablementTracker mImsEnablementTracker;
     // The Capabilities bitmask of the connected ImsService (see ImsService#ImsServiceCapability).
     private long mServiceCapabilities;
     private ImsServiceConnection mImsServiceConnection;
@@ -323,16 +358,17 @@ public class ImsServiceController {
         mComponentName = componentName;
         mCallbacks = callbacks;
         mHandlerThread.start();
+        mHandler = new Handler(mHandlerThread.getLooper());
         mBackoff = new ExponentialBackoff(
                 mRebindRetry.getStartDelay(),
                 mRebindRetry.getMaximumDelay(),
                 2, /* multiplier */
-                mHandlerThread.getLooper(),
+                mHandler,
                 mRestartImsServiceRunnable);
         mPermissionManager = (LegacyPermissionManager) mContext.getSystemService(
                 Context.LEGACY_PERMISSION_SERVICE);
         mRepo = repo;
-
+        mImsEnablementTracker = new ImsEnablementTracker(mHandlerThread.getLooper(), componentName);
         mPackageManager = mContext.getPackageManager();
         if (mPackageManager != null) {
             mChangedPackages = mPackageManager.getChangedPackages(mLastSequenceNumber);
@@ -351,6 +387,7 @@ public class ImsServiceController {
         mContext = context;
         mComponentName = componentName;
         mCallbacks = callbacks;
+        mHandler = handler;
         mBackoff = new ExponentialBackoff(
                 rebindRetry.getStartDelay(),
                 rebindRetry.getMaximumDelay(),
@@ -359,6 +396,7 @@ public class ImsServiceController {
                 mRestartImsServiceRunnable);
         mPermissionManager = null;
         mRepo = repo;
+        mImsEnablementTracker = new ImsEnablementTracker(handler.getLooper(), componentName);
     }
 
     /**
@@ -378,6 +416,8 @@ public class ImsServiceController {
                 sanitizeFeatureConfig(imsFeatureSet);
                 mImsFeatures = imsFeatureSet;
                 mSlotIdToSubIdMap = slotIdToSubIdMap;
+                // Set the number of slots that support the feature
+                mImsEnablementTracker.setNumOfSlots(mSlotIdToSubIdMap.size());
                 grantPermissionsToService();
                 Intent imsServiceIntent = new Intent(getServiceInterface()).setComponent(
                         mComponentName);
@@ -464,6 +504,14 @@ public class ImsServiceController {
                             + newSubId);
                     Log.i(LOG_TAG, "subId changed for slot: " + slotID + ", " + oldSubId + " -> "
                             + newSubId);
+                    if (newSubId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                        /* An INVALID subId can also be set in bind(), however
+                        the ImsEnablementTracker will move into the DEFAULT state, so we only
+                        need to track changes in subId that result in requiring we move
+                        the state machine back to DEFAULT.
+                         */
+                        mImsEnablementTracker.subIdChangedToInvalid(slotID);
+                    }
                 }
             }
             mSlotIdToSubIdMap = slotIdToSubIdMap;
@@ -553,15 +601,7 @@ public class ImsServiceController {
      * trigger ImsFeature status updates.
      */
     public void enableIms(int slotId, int subId) {
-        try {
-            synchronized (mLock) {
-                if (isServiceControllerAvailable()) {
-                    mIImsServiceController.enableIms(slotId, subId);
-                }
-            }
-        } catch (RemoteException e) {
-            Log.w(LOG_TAG, "Couldn't enable IMS: " + e.getMessage());
-        }
+        mImsEnablementTracker.enableIms(slotId, subId);
     }
 
     /**
@@ -569,15 +609,15 @@ public class ImsServiceController {
      * trigger ImsFeature capability status to become false.
      */
     public void disableIms(int slotId, int subId) {
-        try {
-            synchronized (mLock) {
-                if (isServiceControllerAvailable()) {
-                    mIImsServiceController.disableIms(slotId, subId);
-                }
-            }
-        } catch (RemoteException e) {
-            Log.w(LOG_TAG, "Couldn't disable IMS: " + e.getMessage());
-        }
+        mImsEnablementTracker.disableIms(slotId, subId);
+    }
+
+    /**
+     * Notify ImsService to disable IMS for the framework.
+     * And notify ImsService back to enable IMS for the framework
+     */
+    public void resetIms(int slotId, int subId) {
+        mImsEnablementTracker.resetIms(slotId, subId);
     }
 
     /**
@@ -651,6 +691,7 @@ public class ImsServiceController {
      */
     protected void setServiceController(IBinder serviceController) {
         mIImsServiceController = IImsServiceController.Stub.asInterface(serviceController);
+        mImsEnablementTracker.setServiceController(serviceController);
     }
 
     /**
@@ -910,7 +951,7 @@ public class ImsServiceController {
             return;
         }
         ChangedPackages curChangedPackages =
-                            mPackageManager.getChangedPackages(mLastSequenceNumber);
+                mPackageManager.getChangedPackages(mLastSequenceNumber);
         if (curChangedPackages != null) {
             mLastSequenceNumber = curChangedPackages.getSequenceNumber();
             List<String> packagesNames = curChangedPackages.getPackageNames();

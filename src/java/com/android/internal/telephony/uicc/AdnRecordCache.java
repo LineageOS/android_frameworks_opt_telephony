@@ -23,10 +23,12 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.SparseArray;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.gsm.UsimPhoneBookManager;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Locale;
 
 /**
  * {@hide}
@@ -58,12 +60,14 @@ public class AdnRecordCache extends Handler implements IccConstants {
     static final int EVENT_UPDATE_ADN_DONE = 2;
 
     //***** Constructor
-
-
-
     AdnRecordCache(IccFileHandler fh) {
         mFh = fh;
         mUsimPhoneBookManager = new UsimPhoneBookManager(mFh, this);
+    }
+
+    public AdnRecordCache(IccFileHandler fh, UsimPhoneBookManager usimPhoneBookManager) {
+        mFh = fh;
+        mUsimPhoneBookManager = usimPhoneBookManager;
     }
 
     //***** Called from SIMRecords
@@ -156,14 +160,14 @@ public class AdnRecordCache extends Handler implements IccConstants {
         int extensionEF = extensionEfForEf(efid);
         if (extensionEF < 0) {
             sendErrorResponse(response, "EF is not known ADN-like EF:0x" +
-                    Integer.toHexString(efid).toUpperCase());
+                    Integer.toHexString(efid).toUpperCase(Locale.ROOT));
             return;
         }
 
         Message pendingResponse = mUserWriteResponse.get(efid);
         if (pendingResponse != null) {
             sendErrorResponse(response, "Have pending update for EF:0x" +
-                    Integer.toHexString(efid).toUpperCase());
+                    Integer.toHexString(efid).toUpperCase(Locale.ROOT));
             return;
         }
 
@@ -190,16 +194,14 @@ public class AdnRecordCache extends Handler implements IccConstants {
      */
     public void updateAdnBySearch(int efid, AdnRecord oldAdn, AdnRecord newAdn,
             String pin2, Message response) {
-
         int extensionEF;
         extensionEF = extensionEfForEf(efid);
 
         if (extensionEF < 0) {
             sendErrorResponse(response, "EF is not known ADN-like EF:0x" +
-                    Integer.toHexString(efid).toUpperCase());
+                    Integer.toHexString(efid).toUpperCase(Locale.ROOT));
             return;
         }
-
         ArrayList<AdnRecord>  oldAdnList;
 
         if (efid == EF_PBR) {
@@ -207,13 +209,11 @@ public class AdnRecordCache extends Handler implements IccConstants {
         } else {
             oldAdnList = getRecordsIfLoaded(efid);
         }
-
         if (oldAdnList == null) {
             sendErrorResponse(response, "Adn list not exist for EF:0x" +
-                    Integer.toHexString(efid).toUpperCase());
+                    Integer.toHexString(efid).toUpperCase(Locale.ROOT));
             return;
         }
-
         int index = -1;
         int count = 1;
         for (Iterator<AdnRecord> it = oldAdnList.iterator(); it.hasNext(); ) {
@@ -223,7 +223,6 @@ public class AdnRecordCache extends Handler implements IccConstants {
             }
             count++;
         }
-
         if (index == -1) {
             sendErrorResponse(response, "Adn record don't exist for " + oldAdn);
             return;
@@ -244,7 +243,7 @@ public class AdnRecordCache extends Handler implements IccConstants {
 
         if (pendingResponse != null) {
             sendErrorResponse(response, "Have pending update for EF:0x" +
-                    Integer.toHexString(efid).toUpperCase());
+                    Integer.toHexString(efid).toUpperCase(Locale.ROOT));
             return;
         }
 
@@ -307,7 +306,7 @@ public class AdnRecordCache extends Handler implements IccConstants {
             if (response != null) {
                 AsyncResult.forMessage(response).exception
                     = new RuntimeException("EF is not known ADN-like EF:0x" +
-                        Integer.toHexString(efid).toUpperCase());
+                        Integer.toHexString(efid).toUpperCase(Locale.ROOT));
                 response.sendToTarget();
             }
 
@@ -342,7 +341,6 @@ public class AdnRecordCache extends Handler implements IccConstants {
     handleMessage(Message msg) {
         AsyncResult ar;
         int efid;
-
         switch(msg.what) {
             case EVENT_LOAD_ALL_ADN_LIKE_DONE:
                 /* arg1 is efid, obj.result is ArrayList<AdnRecord>*/
@@ -380,5 +378,25 @@ public class AdnRecordCache extends Handler implements IccConstants {
                 }
                 break;
         }
+    }
+
+    @VisibleForTesting
+    protected void setAdnLikeWriters(int key, ArrayList<Message> waiters) {
+        mAdnLikeWaiters.put(EF_MBDN, waiters);
+    }
+
+    @VisibleForTesting
+    protected void setAdnLikeFiles(int key, ArrayList<AdnRecord> adnRecordList) {
+        mAdnLikeFiles.put(EF_MBDN, adnRecordList);
+    }
+
+    @VisibleForTesting
+    protected void setUserWriteResponse(int key, Message message) {
+        mUserWriteResponse.put(EF_MBDN, message);
+    }
+
+    @VisibleForTesting
+    protected UsimPhoneBookManager getUsimPhoneBookManager() {
+        return mUsimPhoneBookManager;
     }
 }

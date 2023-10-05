@@ -28,6 +28,7 @@ import android.telephony.euicc.EuiccCardManager;
 import android.telephony.euicc.EuiccNotification;
 import android.telephony.euicc.EuiccRulesAuthTable;
 import android.text.TextUtils;
+import android.util.IndentingPrintWriter;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
@@ -35,7 +36,9 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
+import com.android.internal.telephony.uicc.IccSlotStatus.MultipleEnabledProfilesMode;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.uicc.PortUtils;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.asn1.Asn1Decoder;
@@ -101,9 +104,6 @@ public class EuiccPort extends UiccPort {
     private static final String DEV_CAP_NR5GC = "nr5gc";
     private static final String DEV_CAP_EUTRAN5GC = "eutran5gc";
 
-    private static final String ATR_ESIM_OS_V_M5 =
-            "3B9F97C00AB1FE453FC6838031E073FE211F65D002341569810F21";
-
     // These interfaces are used for simplifying the code by leveraging lambdas.
     private interface ApduRequestBuilder {
         void build(RequestBuilder requestBuilder)
@@ -127,11 +127,10 @@ public class EuiccPort extends UiccPort {
     private EuiccSpecVersion mSpecVersion;
     private volatile String mEid;
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
-    public boolean mIsSupportsMultipleEnabledProfiles;
-    private String mAtr;
+    public MultipleEnabledProfilesMode mSupportedMepMode;
 
     public EuiccPort(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock,
-            UiccCard card, boolean isSupportsMultipleEnabledProfiles) {
+            UiccCard card, MultipleEnabledProfilesMode supportedMepMode) {
         super(c, ci, ics, phoneId, lock, card);
         // TODO: Set supportExtendedApdu based on ATR.
         mApduSender = new ApduSender(ci, ISD_R_AID, false /* supportExtendedApdu */);
@@ -141,8 +140,7 @@ public class EuiccPort extends UiccPort {
             mEid = ics.eid;
             mCardId = ics.eid;
         }
-        mAtr = ics.atr;
-        mIsSupportsMultipleEnabledProfiles = isSupportsMultipleEnabledProfiles;
+        mSupportedMepMode = supportedMepMode;
     }
 
     /**
@@ -165,18 +163,17 @@ public class EuiccPort extends UiccPort {
             if (!TextUtils.isEmpty(ics.eid)) {
                 mEid = ics.eid;
             }
-            mAtr = ics.atr;
             super.update(c, ci, ics, uiccCard);
         }
     }
 
     /**
-     * Updates MEP(Multiple Enabled Profile) support flag.
+     * Updates MEP(Multiple Enabled Profile) supported mode flag.
      * The flag can be updated after the port creation.
      */
-    public void updateSupportMultipleEnabledProfile(boolean supported) {
-        logd("updateSupportMultipleEnabledProfile");
-        mIsSupportsMultipleEnabledProfiles = supported;
+    public void updateSupportedMepMode(MultipleEnabledProfilesMode supportedMepMode) {
+        logd("updateSupportedMepMode");
+        mSupportedMepMode = supportedMepMode;
     }
 
     /**
@@ -187,13 +184,8 @@ public class EuiccPort extends UiccPort {
      * @since 1.1.0 [GSMA SGP.22]
      */
     public void getAllProfiles(AsyncResultCallback<EuiccProfileInfo[]> callback, Handler handler) {
-        byte[] profileTags;
-        if (mIsSupportsMultipleEnabledProfiles) {
-            profileTags = ATR_ESIM_OS_V_M5.equals(mAtr)
-                    ? Tags.EUICC_PROFILE_MEP_TAGS : Tags.EUICC_PROFILE_MEP_TAGS_WITH_9F20;
-        } else {
-            profileTags = Tags.EUICC_PROFILE_TAGS;
-        }
+        byte[] profileTags = mSupportedMepMode.isMepMode() ? Tags.EUICC_PROFILE_MEP_TAGS
+                : Tags.EUICC_PROFILE_TAGS;
         sendApdu(
                 newRequestProvider((RequestBuilder requestBuilder) ->
                         requestBuilder.addStoreData(Asn1Node.newBuilder(Tags.TAG_GET_PROFILES)
@@ -234,13 +226,8 @@ public class EuiccPort extends UiccPort {
      */
     public final void getProfile(String iccid, AsyncResultCallback<EuiccProfileInfo> callback,
             Handler handler) {
-        byte[] profileTags;
-        if (mIsSupportsMultipleEnabledProfiles) {
-            profileTags = ATR_ESIM_OS_V_M5.equals(mAtr)
-                    ? Tags.EUICC_PROFILE_MEP_TAGS : Tags.EUICC_PROFILE_MEP_TAGS_WITH_9F20;
-        } else {
-            profileTags = Tags.EUICC_PROFILE_TAGS;
-        }
+        byte[] profileTags = mSupportedMepMode.isMepMode() ? Tags.EUICC_PROFILE_MEP_TAGS
+                : Tags.EUICC_PROFILE_TAGS;
         sendApdu(
                 newRequestProvider((RequestBuilder requestBuilder) ->
                         requestBuilder.addStoreData(Asn1Node.newBuilder(Tags.TAG_GET_PROFILES)
@@ -295,7 +282,7 @@ public class EuiccPort extends UiccPort {
                             return null;
                         case CODE_PROFILE_NOT_IN_EXPECTED_STATE:
                             logd("Profile is already disabled, iccid: "
-                                    + SubscriptionInfo.givePrintableIccid(iccid));
+                                    + SubscriptionInfo.getPrintableId(iccid));
                             return null;
                         default:
                             throw new EuiccCardErrorException(
@@ -319,11 +306,20 @@ public class EuiccPort extends UiccPort {
         sendApduWithSimResetErrorWorkaround(
                 newRequestProvider((RequestBuilder requestBuilder) -> {
                     byte[] iccidBytes = IccUtils.bcdToBytes(padTrailingFs(iccid));
-                    requestBuilder.addStoreData(Asn1Node.newBuilder(Tags.TAG_ENABLE_PROFILE)
+                    Asn1Node.Builder builder = Asn1Node.newBuilder(Tags.TAG_ENABLE_PROFILE)
                             .addChild(Asn1Node.newBuilder(Tags.TAG_CTX_COMP_0)
                                     .addChildAsBytes(Tags.TAG_ICCID, iccidBytes))
-                            .addChildAsBoolean(Tags.TAG_CTX_1, refresh)
-                            .build().toHex());
+                            .addChildAsBoolean(Tags.TAG_CTX_1, refresh);
+                    // Port index should be added only in case of MEP-A1 mode.
+                    if (mSupportedMepMode.isMepA1Mode()) {
+                        // In case of MEP-A1 and MEP-A2, profiles are selected on eSIM Ports 1 and
+                        // higher (refer as target port). Hence, convert the portIndex to
+                        // target port index before adding.
+                        builder.addChildAsInteger(Tags.TAG_CTX_2,
+                                PortUtils.convertToHalPortIndex(mSupportedMepMode,
+                                        super.getPortIdx()));
+                    }
+                    requestBuilder.addStoreData(builder.build().toHex());
                 }),
                 response -> {
                     int result;
@@ -334,7 +330,7 @@ public class EuiccPort extends UiccPort {
                             return null;
                         case CODE_PROFILE_NOT_IN_EXPECTED_STATE:
                             logd("Profile is already enabled, iccid: "
-                                    + SubscriptionInfo.givePrintableIccid(iccid));
+                                    + SubscriptionInfo.getPrintableId(iccid));
                             return null;
                         default:
                             throw new EuiccCardErrorException(
@@ -1262,10 +1258,8 @@ public class EuiccPort extends UiccPort {
             // if the Profile is in the Enabled state on the same eSIM Port as where this
             // getProfilesInfo command was sent. So should check for enabledOnEsimPort(TAG_PORT)
             // tag and verify its value is a valid port (means port value is >=0) or not.
-            if ((profileNode.hasChild(Tags.TAG_PORT)
-                    && profileNode.getChild(Tags.TAG_PORT).asInteger() >= 0)
-                    || (profileNode.hasChild(Tags.TAG_PORT_9F20)
-                    && profileNode.getChild(Tags.TAG_PORT_9F20).asInteger() >= 0)) {
+            if (profileNode.hasChild(Tags.TAG_PORT)
+                    && profileNode.getChild(Tags.TAG_PORT).asInteger() >= 0) {
                 profileBuilder.setState(EuiccProfileInfo.PROFILE_STATE_ENABLED);
             } else {
                 // noinspection WrongConstant
@@ -1430,10 +1424,13 @@ public class EuiccPort extends UiccPort {
     }
 
     @Override
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        super.dump(fd, pw, args);
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        super.dump(fd, printWriter, args);
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println("EuiccPort:");
-        pw.println(" mEid=" + mEid);
-        pw.println(" mIsSupportsMultipleEnabledProfiles=" + mIsSupportsMultipleEnabledProfiles);
+        pw.increaseIndent();
+        pw.println("mEid=" + mEid);
+        pw.println("mSupportedMepMode=" + mSupportedMepMode);
+        pw.decreaseIndent();
     }
 }

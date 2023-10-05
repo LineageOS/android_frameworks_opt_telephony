@@ -19,10 +19,13 @@ package com.android.internal.telephony;
 import static android.telephony.RadioAccessFamily.RAF_GSM;
 import static android.telephony.RadioAccessFamily.RAF_LTE;
 
+import static com.android.internal.telephony.ProxyController.EVENT_FINISH_RC_RESPONSE;
 import static com.android.internal.telephony.ProxyController.EVENT_MULTI_SIM_CONFIG_CHANGED;
 import static com.android.internal.telephony.ProxyController.EVENT_START_RC_RESPONSE;
+import static com.android.internal.telephony.ProxyController.EVENT_TIMEOUT;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
@@ -97,12 +100,139 @@ public class ProxyControllerTest extends TelephonyTest {
         rafs[1] = new RadioAccessFamily(1, RAF_GSM | RAF_LTE);
         mProxyController.setRadioCapability(rafs);
 
-        Message.obtain(mProxyController.mHandler, EVENT_START_RC_RESPONSE,
-                new AsyncResult(null, null,
-                        new CommandException(CommandException.Error.REQUEST_NOT_SUPPORTED)))
+        Message.obtain(
+                        mProxyController.mHandler,
+                        EVENT_START_RC_RESPONSE,
+                        new AsyncResult(
+                                null,
+                                null,
+                                new CommandException(CommandException.Error.REQUEST_NOT_SUPPORTED)))
                 .sendToTarget();
         processAllMessages();
 
+        assertFalse(mProxyController.isWakeLockHeld());
+    }
+
+    @Test
+    @SmallTest
+    public void testWithNonPermanentExceptionOnRCResponse_WithExceptionOnFinishResponse()
+            throws Exception {
+        int activeModemCount = 2;
+        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone, mPhone2});
+        doReturn(activeModemCount).when(mTelephonyManager).getPhoneCount();
+        doReturn(RAF_GSM | RAF_LTE).when(mPhone).getRadioAccessFamily();
+        doReturn(RAF_GSM).when(mPhone2).getRadioAccessFamily();
+
+        Message.obtain(mProxyController.mHandler, EVENT_MULTI_SIM_CONFIG_CHANGED).sendToTarget();
+        processAllMessages();
+        verify(mPhone2).registerForRadioCapabilityChanged(any(), anyInt(), any());
+
+        RadioAccessFamily[] rafs = new RadioAccessFamily[activeModemCount];
+        rafs[0] = new RadioAccessFamily(0, RAF_GSM);
+        rafs[1] = new RadioAccessFamily(1, RAF_GSM | RAF_LTE);
+        mProxyController.setRadioCapability(rafs);
+
+        Message.obtain(
+                        mProxyController.mHandler,
+                        EVENT_START_RC_RESPONSE,
+                        new AsyncResult(
+                                null,
+                                null,
+                                new CommandException(CommandException.Error.RADIO_NOT_AVAILABLE)))
+                .sendToTarget();
+        processAllMessages();
+        assertTrue(mProxyController.isWakeLockHeld());
+        onFinishResponseWithException();
+    }
+
+    @Test
+    @SmallTest
+    public void testWithNonPermanentExceptionOnRCResponse_WithoutExceptionOnFinishResponse()
+            throws Exception {
+        int activeModemCount = 2;
+        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone, mPhone2});
+        doReturn(activeModemCount).when(mTelephonyManager).getPhoneCount();
+        doReturn(RAF_GSM | RAF_LTE).when(mPhone).getRadioAccessFamily();
+        doReturn(RAF_GSM).when(mPhone2).getRadioAccessFamily();
+
+        Message.obtain(mProxyController.mHandler, EVENT_MULTI_SIM_CONFIG_CHANGED).sendToTarget();
+        processAllMessages();
+        verify(mPhone2).registerForRadioCapabilityChanged(any(), anyInt(), any());
+
+        RadioAccessFamily[] rafs = new RadioAccessFamily[activeModemCount];
+        rafs[0] = new RadioAccessFamily(0, RAF_GSM);
+        rafs[1] = new RadioAccessFamily(1, RAF_GSM | RAF_LTE);
+        mProxyController.setRadioCapability(rafs);
+
+        Message.obtain(
+                        mProxyController.mHandler,
+                        EVENT_START_RC_RESPONSE,
+                        new AsyncResult(null, null, null))
+                .sendToTarget();
+        processAllMessages();
+        assertTrue(mProxyController.isWakeLockHeld());
+        onFinishResponseWithoutException();
+    }
+
+    @Test
+    @SmallTest
+    public void testOnRCResponseTimeout_WithExceptionOnFinishResponse() throws Exception {
+        int activeModemCount = 2;
+        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone, mPhone2});
+        doReturn(activeModemCount).when(mTelephonyManager).getPhoneCount();
+        doReturn(RAF_GSM | RAF_LTE).when(mPhone).getRadioAccessFamily();
+        doReturn(RAF_GSM).when(mPhone2).getRadioAccessFamily();
+
+        Message.obtain(mProxyController.mHandler, EVENT_MULTI_SIM_CONFIG_CHANGED).sendToTarget();
+        processAllMessages();
+        verify(mPhone2).registerForRadioCapabilityChanged(any(), anyInt(), any());
+
+        RadioAccessFamily[] rafs = new RadioAccessFamily[activeModemCount];
+        rafs[0] = new RadioAccessFamily(0, RAF_GSM);
+        rafs[1] = new RadioAccessFamily(1, RAF_GSM | RAF_LTE);
+        mProxyController.setRadioCapability(rafs);
+
+        Message.obtain(
+                        mProxyController.mHandler,
+                        EVENT_TIMEOUT,
+                        new AsyncResult(
+                                null,
+                                null,
+                                new CommandException(CommandException.Error.REQUEST_NOT_SUPPORTED)))
+                .sendToTarget();
+        processAllMessages();
+        onFinishResponseWithException();
+    }
+
+    private void onFinishResponseWithException() throws Exception {
+        replaceInstance(
+                ProxyController.class, "mRadioAccessFamilyStatusCounter", mProxyController, 1);
+        replaceInstance(ProxyController.class, "mTransactionFailed", mProxyController, true);
+        Message.obtain(
+                        mProxyController.mHandler,
+                        EVENT_FINISH_RC_RESPONSE,
+                        new AsyncResult(
+                                null,
+                                null,
+                                new CommandException(CommandException.Error.REQUEST_NOT_SUPPORTED)))
+                .sendToTarget();
+        processAllMessages();
+        assertTrue(mProxyController.isWakeLockHeld());
+    }
+
+    private void onFinishResponseWithoutException() throws Exception {
+        replaceInstance(
+                ProxyController.class, "mRadioAccessFamilyStatusCounter", mProxyController, 1);
+        replaceInstance(ProxyController.class, "mTransactionFailed", mProxyController, false);
+        replaceInstance(
+                ProxyController.class, "mRadioCapabilitySessionId", mProxyController, 123456);
+        Message.obtain(
+                        mProxyController.mHandler,
+                        EVENT_FINISH_RC_RESPONSE,
+                        new AsyncResult(
+                                null, new RadioCapability(0, 123456, 0, 0, "test_modem", 0), null))
+                .sendToTarget();
+        processAllMessages();
         assertFalse(mProxyController.isWakeLockHeld());
     }
 }

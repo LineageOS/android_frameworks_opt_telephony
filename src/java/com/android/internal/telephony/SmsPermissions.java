@@ -23,9 +23,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.Build;
+import android.os.UserHandle;
 import android.service.carrier.CarrierMessagingService;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
 /**
@@ -132,10 +134,19 @@ public class SmsPermissions {
      */
     public boolean checkCallingOrSelfCanGetSmscAddress(String callingPackage, String message) {
         // Allow it to the default SMS app always.
-        if (!isCallerDefaultSmsPackage(callingPackage)) {
-            TelephonyPermissions
-                        .enforceCallingOrSelfReadPrivilegedPhoneStatePermissionOrCarrierPrivilege(
-                                mContext, mPhone.getSubId(), message);
+        boolean isDefaultSmsPackage;
+        int callerUid = Binder.getCallingUid();
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            isDefaultSmsPackage = isCallerDefaultSmsPackage(callingPackage, callerUid);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+        if (!isDefaultSmsPackage) {
+            Rlog.d(LOG_TAG, "Caller is not a default SMS application");
+            TelephonyPermissions.
+                    enforceCallingOrSelfReadPrivilegedPhoneStatePermissionOrCarrierPrivilege(
+                            mContext, mPhone.getSubId(), message);
         }
         return true;
     }
@@ -151,21 +162,37 @@ public class SmsPermissions {
      */
     public boolean checkCallingOrSelfCanSetSmscAddress(String callingPackage, String message) {
         // Allow it to the default SMS app always.
-        if (!isCallerDefaultSmsPackage(callingPackage)) {
+        boolean isDefaultSmsPackage;
+        int callerUid = Binder.getCallingUid();
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            isDefaultSmsPackage = isCallerDefaultSmsPackage(callingPackage, callerUid);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+        if (!isDefaultSmsPackage) {
+            Rlog.d(LOG_TAG, "Caller is not a default SMS application");
             // Allow it with MODIFY_PHONE_STATE or Carrier Privileges
-            TelephonyPermissions.enforceCallingOrSelfModifyPermissionOrCarrierPrivilege(
-                    mContext, mPhone.getSubId(), message);
+            TelephonyPermissions.enforceCallingOrSelfModifyPermissionOrCarrierPrivilege(mContext,
+                    mPhone.getSubId(), message);
         }
         return true;
     }
 
     /** Check if a package is default SMS app. */
     @VisibleForTesting
-    public boolean isCallerDefaultSmsPackage(String packageName) {
-        if (packageNameMatchesCallingUid(packageName)) {
-            return SmsApplication.isDefaultSmsApplication(mContext, packageName);
+    public boolean isCallerDefaultSmsPackage(String packageName, int callerUid) {
+        if (packageNameMatchesCallingUid(packageName, callerUid)) {
+            UserHandle userHandle = TelephonyUtils.getSubscriptionUserHandle(mContext,
+                    mPhone.getSubId());
+            return SmsApplication.isDefaultSmsApplicationAsUser(mContext, packageName, userHandle);
         }
         return false;
+    }
+
+    @VisibleForTesting
+    public boolean packageNameMatchesCallingUid(String packageName) {
+        return packageNameMatchesCallingUid(packageName, Binder.getCallingUid());
     }
 
     /**
@@ -174,10 +201,10 @@ public class SmsPermissions {
      * @return true if package belongs to calling uid, false otherwise
      */
     @VisibleForTesting
-    public boolean packageNameMatchesCallingUid(String packageName) {
+    public boolean packageNameMatchesCallingUid(String packageName, int callerUid) {
         try {
             ((AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE))
-                    .checkPackage(Binder.getCallingUid(), packageName);
+                    .checkPackage(callerUid, packageName);
             // If checkPackage doesn't throw an exception then we are the given package
             return true;
         } catch (SecurityException e) {

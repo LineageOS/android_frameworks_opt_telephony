@@ -24,8 +24,6 @@ import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import androidx.test.InstrumentationRegistry;
-
 import com.android.internal.util.HexDump;
 
 import org.junit.After;
@@ -34,7 +32,7 @@ import org.junit.Test;
 
 import java.util.Arrays;
 
-public class InboundSmsTrackerTest {
+public class InboundSmsTrackerTest extends TelephonyTest {
     InboundSmsTracker mInboundSmsTracker;
 
     private static final byte[] FAKE_PDU = new byte[]{1, 2, 3};
@@ -50,7 +48,8 @@ public class InboundSmsTrackerTest {
 
     @Before
     public void setUp() throws Exception {
-        mInboundSmsTracker = new InboundSmsTracker(InstrumentationRegistry.getContext(),
+        super.setUp(getClass().getSimpleName());
+        mInboundSmsTracker = new InboundSmsTracker(mContext,
                 FAKE_PDU, FAKE_TIMESTAMP, FAKE_DEST_PORT, false,
                 FAKE_ADDRESS, FAKE_DISPLAY_ADDRESS, FAKE_REFERENCE_NUMBER, FAKE_SEQUENCE_NUMBER,
                 FAKE_MESSAGE_COUNT, false, FAKE_MESSAGE_BODY, false /* isClass0 */, FAKE_SUBID,
@@ -58,8 +57,9 @@ public class InboundSmsTrackerTest {
     }
 
     @After
-    public void tearDown() {
+    public void tearDown() throws Exception {
         mInboundSmsTracker = null;
+        super.tearDown();
     }
 
     public static MatrixCursor createFakeCursor() {
@@ -108,8 +108,7 @@ public class InboundSmsTrackerTest {
     @SmallTest
     public void testInitializationFromDb() {
         Cursor cursor = createFakeCursor();
-        mInboundSmsTracker = new InboundSmsTracker(InstrumentationRegistry.getContext(),
-                cursor, false);
+        mInboundSmsTracker = new InboundSmsTracker(mContext, cursor, false);
         cursor.close();
         testInitialization();
     }

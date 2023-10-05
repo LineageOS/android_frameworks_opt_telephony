@@ -16,10 +16,16 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_NONE;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -27,8 +33,10 @@ import static org.mockito.Mockito.verify;
 import android.net.Uri;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.RegistrationManager.RegistrationCallback;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.TelephonyTest;
@@ -121,11 +129,13 @@ public class ImsRegistrationCallbackHelperTest extends TelephonyTest {
 
         // When onRegistered is called, the registration state should be
         // REGISTRATION_STATE_REGISTERED
-        callback.onRegistered(AccessNetworkType.IWLAN);
+        ImsRegistrationAttributes attr = new ImsRegistrationAttributes.Builder(
+                ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN).build();
+        callback.onRegistered(attr);
 
         assertEquals(RegistrationManager.REGISTRATION_STATE_REGISTERED,
                 mRegistrationCallbackHelper.getImsRegistrationState());
-        verify(mMockRegistrationUpdate).handleImsRegistered(anyInt());
+        verify(mMockRegistrationUpdate).handleImsRegistered(attr);
     }
 
     @Test
@@ -158,7 +168,25 @@ public class ImsRegistrationCallbackHelperTest extends TelephonyTest {
         // The registration state should be REGISTRATION_STATE_NOT_REGISTERED
         assertEquals(RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED,
                 mRegistrationCallbackHelper.getImsRegistrationState());
-        verify(mMockRegistrationUpdate).handleImsUnregistered(reasonInfo);
+        verify(mMockRegistrationUpdate).handleImsUnregistered(eq(reasonInfo),
+                eq(SUGGESTED_ACTION_NONE), eq(REGISTRATION_TECH_NONE));
+    }
+
+    @Test
+    @SmallTest
+    public void testImsUnRegisteredWithSuggestedAction() {
+        // Verify the RegistrationCallback should not be null
+        RegistrationCallback callback = mRegistrationCallbackHelper.getCallback();
+        assertNotNull(callback);
+
+        ImsReasonInfo reasonInfo = new ImsReasonInfo(ImsReasonInfo.CODE_REGISTRATION_ERROR, 0);
+        callback.onUnregistered(reasonInfo, SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK,
+                REGISTRATION_TECH_LTE);
+
+        assertEquals(RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED,
+                mRegistrationCallbackHelper.getImsRegistrationState());
+        verify(mMockRegistrationUpdate).handleImsUnregistered(eq(reasonInfo),
+                eq(SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK), eq(REGISTRATION_TECH_LTE));
     }
 
     @Test

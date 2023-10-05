@@ -35,6 +35,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.util.Pair;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.SmsConstants;
@@ -167,7 +168,7 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_UPDATE_DONE = 14 + SIM_RECORD_EVENT_BASE;
     protected static final int EVENT_GET_PNN_DONE = 15 + SIM_RECORD_EVENT_BASE;
     protected static final int EVENT_GET_OPL_DONE = 16 + SIM_RECORD_EVENT_BASE;
-    private static final int EVENT_GET_SST_DONE = 17 + SIM_RECORD_EVENT_BASE;
+    protected static final int EVENT_GET_SST_DONE = 17 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_GET_ALL_SMS_DONE = 18 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_MARK_SMS_READ_DONE = 19 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_SET_MBDN_DONE = 20 + SIM_RECORD_EVENT_BASE;
@@ -190,7 +191,6 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_SET_FPLMN_DONE = 43 + SIM_RECORD_EVENT_BASE;
     protected static final int EVENT_GET_SMSS_RECORD_DONE = 46 + SIM_RECORD_EVENT_BASE;
     protected static final int EVENT_GET_PSISMSC_DONE = 47 + SIM_RECORD_EVENT_BASE;
-    protected static final int EVENT_GET_FDN_DONE = 48 + SIM_RECORD_EVENT_BASE;
 
     // ***** Constructor
 
@@ -278,6 +278,18 @@ public class SIMRecords extends IccRecords {
     @Override
     public UsimServiceTable getUsimServiceTable() {
         return mUsimServiceTable;
+    }
+
+    /**
+     * Fetches the USIM service table from UsimServiceTable
+     *
+     * @return HexString representation of USIM service table
+     */
+    public String getSimServiceTable() {
+        if (mUsimServiceTable != null) {
+            return IccUtils.bytesToHexString(mUsimServiceTable.getUSIMServiceTable());
+        }
+        return null;
     }
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
@@ -387,18 +399,20 @@ public class SIMRecords extends IccRecords {
         mNewVoiceMailTag = alphaTag;
 
         AdnRecord adn = new AdnRecord(mNewVoiceMailTag, mNewVoiceMailNum);
-
         if (mMailboxIndex != 0 && mMailboxIndex != 0xff) {
 
             new AdnRecordLoader(mFh).updateEF(adn, EF_MBDN, EF_EXT6,
                     mMailboxIndex, null,
-                    obtainMessage(EVENT_SET_MBDN_DONE, onComplete));
+                    obtainMessage(EVENT_SET_MBDN_DONE, AdnRecordLoader.VOICEMAIL_ALPHATAG_ARG,
+                            0 /* ignored arg2 */, onComplete));
 
         } else if (isCphsMailboxEnabled()) {
 
             new AdnRecordLoader(mFh).updateEF(adn, EF_MAILBOX_CPHS,
                     EF_EXT1, 1, null,
-                    obtainMessage(EVENT_SET_CPHS_MAILBOX_DONE, onComplete));
+                    obtainMessage(EVENT_SET_CPHS_MAILBOX_DONE,
+                            AdnRecordLoader.VOICEMAIL_ALPHATAG_ARG,
+                            0 /* ignored arg2 */, onComplete));
 
         } else {
             AsyncResult.forMessage((onComplete)).exception =
@@ -844,7 +858,7 @@ public class SIMRecords extends IccRecords {
                     mIccId = IccUtils.bcdToString(data, 0, data.length);
                     mFullIccId = IccUtils.bchToString(data, 0, data.length);
 
-                    log("iccid: " + SubscriptionInfo.givePrintableIccid(mFullIccId));
+                    log("iccid: " + SubscriptionInfo.getPrintableId(mFullIccId));
                     break;
 
                 case EVENT_GET_AD_DONE:
@@ -1021,10 +1035,20 @@ public class SIMRecords extends IccRecords {
 
                     if (DBG) log("EVENT_SET_MBDN_DONE ex:" + ar.exception);
                     if (ar.exception == null) {
+                        /**
+                         * Check for any changes made to voicemail alphaTag while saving to SIM.
+                         * if voicemail alphaTag length is more than allowed limit of SIM EF then
+                         * null alphaTag will be saved to SIM {@code AdnRecordLoader}.
+                         */
+                        if (ar.result != null) {
+                            AdnRecord adnRecord = (AdnRecord) (ar.result);
+                            if (adnRecord != null) {
+                                mNewVoiceMailTag = adnRecord.mAlphaTag;
+                            }
+                        }
                         mVoiceMailNum = mNewVoiceMailNum;
                         mVoiceMailTag = mNewVoiceMailTag;
                     }
-
                     if (isCphsMailboxEnabled()) {
                         adn = new AdnRecord(mVoiceMailTag, mVoiceMailNum);
                         Message onCphsCompleted = (Message) ar.userObj;
@@ -1048,7 +1072,8 @@ public class SIMRecords extends IccRecords {
                         new AdnRecordLoader(mFh)
                                 .updateEF(adn, EF_MAILBOX_CPHS, EF_EXT1, 1, null,
                                 obtainMessage(EVENT_SET_CPHS_MAILBOX_DONE,
-                                        onCphsCompleted));
+                                       AdnRecordLoader.VOICEMAIL_ALPHATAG_ARG,
+                                        0 /* ignored arg2 */, onCphsCompleted));
                     } else {
                         if (ar.userObj != null) {
                             CarrierConfigManager configManager = (CarrierConfigManager)
@@ -1080,6 +1105,12 @@ public class SIMRecords extends IccRecords {
                     isRecordLoadResponse = false;
                     ar = (AsyncResult) msg.obj;
                     if (ar.exception == null) {
+                        if (ar.result != null) {
+                            AdnRecord adnRecord = (AdnRecord) (ar.result);
+                            if (adnRecord != null) {
+                                mNewVoiceMailTag = adnRecord.mAlphaTag;
+                            }
+                        }
                         mVoiceMailNum = mNewVoiceMailNum;
                         mVoiceMailTag = mNewVoiceMailTag;
                     } else {
@@ -1325,15 +1356,6 @@ public class SIMRecords extends IccRecords {
                         if (VDBG) {
                             log("SIMRecords - EF_SMSS TPMR value = " + getSmssTpmrValue());
                         }
-                    }
-                    break;
-
-                case EVENT_GET_FDN_DONE:
-                    ar = (AsyncResult) msg.obj;
-                    if (ar.exception != null) {
-                        loge("Failed to read USIM EF_FDN field error=" + ar.exception);
-                    } else {
-                        log("EF_FDN read successfully");
                     }
                     break;
 
@@ -2162,13 +2184,9 @@ public class SIMRecords extends IccRecords {
         log("[CSP] Value Added Service Group (0xC0), not found!");
     }
 
-    public void loadFdnRecords() {
-        if (mParentApp != null && mParentApp.getIccFdnEnabled()
-                && mParentApp.getIccFdnAvailable()) {
-            log("Loading FdnRecords");
-            mAdnCache.requestLoadAllAdnLike(IccConstants.EF_FDN, getExtFromEf(IccConstants.EF_FDN),
-                    obtainMessage(EVENT_GET_FDN_DONE));
-        }
+    @VisibleForTesting
+    public void setMailboxIndex(int mailboxIndex) {
+        mMailboxIndex = mailboxIndex;
     }
 
     @Override

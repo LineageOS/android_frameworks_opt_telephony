@@ -38,6 +38,7 @@ import com.android.internal.telephony.util.NotificationChannelController;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Utility methods for installing the carrier app when a SIM is insterted without the carrier app
@@ -178,7 +179,7 @@ public class InstallCarrierAppUtils {
      */
     @VisibleForTesting
     public static String getAppNameFromPackageName(String packageName, String mapString) {
-        packageName = packageName.toLowerCase();
+        packageName = packageName.toLowerCase(Locale.ROOT);
         final String pairDelim = "\\s*;\\s*";
         final String keyValueDelim = "\\s*:\\s*";
 

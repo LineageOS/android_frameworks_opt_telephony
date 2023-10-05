@@ -27,6 +27,7 @@ import android.app.AppOpsManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
 import android.os.RemoteException;
@@ -41,9 +42,13 @@ import android.util.EventLog;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.IsimRecords;
+import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccPort;
 import com.android.telephony.Rlog;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     private static final String TAG = "PhoneSubInfoController";
@@ -154,13 +159,8 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         long identity = Binder.clearCallingIdentity();
         boolean isActive;
         try {
-            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-                isActive = SubscriptionManagerService.getInstance().isActiveSubId(subId,
-                        callingPackage, callingFeatureId);
-            } else {
-                isActive = SubscriptionController.getInstance().isActiveSubId(subId, callingPackage,
-                        callingFeatureId);
-            }
+            isActive = SubscriptionManagerService.getInstance().isActiveSubId(subId,
+                    callingPackage, callingFeatureId);
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
@@ -174,15 +174,12 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             }
             identity = Binder.clearCallingIdentity();
             try {
-                if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-                    SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
-                            .getSubscriptionInfoInternal(subId);
-                    if (subInfo != null && !TextUtils.isEmpty(subInfo.getImsi())) {
-                        return subInfo.getImsi();
-                    }
-                    return null;
+                SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
+                        .getSubscriptionInfoInternal(subId);
+                if (subInfo != null && !TextUtils.isEmpty(subInfo.getImsi())) {
+                    return subInfo.getImsi();
                 }
-                return SubscriptionController.getInstance().getImsiPrivileged(subId);
+                return null;
             } finally {
                 Binder.restoreCallingIdentity(identity);
             }
@@ -351,6 +348,34 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
     /**
+     * Fetches the IMS private user identity (EF_IMPI) based on subscriptionId.
+     *
+     * @param subId subscriptionId
+     * @return IMPI (IMS private user identity) of type string.
+     * @throws IllegalArgumentException if the subscriptionId is not valid
+     * @throws IllegalStateException in case the ISIM hasn’t been loaded.
+     * @throws SecurityException if the caller does not have the required permission
+     */
+    public String getImsPrivateUserIdentity(int subId, String callingPackage,
+            String callingFeatureId) {
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+            throw new IllegalArgumentException("Invalid SubscriptionID  = " + subId);
+        }
+        if (!TelephonyPermissions.checkCallingOrSelfUseIccAuthWithDeviceIdentifier(mContext,
+                callingPackage, callingFeatureId, "getImsPrivateUserIdentity")) {
+            throw (new SecurityException("No permissions to the caller"));
+        }
+        Phone phone = getPhone(subId);
+        assert phone != null;
+        IsimRecords isim = phone.getIsimRecords();
+        if (isim != null) {
+            return isim.getIsimImpi();
+        } else {
+            throw new IllegalStateException("ISIM is not loaded");
+        }
+    }
+
+    /**
     * get the Isim Domain based on subId
     */
     public String getIsimDomain(int subId) {
@@ -378,6 +403,42 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                         return null;
                     }
                 });
+    }
+
+    /**
+     * Fetches the ISIM public user identities (EF_IMPU) from UICC based on subId
+     *
+     * @param subId subscriptionId
+     * @param callingPackage package name of the caller
+     * @param callingFeatureId feature Id of the caller
+     * @return List of public user identities of type android.net.Uri or empty list  if
+     * EF_IMPU is not available.
+     * @throws IllegalArgumentException if the subscriptionId is not valid
+     * @throws IllegalStateException in case the ISIM hasn’t been loaded.
+     * @throws SecurityException if the caller does not have the required permission
+     */
+    public List<Uri> getImsPublicUserIdentities(int subId, String callingPackage,
+            String callingFeatureId) {
+        if (TelephonyPermissions.
+                checkCallingOrSelfReadPrivilegedPhoneStatePermissionOrReadPhoneNumber(
+                mContext, subId, callingPackage, callingFeatureId, "getImsPublicUserIdentities")) {
+            Phone phone = getPhone(subId);
+            assert phone != null;
+            IsimRecords isimRecords = phone.getIsimRecords();
+            if (isimRecords != null) {
+                String[] impus = isimRecords.getIsimImpu();
+                List<Uri> impuList = new ArrayList<>();
+                for (String impu : impus) {
+                    if (impu != null && impu.trim().length() > 0) {
+                        impuList.add(Uri.parse(impu));
+                    }
+                }
+                return impuList;
+            }
+            throw new IllegalStateException("ISIM is not loaded");
+        } else {
+            throw new IllegalArgumentException("Invalid SubscriptionID  = " + subId);
+        }
     }
 
     /**
@@ -410,6 +471,29 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                 });
     }
 
+    /**
+     * Returns the USIM service table that fetched from EFUST elementary field that are loaded
+     * based on the appType.
+     */
+    public String getSimServiceTable(int subId, int appType) throws RemoteException {
+        return callPhoneMethodForSubIdWithPrivilegedCheck(subId, "getSimServiceTable",
+                (phone) -> {
+                    UiccPort uiccPort = phone.getUiccPort();
+                    if (uiccPort == null || uiccPort.getUiccProfile() == null) {
+                        loge("getSimServiceTable(): uiccPort or uiccProfile is null");
+                        return null;
+                    }
+                    UiccCardApplication uiccApp = uiccPort.getUiccProfile().getApplicationByType(
+                            appType);
+                    if (uiccApp == null) {
+                        loge("getSimServiceTable(): no app with specified apptype="
+                                + appType);
+                        return null;
+                    }
+                    return ((SIMRecords)uiccApp.getIccRecords()).getSimServiceTable();
+                });
+    }
+
     @Override
     public String getIccSimChallengeResponse(int subId, int appType, int authType, String data,
             String callingPackage, String callingFeatureId) throws RemoteException {
@@ -430,7 +514,9 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             }
 
             if (authType != UiccCardApplication.AUTH_CONTEXT_EAP_SIM
-                    && authType != UiccCardApplication.AUTH_CONTEXT_EAP_AKA) {
+                    && authType != UiccCardApplication.AUTH_CONTEXT_EAP_AKA
+                    && authType != UiccCardApplication.AUTH_CONTEXT_GBA_BOOTSTRAP
+                    && authType != UiccCardApplication.AUTHTYPE_GBA_NAF_KEY_EXTERNAL) {
                 loge("getIccSimChallengeResponse() unsupported authType: " + authType);
                 return null;
             }
@@ -483,7 +569,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             if (phone != null) {
                 return callMethodHelper.callMethod(phone);
             } else {
-                loge(message + " phone is null for Subscription:" + subId);
+                if (VDBG) loge(message + " phone is null for Subscription:" + subId);
                 return null;
             }
         } finally {
@@ -571,6 +657,37 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
+    }
+
+    /**
+     * Returns SIP URI or tel URI of the Public Service Identity of the SM-SC fetched from
+     * EF_PSISMSC elementary field as defined in Section 4.5.9 (3GPP TS 31.102).
+     * @throws IllegalStateException in case if phone or UiccApplication is not available.
+     */
+    public Uri getSmscIdentity(int subId, int appType) throws RemoteException {
+        Uri smscIdentityUri = callPhoneMethodForSubIdWithPrivilegedCheck(subId, "getSmscIdentity",
+                (phone) -> {
+                    try {
+                        String smscIdentity = null;
+                        UiccPort uiccPort = phone.getUiccPort();
+                        UiccCardApplication uiccApp =
+                                uiccPort.getUiccProfile().getApplicationByType(
+                                        appType);
+                        smscIdentity = (uiccApp != null) ? uiccApp.getIccRecords().getSmscIdentity()
+                                : null;
+                        if (TextUtils.isEmpty(smscIdentity)) {
+                            return Uri.EMPTY;
+                        }
+                        return Uri.parse(smscIdentity);
+                    } catch (NullPointerException ex) {
+                        Rlog.e(TAG, "getSmscIdentity(): Exception = " + ex);
+                        return null;
+                    }
+                });
+        if (smscIdentityUri == null) {
+            throw new IllegalStateException("Telephony service error");
+        }
+        return smscIdentityUri;
     }
 
     private void log(String s) {

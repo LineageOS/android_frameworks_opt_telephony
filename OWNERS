@@ -17,12 +17,6 @@ tjstuart@google.com
 tnd@google.com
 xiaotonj@google.com
 
-# Temporarily reduced the owner during refactoring
-per-file SubscriptionController.java=set noparent
-per-file SubscriptionController.java=jackyu@google.com,amruthr@google.com
-per-file SubscriptionInfoUpdater.java=set noparent
-per-file SubscriptionInfoUpdater.java=jackyu@google.com,amruthr@google.com
-
 
 
 

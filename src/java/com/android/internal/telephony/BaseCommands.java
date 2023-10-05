@@ -17,6 +17,8 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.os.AsyncResult;
@@ -26,6 +28,7 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.telephony.Annotation.RadioPowerState;
+import android.telephony.BarringInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.emergency.EmergencyNumber;
 
@@ -114,6 +117,17 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mBarringInfoChangedRegistrants = new RegistrantList();
     protected RegistrantList mSimPhonebookChangedRegistrants = new RegistrantList();
     protected RegistrantList mSimPhonebookRecordsReceivedRegistrants = new RegistrantList();
+    protected RegistrantList mEmergencyNetworkScanRegistrants = new RegistrantList();
+    protected RegistrantList mConnectionSetupFailureRegistrants = new RegistrantList();
+    protected RegistrantList mNotifyAnbrRegistrants = new RegistrantList();
+    protected RegistrantList mTriggerImsDeregistrationRegistrants = new RegistrantList();
+    protected RegistrantList mPendingSatelliteMessageCountRegistrants = new RegistrantList();
+    protected RegistrantList mNewSatelliteMessagesRegistrants = new RegistrantList();
+    protected RegistrantList mSatelliteMessagesTransferCompleteRegistrants = new RegistrantList();
+    protected RegistrantList mSatellitePointingInfoChangedRegistrants = new RegistrantList();
+    protected RegistrantList mSatelliteModeChangedRegistrants = new RegistrantList();
+    protected RegistrantList mSatelliteRadioTechnologyChangedRegistrants = new RegistrantList();
+    protected RegistrantList mSatelliteProvisionStateChangedRegistrants = new RegistrantList();
 
     @UnsupportedAppUsage
     protected Registrant mGsmSmsRegistrant;
@@ -160,6 +174,8 @@ public abstract class BaseCommands implements CommandsInterface {
     // Cache last emergency number list indication from radio
     private final List<EmergencyNumber> mLastEmergencyNumberListIndication = new ArrayList<>();
 
+    // The last barring information received
+    protected BarringInfo mLastBarringInfo = new BarringInfo();
     // Preferred network type received from PhoneFactory.
     // This is used when establishing a connection to the
     // vendor ril so it starts up in the correct mode.
@@ -900,6 +916,7 @@ public abstract class BaseCommands implements CommandsInterface {
                     || mState == TelephonyManager.RADIO_POWER_UNAVAILABLE)
                     && (oldState == TelephonyManager.RADIO_POWER_ON)) {
                 mOffOrNotAvailRegistrants.notifyRegistrants();
+                mLastBarringInfo = new BarringInfo();
             }
         }
     }
@@ -916,6 +933,12 @@ public abstract class BaseCommands implements CommandsInterface {
         synchronized (mLastEmergencyNumberListIndicationLock) {
             return new ArrayList<>(mLastEmergencyNumberListIndication);
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public @NonNull BarringInfo getLastBarringInfo() {
+        return mLastBarringInfo;
     }
 
     /**
@@ -1131,5 +1154,134 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void updateSimPhonebookRecord(SimPhonebookRecord phonebookRecord, Message result) {
+    }
+
+    /**
+     * Register for Emergency network scan result.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    @Override
+    public void registerForEmergencyNetworkScan(Handler h, int what, Object obj) {
+        mEmergencyNetworkScanRegistrants.add(h, what, obj);
+    }
+
+    /**
+     * Unregister for Emergency network scan result.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    @Override
+    public void unregisterForEmergencyNetworkScan(Handler h) {
+        mEmergencyNetworkScanRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForConnectionSetupFailure(Handler h, int what, Object obj) {
+        mConnectionSetupFailureRegistrants.addUnique(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForConnectionSetupFailure(Handler h) {
+        mConnectionSetupFailureRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForNotifyAnbr(Handler h, int what, Object obj) {
+        mNotifyAnbrRegistrants.addUnique(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForNotifyAnbr(Handler h) {
+        mNotifyAnbrRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForTriggerImsDeregistration(Handler h, int what, Object obj) {
+        mTriggerImsDeregistrationRegistrants.add(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForTriggerImsDeregistration(Handler h) {
+        mTriggerImsDeregistrationRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForPendingSatelliteMessageCount(
+            @NonNull Handler h, int what, @Nullable Object obj) {
+        mPendingSatelliteMessageCountRegistrants.add(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForPendingSatelliteMessageCount(@NonNull Handler h) {
+        mPendingSatelliteMessageCountRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForNewSatelliteMessages(
+            @NonNull Handler h, int what, @Nullable Object obj) {
+        mNewSatelliteMessagesRegistrants.add(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForNewSatelliteMessages(@NonNull Handler h) {
+        mNewSatelliteMessagesRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForSatelliteMessagesTransferComplete(@NonNull Handler h,
+            int what, @Nullable Object obj) {
+        mSatelliteMessagesTransferCompleteRegistrants.add(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForSatelliteMessagesTransferComplete(@NonNull Handler h) {
+        mSatelliteMessagesTransferCompleteRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForSatellitePointingInfoChanged(@NonNull Handler h,
+            int what, @Nullable Object obj) {
+        mSatellitePointingInfoChangedRegistrants.add(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForSatellitePointingInfoChanged(@NonNull Handler h) {
+        mSatellitePointingInfoChangedRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForSatelliteModeChanged(@NonNull Handler h,
+            int what, @Nullable Object obj) {
+        mSatelliteModeChangedRegistrants.add(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForSatelliteModeChanged(@NonNull Handler h) {
+        mSatelliteModeChangedRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForSatelliteRadioTechnologyChanged(@NonNull Handler h,
+            int what, @Nullable Object obj) {
+        mSatelliteRadioTechnologyChangedRegistrants.add(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForSatelliteRadioTechnologyChanged(@NonNull Handler h) {
+        mSatelliteRadioTechnologyChangedRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForSatelliteProvisionStateChanged(@NonNull Handler h,
+            int what, @Nullable Object obj) {
+        mSatelliteProvisionStateChangedRegistrants.add(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForSatelliteProvisionStateChanged(@NonNull Handler h) {
+        mSatelliteProvisionStateChangedRegistrants.remove(h);
     }
 }

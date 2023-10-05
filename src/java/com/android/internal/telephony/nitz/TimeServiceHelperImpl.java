@@ -18,13 +18,13 @@ package com.android.internal.telephony.nitz;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.app.time.UnixEpochTime;
 import android.app.timedetector.TelephonyTimeSuggestion;
 import android.app.timedetector.TimeDetector;
 import android.app.timezonedetector.TelephonyTimeZoneSuggestion;
 import android.app.timezonedetector.TimeZoneDetector;
 import android.content.Context;
 import android.os.SystemClock;
-import android.os.TimestampedValue;
 import android.util.LocalLog;
 
 import com.android.internal.telephony.Phone;
@@ -69,8 +69,9 @@ public final class TimeServiceHelperImpl implements TimeServiceHelper {
         Objects.requireNonNull(timeSuggestion);
 
         if (timeSuggestion.getUnixEpochTime() != null) {
-            TimestampedValue<Long> unixEpochTime = timeSuggestion.getUnixEpochTime();
-            TelephonyMetrics.getInstance().writeNITZEvent(mSlotIndex, unixEpochTime.getValue());
+            UnixEpochTime unixEpochTime = timeSuggestion.getUnixEpochTime();
+            TelephonyMetrics.getInstance().writeNITZEvent(
+                    mSlotIndex, unixEpochTime.getUnixEpochTimeMillis());
         }
         mTimeDetector.suggestTelephonyTime(timeSuggestion);
     }

@@ -40,6 +40,7 @@ public class CatCmdMessage implements Parcelable {
     private ToneSettings mToneSettings = null;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CallSettings mCallSettings = null;
+    private SMSSettings mSMSSettings =  null;
     private SetupEventListSettings mSetupEventListSettings = null;
     private boolean mLoadIconFailed = false;
 
@@ -59,6 +60,14 @@ public class CatCmdMessage implements Parcelable {
         public TextMessage confirmMsg;
         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
         public TextMessage callMsg;
+    }
+
+    /**
+     * Container for SEND SMS  command settings.
+     */
+    public class SMSSettings {
+        public TextMessage smsText;
+        public TextMessage destAddr;
     }
 
     public class SetupEventListSettings {
@@ -84,57 +93,69 @@ public class CatCmdMessage implements Parcelable {
         mCmdDet = cmdParams.mCmdDet;
         mLoadIconFailed =  cmdParams.mLoadIconFailed;
         switch(getCmdType()) {
-        case SET_UP_MENU:
-        case SELECT_ITEM:
-            mMenu = ((SelectItemParams) cmdParams).mMenu;
-            break;
-        case DISPLAY_TEXT:
-        case SET_UP_IDLE_MODE_TEXT:
-        case SEND_DTMF:
-        case SEND_SMS:
-        case REFRESH:
-        case RUN_AT:
-        case SEND_SS:
-        case SEND_USSD:
-            mTextMsg = ((DisplayTextParams) cmdParams).mTextMsg;
-            break;
-        case GET_INPUT:
-        case GET_INKEY:
-            mInput = ((GetInputParams) cmdParams).mInput;
-            break;
-        case LAUNCH_BROWSER:
-            mTextMsg = ((LaunchBrowserParams) cmdParams).mConfirmMsg;
-            mBrowserSettings = new BrowserSettings();
-            mBrowserSettings.url = ((LaunchBrowserParams) cmdParams).mUrl;
-            mBrowserSettings.mode = ((LaunchBrowserParams) cmdParams).mMode;
-            break;
-        case PLAY_TONE:
-            PlayToneParams params = (PlayToneParams) cmdParams;
-            mToneSettings = params.mSettings;
-            mTextMsg = params.mTextMsg;
-            break;
-        case GET_CHANNEL_STATUS:
-            mTextMsg = ((CallSetupParams) cmdParams).mConfirmMsg;
-            break;
-        case SET_UP_CALL:
-            mCallSettings = new CallSettings();
-            mCallSettings.confirmMsg = ((CallSetupParams) cmdParams).mConfirmMsg;
-            mCallSettings.callMsg = ((CallSetupParams) cmdParams).mCallMsg;
-            break;
-        case OPEN_CHANNEL:
-        case CLOSE_CHANNEL:
-        case RECEIVE_DATA:
-        case SEND_DATA:
-            BIPClientParams param = (BIPClientParams) cmdParams;
-            mTextMsg = param.mTextMsg;
-            break;
-        case SET_UP_EVENT_LIST:
-            mSetupEventListSettings = new SetupEventListSettings();
-            mSetupEventListSettings.eventList = ((SetEventListParams) cmdParams).mEventInfo;
-            break;
-        case PROVIDE_LOCAL_INFORMATION:
-        default:
-            break;
+            case SET_UP_MENU:
+            case SELECT_ITEM:
+                mMenu = ((SelectItemParams) cmdParams).mMenu;
+                break;
+            case SEND_SMS:
+                /* If cmdParams  is an instanceof SendSMSParams , then it means config value
+                 * config_stk_sms_send_support is true and the SMS should be sent by framework
+                 */
+                if (cmdParams instanceof SendSMSParams) {
+                    mSMSSettings = new SMSSettings();
+                    mSMSSettings.smsText = ((SendSMSParams) cmdParams).mTextSmsMsg;
+                    mSMSSettings.destAddr = ((SendSMSParams) cmdParams).mDestAddress;
+                    mTextMsg = ((SendSMSParams) cmdParams).mDisplayText.mTextMsg;
+                } else {
+                    mTextMsg = ((DisplayTextParams) cmdParams).mTextMsg;
+                }
+                break;
+            case DISPLAY_TEXT:
+            case SET_UP_IDLE_MODE_TEXT:
+            case SEND_DTMF:
+            case REFRESH:
+            case RUN_AT:
+            case SEND_SS:
+            case SEND_USSD:
+                mTextMsg = ((DisplayTextParams) cmdParams).mTextMsg;
+                break;
+            case GET_INPUT:
+            case GET_INKEY:
+                mInput = ((GetInputParams) cmdParams).mInput;
+                break;
+            case LAUNCH_BROWSER:
+                mTextMsg = ((LaunchBrowserParams) cmdParams).mConfirmMsg;
+                mBrowserSettings = new BrowserSettings();
+                mBrowserSettings.url = ((LaunchBrowserParams) cmdParams).mUrl;
+                mBrowserSettings.mode = ((LaunchBrowserParams) cmdParams).mMode;
+                break;
+            case PLAY_TONE:
+                PlayToneParams params = (PlayToneParams) cmdParams;
+                mToneSettings = params.mSettings;
+                mTextMsg = params.mTextMsg;
+                break;
+            case GET_CHANNEL_STATUS:
+                mTextMsg = ((CallSetupParams) cmdParams).mConfirmMsg;
+                break;
+            case SET_UP_CALL:
+                mCallSettings = new CallSettings();
+                mCallSettings.confirmMsg = ((CallSetupParams) cmdParams).mConfirmMsg;
+                mCallSettings.callMsg = ((CallSetupParams) cmdParams).mCallMsg;
+                break;
+            case OPEN_CHANNEL:
+            case CLOSE_CHANNEL:
+            case RECEIVE_DATA:
+            case SEND_DATA:
+                BIPClientParams param = (BIPClientParams) cmdParams;
+                mTextMsg = param.mTextMsg;
+                break;
+            case SET_UP_EVENT_LIST:
+                mSetupEventListSettings = new SetupEventListSettings();
+                mSetupEventListSettings.eventList = ((SetEventListParams) cmdParams).mEventInfo;
+                break;
+            case PROVIDE_LOCAL_INFORMATION:
+            default:
+                break;
         }
     }
 
@@ -145,29 +166,34 @@ public class CatCmdMessage implements Parcelable {
         mInput = in.readParcelable(Input.class.getClassLoader());
         mLoadIconFailed = (in.readByte() == 1);
         switch (getCmdType()) {
-        case LAUNCH_BROWSER:
-            mBrowserSettings = new BrowserSettings();
-            mBrowserSettings.url = in.readString();
-            mBrowserSettings.mode = LaunchBrowserMode.values()[in.readInt()];
-            break;
-        case PLAY_TONE:
-            mToneSettings = in.readParcelable(ToneSettings.class.getClassLoader());
-            break;
-        case SET_UP_CALL:
-            mCallSettings = new CallSettings();
-            mCallSettings.confirmMsg = in.readParcelable(TextMessage.class.getClassLoader());
-            mCallSettings.callMsg = in.readParcelable(TextMessage.class.getClassLoader());
-            break;
-        case SET_UP_EVENT_LIST:
-            mSetupEventListSettings = new SetupEventListSettings();
-            int length = in.readInt();
-            mSetupEventListSettings.eventList = new int[length];
-            for (int i = 0; i < length; i++) {
-                mSetupEventListSettings.eventList[i] = in.readInt();
-            }
-            break;
-        default:
-            break;
+            case LAUNCH_BROWSER:
+                mBrowserSettings = new BrowserSettings();
+                mBrowserSettings.url = in.readString();
+                mBrowserSettings.mode = LaunchBrowserMode.values()[in.readInt()];
+                break;
+            case PLAY_TONE:
+                mToneSettings = in.readParcelable(ToneSettings.class.getClassLoader());
+                break;
+            case SET_UP_CALL:
+                mCallSettings = new CallSettings();
+                mCallSettings.confirmMsg = in.readParcelable(TextMessage.class.getClassLoader());
+                mCallSettings.callMsg = in.readParcelable(TextMessage.class.getClassLoader());
+                break;
+            case SET_UP_EVENT_LIST:
+                mSetupEventListSettings = new SetupEventListSettings();
+                int length = in.readInt();
+                mSetupEventListSettings.eventList = new int[length];
+                for (int i = 0; i < length; i++) {
+                    mSetupEventListSettings.eventList[i] = in.readInt();
+                }
+                break;
+            case SEND_SMS:
+                mSMSSettings = new SMSSettings();
+                mSMSSettings.smsText = in.readParcelable(SendSMSParams.class.getClassLoader());
+                mSMSSettings.destAddr = in.readParcelable(SendSMSParams.class.getClassLoader());
+                break;
+            default:
+                break;
         }
     }
 
@@ -178,23 +204,29 @@ public class CatCmdMessage implements Parcelable {
         dest.writeParcelable(mMenu, 0);
         dest.writeParcelable(mInput, 0);
         dest.writeByte((byte) (mLoadIconFailed ? 1 : 0));
-        switch(getCmdType()) {
-        case LAUNCH_BROWSER:
-            dest.writeString(mBrowserSettings.url);
-            dest.writeInt(mBrowserSettings.mode.ordinal());
-            break;
-        case PLAY_TONE:
-            dest.writeParcelable(mToneSettings, 0);
-            break;
-        case SET_UP_CALL:
-            dest.writeParcelable(mCallSettings.confirmMsg, 0);
-            dest.writeParcelable(mCallSettings.callMsg, 0);
-            break;
-        case SET_UP_EVENT_LIST:
-            dest.writeIntArray(mSetupEventListSettings.eventList);
-            break;
-        default:
-            break;
+        switch (getCmdType()) {
+            case LAUNCH_BROWSER:
+                dest.writeString(mBrowserSettings.url);
+                dest.writeInt(mBrowserSettings.mode.ordinal());
+                break;
+            case PLAY_TONE:
+                dest.writeParcelable(mToneSettings, 0);
+                break;
+            case SET_UP_CALL:
+                dest.writeParcelable(mCallSettings.confirmMsg, 0);
+                dest.writeParcelable(mCallSettings.callMsg, 0);
+                break;
+            case SET_UP_EVENT_LIST:
+                dest.writeIntArray(mSetupEventListSettings.eventList);
+                break;
+            case SEND_SMS:
+                if (mSMSSettings != null) {
+                    dest.writeParcelable(mSMSSettings.smsText, 0);
+                    dest.writeParcelable(mSMSSettings.destAddr, 0);
+                }
+                break;
+            default:
+                break;
         }
     }
 

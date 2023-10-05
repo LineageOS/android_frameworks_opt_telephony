@@ -66,7 +66,6 @@ import com.android.internal.telephony.ContextFixture;
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsDispatchersController;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.TelephonyTestUtils;
 import com.android.internal.telephony.TestApplication;
@@ -231,7 +230,8 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         restoreInstance(Singleton.class, "mInstance", mIActivityManagerSingleton);
         restoreInstance(ActivityManager.class, "IActivityManagerSingleton", null);
         Context realContext = TestApplication.getAppContext();
-        realContext.registerReceiver(mTestReceiver, new IntentFilter(TEST_INTENT));
+        realContext.registerReceiver(mTestReceiver, new IntentFilter(TEST_INTENT),
+                Context.RECEIVER_EXPORTED);
     }
 
     @Test
@@ -376,6 +376,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @Ignore("b/256282780")
     public void testSendSmsByCarrierApp() throws Exception {
         mockCarrierApp();
         mockCarrierAppStubResults(CarrierMessagingService.SEND_STATUS_OK,
@@ -383,7 +384,9 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         registerTestIntentReceiver();
 
         PendingIntent pendingIntent = PendingIntent.getBroadcast(TestApplication.getAppContext(), 0,
-                new Intent(TEST_INTENT), PendingIntent.FLAG_MUTABLE);
+                new Intent(TEST_INTENT)
+                        .setPackage(TestApplication.getAppContext().getPackageName()),
+                PendingIntent.FLAG_MUTABLE);
         mReceivedTestIntent = false;
 
         mGsmSmsDispatcher.sendText("6501002000", "121" /*scAddr*/, "test sms",
@@ -438,9 +441,13 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
 
         ArrayList<PendingIntent> sentIntents = new ArrayList<>();
         PendingIntent sentIntent1 = PendingIntent.getBroadcast(TestApplication.getAppContext(), 0,
-                new Intent(TEST_INTENT), PendingIntent.FLAG_MUTABLE);
+                new Intent(TEST_INTENT)
+                        .setPackage(TestApplication.getAppContext().getPackageName()),
+                PendingIntent.FLAG_MUTABLE);
         PendingIntent sentIntent2 = PendingIntent.getBroadcast(TestApplication.getAppContext(), 0,
-                new Intent(TEST_INTENT), PendingIntent.FLAG_MUTABLE);
+                new Intent(TEST_INTENT)
+                        .setPackage(TestApplication.getAppContext().getPackageName()),
+                PendingIntent.FLAG_MUTABLE);
         sentIntents.add(sentIntent1);
         sentIntents.add(sentIntent2);
 
@@ -450,6 +457,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @Ignore("b/256282780")
     public void testSendMultipartSmsByCarrierApp() throws Exception {
         mockCarrierApp();
         mockCarrierAppStubResults(CarrierMessagingService.SEND_STATUS_OK,
@@ -510,7 +518,11 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
 
     @Test
     public void testSendTextWithMessageRef() throws Exception {
-        int messageRef = mGsmSmsDispatcher.nextMessageRef() + 1;
+        int messageRef = mGsmSmsDispatcher.nextMessageRef();
+        if (mGsmSmsDispatcher.isMessageRefIncrementViaTelephony()) {
+            messageRef += 1;
+        }
+
         mGsmSmsDispatcher.sendText("111", "222" /*scAddr*/, TAG,
                 null, null, null, null, false, -1, false, -1, false, 0L);
 
@@ -518,7 +530,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor.capture(),
                 any(Message.class));
         byte[] pdu = IccUtils.hexStringToBytes(pduCaptor.getValue());
-        assertEquals(pdu[1], messageRef);
+        assertEquals(messageRef, pdu[1]);
     }
 
     @Test
@@ -527,7 +539,11 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         parts.add("segment1");
         parts.add("segment2");
         parts.add("segment3");
-        int messageRef = mGsmSmsDispatcher.nextMessageRef() + parts.size();
+
+        int messageRef = mGsmSmsDispatcher.nextMessageRef();
+        if (mGsmSmsDispatcher.isMessageRefIncrementViaTelephony()) {
+            messageRef += parts.size();
+        }
         mGsmSmsDispatcher.sendMultipartText("6501002000" /*destAddr*/, "222" /*scAddr*/, parts,
                 null, null, null, null, false, -1, false, -1, 0L);
         waitForMs(150);
@@ -539,7 +555,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor.capture(),
                 any(Message.class));
         byte[] pdu = IccUtils.hexStringToBytes(pduCaptor.getValue());
-        assertEquals(pdu[1], messageRef);
+        assertEquals(messageRef, pdu[1]);
     }
 
     @Test
@@ -549,20 +565,16 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         doReturn(mIsimUiccRecords).when(mPhone).getIccRecords();
         Message msg = mGsmSmsDispatcher.obtainMessage(17);
         mPhone.getIccRecords().setSmssTpmrValue(-1, msg);
-        if (isSubscriptionManagerServiceEnabled()) {
-            mSubscriptionManagerService.setLastUsedTPMessageReference(mPhone.getSubId(), -1);
-        } else {
-            SubscriptionController.getInstance().updateMessageRef(mPhone.getSubId(), -1);
-        }
+        mSubscriptionManagerService.setLastUsedTPMessageReference(mPhone.getSubId(), -1);
 
         mGsmSmsDispatcher.sendText("111", "222" /*scAddr*/, TAG,
                 null, null, null, null, false, -1, false, -1, false, 0L);
 
-        ArgumentCaptor<String> pduCaptor1 = ArgumentCaptor.forClass(String.class);
-        verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor1.capture(),
+        ArgumentCaptor<String> pduCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor.capture(),
                 any(Message.class));
-        byte[] pdu1 = IccUtils.hexStringToBytes(pduCaptor1.getValue());
-        assertEquals(pdu1[1], 0);
+        byte[] pdu = IccUtils.hexStringToBytes(pduCaptor.getValue());
+        assertEquals(0, pdu[1]);
     }
 
     @Test
@@ -571,15 +583,14 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
                 mSimulatedCommands);
         doReturn(mIsimUiccRecords).when(mPhone).getIccRecords();
         Message msg = mGsmSmsDispatcher.obtainMessage(17);
-
-        mPhone.getIccRecords().setSmssTpmrValue(255, null);
+        mPhone.getIccRecords().setSmssTpmrValue(255, msg);
         mGsmSmsDispatcher.sendText("111", "222" /*scAddr*/, TAG,
                 null, null, null, null, false, -1, false, -1, false, 0L);
 
-        ArgumentCaptor<String> pduCaptor2 = ArgumentCaptor.forClass(String.class);
-        verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor2.capture(),
+        ArgumentCaptor<String> pduCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor.capture(),
                 any(Message.class));
-        byte[] pdu2 = IccUtils.hexStringToBytes(pduCaptor2.getValue());
-        assertEquals(pdu2[1], 0);
+        byte[] pdu = IccUtils.hexStringToBytes(pduCaptor.getValue());
+        assertEquals(0, pdu[1]);
     }
 }

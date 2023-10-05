@@ -78,7 +78,7 @@ public class SmsPermissionsTest extends TelephonyTest {
                 }
 
                 @Override
-                public boolean isCallerDefaultSmsPackage(String packageName) {
+                public boolean isCallerDefaultSmsPackage(String packageName, int uid) {
                     return mCallerIsDefaultSmsPackage;
                 }
             };

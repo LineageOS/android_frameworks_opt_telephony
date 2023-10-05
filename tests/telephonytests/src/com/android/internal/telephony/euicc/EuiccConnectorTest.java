@@ -17,6 +17,7 @@ package com.android.internal.telephony.euicc;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -352,6 +353,29 @@ public class EuiccConnectorTest extends TelephonyTest {
         mLooper.moveTimeForward(EuiccConnector.LINGER_TIMEOUT_MILLIS);
         mLooper.dispatchAll();
         assertEquals(mConnector.mAvailableState, mConnector.getCurrentState());
+    }
+
+    @Test
+    public void testConnectedState_serviceDisconnected() throws Exception {
+        // Kick off the asynchronous command.
+        prepareEuiccApp(true /* hasPermission */, true /* requiresBindPermission */,
+                true /* hasPriority */);
+        mConnector = new EuiccConnector(mContext, mLooper.getLooper());
+        mConnector.getEid(CARD_ID, new EuiccConnector.GetEidCommandCallback() {
+            @Override public void onGetEidComplete(String eid) {}
+            @Override public void onEuiccServiceUnavailable() {}
+        });
+        mLooper.dispatchAll();
+        assertEquals(mConnector.mConnectedState, mConnector.getCurrentState());
+        // Now, pretend the remote process died.
+        mConnector.onServiceDisconnected(null /* name */);
+        mLooper.dispatchAll();
+        assertEquals(mConnector.mDisconnectedState, mConnector.getCurrentState());
+        // After binder timeout, should now drop back to available state.
+        mLooper.moveTimeForward(EuiccConnector.BIND_TIMEOUT_MILLIS);
+        mLooper.dispatchAll();
+        assertEquals(mConnector.mAvailableState, mConnector.getCurrentState());
+        assertNull(mConnector.getBinder());
     }
 
     private void prepareEuiccApp(

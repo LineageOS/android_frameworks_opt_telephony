@@ -65,6 +65,8 @@ import android.telephony.euicc.EuiccManager;
 
 import androidx.test.runner.AndroidJUnit4;
 
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.euicc.EuiccConnector.GetOtaStatusCommandCallback;
 import com.android.internal.telephony.euicc.EuiccConnector.OtaStatusChangedCallback;
@@ -75,7 +77,6 @@ import libcore.junit.util.compat.CoreCompatChangeRule.EnableCompatChanges;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -90,6 +91,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 @RunWith(AndroidJUnit4.class)
 public class EuiccControllerTest extends TelephonyTest {
@@ -129,7 +131,7 @@ public class EuiccControllerTest extends TelephonyTest {
     private static final int SUBSCRIPTION_ID = 12345;
     private static final String ICC_ID = "54321";
     private static final int CARD_ID = 25;
-    private static final int PORT_INDEX = 0;
+    private static final int REMOVABLE_CARD_ID = 26;
 
     // Mocked classes
     private EuiccConnector mMockConnector;
@@ -320,8 +322,8 @@ public class EuiccControllerTest extends TelephonyTest {
                 SUBSCRIPTION, false /* complete */, null /* result */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
                 0 /* detailedCode */);
-        verify(mMockConnector).getDownloadableSubscriptionMetadata(anyInt(), any(), anyBoolean(),
-                any());
+        verify(mMockConnector).getDownloadableSubscriptionMetadata(anyInt(), anyInt(), any(),
+                anyBoolean(), anyBoolean(), any());
     }
 
     @Test
@@ -612,7 +614,6 @@ public class EuiccControllerTest extends TelephonyTest {
         assertFalse(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
 
-    @Ignore("b/255697307")
     @Test
     @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPrivileges_hasCarrierPrivileges_multiSim()
@@ -789,6 +790,70 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testGetResolvedPortIndexForSubscriptionSwitchWithOutMEP() throws Exception {
+        setUpUiccSlotData();
+        assertEquals(TelephonyManager.DEFAULT_PORT_INDEX,
+                mController.getResolvedPortIndexForSubscriptionSwitch(CARD_ID));
+    }
+
+    @Test
+    public void testGetResolvedPortIndexForSubscriptionSwitchWithMEP() throws Exception {
+        setUpUiccSlotDataWithMEP();
+        when(mUiccSlot.getPortList()).thenReturn(new int[]{0, 1});
+        when(mUiccSlot.isPortActive(TelephonyManager.DEFAULT_PORT_INDEX)).thenReturn(false);
+        when(mUiccSlot.isPortActive(1)).thenReturn(true);
+        when(mTelephonyManager.getActiveModemCount()).thenReturn(2);
+        assertEquals(1, mController.getResolvedPortIndexForSubscriptionSwitch(CARD_ID));
+    }
+
+    @Test
+    public void testGetResolvedPortIndexForSubscriptionSwitchWithUiccSlotNull() throws Exception {
+        assertEquals(TelephonyManager.DEFAULT_PORT_INDEX,
+                mController.getResolvedPortIndexForSubscriptionSwitch(CARD_ID));
+    }
+
+    @Test
+    public void testGetResolvedPortIndexForSubscriptionSwitchWithPsimActiveAndSS()
+            throws Exception {
+        when(mUiccController.getUiccSlot(anyInt())).thenReturn(mUiccSlot);
+        when(mUiccSlot.isRemovable()).thenReturn(true);
+        when(mUiccSlot.isEuicc()).thenReturn(false);
+        when(mUiccSlot.isActive()).thenReturn(true);
+        when(mTelephonyManager.getActiveModemCount()).thenReturn(1);
+        assertEquals(TelephonyManager.DEFAULT_PORT_INDEX,
+                mController.getResolvedPortIndexForSubscriptionSwitch(CARD_ID));
+    }
+
+    @Test
+    public void testGetResolvedPortIndexForSubscriptionSwitchWithPsimInActiveAndSS()
+            throws Exception {
+        setUpUiccSlotDataWithMEP();
+        when(mUiccSlot.getPortList()).thenReturn(new int[]{0});
+        when(mUiccSlot.isPortActive(TelephonyManager.DEFAULT_PORT_INDEX)).thenReturn(true);
+        when(mTelephonyManager.getActiveModemCount()).thenReturn(1);
+        assertEquals(TelephonyManager.DEFAULT_PORT_INDEX,
+                mController.getResolvedPortIndexForSubscriptionSwitch(CARD_ID));
+    }
+
+    @Test
+    public void testgetResolvedPortIndexForDisableSubscriptionForNoActiveSubscription()
+            throws Exception {
+        when(mSubscriptionManager.getActiveSubscriptionInfoList(anyBoolean())).thenReturn(null);
+        assertEquals(-1,
+                mController.getResolvedPortIndexForDisableSubscription(
+                        CARD_ID, PACKAGE_NAME, true));
+    }
+
+    @Test
+    public void testgetResolvedPortIndexForDisableSubscriptionForActiveSubscriptions()
+            throws Exception {
+        setActiveSubscriptionInfoInMEPMode();
+        assertEquals(1,
+                mController.getResolvedPortIndexForDisableSubscription(
+                        CARD_ID, PACKAGE_NAME, false));
+    }
+
+    @Test
     public void testDeleteSubscription_noPrivileges() throws Exception {
         setHasWriteEmbeddedPermission(false);
         prepareOperationSubscription(false /* hasPrivileges */);
@@ -889,7 +954,6 @@ public class EuiccControllerTest extends TelephonyTest {
                 anyBoolean(), any(), anyBoolean());
     }
 
-    @Ignore("b/255697307")
     @Test
     @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_emptySubscription_success() throws Exception {
@@ -1230,10 +1294,169 @@ public class EuiccControllerTest extends TelephonyTest {
                 SWITCH_WITHOUT_PORT_INDEX_EXCEPTION_ON_DISABLE));
     }
 
+    @Test
+    @EnableCompatChanges({EuiccManager.INACTIVE_PORT_AVAILABILITY_CHECK})
+    public void testIsSimPortAvailable_invalidCase() {
+        setUiccCardInfos(false, true, true);
+        // assert non euicc card id
+        assertFalse(mController.isSimPortAvailable(REMOVABLE_CARD_ID, 0, TEST_PACKAGE_NAME));
+
+        // assert invalid port index
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 5 /* portIndex */, TEST_PACKAGE_NAME));
+    }
+
+    @Test
+    @EnableCompatChanges({EuiccManager.INACTIVE_PORT_AVAILABILITY_CHECK})
+    public void testIsSimPortAvailable_port_active() throws Exception {
+        setUiccCardInfos(false, true, true);
+
+        // port has empty iccid
+        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
+
+        // Set port is active, has valid iccid(may be boot profile) and UiccProfile is empty
+        setUiccCardInfos(false, true, false);
+        when(mUiccController.getUiccPortForSlot(anyInt(), anyInt())).thenReturn(mUiccPort);
+        when(mUiccPort.getUiccProfile()).thenReturn(mUiccProfile);
+        when(mUiccProfile.isEmptyProfile()).thenReturn(true);
+        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
+
+        // port is active, valid iccid, not empty profile but Phone object is null
+        when(mUiccPort.getUiccProfile()).thenReturn(mUiccProfile);
+        when(mUiccProfile.isEmptyProfile()).thenReturn(false);
+        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone});
+        // logicalSlotIndex of port#0 is 1, Phone object should be null
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
+
+        // port is active, valid iccid, not empty profile but no carrier privileges
+        when(mUiccPort.getUiccProfile()).thenReturn(mUiccProfile);
+        when(mUiccProfile.isEmptyProfile()).thenReturn(false);
+        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone, mPhone});
+        when(mPhone.getCarrierPrivilegesTracker()).thenReturn(null);
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
+        when(mPhone.getCarrierPrivilegesTracker()).thenReturn(mCarrierPrivilegesTracker);
+        when(mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForPackage(TEST_PACKAGE_NAME))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
+
+        // port is active, valid iccid, not empty profile and has carrier privileges
+        when(mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForPackage(TEST_PACKAGE_NAME))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
+    }
+
+    @Test
+    @EnableCompatChanges({EuiccManager.INACTIVE_PORT_AVAILABILITY_CHECK})
+    public void testIsSimPortAvailable_port_inActive() {
+        setUiccCardInfos(false, false, true);
+        when(mUiccController.getUiccSlots()).thenReturn(new UiccSlot[]{mUiccSlot});
+        when(mUiccSlot.isRemovable()).thenReturn(true);
+
+        // Check getRemovableNonEuiccSlot null case
+        when(mUiccSlot.isEuicc()).thenReturn(true);
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
+
+        // Check getRemovableNonEuiccSlot isActive() false case
+        when(mUiccSlot.isEuicc()).thenReturn(false);
+        when(mUiccSlot.isActive()).thenReturn(false);
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
+
+        // assert false,multisim is not enabled
+        when(mUiccSlot.isEuicc()).thenReturn(false);
+        when(mUiccSlot.isActive()).thenReturn(true);
+        when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(TEST_PACKAGE_NAME))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        when(mTelephonyManager.isMultiSimEnabled()).thenReturn(false);
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
+
+        // assert false, caller does not have carrier privileges
+        setHasWriteEmbeddedPermission(false);
+        when(mTelephonyManager.isMultiSimEnabled()).thenReturn(true);
+        when(mUiccSlot.getPortList()).thenReturn(new int[] {0});
+        when(mSubscriptionManager.getActiveSubscriptionInfoForSimSlotIndex(anyInt())).thenReturn(
+                new SubscriptionInfo.Builder().build());
+        when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(TEST_PACKAGE_NAME))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
+
+        // assert true, caller does not have carrier privileges but has write_embedded permission
+        setHasWriteEmbeddedPermission(true);
+        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
+
+        // assert true, caller has carrier privileges
+        setHasWriteEmbeddedPermission(false);
+        when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(TEST_PACKAGE_NAME))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
+    }
+
+    @Test
+    @DisableCompatChanges({EuiccManager.INACTIVE_PORT_AVAILABILITY_CHECK})
+    public void testIsSimPortAvailable_port_inActive_disable_compactChange() {
+        setUiccCardInfos(false, false, true);
+        when(mUiccController.getUiccSlots()).thenReturn(new UiccSlot[]{mUiccSlot});
+        when(mUiccSlot.isRemovable()).thenReturn(true);
+        when(mUiccSlot.isEuicc()).thenReturn(false);
+        when(mUiccSlot.isActive()).thenReturn(true);
+
+        when(mTelephonyManager.isMultiSimEnabled()).thenReturn(true);
+        when(mUiccSlot.getPortList()).thenReturn(new int[] {0});
+        when(mSubscriptionManager.getActiveSubscriptionInfoForSimSlotIndex(anyInt())).thenReturn(
+                new SubscriptionInfo.Builder().build());
+        when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(TEST_PACKAGE_NAME))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        setHasWriteEmbeddedPermission(true);
+
+        // Even though all conditions are true, isSimPortAvailable should return false as
+        // compact change is disabled
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
+    }
+
+
+    private void setUiccCardInfos(boolean isMepSupported, boolean isPortActive,
+            boolean isEmptyPort) {
+        List<UiccPortInfo> euiccPortInfoList;
+        if (isMepSupported) {
+            euiccPortInfoList = Arrays.asList(
+                    new UiccPortInfo(isEmptyPort ? "" : ICC_ID /* iccId */, 0 /* portIdx */,
+                            isPortActive ? 1 : -1 /* logicalSlotIdx */,
+                            isPortActive /* isActive */),
+                    new UiccPortInfo(isEmptyPort ? "" : ICC_ID /* iccId */, 1 /* portIdx */,
+                            -1 /* logicalSlotIdx */,
+                            isPortActive /* isActive */));
+        } else {
+            euiccPortInfoList = Collections.singletonList(
+                    new UiccPortInfo(isEmptyPort ? "" : ICC_ID /* iccId */, 0 /* portIdx */,
+                            isPortActive ? 1 : -1 /* logicalSlotIdx */,
+                            isPortActive /* isActive */)
+                    );
+        }
+
+        UiccCardInfo cardInfo1 = new UiccCardInfo(true, CARD_ID, "", 0,
+                false /* isRemovable */,
+                isMepSupported /* isMultipleEnabledProfileSupported */,
+                euiccPortInfoList);
+        UiccCardInfo cardInfo2 = new UiccCardInfo(false /* isEuicc */,
+                REMOVABLE_CARD_ID /* cardId */,
+                "", 0, true /* isRemovable */,
+                false /* isMultipleEnabledProfileSupported */,
+                Collections.singletonList(
+                        new UiccPortInfo("" /* iccId */, 0 /* portIdx */,
+                                0 /* logicalSlotIdx */, true /* isActive */)));
+        ArrayList<UiccCardInfo> cardInfos = new ArrayList<>();
+        cardInfos.add(cardInfo1);
+        cardInfos.add(cardInfo2);
+        when(mTelephonyManager.getUiccCardsInfo()).thenReturn(cardInfos);
+    }
+
     private void setUpUiccSlotData() {
         when(mUiccController.getUiccSlot(anyInt())).thenReturn(mUiccSlot);
         // TODO(b/199559633): Add test cases for isMultipleEnabledProfileSupported true case
         when(mUiccSlot.isMultipleEnabledProfileSupported()).thenReturn(false);
+    }
+
+    private void setUpUiccSlotDataWithMEP() {
+        when(mUiccController.getUiccSlot(anyInt())).thenReturn(mUiccSlot);
+        when(mUiccSlot.isMultipleEnabledProfileSupported()).thenReturn(true);
     }
 
     private void setGetEidPermissions(
@@ -1263,6 +1486,7 @@ public class EuiccControllerTest extends TelephonyTest {
             throws Exception {
         SubscriptionInfo.Builder builder = new SubscriptionInfo.Builder()
                 .setSimSlotIndex(0)
+                .setPortIndex(mTelephonyManager.DEFAULT_PORT_INDEX)
                 .setDisplayNameSource(SubscriptionManager.NAME_SOURCE_CARRIER_ID)
                 .setEmbedded(true);
         if (hasPrivileges) {
@@ -1300,16 +1524,38 @@ public class EuiccControllerTest extends TelephonyTest {
                 .setNativeAccessRules(hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null)
                 .setEmbedded(true)
                 .setCardId(CARD_ID)
+                .setPortIndex(mTelephonyManager.DEFAULT_PORT_INDEX)
                 .build();
         SubscriptionInfo subInfo2 = new SubscriptionInfo.Builder()
                 .setNativeAccessRules(hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null)
                 .setEmbedded(true)
                 .setCardId(2)
+                .setPortIndex(TelephonyManager.DEFAULT_PORT_INDEX)
                 .build();
         when(mSubscriptionManager.canManageSubscription(subInfo1, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
         when(mSubscriptionManager.canManageSubscription(subInfo2, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
+        ArrayList<SubscriptionInfo> subInfos = new ArrayList<>(Arrays.asList(subInfo1, subInfo2));
+        when(mSubscriptionManager.getActiveSubscriptionInfoList(anyBoolean())).thenReturn(subInfos);
+    }
+
+    private void setActiveSubscriptionInfoInMEPMode()
+            throws Exception {
+        SubscriptionInfo subInfo1 = new SubscriptionInfo.Builder()
+                .setEmbedded(true)
+                .setCardId(CARD_ID)
+                .setPortIndex(TelephonyManager.DEFAULT_PORT_INDEX)
+                .build();
+        SubscriptionInfo subInfo2 = new SubscriptionInfo.Builder()
+                .setEmbedded(true)
+                .setCardId(CARD_ID)
+                .setPortIndex(1)
+                .build();
+        when(mSubscriptionManager.canManageSubscription(subInfo1, PACKAGE_NAME)).thenReturn(
+                false);
+        when(mSubscriptionManager.canManageSubscription(subInfo2, PACKAGE_NAME)).thenReturn(
+                true);
         ArrayList<SubscriptionInfo> subInfos = new ArrayList<>(Arrays.asList(subInfo1, subInfo2));
         when(mSubscriptionManager.getActiveSubscriptionInfoList(anyBoolean())).thenReturn(subInfos);
     }
@@ -1404,7 +1650,7 @@ public class EuiccControllerTest extends TelephonyTest {
             @Override
             public Void answer(InvocationOnMock invocation) throws Exception {
                 EuiccConnector.GetMetadataCommandCallback cb = invocation
-                        .getArgument(3 /* resultCallback */);
+                        .getArgument(5 /* resultCallback */);
                 if (complete) {
                     cb.onGetMetadataComplete(CARD_ID, result);
                 } else {
@@ -1412,8 +1658,8 @@ public class EuiccControllerTest extends TelephonyTest {
                 }
                 return null;
             }
-        }).when(mMockConnector).getDownloadableSubscriptionMetadata(anyInt(), any(), anyBoolean(),
-                any());
+        }).when(mMockConnector).getDownloadableSubscriptionMetadata(anyInt(), anyInt(), any(),
+                anyBoolean(), anyBoolean(), any());
     }
 
     private void callGetDownloadableSubscriptionMetadata(DownloadableSubscription subscription,

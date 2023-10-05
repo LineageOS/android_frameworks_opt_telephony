@@ -257,6 +257,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
     // call back received on this upon EF_SMSS record update.
     public static final int EVENT_SET_SMSS_RECORD_DONE = 201;
 
+    private static final int EVENT_GET_FDN_DONE = 202;
+
     /**
      * There are two purposes for this class. First, each instance of AuthAsyncResponse acts as a
      * lock to for calling thead to wait in getIccSimChallengeResponse(). Second, pass the IMS
@@ -269,7 +271,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     @Override
     public String toString() {
-        String iccIdToPrint = SubscriptionInfo.givePrintableIccid(mFullIccId);
+        String iccIdToPrint = SubscriptionInfo.getPrintableId(mFullIccId);
         return "mDestroyed=" + mDestroyed
                 + " mContext=" + mContext
                 + " mCi=" + mCi
@@ -999,6 +1001,15 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 }
                 break;
 
+            case EVENT_GET_FDN_DONE:
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception != null) {
+                    loge("Failed to read USIM EF_FDN field error=" + ar.exception);
+                } else {
+                    log("EF_FDN read successfully");
+                }
+                break;
+
             default:
                 super.handleMessage(msg);
         }
@@ -1428,7 +1439,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mRecordsToLoad=" + mRecordsToLoad);
         pw.println(" mRdnCache=" + mAdnCache);
 
-        String iccIdToPrint = SubscriptionInfo.givePrintableIccid(mFullIccId);
+        String iccIdToPrint = SubscriptionInfo.getPrintableId(mFullIccId);
         pw.println(" iccid=" + iccIdToPrint);
         pw.println(" mMsisdn=" + Rlog.pii(VDBG, mMsisdn));
         pw.println(" mMsisdnTag=" + mMsisdnTag);
@@ -1672,6 +1683,14 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
         private Message getMessage() {
             return mMsg;
+        }
+    }
+
+    public void loadFdnRecords() {
+        if (mParentApp != null && mAdnCache != null) {
+            log("Loading FdnRecords");
+            mAdnCache.requestLoadAllAdnLike(IccConstants.EF_FDN, EF_EXT2,
+                    obtainMessage(EVENT_GET_FDN_DONE));
         }
     }
 }

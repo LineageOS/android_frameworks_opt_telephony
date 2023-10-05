@@ -101,7 +101,8 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
      * true or onServiceDisconnected is called (and no package change has occurred which should
      * force us to reestablish the binding).
      */
-    private static final int BIND_TIMEOUT_MILLIS = 30000;
+    @VisibleForTesting
+    static final int BIND_TIMEOUT_MILLIS = 30000;
 
     /**
      * Maximum amount of idle time to hold the binding while in {@link ConnectedState}. After this,
@@ -225,6 +226,8 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     static class GetMetadataRequest {
         DownloadableSubscription mSubscription;
         boolean mForceDeactivateSim;
+        boolean mSwitchAfterDownload;
+        int mPortIndex;
         GetMetadataCommandCallback mCallback;
     }
 
@@ -389,6 +392,9 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         mSm = (SubscriptionManager)
                 context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
 
+        // TODO(b/239277548): Disable debug logging after analysing this bug.
+        setDbg(true);
+
         // Unavailable/Available both monitor for package changes and update mSelectedComponent but
         // do not need to adjust the binding.
         mUnavailableState = new UnavailableState();
@@ -444,13 +450,15 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
 
     /** Asynchronously fetch metadata for the given downloadable subscription. */
     @VisibleForTesting(visibility = PACKAGE)
-    public void getDownloadableSubscriptionMetadata(int cardId,
-            DownloadableSubscription subscription,
+    public void getDownloadableSubscriptionMetadata(int cardId, int portIndex,
+            DownloadableSubscription subscription, boolean switchAfterDownload,
             boolean forceDeactivateSim, GetMetadataCommandCallback callback) {
         GetMetadataRequest request =
                 new GetMetadataRequest();
         request.mSubscription = subscription;
         request.mForceDeactivateSim = forceDeactivateSim;
+        request.mSwitchAfterDownload = switchAfterDownload;
+        request.mPortIndex = portIndex;
         request.mCallback = callback;
         sendMessage(CMD_GET_DOWNLOADABLE_SUBSCRIPTION_METADATA, cardId, 0 /* arg2 */, request);
     }
@@ -547,6 +555,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         sendMessage(CMD_DUMP_EUICC_SERVICE, TelephonyManager.UNSUPPORTED_CARD_ID /* ignored */,
                 0 /* arg2 */,
                 callback);
+    }
+
+    @VisibleForTesting
+    public final IEuiccService getBinder() {
+        return mEuiccService;
     }
 
     /**
@@ -686,6 +699,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                 }
                 return HANDLED;
             } else if (message.what == CMD_CONNECT_TIMEOUT) {
+                unbind();
                 transitionTo(mAvailableState);
                 return HANDLED;
             } else if (isEuiccCommand(message.what)) {
@@ -749,7 +763,9 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                         case CMD_GET_DOWNLOADABLE_SUBSCRIPTION_METADATA: {
                             GetMetadataRequest request = (GetMetadataRequest) message.obj;
                             mEuiccService.getDownloadableSubscriptionMetadata(slotId,
+                                    request.mPortIndex,
                                     request.mSubscription,
+                                    request.mSwitchAfterDownload,
                                     request.mForceDeactivateSim,
                                     new IGetDownloadableSubscriptionMetadataCallback.Stub() {
                                         @Override
@@ -1057,9 +1073,8 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         for (int slotIndex = 0; slotIndex < slotInfos.length; slotIndex++) {
             // Report Anomaly in case UiccSlotInfo is not.
             if (slotInfos[slotIndex] == null) {
-                AnomalyReporter.reportAnomaly(
-                        UUID.fromString("4195b83d-6cee-4999-a02f-d0b9f7079b9d"),
-                        "EuiccConnector: Found UiccSlotInfo Null object.");
+                Log.i(TAG, "No UiccSlotInfo found for slotIndex: " + slotIndex);
+                return SubscriptionManager.INVALID_SIM_SLOT_INDEX;
             }
             String retrievedCardId = slotInfos[slotIndex] != null
                     ? slotInfos[slotIndex].getCardId() : null;
