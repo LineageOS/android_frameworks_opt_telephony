@@ -687,7 +687,7 @@ public class ServiceStateTracker extends Handler {
         // system setting property AIRPLANE_MODE_ON is set in Settings.
         int airplaneMode = Settings.Global.getInt(mCr, Settings.Global.AIRPLANE_MODE_ON, 0);
         int enableCellularOnBoot = Settings.Global.getInt(mCr,
-                Settings.Global.ENABLE_CELLULAR_ON_BOOT, 1);
+                Settings.Global.ENABLE_CELLULAR_ON_BOOT, getDefaultEnableCellularOnBoot());
         mDesiredPowerState = (enableCellularOnBoot > 0) && ! (airplaneMode > 0);
         if (!mDesiredPowerState) {
             mRadioPowerOffReasons.add(TelephonyManager.RADIO_POWER_REASON_USER);
@@ -749,6 +749,11 @@ public class ServiceStateTracker extends Handler {
         if (mAccessNetworksManagerCallback != null) {
             mAccessNetworksManager.registerCallback(mAccessNetworksManagerCallback);
         }
+    }
+
+    private int getDefaultEnableCellularOnBoot() {
+        return mPhone.getContext().getResources().getBoolean(
+            R.bool.config_enable_cellular_on_boot_default) ? 1 : 0;
     }
 
     @VisibleForTesting
