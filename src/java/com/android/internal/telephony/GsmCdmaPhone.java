@@ -245,6 +245,7 @@ public class GsmCdmaPhone extends Phone {
     private String mImeiSv;
     private String mVmNumber;
     private int mImeiType = IMEI_TYPE_UNKNOWN;
+    private int mSimState = TelephonyManager.SIM_STATE_UNKNOWN;
 
     @VisibleForTesting
     public CellBroadcastConfigTracker mCellBroadcastConfigTracker =
@@ -436,9 +437,9 @@ public class GsmCdmaPhone extends Phone {
                 if (mPhoneId == intent.getIntExtra(
                         SubscriptionManager.EXTRA_SLOT_INDEX,
                         SubscriptionManager.INVALID_SIM_SLOT_INDEX)) {
-                    int simState = intent.getIntExtra(TelephonyManager.EXTRA_SIM_STATE,
+                    mSimState = intent.getIntExtra(TelephonyManager.EXTRA_SIM_STATE,
                             TelephonyManager.SIM_STATE_UNKNOWN);
-                    if (simState == TelephonyManager.SIM_STATE_LOADED
+                    if (mSimState == TelephonyManager.SIM_STATE_LOADED
                             && currentSlotSubIdChanged()) {
                         setNetworkSelectionModeAutomatic(null);
                     }
@@ -5122,10 +5123,7 @@ public class GsmCdmaPhone extends Phone {
     }
 
     private void updateVoNrSettings(@NonNull PersistableBundle config) {
-        UiccSlot slot = mUiccController.getUiccSlotForPhone(mPhoneId);
-
-        // If no card is present, do nothing.
-        if (slot == null || slot.getCardState() != IccCardStatus.CardState.CARDSTATE_PRESENT) {
+        if (mSimState != TelephonyManager.SIM_STATE_LOADED) {
             return;
         }
 
