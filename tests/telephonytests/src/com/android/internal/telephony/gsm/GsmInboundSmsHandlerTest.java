@@ -36,6 +36,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.app.BroadcastOptions;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
@@ -55,9 +56,9 @@ import android.test.mock.MockContentResolver;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
-import androidx.test.filters.FlakyTest;
 import androidx.test.filters.MediumTest;
 
+import com.android.ims.ImsManager;
 import com.android.internal.telephony.FakeSmsContentProvider;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.InboundSmsTracker;
@@ -192,9 +193,9 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 InboundSmsHandler.SOURCE_NOT_INJECTED);
         doReturn(mInboundSmsTracker).when(mTelephonyComponentFactory)
                 .makeInboundSmsTracker(any(Context.class), nullable(byte[].class), anyLong(),
-                anyInt(), anyBoolean(),
-                anyBoolean(), nullable(String.class), nullable(String.class),
-                nullable(String.class), anyBoolean(), anyInt(), anyInt());
+                        anyInt(), anyBoolean(),
+                        anyBoolean(), nullable(String.class), nullable(String.class),
+                        nullable(String.class), anyBoolean(), anyInt(), anyInt());
 
         createInboundSmsTrackerMultiSim();
 
@@ -203,12 +204,11 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 Telephony.Sms.CONTENT_URI.getAuthority(), mContentProvider);
 
         mGsmInboundSmsHandler = GsmInboundSmsHandler.makeInboundSmsHandler(mContext,
-                mSmsStorageMonitor, mPhone);
+                mSmsStorageMonitor, mPhone, mTestableLooper.getLooper());
         mSmsFilters = new ArrayList<>();
         mSmsFilters.add(mSmsFilter);
         mSmsFilters.add(mSmsFilter2);
         mGsmInboundSmsHandler.setSmsFiltersForTesting(mSmsFilters);
-        monitorTestableLooper(new TestableLooper(mGsmInboundSmsHandler.getHandler().getLooper()));
 
         doReturn(mGsmInboundSmsHandler).when(mPhone).getInboundSmsHandler(false);
         doReturn(mCdmaInboundSmsHandler).when(mPhone).getInboundSmsHandler(true);
@@ -278,8 +278,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertEquals("WaitingState", getCurrentState().getName());
         if (allowBgActivityStarts) {
             Bundle broadcastOptions = mContextFixture.getLastBroadcastOptions();
-            assertTrue(broadcastOptions
-                    .getBoolean("android:broadcast.allowBackgroundActivityStarts"));
+            BroadcastOptions brOptions = new BroadcastOptions(broadcastOptions);
+            assertTrue(brOptions.allowsBackgroundActivityStarts());
         }
 
         mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
@@ -310,7 +310,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         processAllMessages();
     }
 
-    @FlakyTest
     @Test
     @MediumTest
     public void testNewSms() {
@@ -330,7 +329,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testNewSmsFromBlockedNumber_noBroadcastsSent() {
@@ -348,7 +346,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testNewSmsWithUserLocked_notificationShown() {
@@ -375,7 +372,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 any(Notification.class));
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testNewSmsFromBlockedNumberWithUserLocked_noNotificationShown() {
@@ -405,7 +401,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 any(Notification.class));
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testNewSms_filterInvoked_noBroadcastsSent() {
@@ -431,7 +426,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 anyBoolean(), anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any());
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testNewSms_filterChaining_noBroadcastsSent() {
@@ -483,7 +477,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertEquals("IdleState", getCurrentState().getName());
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testClass0Sms() {
@@ -515,7 +508,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testBroadcastSms() {
@@ -556,7 +548,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(2));
     }
 
-    @FlakyTest
     @Test
     @MediumTest
     public void testInjectSms() {
@@ -617,7 +608,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 InboundSmsHandler.SOURCE_NOT_INJECTED);
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testMultiPartSmsWithIncompleteWAP() {
@@ -678,12 +668,13 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertEquals("IdleState", getCurrentState().getName());
         // verify there are three segments in the db and only one of them is not marked as deleted.
         assertEquals(3, mContentProvider.getNumRows());
-        assertEquals(1, mContentProvider.query(sRawUri, null, "deleted=0", null, null).getCount());
 
+        Cursor c = mContentProvider.query(sRawUri, null, "deleted=0", null, null);
+        assertEquals(1, c.getCount());
         verifySmsFiltersInvoked(times(1));
+        c.close();
     }
 
-    @FlakyTest
     @Test
     @MediumTest
     public void testMultiPartSms() {
@@ -757,7 +748,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertEquals("IdleState", getCurrentState().getName());
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testMultiPartIncompleteSms() {
@@ -820,9 +810,9 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         // State machine should go back to idle
         assertEquals("IdleState", getCurrentState().getName());
         verifySmsFiltersInvoked(never());
+        c.close();
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testMultiPartSmsWithInvalidSeqNumber() {
@@ -882,7 +872,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(never());
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testMultipartSmsFromBlockedNumber_noBroadcastsSent() {
@@ -921,7 +910,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testMultipartSmsFromBlockedEmail_noBroadcastsSent() {
@@ -977,7 +965,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testMultipartSms_filterInvoked_noBroadcastsSent() {
@@ -1027,7 +1014,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 anyBoolean(), anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any());
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testBroadcastUndeliveredUserLocked() throws Exception {
@@ -1085,7 +1071,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testBroadcastUndeliveredUserUnlocked() throws Exception {
@@ -1123,7 +1108,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testBroadcastUndeliveredDeleted() throws Exception {
@@ -1164,7 +1148,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(never());
     }
 
-    @FlakyTest
     @Test
     @MediumTest
     public void testBroadcastUndeliveredMultiPart() throws Exception {
@@ -1180,7 +1163,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         //return InboundSmsTracker objects corresponding to the 2 parts
         doReturn(mInboundSmsTrackerPart1).doReturn(mInboundSmsTrackerPart2).
                 when(mTelephonyComponentFactory).makeInboundSmsTracker(any(Context.class),
-                any(Cursor.class), anyBoolean());
+                        any(Cursor.class), anyBoolean());
 
         SmsBroadcastUndelivered.initialize(mContext, mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
         // wait for ScanRawTableThread
@@ -1191,7 +1174,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
-    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testBroadcastUndeliveredMultiSim() throws Exception {
@@ -1251,4 +1233,12 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertEquals("IdleState", getCurrentState().getName());
 
     }
+
+    @Test
+    public void testSetImsManager() {
+        ImsManager imsManager = Mockito.mock(ImsManager.class);
+        transitionFromStartupToIdle();
+        assertTrue(mGsmInboundSmsHandler.setImsManager(imsManager));
+    }
 }
+

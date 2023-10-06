@@ -29,6 +29,7 @@ import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.telephony.SmsMessage;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.GsmAlphabet;
@@ -40,9 +41,9 @@ import java.util.Locale;
 /**
  * Factory class, used for decoding raw byte arrays, received from baseband,
  * into a CommandParams object.
- *
+ * @hide
  */
-class CommandParamsFactory extends Handler {
+public class CommandParamsFactory extends Handler {
     private static CommandParamsFactory sInstance = null;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private IconLoader mIconLoader;
@@ -53,6 +54,7 @@ class CommandParamsFactory extends Handler {
     private String mSavedLanguage;
     private String mRequestedLanguage;
     private boolean mNoAlphaUsrCnf = false;
+    private boolean mStkSmsSendViaTelephony = false;
 
     // constants
     static final int MSG_ID_LOAD_ICON_DONE = 1;
@@ -86,7 +88,15 @@ class CommandParamsFactory extends Handler {
     private static final int MAX_GSM7_DEFAULT_CHARS = 239;
     private static final int MAX_UCS2_CHARS = 118;
 
-    static synchronized CommandParamsFactory getInstance(RilMessageDecoder caller,
+    /**
+     * Returns a singleton instance of CommandParamsFactory
+     * @param caller Class used for queuing raw ril messages, decoding them into
+     *               CommandParams objects and sending the result back to the CAT Service.
+     * @param fh IccFileHandler Object
+     * @param context The Context
+     * @return CommandParamsFactory instance
+     */
+    public static synchronized CommandParamsFactory getInstance(RilMessageDecoder caller,
             IccFileHandler fh, Context context) {
         if (sInstance != null) {
             return sInstance;
@@ -105,6 +115,12 @@ class CommandParamsFactory extends Handler {
                     com.android.internal.R.bool.config_stkNoAlphaUsrCnf);
         } catch (NotFoundException e) {
             mNoAlphaUsrCnf = false;
+        }
+        try {
+            mStkSmsSendViaTelephony = context.getResources().getBoolean(
+                    com.android.internal.R.bool.config_stk_sms_send_support);
+        } catch (NotFoundException e) {
+            mStkSmsSendViaTelephony = false;
         }
     }
 
@@ -187,8 +203,14 @@ class CommandParamsFactory extends Handler {
                 case GET_INPUT:
                     cmdPending = processGetInput(cmdDet, ctlvs);
                     break;
-                case SEND_DTMF:
                 case SEND_SMS:
+                    if (mStkSmsSendViaTelephony) {
+                        cmdPending = processSMSEventNotify(cmdDet, ctlvs);
+                    } else {
+                        cmdPending = processEventNotify(cmdDet, ctlvs);
+                    }
+                    break;
+                case SEND_DTMF:
                 case REFRESH:
                 case RUN_AT:
                 case SEND_SS:
@@ -733,6 +755,62 @@ class CommandParamsFactory extends Handler {
             return true;
         }
         return false;
+    }
+
+
+    /**
+     * Processes SMS_EVENT_NOTIFY message from baseband.
+     *
+     * Method extracts values such as Alpha Id,Icon Id,Sms Tpdu etc from the ComprehensionTlv,
+     * in order to create the CommandParams i.e. SendSMSParams.
+     *
+     * @param cmdDet Command Details container object.
+     * @param ctlvs List of ComprehensionTlv objects following Command Details
+     *        object and Device Identities object within the proactive command
+     * @return true if the command is processing is pending and additional
+     *         asynchronous processing is required.
+     * @hide
+     */
+    public boolean processSMSEventNotify(CommandDetails cmdDet,
+            List<ComprehensionTlv> ctlvs) throws ResultException {
+        CatLog.d(this, "processSMSEventNotify");
+
+        TextMessage textMsg = new TextMessage();
+        IconId iconId = null;
+
+        ComprehensionTlv ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID,
+                ctlvs);
+        /* Retrieves alpha identifier from an Alpha Identifier COMPREHENSION-TLV object.
+         *
+         * String corresponding to the alpha identifier is obtained and saved as part of
+         * the DisplayTextParams.
+         */
+        textMsg.text = ValueParser.retrieveAlphaId(ctlv, mNoAlphaUsrCnf);
+
+        ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
+        if (ctlv != null) {
+            // Retrieves icon id from the Icon Identifier COMPREHENSION-TLV object
+            iconId = ValueParser.retrieveIconId(ctlv);
+            textMsg.iconSelfExplanatory = iconId.selfExplanatory;
+        }
+
+        textMsg.responseNeeded = false;
+        DisplayTextParams displayTextParams = new DisplayTextParams(cmdDet, textMsg);
+        ComprehensionTlv ctlvTpdu = searchForTag(ComprehensionTlvTag.SMS_TPDU,
+                ctlvs);
+        // Retrieves smsMessage from the SMS TPDU COMPREHENSION-TLV object
+        SmsMessage smsMessage = ValueParser.retrieveTpduAsSmsMessage(ctlvTpdu);
+        if (smsMessage != null) {
+            TextMessage smsText = new TextMessage();
+            // Obtains the sms message content.
+            smsText.text = smsMessage.getMessageBody();
+            TextMessage destAddr = new TextMessage();
+            // Obtains the destination Address.
+            destAddr.text = smsMessage.getRecipientAddress();
+            mCmdParams = new SendSMSParams(cmdDet, smsText, destAddr, displayTextParams);
+            return false;
+        }
+        return true;
     }
 
     /**

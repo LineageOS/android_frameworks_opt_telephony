@@ -24,10 +24,12 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.Build;
+import android.os.Looper;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.provider.Telephony.Sms.Intents;
 
+import com.android.ims.ImsManager;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.Phone;
@@ -43,7 +45,7 @@ import com.android.internal.telephony.uicc.UsimServiceTable;
  */
 public class GsmInboundSmsHandler extends InboundSmsHandler {
 
-    private static BroadcastReceiver sTestBroadcastReceiver;
+    private BroadcastReceiver mTestBroadcastReceiver;
     /** Handler for SMS-PP data download messages to UICC. */
     private final UsimDataDownloadHandler mDataDownloadHandler;
 
@@ -56,18 +58,18 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
      * Create a new GSM inbound SMS handler.
      */
     private GsmInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
-            Phone phone) {
-        super("GsmInboundSmsHandler", context, storageMonitor, phone);
+            Phone phone, Looper looper) {
+        super("GsmInboundSmsHandler", context, storageMonitor, phone, looper);
         phone.mCi.setOnNewGsmSms(getHandler(), EVENT_NEW_SMS, null);
         mDataDownloadHandler = new UsimDataDownloadHandler(phone.mCi, phone.getPhoneId());
         mCellBroadcastServiceManager.enable();
 
         if (TEST_MODE) {
-            if (sTestBroadcastReceiver == null) {
-                sTestBroadcastReceiver = new GsmCbTestBroadcastReceiver();
+            if (mTestBroadcastReceiver == null) {
+                mTestBroadcastReceiver = new GsmCbTestBroadcastReceiver();
                 IntentFilter filter = new IntentFilter();
                 filter.addAction(TEST_ACTION);
-                context.registerReceiver(sTestBroadcastReceiver, filter,
+                context.registerReceiver(mTestBroadcastReceiver, filter,
                         Context.RECEIVER_EXPORTED);
             }
         }
@@ -127,8 +129,9 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
      * Wait for state machine to enter startup state. We can't send any messages until then.
      */
     public static GsmInboundSmsHandler makeInboundSmsHandler(Context context,
-            SmsStorageMonitor storageMonitor, Phone phone) {
-        GsmInboundSmsHandler handler = new GsmInboundSmsHandler(context, storageMonitor, phone);
+            SmsStorageMonitor storageMonitor, Phone phone, Looper looper) {
+        GsmInboundSmsHandler handler =
+                new GsmInboundSmsHandler(context, storageMonitor, phone, looper);
         handler.start();
         return handler;
     }
@@ -153,7 +156,8 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
      * or {@link Activity#RESULT_OK} for delayed acknowledgment to SMSC
      */
     @Override
-    protected int dispatchMessageRadioSpecific(SmsMessageBase smsb, @SmsSource int smsSource) {
+    protected int dispatchMessageRadioSpecific(SmsMessageBase smsb, @SmsSource int smsSource,
+            int token) {
         SmsMessage sms = (SmsMessage) smsb;
 
         if (sms.isTypeZero()) {
@@ -177,7 +181,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
         // Send SMS-PP data download messages to UICC. See 3GPP TS 31.111 section 7.1.1.
         if (sms.isUsimDataDownload()) {
             UsimServiceTable ust = mPhone.getUsimServiceTable();
-            return mDataDownloadHandler.handleUsimDataDownload(ust, sms, smsSource);
+            return mDataDownloadHandler.handleUsimDataDownload(ust, sms, smsSource, token);
         }
 
         boolean handled = false;
@@ -267,5 +271,16 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
         mMetrics.writeIncomingVoiceMailSms(mPhone.getPhoneId(),
                 android.telephony.SmsMessage.FORMAT_3GPP);
         mPhone.getSmsStats().onIncomingSmsVoicemail(false /* is3gpp2 */, smsSource);
+    }
+
+    /**
+     * sets ImsManager object.
+     */
+    public boolean setImsManager(ImsManager imsManager) {
+        if (mDataDownloadHandler != null) {
+            mDataDownloadHandler.setImsManager(imsManager);
+            return true;
+        }
+        return false;
     }
 }

@@ -10,6 +10,57 @@ countries {
     types: MOUNTAIN_RESCUE
     types: MIEC
     types: AIEC
+    routing: NORMAL
+    normal_routing_mncs: "05"
+  }
+  eccs {
+    phone_number: "888"
+    types: POLICE
+    types: AMBULANCE
+    types: FIRE
+    types: MARINE_GUARD
+    types: MOUNTAIN_RESCUE
+    types: MIEC
+    types: AIEC
+    routing: NORMAL
+    normal_routing_mncs: "45"
+    normal_routing_mncs: "47"
+    normal_routing_mncs: "05"
+  }
+  eccs {
+    phone_number: "654321"
+    types: POLICE
+    types: AMBULANCE
+    types: FIRE
+    types: MARINE_GUARD
+    types: MOUNTAIN_RESCUE
+    types: MIEC
+    types: AIEC
+    routing: EMERGENCY
+    normal_routing_mncs: ""
+  }
+  eccs {
+    phone_number: "7654321"
+    types: POLICE
+    types: AMBULANCE
+    types: FIRE
+    types: MARINE_GUARD
+    types: MOUNTAIN_RESCUE
+    types: MIEC
+    types: AIEC
+    routing: NORMAL
+    normal_routing_mncs: ""
+  }
+  eccs {
+    phone_number: "4321"
+    types: POLICE
+    types: AMBULANCE
+    types: FIRE
+    types: MARINE_GUARD
+    types: MOUNTAIN_RESCUE
+    types: MIEC
+    types: AIEC
+    routing: NORMAL
   }
   ecc_fallback: "911"
 }

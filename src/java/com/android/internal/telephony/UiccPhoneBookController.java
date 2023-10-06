@@ -147,12 +147,7 @@ public class UiccPhoneBookController extends IIccPhoneBook.Stub {
     private IccPhoneBookInterfaceManager
             getIccPhoneBookInterfaceManager(int subId) {
 
-        int phoneId;
-        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-            phoneId = SubscriptionManagerService.getInstance().getPhoneId(subId);
-        } else {
-            phoneId = SubscriptionController.getInstance().getPhoneId(subId);
-        }
+        int phoneId = SubscriptionManagerService.getInstance().getPhoneId(subId);
         try {
             return PhoneFactory.getPhone(phoneId).getIccPhoneBookInterfaceManager();
         } catch (NullPointerException e) {

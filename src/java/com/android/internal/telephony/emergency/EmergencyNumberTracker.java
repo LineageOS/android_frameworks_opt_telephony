@@ -19,14 +19,16 @@ package com.android.internal.telephony.emergency;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.os.ParcelFileDescriptor;
 import android.os.PersistableBundle;
-import android.os.SystemProperties;
 import android.telephony.CarrierConfigManager;
+import android.telephony.CellIdentity;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
@@ -35,18 +37,20 @@ import android.telephony.emergency.EmergencyNumber;
 import android.telephony.emergency.EmergencyNumber.EmergencyCallRouting;
 import android.telephony.emergency.EmergencyNumber.EmergencyServiceCategories;
 import android.text.TextUtils;
+import android.util.ArrayMap;
+import android.util.ArraySet;
 import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.HalVersion;
 import com.android.internal.telephony.LocaleTracker;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
-import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.metrics.EmergencyNumberStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.nano.PersistAtomsProto;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.phone.ecc.nano.ProtobufEccData;
@@ -67,6 +71,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 /**
@@ -95,9 +102,18 @@ public class EmergencyNumberTracker extends Handler {
 
     private final CommandsInterface mCi;
     private final Phone mPhone;
+    private int mPhoneId;
     private String mCountryIso;
     private String mLastKnownEmergencyCountryIso = "";
     private int mCurrentDatabaseVersion = INVALID_DATABASE_VERSION;
+    private int mCurrentOtaDatabaseVersion = INVALID_DATABASE_VERSION;
+    private Resources mResources = null;
+    /**
+     * Used for storing all specific mnc's along with the list of emergency numbers
+     * for which normal routing should be supported.
+     */
+    private Map<String, Set<String>> mNormalRoutedNumbers = new ArrayMap<>();
+
     /**
      * Indicates if the country iso is set by another subscription.
      * @hide
@@ -160,8 +176,10 @@ public class EmergencyNumberTracker extends Handler {
     public EmergencyNumberTracker(Phone phone, CommandsInterface ci) {
         mPhone = phone;
         mCi = ci;
+        mResources = mPhone.getContext().getResources();
 
         if (mPhone != null) {
+            mPhoneId = phone.getPhoneId();
             CarrierConfigManager configMgr = (CarrierConfigManager)
                     mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
             if (configMgr != null) {
@@ -178,6 +196,12 @@ public class EmergencyNumberTracker extends Handler {
                 configMgr.registerCarrierConfigChangeListener(this::post,
                         (slotIndex, subId, carrierId, specificCarrierId) ->
                                 onCarrierConfigUpdated(slotIndex));
+
+                //register country change listener
+                IntentFilter filter = new IntentFilter(
+                    TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED);
+                mPhone.getContext().registerReceiver(mIntentReceiver, filter);
+
             } else {
                 loge("CarrierConfigManager is null.");
             }
@@ -265,12 +289,7 @@ public class EmergencyNumberTracker extends Handler {
     @VisibleForTesting
     public boolean isSimAbsent() {
         for (Phone phone: PhoneFactory.getPhones()) {
-            int slotId;
-            if (phone.isSubscriptionManagerServiceEnabled()) {
-                slotId = SubscriptionManagerService.getInstance().getSlotIndex(phone.getSubId());
-            } else {
-                slotId = SubscriptionController.getInstance().getSlotIndex(phone.getSubId());
-            }
+            int slotId = SubscriptionManagerService.getInstance().getSlotIndex(phone.getSubId());
             // If slot id is invalid, it means that there is no sim card.
             if (slotId != SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
                 // If there is at least one sim active, sim is not absent; it returns false
@@ -285,7 +304,7 @@ public class EmergencyNumberTracker extends Handler {
         // If country iso has been cached when listener is set, don't need to cache the initial
         // country iso and initial database.
         if (mCountryIso == null) {
-            String countryForDatabaseCache = getInitialCountryIso().toLowerCase();
+            String countryForDatabaseCache = getInitialCountryIso().toLowerCase(Locale.ROOT);
             updateEmergencyCountryIso(countryForDatabaseCache);
             // Use the last known country to cache the database in APM
             if (TextUtils.isEmpty(countryForDatabaseCache)
@@ -408,7 +427,8 @@ public class EmergencyNumberTracker extends Handler {
                 EVENT_OVERRIDE_OTA_EMERGENCY_NUMBER_DB_FILE_PATH, null).sendToTarget();
     }
 
-    private EmergencyNumber convertEmergencyNumberFromEccInfo(EccInfo eccInfo, String countryIso) {
+    private EmergencyNumber convertEmergencyNumberFromEccInfo(EccInfo eccInfo, String countryIso,
+            int emergencyCallRouting) {
         String phoneNumber = eccInfo.phoneNumber.trim();
         if (phoneNumber.isEmpty()) {
             loge("EccInfo has empty phone number.");
@@ -449,13 +469,65 @@ public class EmergencyNumberTracker extends Handler {
                     // Ignores unknown types.
             }
         }
-        return new EmergencyNumber(phoneNumber, countryIso, "", emergencyServiceCategoryBitmask,
-                new ArrayList<String>(), EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
-                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+        return new EmergencyNumber(phoneNumber, countryIso, "",
+                emergencyServiceCategoryBitmask, new ArrayList<String>(),
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE, emergencyCallRouting);
+    }
+
+    /**
+     * Get routing type of emergency numbers from DB. Update mnc's list with numbers that are
+     * to supported as normal routing type in the respective mnc's.
+     */
+    private int getRoutingInfoFromDB(EccInfo eccInfo,
+            Map<String, Set<String>> normalRoutedNumbers) {
+        int emergencyCallRouting;
+        switch(eccInfo.routing)
+        {
+            case EccInfo.Routing.NORMAL :
+                emergencyCallRouting = EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL;
+                break;
+            case EccInfo.Routing.EMERGENCY :
+                emergencyCallRouting = EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY;
+                break;
+            default:
+                emergencyCallRouting = EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN;
+        }
+        String phoneNumber = eccInfo.phoneNumber.trim();
+        if (phoneNumber.isEmpty()) {
+            loge("EccInfo has empty phone number.");
+            return emergencyCallRouting;
+        }
+
+        if (eccInfo.routing == EccInfo.Routing.NORMAL) {
+            emergencyCallRouting = EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL;
+
+            if (((eccInfo.normalRoutingMncs).length != 0)
+                    && (eccInfo.normalRoutingMncs[0].length() > 0)) {
+                emergencyCallRouting = EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN;
+
+                for (String routingMnc : eccInfo.normalRoutingMncs) {
+                    boolean mncExist = normalRoutedNumbers.containsKey(routingMnc);
+                    Set phoneNumberList;
+                    if (!mncExist) {
+                        phoneNumberList = new ArraySet<String>();
+                        phoneNumberList.add(phoneNumber);
+                        normalRoutedNumbers.put(routingMnc, phoneNumberList);
+                    } else {
+                        phoneNumberList = normalRoutedNumbers.get(routingMnc);
+                        if (!phoneNumberList.contains(phoneNumber)) {
+                            phoneNumberList.add(phoneNumber);
+                        }
+                    }
+                }
+                logd("Normal routed mncs with phoneNumbers:" + normalRoutedNumbers);
+            }
+        }
+        return emergencyCallRouting;
     }
 
     private void cacheEmergencyDatabaseByCountry(String countryIso) {
         int assetsDatabaseVersion;
+        Map<String, Set<String>> assetNormalRoutedNumbers = new ArrayMap<>();
 
         // Read the Asset emergency number database
         List<EmergencyNumber> updatedAssetEmergencyNumberList = new ArrayList<>();
@@ -467,12 +539,17 @@ public class EmergencyNumberTracker extends Handler {
                     readInputStreamToByteArray(gzipInputStream));
             assetsDatabaseVersion = allEccMessages.revision;
             logd(countryIso + " asset emergency database is loaded. Ver: " + assetsDatabaseVersion
-                    + " Phone Id: " + mPhone.getPhoneId());
+                    + " Phone Id: " + mPhone.getPhoneId() + " countryIso: " + countryIso);
             for (ProtobufEccData.CountryInfo countryEccInfo : allEccMessages.countries) {
-                if (countryEccInfo.isoCode.equals(countryIso.toUpperCase())) {
+                if (countryEccInfo.isoCode.equals(countryIso.toUpperCase(Locale.ROOT))) {
                     for (ProtobufEccData.EccInfo eccInfo : countryEccInfo.eccs) {
+                        int emergencyCallRouting = EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN;
+                        if (!shouldEmergencyNumberRoutingFromDbBeIgnored()) {
+                            emergencyCallRouting = getRoutingInfoFromDB(eccInfo,
+                                    assetNormalRoutedNumbers);
+                        }
                         updatedAssetEmergencyNumberList.add(convertEmergencyNumberFromEccInfo(
-                                eccInfo, countryIso));
+                                eccInfo, countryIso, emergencyCallRouting));
                     }
                 }
             }
@@ -483,24 +560,27 @@ public class EmergencyNumberTracker extends Handler {
         }
 
         // Cache OTA emergency number database
-        int otaDatabaseVersion = cacheOtaEmergencyNumberDatabase();
+        mCurrentOtaDatabaseVersion = cacheOtaEmergencyNumberDatabase();
 
         // Use a valid database that has higher version.
-        if (otaDatabaseVersion == INVALID_DATABASE_VERSION
+        if (mCurrentOtaDatabaseVersion == INVALID_DATABASE_VERSION
                 && assetsDatabaseVersion == INVALID_DATABASE_VERSION) {
             loge("No database available. Phone Id: " + mPhone.getPhoneId());
-        } else if (assetsDatabaseVersion > otaDatabaseVersion) {
+        } else if (assetsDatabaseVersion > mCurrentOtaDatabaseVersion) {
             logd("Using Asset Emergency database. Version: " + assetsDatabaseVersion);
             mCurrentDatabaseVersion = assetsDatabaseVersion;
             mEmergencyNumberListFromDatabase = updatedAssetEmergencyNumberList;
+            mNormalRoutedNumbers.clear();
+            mNormalRoutedNumbers = assetNormalRoutedNumbers;
         } else {
-            logd("Using Ota Emergency database. Version: " + otaDatabaseVersion);
+            logd("Using Ota Emergency database. Version: " + mCurrentOtaDatabaseVersion);
         }
     }
 
     private int cacheOtaEmergencyNumberDatabase() {
         ProtobufEccData.AllInfo allEccMessages = null;
         int otaDatabaseVersion = INVALID_DATABASE_VERSION;
+        Map<String, Set<String>> otaNormalRoutedNumbers = new ArrayMap<>();
 
         // Read the OTA emergency number database
         List<EmergencyNumber> updatedOtaEmergencyNumberList = new ArrayList<>();
@@ -529,10 +609,15 @@ public class EmergencyNumberTracker extends Handler {
             logd(countryIso + " ota emergency database is loaded. Ver: " + otaDatabaseVersion);
             otaDatabaseVersion = allEccMessages.revision;
             for (ProtobufEccData.CountryInfo countryEccInfo : allEccMessages.countries) {
-                if (countryEccInfo.isoCode.equals(countryIso.toUpperCase())) {
+                if (countryEccInfo.isoCode.equals(countryIso.toUpperCase(Locale.ROOT))) {
                     for (ProtobufEccData.EccInfo eccInfo : countryEccInfo.eccs) {
+                        int emergencyCallRouting = EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN;
+                        if (!shouldEmergencyNumberRoutingFromDbBeIgnored()) {
+                            emergencyCallRouting = getRoutingInfoFromDB(eccInfo,
+                                    otaNormalRoutedNumbers);
+                        }
                         updatedOtaEmergencyNumberList.add(convertEmergencyNumberFromEccInfo(
-                                eccInfo, countryIso));
+                                eccInfo, countryIso, emergencyCallRouting));
                     }
                 }
             }
@@ -547,6 +632,8 @@ public class EmergencyNumberTracker extends Handler {
                 && mCurrentDatabaseVersion < otaDatabaseVersion) {
             mCurrentDatabaseVersion = otaDatabaseVersion;
             mEmergencyNumberListFromDatabase = updatedOtaEmergencyNumberList;
+            mNormalRoutedNumbers.clear();
+            mNormalRoutedNumbers = otaNormalRoutedNumbers;
         }
         return otaDatabaseVersion;
     }
@@ -595,9 +682,9 @@ public class EmergencyNumberTracker extends Handler {
     private void updateEmergencyNumberListDatabaseAndNotify(String countryIso) {
         logd("updateEmergencyNumberListDatabaseAndNotify(): receiving countryIso: "
                 + countryIso);
-        updateEmergencyCountryIso(countryIso.toLowerCase());
+        updateEmergencyCountryIso(countryIso.toLowerCase(Locale.ROOT));
         // Use cached country iso in APM to load emergency number database.
-        if (TextUtils.isEmpty(countryIso) && isAirplaneModeEnabled()) {
+        if (TextUtils.isEmpty(countryIso)) {
             countryIso = getCountryIsoForCachingDatabase();
             logd("updateEmergencyNumberListDatabaseAndNotify(): using cached APM country "
                     + countryIso);
@@ -626,7 +713,8 @@ public class EmergencyNumberTracker extends Handler {
     private void updateOtaEmergencyNumberListDatabaseAndNotify() {
         logd("updateOtaEmergencyNumberListDatabaseAndNotify():"
                 + " receiving Emegency Number database OTA update");
-        if (cacheOtaEmergencyNumberDatabase() != INVALID_DATABASE_VERSION) {
+        mCurrentOtaDatabaseVersion = cacheOtaEmergencyNumberDatabase();
+        if (mCurrentOtaDatabaseVersion != INVALID_DATABASE_VERSION) {
             writeUpdatedEmergencyNumberListMetrics(mEmergencyNumberListFromDatabase);
             if (!DBG) {
                 mEmergencyNumberListDatabaseLocalLog.log(
@@ -691,7 +779,11 @@ public class EmergencyNumberTracker extends Handler {
         }
         mergedEmergencyNumberList.addAll(mEmergencyNumberListWithPrefix);
         mergedEmergencyNumberList.addAll(mEmergencyNumberListFromTestMode);
-        EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList);
+        if (shouldDeterminingOfUrnsAndCategoriesWhileMergingIgnored()) {
+            EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList);
+        } else {
+            EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList, true);
+        }
         mEmergencyNumberList = mergedEmergencyNumberList;
     }
 
@@ -702,11 +794,90 @@ public class EmergencyNumberTracker extends Handler {
      *         indication not support from the HAL.
      */
     public List<EmergencyNumber> getEmergencyNumberList() {
+        List<EmergencyNumber> completeEmergencyNumberList;
         if (!mEmergencyNumberListFromRadio.isEmpty()) {
-            return Collections.unmodifiableList(mEmergencyNumberList);
+            completeEmergencyNumberList = Collections.unmodifiableList(mEmergencyNumberList);
         } else {
-            return getEmergencyNumberListFromEccListDatabaseAndTest();
+            completeEmergencyNumberList = getEmergencyNumberListFromEccListDatabaseAndTest();
         }
+        if (shouldAdjustForRouting()) {
+            return adjustRoutingForEmergencyNumbers(completeEmergencyNumberList);
+        } else {
+            return completeEmergencyNumberList;
+        }
+    }
+
+    /**
+     * Util function to check whether routing type and mnc value in emergency number needs
+     * to be adjusted for the current network mnc.
+     */
+    private boolean shouldAdjustForRouting() {
+        if (!shouldEmergencyNumberRoutingFromDbBeIgnored() && !mNormalRoutedNumbers.isEmpty()) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Adjust emergency numbers with mnc and routing type based on the current network mnc.
+     */
+    private List<EmergencyNumber> adjustRoutingForEmergencyNumbers(
+            List<EmergencyNumber> emergencyNumbers) {
+        CellIdentity cellIdentity = mPhone.getCurrentCellIdentity();
+        if (cellIdentity != null) {
+            String networkMnc = cellIdentity.getMncString();
+            Set<String> normalRoutedPhoneNumbers = mNormalRoutedNumbers.get(networkMnc);
+            Set<String> normalRoutedPhoneNumbersWithPrefix = new ArraySet<String>();
+
+            if (normalRoutedPhoneNumbers != null && !normalRoutedPhoneNumbers.isEmpty()) {
+                for (String num : normalRoutedPhoneNumbers) {
+                    Set<String> phoneNumbersWithPrefix = addPrefixToEmergencyNumber(num);
+                    if (phoneNumbersWithPrefix != null && !phoneNumbersWithPrefix.isEmpty()) {
+                        normalRoutedPhoneNumbersWithPrefix.addAll(phoneNumbersWithPrefix);
+                    }
+                }
+            }
+            List<EmergencyNumber> adjustedEmergencyNumberList = new ArrayList<>();
+            int routing;
+            String mnc;
+            for (EmergencyNumber num : emergencyNumbers) {
+                routing = num.getEmergencyCallRouting();
+                mnc = num.getMnc();
+                if (num.isFromSources(EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE)) {
+                    if ((normalRoutedPhoneNumbers != null
+                            && normalRoutedPhoneNumbers.contains(num.getNumber()))
+                            || normalRoutedPhoneNumbersWithPrefix.contains(num.getNumber())) {
+                        routing = EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL;
+                        mnc = networkMnc;
+                        logd("adjustRoutingForEmergencyNumbers for number" + num.getNumber());
+                    } else if (routing == EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN) {
+                        routing = EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY;
+                    }
+                }
+                adjustedEmergencyNumberList.add(new EmergencyNumber(num.getNumber(),
+                        num.getCountryIso(), mnc,
+                        num.getEmergencyServiceCategoryBitmask(),
+                        num.getEmergencyUrns(), num.getEmergencyNumberSourceBitmask(),
+                        routing));
+            }
+            return adjustedEmergencyNumberList;
+        } else {
+            return emergencyNumbers;
+        }
+    }
+
+
+    /**
+     * Util function to add prefix to the given emergency number.
+     */
+    private Set<String> addPrefixToEmergencyNumber(String number) {
+        Set<String> phoneNumbersWithPrefix = new ArraySet<String>();
+        for (String prefix : mEmergencyNumberPrefix) {
+            if (!number.startsWith(prefix)) {
+                phoneNumbersWithPrefix.add(prefix + number);
+            }
+        }
+        return phoneNumbersWithPrefix;
     }
 
     /**
@@ -714,7 +885,7 @@ public class EmergencyNumberTracker extends Handler {
      *
      * @return {@code true} if it is; {@code false} otherwise.
      */
-    public boolean isEmergencyNumber(String number, boolean exactMatch) {
+    public boolean isEmergencyNumber(String number) {
         if (number == null) {
             return false;
         }
@@ -730,31 +901,14 @@ public class EmergencyNumberTracker extends Handler {
 
         if (!mEmergencyNumberListFromRadio.isEmpty()) {
             for (EmergencyNumber num : mEmergencyNumberList) {
-                // According to com.android.i18n.phonenumbers.ShortNumberInfo, in
-                // these countries, if extra digits are added to an emergency number,
-                // it no longer connects to the emergency service.
-                String countryIso = getLastKnownEmergencyCountryIso();
-                if (countryIso.equals("br") || countryIso.equals("cl")
-                        || countryIso.equals("ni")) {
-                    exactMatch = true;
-                } else {
-                    exactMatch = false || exactMatch;
-                }
-                if (exactMatch) {
-                    if (num.getNumber().equals(number)) {
-                        logd("Found in mEmergencyNumberList [exact match] ");
-                        return true;
-                    }
-                } else {
-                    if (number.startsWith(num.getNumber())) {
-                        logd("Found in mEmergencyNumberList [not exact match] ");
-                        return true;
-                    }
+                if (num.getNumber().equals(number)) {
+                    logd("Found in mEmergencyNumberList");
+                    return true;
                 }
             }
             return false;
         } else {
-            boolean inEccList = isEmergencyNumberFromEccList(number, exactMatch);
+            boolean inEccList = isEmergencyNumberFromEccList(number);
             boolean inEmergencyNumberDb = isEmergencyNumberFromDatabase(number);
             boolean inEmergencyNumberTestList = isEmergencyNumberForTest(number);
             logd("Search results - inRilEccList:" + inEccList
@@ -844,6 +998,10 @@ public class EmergencyNumberTracker extends Handler {
         return mCurrentDatabaseVersion;
     }
 
+    public int getEmergencyNumberOtaDbVersion() {
+        return mCurrentOtaDatabaseVersion;
+    }
+
     private synchronized void updateEmergencyCountryIso(String countryIso) {
         mCountryIso = countryIso;
         if (!TextUtils.isEmpty(mCountryIso)) {
@@ -859,22 +1017,8 @@ public class EmergencyNumberTracker extends Handler {
      */
     private List<EmergencyNumber> getEmergencyNumberListFromEccList() {
         List<EmergencyNumber> emergencyNumberList = new ArrayList<>();
-        int slotId = SubscriptionController.getInstance().getSlotIndex(mPhone.getSubId());
 
-        String ecclist = (slotId <= 0) ? "ril.ecclist" : ("ril.ecclist" + slotId);
-        String emergencyNumbers = SystemProperties.get(ecclist, "");
-        if (TextUtils.isEmpty(emergencyNumbers)) {
-            // then read-only ecclist property since old RIL only uses this
-            emergencyNumbers = SystemProperties.get("ro.ril.ecclist");
-        }
-        if (!TextUtils.isEmpty(emergencyNumbers)) {
-            // searches through the comma-separated list for a match,
-            // return true if one is found.
-            for (String emergencyNum : emergencyNumbers.split(",")) {
-                emergencyNumberList.add(getLabeledEmergencyNumberForEcclist(emergencyNum));
-            }
-        }
-        emergencyNumbers = ((isSimAbsent()) ? "112,911,000,08,110,118,119,999" : "112,911");
+        String emergencyNumbers = ((isSimAbsent()) ? "112,911,000,08,110,118,119,999" : "112,911");
         for (String emergencyNum : emergencyNumbers.split(",")) {
             emergencyNumberList.add(getLabeledEmergencyNumberForEcclist(emergencyNum));
         }
@@ -890,15 +1034,14 @@ public class EmergencyNumberTracker extends Handler {
         List<EmergencyNumber> emergencyNumberListWithPrefix = new ArrayList<>();
         if (emergencyNumberList != null) {
             for (EmergencyNumber num : emergencyNumberList) {
-                for (String prefix : mEmergencyNumberPrefix) {
-                    // If an emergency number has started with the prefix,
-                    // no need to apply the prefix.
-                    if (!num.getNumber().startsWith(prefix)) {
+                Set<String> phoneNumbersWithPrefix = addPrefixToEmergencyNumber(num.getNumber());
+                if (phoneNumbersWithPrefix != null && !phoneNumbersWithPrefix.isEmpty()) {
+                    for (String numberWithPrefix : phoneNumbersWithPrefix) {
                         emergencyNumberListWithPrefix.add(new EmergencyNumber(
-                            prefix + num.getNumber(), num.getCountryIso(),
-                            num.getMnc(), num.getEmergencyServiceCategoryBitmask(),
-                            num.getEmergencyUrns(), num.getEmergencyNumberSourceBitmask(),
-                            num.getEmergencyCallRouting()));
+                                numberWithPrefix, num.getCountryIso(),
+                                num.getMnc(), num.getEmergencyServiceCategoryBitmask(),
+                                num.getEmergencyUrns(), num.getEmergencyNumberSourceBitmask(),
+                                num.getEmergencyCallRouting()));
                     }
                 }
             }
@@ -917,7 +1060,7 @@ public class EmergencyNumberTracker extends Handler {
     }
 
     private boolean isEmergencyNumberFromDatabase(String number) {
-        if (!mPhone.getHalVersion().greaterOrEqual(new HalVersion(1, 4))) {
+        if (mEmergencyNumberListFromDatabase.isEmpty()) {
             return false;
         }
         number = PhoneNumberUtils.stripSeparators(number);
@@ -940,10 +1083,10 @@ public class EmergencyNumberTracker extends Handler {
         number = PhoneNumberUtils.stripSeparators(number);
         for (EmergencyNumber num : mEmergencyNumberListFromDatabase) {
             if (num.getNumber().equals(number)) {
-                return new EmergencyNumber(number, getLastKnownEmergencyCountryIso().toLowerCase(),
-                        "", num.getEmergencyServiceCategoryBitmask(),
+                return new EmergencyNumber(number, getLastKnownEmergencyCountryIso()
+                        .toLowerCase(Locale.ROOT), "", num.getEmergencyServiceCategoryBitmask(),
                         new ArrayList<String>(), EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
-                        EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+                        num.getEmergencyCallRouting());
             }
         }
         return new EmergencyNumber(number, "", "",
@@ -956,7 +1099,7 @@ public class EmergencyNumberTracker extends Handler {
      * Back-up old logics for {@link PhoneNumberUtils#isEmergencyNumberInternal} for legacy
      * and deprecate purpose.
      */
-    private boolean isEmergencyNumberFromEccList(String number, boolean useExactMatch) {
+    private boolean isEmergencyNumberFromEccList(String number) {
         // If the number passed in is null, just return false:
         if (number == null) return false;
 
@@ -980,59 +1123,8 @@ public class EmergencyNumberTracker extends Handler {
         /// @}
 
         String emergencyNumbers = "";
-        int slotId = SubscriptionController.getInstance().getSlotIndex(mPhone.getSubId());
-
-        String ecclist = null;
         String countryIso = getLastKnownEmergencyCountryIso();
-
-        if (!mPhone.getHalVersion().greaterOrEqual(new HalVersion(1, 4))) {
-            //only use ril ecc list for older devices with HAL < 1.4
-            // check read-write ecclist property first
-            ecclist = (slotId <= 0) ? "ril.ecclist" : ("ril.ecclist" + slotId);
-            emergencyNumbers = SystemProperties.get(ecclist, "");
-
-            logd("slotId:" + slotId + " country:" + countryIso + " emergencyNumbers: "
-                + emergencyNumbers);
-
-            if (TextUtils.isEmpty(emergencyNumbers)) {
-                // then read-only ecclist property since old RIL only uses this
-                emergencyNumbers = SystemProperties.get("ro.ril.ecclist");
-            }
-
-            if (!TextUtils.isEmpty(emergencyNumbers)) {
-                // searches through the comma-separated list for a match,
-                // return true if one is found.
-                for (String emergencyNum : emergencyNumbers.split(",")) {
-                    // According to com.android.i18n.phonenumbers.ShortNumberInfo, in
-                    // these countries, if extra digits are added to an emergency number,
-                    // it no longer connects to the emergency service.
-                    if (useExactMatch || countryIso.equals("br") || countryIso.equals("cl")
-                        || countryIso.equals("ni")) {
-                        if (number.equals(emergencyNum)) {
-                            return true;
-                        } else {
-                            for (String prefix : mEmergencyNumberPrefix) {
-                                if (number.equals(prefix + emergencyNum)) {
-                                    return true;
-                                }
-                            }
-                        }
-                    } else {
-                        if (number.startsWith(emergencyNum)) {
-                            return true;
-                        } else {
-                            for (String prefix : mEmergencyNumberPrefix) {
-                                if (number.startsWith(prefix + emergencyNum)) {
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-                }
-                // no matches found against the list!
-                return false;
-            }
-        }
+        logd("country:" + countryIso);
 
         logd("System property doesn't provide any emergency numbers."
                 + " Use embedded logic for determining ones.");
@@ -1042,57 +1134,32 @@ public class EmergencyNumberTracker extends Handler {
         emergencyNumbers = ((isSimAbsent()) ? "112,911,000,08,110,118,119,999" : "112,911");
 
         for (String emergencyNum : emergencyNumbers.split(",")) {
-            if (useExactMatch) {
-                if (number.equals(emergencyNum)) {
-                    return true;
-                } else {
-                    for (String prefix : mEmergencyNumberPrefix) {
-                        if (number.equals(prefix + emergencyNum)) {
-                            return true;
-                        }
-                    }
-                }
+            if (number.equals(emergencyNum)) {
+                return true;
             } else {
-                if (number.startsWith(emergencyNum)) {
-                    return true;
-                } else {
-                    for (String prefix : mEmergencyNumberPrefix) {
-                        if (number.equals(prefix + emergencyNum)) {
-                            return true;
-                        }
+                for (String prefix : mEmergencyNumberPrefix) {
+                    if (number.equals(prefix + emergencyNum)) {
+                        return true;
                     }
                 }
             }
         }
 
-        if(isSimAbsent()) {
+        if (isSimAbsent()) {
             // No ecclist system property, so use our own list.
             if (countryIso != null) {
                 ShortNumberInfo info = ShortNumberInfo.getInstance();
-                if (useExactMatch) {
-                    if (info.isEmergencyNumber(number, countryIso.toUpperCase())) {
-                        return true;
-                    } else {
-                        for (String prefix : mEmergencyNumberPrefix) {
-                            if (info.isEmergencyNumber(prefix + number, countryIso.toUpperCase())) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
+                if (info.isEmergencyNumber(number, countryIso.toUpperCase(Locale.ROOT))) {
+                    return true;
                 } else {
-                    if (info.connectsToEmergencyNumber(number, countryIso.toUpperCase())) {
-                        return true;
-                    } else {
-                        for (String prefix : mEmergencyNumberPrefix) {
-                            if (info.connectsToEmergencyNumber(prefix + number,
-                                    countryIso.toUpperCase())) {
-                                return true;
-                            }
+                    for (String prefix : mEmergencyNumberPrefix) {
+                        if (info.isEmergencyNumber(prefix + number,
+                                countryIso.toUpperCase(Locale.ROOT))) {
+                            return true;
                         }
                     }
-                    return false;
                 }
+                return false;
             }
         }
 
@@ -1111,7 +1178,7 @@ public class EmergencyNumberTracker extends Handler {
      */
     private void updateEmergencyNumberListTestModeAndNotify(int action, EmergencyNumber num) {
         if (action == ADD_EMERGENCY_NUMBER_TEST_MODE) {
-            if (!isEmergencyNumber(num.getNumber(), true)) {
+            if (!isEmergencyNumber(num.getNumber())) {
                 mEmergencyNumberListFromTestMode.add(num);
             }
         } else if (action == RESET_EMERGENCY_NUMBER_TEST_MODE) {
@@ -1138,7 +1205,7 @@ public class EmergencyNumberTracker extends Handler {
 
     private List<EmergencyNumber> getEmergencyNumberListFromEccListDatabaseAndTest() {
         List<EmergencyNumber> mergedEmergencyNumberList = getEmergencyNumberListFromEccList();
-        if (mPhone.getHalVersion().greaterOrEqual(new HalVersion(1, 4))) {
+        if (!mEmergencyNumberListFromDatabase.isEmpty()) {
             loge("getEmergencyNumberListFromEccListDatabaseAndTest: radio indication is"
                     + " unavailable in 1.4 HAL.");
             mergedEmergencyNumberList.addAll(mEmergencyNumberListFromDatabase);
@@ -1146,7 +1213,12 @@ public class EmergencyNumberTracker extends Handler {
                     mEmergencyNumberListFromDatabase));
         }
         mergedEmergencyNumberList.addAll(getEmergencyNumberListTestMode());
-        EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList);
+
+        if (shouldDeterminingOfUrnsAndCategoriesWhileMergingIgnored()) {
+            EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList);
+        } else {
+            EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList, true);
+        }
         return mergedEmergencyNumberList;
     }
 
@@ -1162,16 +1234,16 @@ public class EmergencyNumberTracker extends Handler {
         return new ArrayList<>(mEmergencyNumberListFromRadio);
     }
 
-    private static void logd(String str) {
-        Rlog.d(TAG, str);
+    private void logd(String str) {
+        Rlog.d(TAG, "[" + mPhoneId + "]" + str);
     }
 
-    private static void logw(String str) {
-        Rlog.w(TAG, str);
+    private void logw(String str) {
+        Rlog.w(TAG, "[" + mPhoneId + "]" + str);
     }
 
-    private static void loge(String str) {
-        Rlog.e(TAG, str);
+    private void loge(String str) {
+        Rlog.e(TAG, "[" + mPhoneId + "]" +  str);
     }
 
     private void writeUpdatedEmergencyNumberListMetrics(
@@ -1186,6 +1258,56 @@ public class EmergencyNumberTracker extends Handler {
     }
 
     /**
+     * @return {@code true} if emergency numbers sourced from modem/config should be ignored.
+     * {@code false} if emergency numbers sourced from modem/config should not be ignored.
+     */
+    @VisibleForTesting
+    public boolean shouldModemConfigEmergencyNumbersBeIgnored() {
+        return mResources.getBoolean(com.android.internal.R.bool
+                .ignore_modem_config_emergency_numbers);
+    }
+
+    /**
+     * @return {@code true} if emergency number routing from the android emergency number
+     * database should be ignored.
+     * {@code false} if emergency number routing from the android emergency number database
+     * should not be ignored.
+     */
+    @VisibleForTesting
+    public boolean shouldEmergencyNumberRoutingFromDbBeIgnored() {
+        return mResources.getBoolean(com.android.internal.R.bool
+                .ignore_emergency_number_routing_from_db);
+    }
+
+
+    /**
+     * @return {@code true} if determining of Urns & Service Categories while merging duplicate
+     * numbers should be ignored.
+     * {@code false} if determining of Urns & Service Categories while merging duplicate
+     * numbers should not be ignored.
+     */
+    @VisibleForTesting
+    public boolean shouldDeterminingOfUrnsAndCategoriesWhileMergingIgnored() {
+        // TODO: Device config
+        return false;
+    }
+
+    /**
+     * Captures the consolidated emergency numbers list and returns the array of
+     * {@link PersistAtomsProto.EmergencyNumber}.
+     */
+    public PersistAtomsProto.EmergencyNumbersInfo[] getEmergencyNumbersProtoArray() {
+        int otaVersion = Math.max(0, getEmergencyNumberOtaDbVersion());
+        int assetVersion = Math.max(0, getEmergencyNumberDbVersion());
+        boolean isDbRoutingIgnored = shouldEmergencyNumberRoutingFromDbBeIgnored();
+        List<EmergencyNumber> emergencyNumberList = getEmergencyNumberList();
+        logd("log emergency number list=" + emergencyNumberList + " for otaVersion=" + otaVersion
+                + ", assetVersion=" + assetVersion + ", isDbRoutingIgnored=" + isDbRoutingIgnored);
+        return EmergencyNumberStats.getInstance().convertEmergencyNumbersListToProto(
+                emergencyNumberList, assetVersion, otaVersion, isDbRoutingIgnored);
+    }
+
+    /**
      * Dump Emergency Number List info in the tracking
      *
      * @param fd FileDescriptor
@@ -1194,9 +1316,6 @@ public class EmergencyNumberTracker extends Handler {
      */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         final IndentingPrintWriter ipw = new IndentingPrintWriter(pw, "  ");
-        ipw.println(" Hal Version:" + mPhone.getHalVersion());
-        ipw.println(" ========================================= ");
-
         ipw.println(" Country Iso:" + getEmergencyCountryIso());
         ipw.println(" ========================================= ");
 
@@ -1231,11 +1350,6 @@ public class EmergencyNumberTracker extends Handler {
         ipw.increaseIndent();
         mEmergencyNumberListLocalLog.dump(fd, pw, args);
         ipw.decreaseIndent();
-        ipw.println(" ========================================= ");
-
-        int slotId = SubscriptionController.getInstance().getSlotIndex(mPhone.getSubId());
-        String ecclist = (slotId <= 0) ? "ril.ecclist" : ("ril.ecclist" + slotId);
-        ipw.println(" ril.ecclist: " + SystemProperties.get(ecclist, ""));
         ipw.println(" ========================================= ");
 
         ipw.println("Emergency Number List for Phone" + "(" + mPhone.getPhoneId() + ")");

@@ -29,6 +29,7 @@ import android.util.IndentingPrintWriter;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.IccSlotStatus.MultipleEnabledProfilesMode;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultCallback;
@@ -45,8 +46,8 @@ public class EuiccCard extends UiccCard {
     private RegistrantList mEidReadyRegistrants;
 
     public EuiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock,
-            boolean isSupportsMultipleEnabledProfiles) {
-        super(c, ci, ics, phoneId, lock, isSupportsMultipleEnabledProfiles);
+            MultipleEnabledProfilesMode supportedMepMode) {
+        super(c, ci, ics, phoneId, lock, supportedMepMode);
         if (TextUtils.isEmpty(ics.eid)) {
             loge("no eid given in constructor for phone " + phoneId);
             loadEidAndNotifyRegistrants();
@@ -57,17 +58,17 @@ public class EuiccCard extends UiccCard {
     }
 
     /**
-     * Updates MEP(Multiple Enabled Profile) support flag.
+     * Updates MEP(Multiple Enabled Profile) supported mode flag.
      *
      * <p>If IccSlotStatus comes later, the number of ports reported is only known after the
-     * UiccCard creation which will impact UICC MEP capability.
+     * UiccCard creation which will impact UICC MEP capability in case of old HAL version.
      */
     @Override
-    public void updateSupportMultipleEnabledProfile(boolean supported) {
-        mIsSupportsMultipleEnabledProfiles = supported;
+    public void updateSupportedMepMode(MultipleEnabledProfilesMode supportedMepMode) {
+        mSupportedMepMode = supportedMepMode;
         for (UiccPort port : mUiccPorts.values()) {
             if (port instanceof EuiccPort) {
-                ((EuiccPort) port).updateSupportMultipleEnabledProfile(supported);
+                ((EuiccPort) port).updateSupportedMepMode(supportedMepMode);
             } else {
                 loge("eUICC card has non-euicc port object:" + port.toString());
             }

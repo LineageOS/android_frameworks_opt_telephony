@@ -20,11 +20,15 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import android.os.Handler;
 import android.os.Looper;
+
+import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 
 import org.junit.After;
 import org.junit.Before;
@@ -39,6 +43,9 @@ public class ConnectionTest extends TelephonyTest {
 
     // Mocked classes
     protected Call mCall;
+    protected EmergencyNumberTracker mEmergencyNumberTracker2;
+    protected Connection.PhoneFactoryProxy mPhoneFactoryProxy;
+    protected Connection mTestConnection;
 
     private class TestConnection extends Connection {
 
@@ -117,7 +124,15 @@ public class ConnectionTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         mCall = mock(Call.class);
         doReturn(mPhone).when(mCall).getPhone();
+        doReturn(mPhone).when(mCT).getPhone();
         replaceInstance(Handler.class, "mLooper", mCT, Looper.getMainLooper());
+
+        mEmergencyNumberTracker2 = mock(EmergencyNumberTracker.class);
+        doReturn(mEmergencyNumberTracker2).when(mPhone2).getEmergencyNumberTracker();
+
+        mTestConnection = new TestConnection(TEST_PHONE_TYPE);
+        mPhoneFactoryProxy = mock(Connection.PhoneFactoryProxy.class);
+        mTestConnection.setPhoneFactoryProxy(mPhoneFactoryProxy);
     }
 
     @After
@@ -154,6 +169,25 @@ public class ConnectionTest extends TelephonyTest {
         assertEquals(getTestEmergencyNumber(), connection.getEmergencyNumberInfo());
         connection.setHasKnownUserIntentEmergency(true);
         assertTrue(connection.hasKnownUserIntentEmergency());
+    }
+
+    @Test
+    public void testSetEmergencyCallInfo() {
+        //Replicate Dual-SIM:
+        Phone [] phones = {mPhone, mPhone2};
+        when(mPhoneFactoryProxy.getPhones()).thenReturn(phones);
+        doReturn(1).when(mPhone).getPhoneId();
+        doReturn(2).when(mPhone2).getPhoneId();
+
+        //Replicate behavior when a number is an emergency number
+        // on the secondary SIM but not on the default SIM:
+        when(mPhone.getEmergencyNumberTracker().getEmergencyNumber(any())).thenReturn(null);
+        when(mEmergencyNumberTracker2.getEmergencyNumber(any()))
+                .thenReturn(getTestEmergencyNumber());
+
+        //Ensure the connection is considered as an emergency call:
+        mTestConnection.setEmergencyCallInfo(mCT);
+        assertTrue(mTestConnection.isEmergencyCall());
     }
 
     // TODO Verify more methods in Connection

@@ -60,6 +60,9 @@ public class UiccCardApplication {
      */
     public static final int AUTH_CONTEXT_EAP_SIM = PhoneConstants.AUTH_CONTEXT_EAP_SIM;
     public static final int AUTH_CONTEXT_EAP_AKA = PhoneConstants.AUTH_CONTEXT_EAP_AKA;
+    public static final int AUTH_CONTEXT_GBA_BOOTSTRAP = PhoneConstants.AUTH_CONTEXT_GBA_BOOTSTRAP;
+    public static final int AUTHTYPE_GBA_NAF_KEY_EXTERNAL =
+            PhoneConstants.AUTHTYPE_GBA_NAF_KEY_EXTERNAL;
     public static final int AUTH_CONTEXT_UNDEFINED = PhoneConstants.AUTH_CONTEXT_UNDEFINED;
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
@@ -268,7 +271,7 @@ public class UiccCardApplication {
                 loge("Bogus facility lock response");
             }
             if (mIccFdnEnabled && mIccFdnAvailable) {
-                ((SIMRecords) mIccRecords).loadFdnRecords();
+                mIccRecords.loadFdnRecords();
             }
         }
     }

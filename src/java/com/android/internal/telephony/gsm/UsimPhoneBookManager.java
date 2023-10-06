@@ -32,6 +32,7 @@ import com.android.internal.telephony.uicc.IccUtils;
 import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
+import java.util.Locale;
 
 /**
  * This class implements reading and parsing USIM records.
@@ -233,7 +234,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
 
             int emailEfid = email.getEfid();
             log("EF_EMAIL exists in PBR. efid = 0x" +
-                    Integer.toHexString(emailEfid).toUpperCase());
+                    Integer.toHexString(emailEfid).toUpperCase(Locale.ROOT));
 
             /**
              * Make sure this EF_EMAIL was never read earlier. Sometimes two PBR record points
@@ -348,7 +349,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                 emailList = new ArrayList<String>();
             }
             log("Adding email #" + i + " list to index 0x" +
-                    Integer.toHexString(index).toUpperCase());
+                    Integer.toHexString(index).toUpperCase(Locale.ROOT));
             emailList.add(email);
             mEmailsForAdnRec.put(index, emailList);
         }
@@ -402,7 +403,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                 }
                 emailList.add(email);
                 log("Adding email list to index 0x" +
-                        Integer.toHexString(index).toUpperCase());
+                        Integer.toHexString(index).toUpperCase(Locale.ROOT));
                 mEmailsForAdnRec.put(index, emailList);
             }
         }
@@ -446,8 +447,9 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
             System.arraycopy(emailList.toArray(), 0, emails, 0, emailList.size());
             rec.setEmails(emails);
             log("Adding email list to ADN (0x" +
-                    Integer.toHexString(mPhoneBookRecords.get(i).getEfid()).toUpperCase() +
-                    ") record #" + mPhoneBookRecords.get(i).getRecId());
+                    Integer.toHexString(mPhoneBookRecords.get(i).getEfid())
+                            .toUpperCase(Locale.ROOT) + ") record #"
+                    + mPhoneBookRecords.get(i).getRecId());
             mPhoneBookRecords.set(i, rec);
         }
     }

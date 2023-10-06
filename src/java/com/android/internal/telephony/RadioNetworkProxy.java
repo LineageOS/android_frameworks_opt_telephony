@@ -65,13 +65,23 @@ public class RadioNetworkProxy extends RadioServiceProxy {
      * Set IRadioNetwork as the AIDL implementation for RadioServiceProxy
      * @param halVersion Radio HAL version
      * @param network IRadioNetwork implementation
+     *
+     * @return updated HAL version
      */
-    public void setAidl(HalVersion halVersion,
+    public HalVersion setAidl(HalVersion halVersion,
             android.hardware.radio.network.IRadioNetwork network) {
-        mHalVersion = halVersion;
+        HalVersion version = halVersion;
+        try {
+            version = RIL.getServiceHalVersion(network.getInterfaceVersion());
+        } catch (RemoteException e) {
+            Rlog.e(TAG, "setAidl: " + e);
+        }
+        mHalVersion = version;
         mNetworkProxy = network;
         mIsAidl = true;
-        Rlog.d(TAG, "AIDL initialized");
+
+        Rlog.d(TAG, "AIDL initialized mHalVersion=" + mHalVersion);
+        return mHalVersion;
     }
 
     /**
@@ -825,6 +835,129 @@ public class RadioNetworkProxy extends RadioServiceProxy {
         if (isEmpty()) return;
         if (isAidl()) {
             mNetworkProxy.setUsageSetting(serial, usageSetting);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Set the Emergency Mode
+     *
+     * @param serial Serial number of the request.
+     * @param emcModeType Defines the radio emergency mode type.
+     * @throws RemoteException
+     */
+    public void setEmergencyMode(int serial, int emcModeType) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.setEmergencyMode(serial, emcModeType);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Triggers an Emergency network scan.
+     *
+     * @param serial Serial number of the request.
+     * @param scanRequest Contains the preferred networks and type of service to be scanned.
+     * @throws RemoteException
+     */
+    public void triggerEmergencyNetworkScan(int serial,
+            android.hardware.radio.network.EmergencyNetworkScanTrigger scanRequest)
+            throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.triggerEmergencyNetworkScan(serial, scanRequest);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Cancels ongoing Emergency network scan
+     *
+     * @param serial Serial number of the request.
+     * @param resetScan Indicates how the next {@link #triggerEmergencyNetworkScan} should work.
+     *        If {@code true}, then the modem shall start the new scan from the beginning,
+     *        otherwise the modem shall resume from the last search.
+     *
+     * @throws RemoteException
+     */
+    public void cancelEmergencyNetworkScan(int serial, boolean resetScan) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.cancelEmergencyNetworkScan(serial, resetScan);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Exits ongoing Emergency Mode
+     *
+     * @param serial Serial number of the request.
+     * @throws RemoteException
+     */
+    public void exitEmergencyMode(int serial) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.exitEmergencyMode(serial);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Set if null ciphering / null integrity is permitted.
+     *
+     * @param serial Serial number of the request.
+     * @param enabled true if null modes are allowed, false otherwise
+     * @throws RemoteException
+     */
+    public void setNullCipherAndIntegrityEnabled(int serial,
+            boolean enabled) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.setNullCipherAndIntegrityEnabled(serial, enabled);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Get if null ciphering / null integrity is permitted.
+     * @param serial Serial number of the request.
+     * @throws RemoteException
+     *
+     */
+    public void isNullCipherAndIntegrityEnabled(int serial) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.isNullCipherAndIntegrityEnabled(serial);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Checks whether N1 mode is enabled.
+     *
+     * @param serial Serial number of the request.
+     * @throws RemoteException
+     */
+    public void isN1ModeEnabled(int serial) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.isN1ModeEnabled(serial);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Enables or disables N1 mode.
+     *
+     * @param serial Serial number of request.
+     * @param enable Indicates whether to enable N1 mode or not.
+     * @throws RemoteException
+     */
+    public void setN1ModeEnabled(int serial, boolean enable) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.setN1ModeEnabled(serial, enable);
         }
         // Only supported on AIDL.
     }

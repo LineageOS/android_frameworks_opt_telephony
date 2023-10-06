@@ -140,6 +140,8 @@ public class ImsServiceControllerCompatTest extends ImsTestBase {
         SparseIntArray slotIdToSubIdMap = new SparseIntArray();
         slotIdToSubIdMap.put(SLOT_0, SUB_1);
         ServiceConnection conn = bindAndConnectService(slotIdToSubIdMap);
+        long delay = mTestImsServiceController.getRebindDelay();
+        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
         // add the MMTelFeature
         verify(mMockServiceControllerBinder).createMMTelFeature(SLOT_0);
         verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_0),
@@ -149,6 +151,8 @@ public class ImsServiceControllerCompatTest extends ImsTestBase {
         validateMmTelFeatureContainerExists(SLOT_0);
         // Remove the feature
         conn.onBindingDied(mTestComponentName);
+        delay = REBIND_RETRY.getStartDelay();
+        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
         verify(mMmTelCompatAdapterSpy).onFeatureRemoved();
         verify(mMockServiceControllerBinder).removeImsFeature(eq(SLOT_0),
                 eq(ImsFeature.FEATURE_MMTEL));

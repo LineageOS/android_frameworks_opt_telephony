@@ -19,7 +19,7 @@ package com.android.internal.telephony;
 import android.annotation.DurationMillisLong;
 import android.annotation.ElapsedRealtimeLong;
 import android.annotation.NonNull;
-import android.os.TimestampedValue;
+import android.app.time.UnixEpochTime;
 
 import java.time.Duration;
 import java.util.Objects;
@@ -88,13 +88,12 @@ public final class NitzSignal {
     }
 
     /**
-     * Creates a {@link android.os.TimestampedValue} containing the UTC time as the number of
-     * milliseconds since the start of the Unix epoch. The reference time is the time according to
-     * the elapsed realtime clock when that would have been the time, accounting for receipt time
-     * and age.
+     * Creates a {@link UnixEpochTime} containing the UTC time as the number of milliseconds since
+     * the start of the Unix epoch. The reference time is the time according to the elapsed realtime
+     * clock when that would have been the time, accounting for receipt time and age.
      */
-    public TimestampedValue<Long> createTimeSignal() {
-        return new TimestampedValue<>(
+    public UnixEpochTime createTimeSignal() {
+        return new UnixEpochTime(
                 getAgeAdjustedElapsedRealtimeMillis(),
                 getNitzData().getCurrentTimeInMillis());
     }

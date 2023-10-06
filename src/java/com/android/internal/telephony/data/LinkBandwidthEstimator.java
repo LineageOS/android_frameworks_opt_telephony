@@ -458,6 +458,23 @@ public class LinkBandwidthEstimator extends Handler {
         long txBytesDelta = mobileTxBytes - mLastMobileTxBytes;
         long rxBytesDelta = mobileRxBytes - mLastMobileRxBytes;
 
+        int dataActivity;
+        if (txBytesDelta > 0 && rxBytesDelta > 0) {
+            dataActivity = TelephonyManager.DATA_ACTIVITY_INOUT;
+        } else if (rxBytesDelta > 0) {
+            dataActivity = TelephonyManager.DATA_ACTIVITY_IN;
+        } else if (txBytesDelta > 0) {
+            dataActivity = TelephonyManager.DATA_ACTIVITY_OUT;
+        } else {
+            dataActivity = TelephonyManager.DATA_ACTIVITY_NONE;
+        }
+
+        if (mDataActivity != dataActivity) {
+            mDataActivity = dataActivity;
+            mLinkBandwidthEstimatorCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                    () -> callback.onDataActivityChanged(dataActivity)));
+        }
+
         // Schedule the next traffic stats poll
         sendEmptyMessageDelayed(MSG_TRAFFIC_STATS_POLL, TRAFFIC_STATS_POLL_INTERVAL_MS);
 
@@ -504,23 +521,6 @@ public class LinkBandwidthEstimator extends Handler {
             // Filter update will happen after the request
             makeRequestModemActivity();
             return;
-        }
-
-        int dataActivity;
-        if (txBytesDelta > 0 && rxBytesDelta > 0) {
-            dataActivity = TelephonyManager.DATA_ACTIVITY_INOUT;
-        } else if (rxBytesDelta > 0) {
-            dataActivity = TelephonyManager.DATA_ACTIVITY_IN;
-        } else if (txBytesDelta > 0) {
-            dataActivity = TelephonyManager.DATA_ACTIVITY_OUT;
-        } else {
-            dataActivity = TelephonyManager.DATA_ACTIVITY_NONE;
-        }
-
-        if (mDataActivity != dataActivity) {
-            mDataActivity = dataActivity;
-            mLinkBandwidthEstimatorCallbacks.forEach(callback -> callback.invokeFromExecutor(
-                    () -> callback.onDataActivityChanged(dataActivity)));
         }
 
         long timeSinceLastFilterUpdateMs = currTimeMs - mFilterUpdateTimeMs;
@@ -678,7 +678,7 @@ public class LinkBandwidthEstimator extends Handler {
                 return;
             }
             int linkBandwidthKbps = (int) linkBandwidthLongKbps;
-            mBwSampleValid = true;
+            mBwSampleValid = linkBandwidthKbps > 0;
             mBwSampleKbps = linkBandwidthKbps;
 
             String dataRatName = getDataRatName(mDataRat);

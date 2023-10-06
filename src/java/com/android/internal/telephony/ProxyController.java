@@ -47,8 +47,10 @@ public class ProxyController {
     @VisibleForTesting
     static final int EVENT_START_RC_RESPONSE                = 2;
     private static final int EVENT_APPLY_RC_RESPONSE        = 3;
-    private static final int EVENT_FINISH_RC_RESPONSE       = 4;
-    private static final int EVENT_TIMEOUT                  = 5;
+    @VisibleForTesting
+    public static final int EVENT_FINISH_RC_RESPONSE        = 4;
+    @VisibleForTesting
+    public static final int EVENT_TIMEOUT                   = 5;
     @VisibleForTesting
     public static final int EVENT_MULTI_SIM_CONFIG_CHANGED  = 6;
 
@@ -212,6 +214,7 @@ public class ProxyController {
         clearTransaction();
 
         // Keep a wake lock until we finish radio capability changed
+        logd("Acquiring wake lock for setting radio capability");
         mWakeLock.acquire();
 
         return doSetRadioCapabilities(rafs);
@@ -357,19 +360,25 @@ public class ProxyController {
                 }
             }
             RadioCapability rc = (RadioCapability) ((AsyncResult) msg.obj).result;
-            if ((rc == null) || (rc.getSession() != mRadioCapabilitySessionId)) {
+            // Added exception condition  to continue to mark as transaction fail case.
+            // Checking session validity during exception is not valid
+            if (ar.exception == null
+                    && ((rc == null) || (rc.getSession() != mRadioCapabilitySessionId))) {
                 logd("onStartRadioCapabilityResponse: Ignore session=" + mRadioCapabilitySessionId
                         + " rc=" + rc);
                 return;
             }
             mRadioAccessFamilyStatusCounter--;
-            int id = rc.getPhoneId();
+            //rc.getPhoneId() moved to avoid Null Pointer Exception, since when exception occurs
+            //its expected rc is null.
             if (ar.exception != null) {
-                logd("onStartRadioCapabilityResponse: Error response session=" + rc.getSession());
-                logd("onStartRadioCapabilityResponse: phoneId=" + id + " status=FAIL");
-                mSetRadioAccessFamilyStatus[id] = SET_RC_STATUS_FAIL;
+                logd("onStartRadioCapabilityResponse got exception=" + ar.exception);
+                //mSetRadioAccessFamilyStatus will be set anyway to SET_RC_STATUS_FAIL
+                // if either of them fail at issueFinish() method below,i.e. both phone id count
+                // is set to SET_RC_STATUS_FAIL.
                 mTransactionFailed = true;
             } else {
+                int id = rc.getPhoneId();
                 logd("onStartRadioCapabilityResponse: phoneId=" + id + " status=STARTED");
                 mSetRadioAccessFamilyStatus[id] = SET_RC_STATUS_STARTED;
             }
@@ -481,13 +490,20 @@ public class ProxyController {
      * @param msg obj field isa RadioCapability
      */
     void onFinishRadioCapabilityResponse(Message msg) {
-        RadioCapability rc = (RadioCapability) ((AsyncResult) msg.obj).result;
-        if ((rc == null) || (rc.getSession() != mRadioCapabilitySessionId)) {
-            logd("onFinishRadioCapabilityResponse: Ignore session=" + mRadioCapabilitySessionId
-                    + " rc=" + rc);
-            return;
-        }
         synchronized (mSetRadioAccessFamilyStatus) {
+            AsyncResult ar = (AsyncResult)  msg.obj;
+            RadioCapability rc = (RadioCapability) ((AsyncResult) msg.obj).result;
+            // Added exception condition on finish to continue to revert if exception occurred.
+            // Checking session validity during exception is not valid
+            if (ar.exception == null
+                    && ((rc == null) || (rc.getSession() != mRadioCapabilitySessionId))) {
+                logd("onFinishRadioCapabilityResponse: Ignore session="
+                        + mRadioCapabilitySessionId + " rc=" + rc);
+                return;
+            }
+            if (ar.exception != null) {
+                logd("onFinishRadioCapabilityResponse got exception=" + ar.exception);
+            }
             logd(" onFinishRadioCapabilityResponse mRadioAccessFamilyStatusCounter="
                     + mRadioAccessFamilyStatusCounter);
             mRadioAccessFamilyStatusCounter--;
@@ -575,7 +591,6 @@ public class ProxyController {
             clearTransaction();
         } else {
             intent = new Intent(TelephonyIntents.ACTION_SET_RADIO_CAPABILITY_FAILED);
-
             // now revert.
             mTransactionFailed = false;
             RadioAccessFamily[] rafs = new RadioAccessFamily[mPhones.length];
@@ -602,6 +617,7 @@ public class ProxyController {
             }
 
             if (isWakeLockHeld()) {
+                logd("clearTransaction:checking wakelock held and releasing");
                 mWakeLock.release();
             }
         }

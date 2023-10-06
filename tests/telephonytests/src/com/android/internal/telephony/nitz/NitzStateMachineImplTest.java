@@ -910,7 +910,8 @@ public class NitzStateMachineImplTest {
             suggestedTimes.set(timeSuggestion);
             if (timeSuggestion.getUnixEpochTime() != null) {
                 // The fake time service just uses the latest suggestion.
-                mFakeDeviceState.currentTimeMillis = timeSuggestion.getUnixEpochTime().getValue();
+                mFakeDeviceState.currentTimeMillis =
+                        timeSuggestion.getUnixEpochTime().getUnixEpochTimeMillis();
             }
         }
 

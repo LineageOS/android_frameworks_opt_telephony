@@ -45,6 +45,8 @@ import android.util.EventLog;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.PhoneInternalInterface.DialArgs;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
+import com.android.internal.telephony.domainselection.DomainSelectionResolver;
+import com.android.internal.telephony.emergency.EmergencyStateTracker;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.telephony.Rlog;
 
@@ -480,16 +482,29 @@ public class GsmCdmaCallTracker extends CallTracker {
             disableDataCallInEmergencyCall(dialString);
 
             // In Ecm mode, if another emergency call is dialed, Ecm mode will not exit.
-            if(!isPhoneInEcmMode || (isPhoneInEcmMode && isEmergencyCall)) {
+            if (!isPhoneInEcmMode || (isPhoneInEcmMode && isEmergencyCall)) {
                 mCi.dial(mPendingMO.getAddress(), mPendingMO.isEmergencyCall(),
                         mPendingMO.getEmergencyNumberInfo(),
-                        mPendingMO.hasKnownUserIntentEmergency(),
-                        clirMode, obtainCompleteMessage());
+                        mPendingMO.hasKnownUserIntentEmergency(), clirMode,
+                        obtainCompleteMessage());
+            } else if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+                mPendingCallInEcm = true;
+                final int finalClirMode = clirMode;
+                Runnable onComplete = new Runnable() {
+                    @Override
+                    public void run() {
+                        mCi.dial(mPendingMO.getAddress(), mPendingMO.isEmergencyCall(),
+                        mPendingMO.getEmergencyNumberInfo(),
+                        mPendingMO.hasKnownUserIntentEmergency(), finalClirMode,
+                        obtainCompleteMessage());
+                    }
+                };
+                EmergencyStateTracker.getInstance().exitEmergencyCallbackMode(onComplete);
             } else {
                 mPhone.exitEmergencyCallbackMode();
-                mPhone.setOnEcbModeExitResponse(this,EVENT_EXIT_ECM_RESPONSE_CDMA, null);
-                mPendingCallClirMode=clirMode;
-                mPendingCallInEcm=true;
+                mPhone.setOnEcbModeExitResponse(this, EVENT_EXIT_ECM_RESPONSE_CDMA, null);
+                mPendingCallClirMode = clirMode;
+                mPendingCallInEcm = true;
             }
         }
 
@@ -959,6 +974,8 @@ public class GsmCdmaCallTracker extends CallTracker {
                             } else {
                                 newUnknownConnectionCdma = mConnections[i];
                             }
+                        } else if (hangupWaitingCallSilently(i)) {
+                            return;
                         }
                     }
                 }
@@ -1010,6 +1027,9 @@ public class GsmCdmaCallTracker extends CallTracker {
 
                 if (mConnections[i].getCall() == mRingingCall) {
                     newRinging = mConnections[i];
+                    if (hangupWaitingCallSilently(i)) {
+                        return;
+                    }
                 } // else something strange happened
                 hasNonHangupStateChanged = true;
             } else if (conn != null && dc != null) { /* implicit conn.compareTo(dc) */
@@ -1819,6 +1839,10 @@ public class GsmCdmaCallTracker extends CallTracker {
     }
 
     private boolean isEmcRetryCause(int causeCode) {
+        if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+            log("isEmcRetryCause AP based domain selection ignores the cause");
+            return false;
+        }
         if (causeCode == CallFailCause.EMC_REDIAL_ON_IMS ||
             causeCode == CallFailCause.EMC_REDIAL_ON_VOWIFI) {
             return true;
@@ -1897,5 +1921,23 @@ public class GsmCdmaCallTracker extends CallTracker {
     @Override
     public void cleanupCalls() {
         pollCallsWhenSafe();
+    }
+
+    private boolean hangupWaitingCallSilently(int index) {
+        if (index < 0 || index >= mConnections.length) return false;
+
+        GsmCdmaConnection newRinging = mConnections[index];
+        if (newRinging == null) return false;
+
+        if ((mPhone.getTerminalBasedCallWaitingState(true)
+                        == CallWaitingController.TERMINAL_BASED_NOT_ACTIVATED)
+                && (newRinging.getState() == Call.State.WAITING)) {
+            Rlog.d(LOG_TAG, "hangupWaitingCallSilently");
+            newRinging.dispose();
+            mConnections[index] = null;
+            mCi.hangupWaitingOrBackground(obtainCompleteMessage());
+            return true;
+        }
+        return false;
     }
 }

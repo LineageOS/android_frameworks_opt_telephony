@@ -31,13 +31,23 @@ public class RadioModemProxy extends RadioServiceProxy {
      * Set IRadioModem as the AIDL implementation for RadioServiceProxy
      * @param halVersion Radio HAL version
      * @param modem IRadioModem implementation
+     *
+     * @return updated HAL version
      */
-    public void setAidl(HalVersion halVersion,
+    public HalVersion setAidl(HalVersion halVersion,
             android.hardware.radio.modem.IRadioModem modem) {
-        mHalVersion = halVersion;
+        HalVersion version = halVersion;
+        try {
+            version = RIL.getServiceHalVersion(modem.getInterfaceVersion());
+        } catch (RemoteException e) {
+            Rlog.e(TAG, "setAidl: " + e);
+        }
+        mHalVersion = version;
         mModemProxy = modem;
         mIsAidl = true;
-        Rlog.d(TAG, "AIDL initialized");
+
+        Rlog.d(TAG, "AIDL initialized mHalVersion=" + mHalVersion);
+        return mHalVersion;
     }
 
     /**
@@ -106,6 +116,19 @@ public class RadioModemProxy extends RadioServiceProxy {
             mModemProxy.getDeviceIdentity(serial);
         } else {
             mRadioProxy.getDeviceIdentity(serial);
+        }
+    }
+
+    /**
+     * Call IRadioModem#getImei
+     *
+     * @param serial Serial number of request
+     * @throws RemoteException
+     */
+    public void getImei(int serial) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mModemProxy.getImei(serial);
         }
     }
 

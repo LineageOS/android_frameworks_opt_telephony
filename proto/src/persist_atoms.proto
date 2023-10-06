@@ -23,7 +23,7 @@ option java_outer_classname = "PersistAtomsProto";
 
 // Holds atoms to store on persist storage in case of power cycle or process crash.
 // NOTE: using int64 rather than google.protobuf.Timestamp for timestamps simplifies implementation.
-// Next id: 53
+// Next id: 70
 message PersistAtoms {
     /* Aggregated RAT usage during the call. */
     repeated VoiceCallRatUsage voice_call_rat_usage = 1;
@@ -180,6 +180,57 @@ message PersistAtoms {
 
     /* Unmetered networks information. */
     repeated UnmeteredNetworks unmetered_networks = 52;
+
+    /* Outgoing Short Code SMS statistics and information. */
+    repeated OutgoingShortCodeSms outgoing_short_code_sms = 53;
+
+    /* Timestamp of last outgoing_short_code_sms pull. */
+    optional int64 outgoing_short_code_sms_pull_timestamp_millis = 54;
+
+    /* Number of time the user toggled the data switch feature since the last collection. */
+    optional int32 auto_data_switch_toggle_count = 55;
+
+    /** Snapshot of satellite controller. */
+    repeated SatelliteController satellite_controller = 58;
+
+    /* Timestamp of last satellite_controller pull. */
+    optional int64 satellite_controller_pull_timestamp_millis = 59;
+
+    /** Snapshot of satellite controller. */
+    repeated SatelliteSession satellite_session = 60;
+
+    /* Timestamp of last satellite_controller pull. */
+    optional int64 satellite_session_pull_timestamp_millis = 61;
+
+    /** Snapshot of satellite incoming datagram. */
+    repeated SatelliteIncomingDatagram satellite_incoming_datagram = 62;
+
+    /* Timestamp of last satellite_incoming_datagram pull. */
+    optional int64 satellite_incoming_datagram_pull_timestamp_millis = 63;
+
+    /** Snapshot of satellite outgoing datagram. */
+    repeated SatelliteOutgoingDatagram satellite_outgoing_datagram = 64;
+
+    /* Timestamp of last satellite_outgoing_datagram pull. */
+    optional int64 satellite_outgoing_datagram_pull_timestamp_millis = 65;
+
+    /** Snapshot of satellite provision datagram. */
+    repeated SatelliteProvision satellite_provision = 66;
+
+    /* Timestamp of last satellite_provision pull. */
+    optional int64 satellite_provision_pull_timestamp_millis = 67;
+
+    /** Snapshot of satellite SOS message recommender. */
+    repeated SatelliteSosMessageRecommender satellite_sos_message_recommender = 68;
+
+    /* Timestamp of last satellite_sos_message_recommender pull. */
+    optional int64 satellite_sos_message_recommender_pull_timestamp_millis = 69;
+
+    /* Consolidated emergency numbers list information. */
+    repeated EmergencyNumbersInfo emergency_numbers_info = 56;
+
+    /* Timestamp of last emergency number pull. */
+    optional int64 emergency_number_pull_timestamp_millis = 57;
 }
 
 // The canonical versions of the following enums live in:
@@ -223,6 +274,8 @@ message VoiceCallSession {
     optional bool is_multiparty = 31;
     optional int32 call_duration = 32;
     optional int32 last_known_rat = 33;
+    optional int32 fold_state = 34;
+
     // Internal use only
     optional int64 setup_begin_millis = 10001;
 }
@@ -250,6 +303,7 @@ message IncomingSms {
     optional int32 carrier_id = 13;
     optional int64 message_id = 14;
     optional int32 count = 15;
+    optional bool is_managed_profile = 16;
 
     // Internal use only
     optional int32 hashCode = 10001;
@@ -271,6 +325,9 @@ message OutgoingSms {
     optional int32 retry_id = 13;
     optional int64 interval_millis = 14;
     optional int32 count = 15;
+    optional int32 send_error_code = 16;
+    optional int32 network_error_code = 17;
+    optional bool is_managed_profile = 18;
 
     // Internal use only
     optional int32 hashCode = 10001;
@@ -319,6 +376,8 @@ message CellularServiceState {
     optional int32 carrier_id = 8;
     optional int64 total_time_millis = 9; // Duration needs to be rounded when pulled
     optional bool is_emergency_only = 10;
+    optional bool is_internet_pdn_up = 11;
+    optional int32 fold_state = 12;
 
     // Internal use only
     optional int64 last_used_millis = 10001;
@@ -523,4 +582,93 @@ message OutgoingShortCodeSms {
     optional int32 category = 1;
     optional int32 xml_version = 2;
     optional int32 short_code_sms_count = 3;
+}
+
+message SatelliteController {
+    optional int32 count_of_satellite_service_enablements_success = 1;
+    optional int32 count_of_satellite_service_enablements_fail = 2;
+    optional int32 count_of_outgoing_datagram_success = 3;
+    optional int32 count_of_outgoing_datagram_fail = 4;
+    optional int32 count_of_incoming_datagram_success = 5;
+    optional int32 count_of_incoming_datagram_fail = 6;
+    optional int32 count_of_datagram_type_sos_sms_success = 7;
+    optional int32 count_of_datagram_type_sos_sms_fail = 8;
+    optional int32 count_of_datagram_type_location_sharing_success = 9;
+    optional int32 count_of_datagram_type_location_sharing_fail = 10;
+    optional int32 count_of_provision_success = 11;
+    optional int32 count_of_provision_fail = 12;
+    optional int32 count_of_deprovision_success = 13;
+    optional int32 count_of_deprovision_fail = 14;
+    optional int32 total_service_uptime_sec = 15;
+    optional int32 total_battery_consumption_percent = 16;
+    optional int32 total_battery_charged_time_sec = 17;
+}
+
+message SatelliteSession {
+    optional int32 satellite_service_initialization_result = 1;
+    optional int32 satellite_technology = 2;
+    optional int32 count = 3;
+}
+
+message SatelliteIncomingDatagram {
+    optional int32 result_code = 1;
+    optional int32 datagram_size_bytes = 2;
+    optional int64 datagram_transfer_time_millis = 3;
+}
+
+message SatelliteOutgoingDatagram {
+    optional int32 datagram_type = 1;
+    optional int32 result_code = 2;
+    optional int32 datagram_size_bytes = 3;
+    optional int64 datagram_transfer_time_millis = 4;
+}
+
+message SatelliteProvision {
+    optional int32 result_code = 1;
+    optional int32 provisioning_time_sec = 2;
+    optional bool is_provision_request = 3;
+    optional bool is_canceled = 4;
+}
+
+message SatelliteSosMessageRecommender {
+    optional bool is_display_sos_message_sent = 1;
+    optional int32 count_of_timer_started = 2;
+    optional bool is_ims_registered = 3;
+    optional int32 cellular_service_state = 4;
+    optional int32 count = 5;
+}
+
+message EmergencyNumbersInfo {
+    enum ServiceCategory {
+        EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED = 0;
+        EMERGENCY_SERVICE_CATEGORY_POLICE = 1;
+        EMERGENCY_SERVICE_CATEGORY_AMBULANCE = 2;
+        EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE = 3;
+        EMERGENCY_SERVICE_CATEGORY_MARINE_GUARD = 4;
+        EMERGENCY_SERVICE_CATEGORY_MOUNTAIN_RESCUE = 5;
+        EMERGENCY_SERVICE_CATEGORY_MIEC = 6;
+        EMERGENCY_SERVICE_CATEGORY_AIEC = 7;
+    }
+    enum Source {
+        EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING = 0;
+        EMERGENCY_NUMBER_SOURCE_SIM = 1;
+        EMERGENCY_NUMBER_SOURCE_DATABASE = 2;
+        EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG = 3;
+        EMERGENCY_NUMBER_SOURCE_DEFAULT = 4;
+    }
+    enum CallRoute {
+        EMERGENCY_CALL_ROUTE_UNKNOWN = 0;
+        EMERGENCY_CALL_ROUTE_EMERGENCY = 1;
+        EMERGENCY_CALL_ROUTE_NORMAL = 2;
+    }
+    optional bool is_db_version_ignored = 1;
+    optional int32 asset_version = 2;
+    optional int32 ota_version = 3;
+    optional string number = 4;
+    optional string country_iso = 5;
+    optional string mnc = 6;
+    optional CallRoute route = 7;
+    repeated string urns = 8;
+    repeated ServiceCategory service_categories = 9;
+    repeated Source sources = 10;
 }

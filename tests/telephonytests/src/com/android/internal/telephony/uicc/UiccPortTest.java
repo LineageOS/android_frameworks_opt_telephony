@@ -140,7 +140,7 @@ public class UiccPortTest extends TelephonyTest {
 
         record = mUiccPort.getOpenLogicalChannelRecord(CHANNEL_ID);
         assertThat(record).isNull();
-        verify(mUiccProfile).iccCloseLogicalChannel(eq(CHANNEL_ID), eq(null));
+        verify(mUiccProfile).iccCloseLogicalChannel(eq(CHANNEL_ID), eq(false), eq(null));
     }
 
     private IccLogicalChannelRequest getIccLogicalChannelRequest() {

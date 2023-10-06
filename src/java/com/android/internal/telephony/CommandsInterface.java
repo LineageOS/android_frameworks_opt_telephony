@@ -25,22 +25,31 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.WorkSource;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.BarringInfo;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.ClientRequestStats;
+import android.telephony.DomainSelectionService;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
 import android.telephony.RadioAccessSpecifier;
 import android.telephony.SignalThresholdInfo;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyManager.HalService;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.TrafficDescriptor;
 import android.telephony.emergency.EmergencyNumber;
+import android.telephony.ims.RegistrationManager;
+import android.telephony.ims.feature.MmTelFeature;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
+import com.android.internal.telephony.emergency.EmergencyConstants;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+import com.android.internal.telephony.imsphone.ImsCallInfo;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.SimPhonebookRecord;
@@ -123,6 +132,15 @@ public interface CommandsInterface {
     static final int CDMA_SMS_FAIL_CAUSE_RESOURCE_SHORTAGE          = 35;
     static final int CDMA_SMS_FAIL_CAUSE_OTHER_TERMINAL_PROBLEM     = 39;
     static final int CDMA_SMS_FAIL_CAUSE_ENCODING_PROBLEM           = 96;
+
+    /** IMS voice capability */
+    int IMS_MMTEL_CAPABILITY_VOICE = 1 << 0;
+    /** IMS video capability */
+    int IMS_MMTEL_CAPABILITY_VIDEO = 1 << 1;
+    /** IMS SMS capability */
+    int IMS_MMTEL_CAPABILITY_SMS = 1 << 2;
+    /** IMS RCS capabilities */
+    int IMS_RCS_CAPABILITIES = 1 << 3;
 
     //***** Methods
 
@@ -1773,6 +1791,17 @@ public interface CommandsInterface {
     public void getDeviceIdentity(Message response);
 
     /**
+     * Request the device IMEI / IMEI type / IMEISV
+     * "response" is ImeiInfo object that contains
+     *  [0] ImeiType Indicates whether IMEI is of primary or secondary type
+     *  [1] IMEI if GSM subscription is available
+     *  [2] IMEISV if GSM subscription is available
+     *
+     * @param response Message
+     */
+    public void getImei(Message response);
+
+    /**
      * Request the device MDN / H_SID / H_NID / MIN.
      * "response" is const char **
      *   [0] is MDN if CDMA subscription is available
@@ -2086,10 +2115,15 @@ public interface CommandsInterface {
      *
      * Input parameters equivalent to TS 27.007 AT+CCHC command.
      *
+     * Per spec SGP.22 V3.0, ES10 commands needs to be sent over command port of MEP-A. In order
+     * to close proper logical channel, should pass information about whether the logical channel
+     * was opened for sending ES10 commands or not.
+     *
      * @param channel Channel id. Id of the channel to be closed.
+     * @param isEs10  Whether the logical channel is opened to perform ES10 operations.
      * @param response Callback message.
      */
-    public void iccCloseLogicalChannel(int channel, Message response);
+    public void iccCloseLogicalChannel(int channel, boolean isEs10, Message response);
 
     /**
      * Exchange APDUs with the SIM on a logical channel.
@@ -2105,11 +2139,12 @@ public interface CommandsInterface {
      * @param p3 P3 value of the APDU command. If p3 is negative a 4 byte APDU
      *            is sent to the SIM.
      * @param data Data to be sent with the APDU.
+     * @param isEs10Command whether APDU command is an ES10 command or a regular APDU
      * @param response Callback message. response.obj.userObj will be
      *            an IccIoResult on success.
      */
-    public void iccTransmitApduLogicalChannel(int channel, int cla, int instruction,
-            int p1, int p2, int p3, String data, Message response);
+    void iccTransmitApduLogicalChannel(int channel, int cla, int instruction,
+            int p1, int p2, int p3, String data, boolean isEs10Command, Message response);
 
     /**
      * Exchange APDUs with the SIM on a basic channel.
@@ -2186,8 +2221,18 @@ public interface CommandsInterface {
 
     /**
      * @return the radio hal version
+     * @deprecated use {@link #getHalVersion(int)}
      */
+    @Deprecated
     default HalVersion getHalVersion() {
+        return HalVersion.UNKNOWN;
+    }
+
+    /**
+     * @param service indicate the service id to query.
+     * @return the hal version of a specific service
+     */
+    default HalVersion getHalVersion(@HalService int service) {
         return HalVersion.UNKNOWN;
     }
 
@@ -2619,6 +2664,15 @@ public interface CommandsInterface {
     default void getBarringInfo(Message result) {};
 
     /**
+     * Returns the last barring information received.
+     *
+     * @return the last barring information.
+     */
+    default @Nullable BarringInfo getLastBarringInfo() {
+        return null;
+    };
+
+    /**
      * Allocates a pdu session id
      *
      * AsyncResult.result is the allocated pdu session id
@@ -2747,6 +2801,54 @@ public interface CommandsInterface {
      public void unregisterForSimPhonebookRecordsReceived(Handler h);
 
     /**
+     * Registers for notifications of connection setup failure.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForConnectionSetupFailure(Handler h, int what, Object obj) {}
+
+    /**
+     * Unregisters for notifications of connection setup failure.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForConnectionSetupFailure(Handler h) {}
+
+    /**
+     * Registers for notifications when ANBR is received form the network.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForNotifyAnbr(Handler h, int what, Object obj) {}
+
+    /**
+     * Unregisters for notifications when ANBR is received form the network.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForNotifyAnbr(Handler h) {}
+
+    /**
+     * Registers for IMS deregistration trigger from modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForTriggerImsDeregistration(Handler h, int what, Object obj) {}
+
+    /**
+     * Unregisters for IMS deregistration trigger from modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForTriggerImsDeregistration(Handler h) {}
+
+    /**
      * Set the UE's usage setting.
      *
      * @param result Callback message containing the success or failure status.
@@ -2761,4 +2863,417 @@ public interface CommandsInterface {
      * @param result Callback message containing the usage setting (or a failure status).
      */
     default void getUsageSetting(Message result) {}
+
+    /**
+     * Sets the emergency mode.
+     *
+     * @param emcMode Defines the radio emergency mode type.
+     * @param result Callback message containing the success or failure status.
+     */
+    default void setEmergencyMode(@EmergencyConstants.EmergencyMode int emcMode,
+            @Nullable Message result) {}
+
+    /**
+     * Triggers an emergency network scan.
+     *
+     * @param accessNetwork Contains the list of access network types to be prioritized
+     *        during emergency scan. The 1st entry has the highest priority.
+     * @param scanType Indicates the type of scans to be performed i.e. limited scan,
+     *        full service scan or both.
+     * @param result Callback message containing the success or failure status.
+     */
+    default void triggerEmergencyNetworkScan(
+            @NonNull @AccessNetworkConstants.RadioAccessNetworkType int[] accessNetwork,
+            @DomainSelectionService.EmergencyScanType int scanType, @Nullable Message result) {}
+
+    /**
+     * Cancels ongoing emergency network scan.
+     *
+     * @param resetScan Indicates how the next {@link #triggerEmergencyNetworkScan} should work.
+     *        If {@code true}, then the modem shall start the new scan from the beginning,
+     *        otherwise the modem shall resume from the last search.
+     * @param result Callback message containing the success or failure status.
+     */
+    default void cancelEmergencyNetworkScan(boolean resetScan, @Nullable Message result) {}
+
+    /**
+     * Exits ongoing emergency mode.
+     *
+     * @param result Callback message containing the success or failure status.
+     */
+    default void exitEmergencyMode(@Nullable Message result) {}
+
+    /**
+     * Registers for emergency network scan result.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForEmergencyNetworkScan(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for emergency network scan result.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForEmergencyNetworkScan(@NonNull Handler h) {}
+
+    /**
+     * Provides a list of SRVCC call information to radio
+     *
+     * @param srvccConnections the list of connections.
+     */
+    default void setSrvccCallInfo(SrvccConnection[] srvccConnections, Message result) {}
+
+    /**
+     * Updates the IMS registration information to the radio.
+     *
+     * @param state The current IMS registration state.
+     * @param imsRadioTech The type of underlying radio access network used.
+     * @param suggestedAction The suggested action for the radio to perform.
+     * @param capabilities IMS capabilities such as VOICE, VIDEO and SMS.
+     */
+    default void updateImsRegistrationInfo(int state,
+            @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech,
+            @RegistrationManager.SuggestedAction int suggestedAction,
+            int capabilities, Message result) {}
+
+    /**
+     * Notifies the NAS and RRC layers of the radio the type of upcoming IMS traffic.
+     *
+     * @param token A nonce to identify the request.
+     * @param trafficType IMS traffic type like registration, voice, video, SMS, emergency, and etc.
+     * @param accessNetworkType The type of underlying radio access network used.
+     * @param trafficDirection Indicates whether traffic is originated by mobile originated or
+     *        mobile terminated use case eg. MO/MT call/SMS etc.
+     */
+    default void startImsTraffic(int token,
+            @MmTelFeature.ImsTrafficType int trafficType,
+            @AccessNetworkConstants.RadioAccessNetworkType int accessNetworkType,
+            @MmTelFeature.ImsTrafficDirection int trafficDirection,
+            Message result) {}
+
+    /**
+     * Notifies IMS traffic has been stopped.
+     *
+     * @param token The token assigned by startImsTraffic.
+     */
+    default void stopImsTraffic(int token, Message result) {}
+
+    /**
+     * Triggers the UE initiated EPS fallback procedure.
+     *
+     * @param reason Specifies the reason for EPS fallback.
+     */
+    default void triggerEpsFallback(int reason, Message result) {}
+
+    /**
+     * Triggers radio to send ANBRQ message to the network.
+     *
+     * @param mediaType Media type is used to identify media stream such as audio or video.
+     * @param direction Direction of this packet stream (e.g. uplink or downlink).
+     * @param bitsPerSecond The bit rate requested by the opponent UE.
+     * @param result Callback message to receive the result.
+     */
+    default void sendAnbrQuery(int mediaType, int direction, int bitsPerSecond, Message result) {}
+
+    /**
+     * Set the UE's ability to accept/reject null ciphered and/or null integrity-protected
+     * connections.
+     *
+     * @param enabled true to allow null ciphered and/or null integrity-protected connections,
+     * false to disallow.
+     * @param result Callback message containing the success or failure status.
+     */
+    default void setNullCipherAndIntegrityEnabled(boolean enabled, Message result) {}
+
+    /**
+     * Check whether null ciphering and/or null integrity-protected connections are allowed.
+     *
+     * @param result Callback message containing the success or failure status.
+     */
+    default void isNullCipherAndIntegrityEnabled(Message result) {}
+
+    /**
+     * Notifies the IMS call status to the modem.
+     *
+     * @param imsCallInfo The list of {@link ImsCallInfo}.
+     * @param result A callback to receive the response.
+     */
+    default void updateImsCallStatus(@NonNull List<ImsCallInfo> imsCallInfo, Message result) {}
+
+    /**
+     * Enables or disables N1 mode (access to 5G core network) in accordance with
+     * 3GPP TS 24.501 4.9.
+     * @param enable {@code true} to enable N1 mode, {@code false} to disable N1 mode.
+     * @param result Callback message to receive the result.
+     */
+    default void setN1ModeEnabled(boolean enable, Message result) {}
+
+    /**
+     * Check whether N1 mode (access to 5G core network) is enabled or not.
+     * @param result Callback message to receive the result.
+     */
+    default void isN1ModeEnabled(Message result) {}
+
+    /**
+     * Get feature capabilities supported by satellite.
+     *
+     * @param result Message that will be sent back to the requester
+     */
+    default void getSatelliteCapabilities(Message result) {}
+
+    /**
+     * Turn satellite modem on/off.
+     *
+     * @param result Message that will be sent back to the requester
+     * @param on {@code true} for turning on.
+     *           {@code false} for turning off.
+     */
+    default void setSatellitePower(Message result, boolean on) {}
+
+    /**
+     * Get satellite modem state.
+     *
+     * @param result Message that will be sent back to the requester
+     */
+    default void getSatellitePowerState(Message result) {}
+
+    /**
+     * Get satellite provision state.
+     *
+     * @param result Message that will be sent back to the requester
+     */
+    default void getSatelliteProvisionState(Message result) {}
+
+    /**
+     * Check whether satellite modem is supported by the device.
+     *
+     * @param result Message that will be sent back to the requester
+     */
+    default void isSatelliteSupported(Message result) {}
+
+    /**
+     * Provision the subscription with a satellite provider. This is needed to register the
+     * subscription if the provider allows dynamic registration.
+     *
+     * @param result Message that will be sent back to the requester.
+     * @param imei IMEI of the SIM associated with the satellite modem.
+     * @param msisdn MSISDN of the SIM associated with the satellite modem.
+     * @param imsi IMSI of the SIM associated with the satellite modem.
+     * @param features List of features to be provisioned.
+     */
+    default void provisionSatelliteService(
+            Message result, String imei, String msisdn, String imsi, int[] features) {}
+
+    /**
+     * Add contacts that are allowed to be used for satellite communication. This is applicable for
+     * incoming messages as well.
+     *
+     * @param result Message that will be sent back to the requester.
+     * @param contacts List of allowed contacts to be added.
+     */
+    default void addAllowedSatelliteContacts(Message result, String[] contacts) {}
+
+    /**
+     * Remove contacts that are allowed to be used for satellite communication. This is applicable
+     * for incoming messages as well.
+     *
+     * @param result Message that will be sent back to the requester.
+     * @param contacts List of allowed contacts to be removed.
+     */
+    default void removeAllowedSatelliteContacts(Message result, String[] contacts) {}
+
+    /**
+     * Send text messages.
+     *
+     * @param result Message that will be sent back to the requester.
+     * @param messages List of messages in text format to be sent.
+     * @param destination The recipient of the message.
+     * @param latitude The current latitude of the device.
+     * @param longitude The current longitude of the device. The location (i.e., latitude and
+     *        longitude) of the device will be filled for emergency messages.
+     */
+    default void sendSatelliteMessages(Message result, String[] messages, String destination,
+            double latitude, double longitude) {}
+
+    /**
+     * Get pending messages.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    default void getPendingSatelliteMessages(Message result) {}
+
+    /**
+     * Get current satellite registration mode.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    default void getSatelliteMode(Message result) {}
+
+    /**
+     * Set the filter for what type of indication framework want to receive from modem.
+     *
+     * @param result Message that will be sent back to the requester.
+     * @param filterBitmask The filter bitmask identifying what type of indication Telephony
+     *                      framework wants to receive from modem.
+     */
+    default void setSatelliteIndicationFilter(Message result, int filterBitmask) {}
+
+    /**
+     * User started pointing to the satellite. Modem should continue to update the ponting input
+     * as user moves device.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    default void startSendingSatellitePointingInfo(Message result) {}
+
+    /**
+     * Stop sending satellite pointing info to the framework.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    default void stopSendingSatellitePointingInfo(Message result) {}
+
+    /**
+     * Get max number of characters per text message.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    default void getMaxCharactersPerSatelliteTextMessage(Message result) {}
+
+    /**
+     * Get whether satellite communication is allowed for the current location.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    default void isSatelliteCommunicationAllowedForCurrentLocation(Message result) {}
+
+    /**
+     * Get the time after which the satellite will be visible.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    default void getTimeForNextSatelliteVisibility(Message result) {}
+
+    /**
+     * Registers for pending message count from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForPendingSatelliteMessageCount(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for pending message count from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForPendingSatelliteMessageCount(@NonNull Handler h) {}
+
+    /**
+     * Registers for new messages from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForNewSatelliteMessages(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for new messages from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForNewSatelliteMessages(@NonNull Handler h) {}
+
+    /**
+     * Registers for messages transfer complete from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForSatelliteMessagesTransferComplete(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for messages transfer complete from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForSatelliteMessagesTransferComplete(@NonNull Handler h) {}
+
+    /**
+     * Registers for pointing info changed from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForSatellitePointingInfoChanged(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for pointing info changed from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForSatellitePointingInfoChanged(@NonNull Handler h) {}
+
+    /**
+     * Registers for mode changed from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForSatelliteModeChanged(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for mode changed from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForSatelliteModeChanged(@NonNull Handler h) {}
+
+    /**
+     * Registers for radio technology changed from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForSatelliteRadioTechnologyChanged(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for radio technology changed from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForSatelliteRadioTechnologyChanged(@NonNull Handler h) {}
+
+    /**
+     * Registers for provision state changed from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForSatelliteProvisionStateChanged(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for provision state changed from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForSatelliteProvisionStateChanged(@NonNull Handler h) {}
 }

@@ -16,9 +16,12 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.HAL_SERVICE_MODEM;
+
 import android.hardware.radio.RadioError;
 import android.hardware.radio.RadioResponseInfo;
 import android.hardware.radio.modem.IRadioModemResponse;
+import android.hardware.radio.modem.ImeiInfo;
 import android.os.SystemClock;
 import android.telephony.ActivityStatsTechSpecificInfo;
 import android.telephony.AnomalyReporter;
@@ -51,7 +54,7 @@ public class ModemResponse extends IRadioModemResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial number and error.
      */
     public void enableModemResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.MODEM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_MODEM, mRil, responseInfo);
     }
 
     /**
@@ -59,7 +62,7 @@ public class ModemResponse extends IRadioModemResponse.Stub {
      * @param version String containing version string for log reporting
      */
     public void getBasebandVersionResponse(RadioResponseInfo responseInfo, String version) {
-        RadioResponse.responseString(RIL.MODEM_SERVICE, mRil, responseInfo, version);
+        RadioResponse.responseString(HAL_SERVICE_MODEM, mRil, responseInfo, version);
     }
 
     /**
@@ -72,7 +75,21 @@ public class ModemResponse extends IRadioModemResponse.Stub {
     public void getDeviceIdentityResponse(RadioResponseInfo responseInfo, String imei,
             String imeisv, String esn, String meid) {
         RadioResponse.responseStrings(
-                RIL.MODEM_SERVICE, mRil, responseInfo, imei, imeisv, esn, meid);
+                HAL_SERVICE_MODEM, mRil, responseInfo, imei, imeisv, esn, meid);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param imeiInfo object containing ImeiType, device IMEI and IMEISV
+     */
+    public void getImeiResponse(RadioResponseInfo responseInfo, ImeiInfo imeiInfo) {
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_MODEM, responseInfo);
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                RadioResponse.sendMessageResponse(rr.mResult, imeiInfo);
+            }
+            mRil.processResponseDone(rr, responseInfo, imeiInfo);
+        }
     }
 
     /**
@@ -81,7 +98,7 @@ public class ModemResponse extends IRadioModemResponse.Stub {
      */
     public void getHardwareConfigResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.modem.HardwareConfig[] config) {
-        RILRequest rr = mRil.processResponse(RIL.MODEM_SERVICE, responseInfo);
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_MODEM, responseInfo);
 
         if (rr != null) {
             ArrayList<HardwareConfig> ret = RILUtils.convertHalHardwareConfigList(config);
@@ -98,7 +115,7 @@ public class ModemResponse extends IRadioModemResponse.Stub {
      */
     public void getModemActivityInfoResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.modem.ActivityStatsInfo activityInfo) {
-        RILRequest rr = mRil.processResponse(RIL.MODEM_SERVICE, responseInfo);
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_MODEM, responseInfo);
 
         if (rr != null) {
             ModemActivityInfo ret = null;
@@ -141,7 +158,7 @@ public class ModemResponse extends IRadioModemResponse.Stub {
      * @param isEnabled whether the modem stack is enabled.
      */
     public void getModemStackStatusResponse(RadioResponseInfo responseInfo, boolean isEnabled) {
-        RILRequest rr = mRil.processResponse(RIL.MODEM_SERVICE, responseInfo);
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_MODEM, responseInfo);
 
         if (rr != null) {
             if (responseInfo.error == RadioError.NONE) {
@@ -157,7 +174,7 @@ public class ModemResponse extends IRadioModemResponse.Stub {
      */
     public void getRadioCapabilityResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.modem.RadioCapability radioCapability) {
-        RILRequest rr = mRil.processResponse(RIL.MODEM_SERVICE, responseInfo);
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_MODEM, responseInfo);
 
         if (rr != null) {
             RadioCapability ret = RILUtils.convertHalRadioCapability(radioCapability, mRil);
@@ -179,42 +196,42 @@ public class ModemResponse extends IRadioModemResponse.Stub {
      * @param result String containing the contents of the NV item
      */
     public void nvReadItemResponse(RadioResponseInfo responseInfo, String result) {
-        RadioResponse.responseString(RIL.MODEM_SERVICE, mRil, responseInfo, result);
+        RadioResponse.responseString(HAL_SERVICE_MODEM, mRil, responseInfo, result);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void nvResetConfigResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.MODEM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_MODEM, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void nvWriteCdmaPrlResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.MODEM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_MODEM, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void nvWriteItemResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.MODEM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_MODEM, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void requestShutdownResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.MODEM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_MODEM, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void sendDeviceStateResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.MODEM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_MODEM, mRil, responseInfo);
     }
 
     /**
@@ -223,7 +240,7 @@ public class ModemResponse extends IRadioModemResponse.Stub {
      */
     public void setRadioCapabilityResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.modem.RadioCapability radioCapability) {
-        RILRequest rr = mRil.processResponse(RIL.MODEM_SERVICE, responseInfo);
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_MODEM, responseInfo);
 
         if (rr != null) {
             RadioCapability ret = RILUtils.convertHalRadioCapability(radioCapability, mRil);
@@ -238,7 +255,7 @@ public class ModemResponse extends IRadioModemResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error.
      */
     public void setRadioPowerResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.MODEM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_MODEM, mRil, responseInfo);
         mRil.mLastRadioPowerResult = responseInfo.error;
         if (responseInfo.error == RadioError.RF_HARDWARE_ISSUE) {
             AnomalyReporter.reportAnomaly(

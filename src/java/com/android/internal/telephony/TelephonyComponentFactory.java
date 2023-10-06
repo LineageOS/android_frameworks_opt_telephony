@@ -41,6 +41,7 @@ import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
+import com.android.internal.telephony.imsphone.ImsNrSaModeHandler;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.nitz.NitzStateMachineImpl;
@@ -386,6 +387,14 @@ public class TelephonyComponentFactory {
     }
 
     /**
+     * Create an ImsNrSaModeHandler.
+     */
+    public ImsNrSaModeHandler makeImsNrSaModeHandler(ImsPhone imsPhone) {
+
+        return new ImsNrSaModeHandler(imsPhone, imsPhone.getLooper());
+    }
+
+    /**
      * Create an AppSmsManager for per-app SMS message.
      */
     public AppSmsManager makeAppSmsManager(Context context) {
@@ -425,10 +434,6 @@ public class TelephonyComponentFactory {
                 telephonyComponentFactory);
     }
 
-    public SubscriptionController initSubscriptionController(Context c) {
-        return SubscriptionController.init(c);
-    }
-
     public PhoneSwitcher makePhoneSwitcher(int maxDataAttachModemCount, Context context,
             Looper looper) {
         return PhoneSwitcher.make(maxDataAttachModemCount, context, looper);
@@ -441,9 +446,14 @@ public class TelephonyComponentFactory {
         return new DisplayInfoController(phone);
     }
 
-    public MultiSimSettingController initMultiSimSettingController(Context c,
-            SubscriptionController sc) {
-        return MultiSimSettingController.init(c, sc);
+    /**
+     * Initialize multi sim settings controller.
+     *
+     * @param c The context.
+     * @return The multi sim settings controller instance.
+     */
+    public MultiSimSettingController initMultiSimSettingController(Context c) {
+        return MultiSimSettingController.init(c);
     }
 
     /**
@@ -451,11 +461,6 @@ public class TelephonyComponentFactory {
      */
     public SignalStrengthController makeSignalStrengthController(GsmCdmaPhone phone) {
         return new SignalStrengthController(phone);
-    }
-
-    public SubscriptionInfoUpdater makeSubscriptionInfoUpdater(Looper looper, Context context,
-            SubscriptionController sc) {
-        return new SubscriptionInfoUpdater(looper, context, sc);
     }
 
     /**

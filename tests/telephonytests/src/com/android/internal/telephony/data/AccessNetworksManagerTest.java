@@ -18,7 +18,6 @@ package com.android.internal.telephony.data;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import static org.junit.Assume.assumeFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -33,8 +32,10 @@ import android.content.ComponentName;
 import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
 import android.net.NetworkCapabilities;
+import android.os.AsyncResult;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.Message;
 import android.os.PersistableBundle;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
@@ -120,7 +121,7 @@ public class AccessNetworksManagerTest extends TelephonyTest {
         processAllMessages();
         replaceInstance(AccessNetworksManager.class, "mDataConfigManager",
                 mAccessNetworksManager, mMockedDataConfigManager);
-        assumeFalse(mAccessNetworksManager.isInLegacyMode());
+
         logd("-setUp");
     }
 
@@ -155,6 +156,32 @@ public class AccessNetworksManagerTest extends TelephonyTest {
         assertThat(mAccessNetworksManager.getPreferredTransport(ApnSetting.TYPE_MMS))
                 .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
         assertThat(mAccessNetworksManager.isAnyApnOnIwlan()).isTrue();
+    }
+
+    @Test
+    public void testGuideTransportTypeForEmergencyDataNetwork() throws Exception {
+        doAnswer(invocation -> {
+            int accessNetwork = AccessNetworkType.UNKNOWN;
+            if (invocation.getArguments()[1].equals(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)) {
+                accessNetwork = AccessNetworkType.IWLAN;
+            } else if (invocation.getArguments()[1]
+                    .equals(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)) {
+                accessNetwork = AccessNetworkType.EUTRAN;
+            }
+            mQnsCallback.onQualifiedNetworkTypesChanged(ApnSetting.TYPE_EMERGENCY,
+                    new int[]{accessNetwork});
+            return null;
+        }).when(mMockedQns).reportEmergencyDataNetworkPreferredTransportChanged(anyInt(), anyInt());
+
+        AsyncResult asyncResult =
+                new AsyncResult(null, AccessNetworkConstants.TRANSPORT_TYPE_WLAN, null);
+        Message msg = this.mAccessNetworksManager
+                .obtainMessage(1 /* EVENT_GUIDE_TRANSPORT_TYPE_FOR_EMERGENCY */, asyncResult);
+        mAccessNetworksManager.sendMessage(msg);
+        processAllMessages();
+
+        assertThat(mAccessNetworksManager.getPreferredTransport(ApnSetting.TYPE_EMERGENCY))
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
     }
 
     @Test

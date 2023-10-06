@@ -71,7 +71,6 @@ import android.telephony.PhysicalChannelConfig;
 import android.telephony.RadioAccessFamily;
 import android.telephony.ServiceState;
 import android.telephony.ServiceState.RilRadioTechnology;
-import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
@@ -92,6 +91,7 @@ import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.cdnr.CarrierDisplayNameData;
 import com.android.internal.telephony.cdnr.CarrierDisplayNameResolver;
 import com.android.internal.telephony.data.AccessNetworksManager;
+import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
 import com.android.internal.telephony.data.DataNetwork;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.imsphone.ImsPhone;
@@ -217,7 +217,6 @@ public class ServiceStateTracker extends Handler {
     private RegistrantList mNrStateChangedRegistrants = new RegistrantList();
     private RegistrantList mNrFrequencyChangedRegistrants = new RegistrantList();
     private RegistrantList mCssIndicatorChangedRegistrants = new RegistrantList();
-    private final RegistrantList mBandwidthChangedRegistrants = new RegistrantList();
     private final RegistrantList mAirplaneModeChangedRegistrants = new RegistrantList();
     private final RegistrantList mAreaCodeChangedRegistrants = new RegistrantList();
 
@@ -321,13 +320,9 @@ public class ServiceStateTracker extends Handler {
     private CarrierDisplayNameResolver mCdnr;
 
     private boolean mImsRegistrationOnOff = false;
-    /** Radio is disabled by carrier. Radio power will not be override if this field is set */
-    private boolean mRadioDisabledByCarrier = false;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean mDeviceShuttingDown = false;
     /** Keep track of SPN display rules, so we only broadcast intent if something changes. */
-    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    private boolean mSpnUpdatePending = false;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private String mCurSpn = null;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
@@ -347,8 +342,6 @@ public class ServiceStateTracker extends Handler {
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private SubscriptionManager mSubscriptionManager;
-    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    private SubscriptionController mSubscriptionController;
     private SubscriptionManagerService mSubscriptionManagerService;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final SstSubscriptionsChangedListener mOnSubscriptionsChangedListener =
@@ -386,7 +379,6 @@ public class ServiceStateTracker extends Handler {
             // If not, then the subId has changed, so we need to remember the old subId,
             // even if the new subId is invalid (likely).
             mPrevSubId = mSubId;
-            mSubId = curSubId;
 
             // Update voicemail count and notify message waiting changed regardless of
             // whether the new subId is valid. This is an exception to the general logic
@@ -395,72 +387,64 @@ public class ServiceStateTracker extends Handler {
             // which seems desirable.
             mPhone.updateVoiceMail();
 
-            if (!SubscriptionManager.isValidSubscriptionId(mSubId)) {
+            if (!SubscriptionManager.isValidSubscriptionId(curSubId)) {
                 if (SubscriptionManager.isValidSubscriptionId(mPrevSubId)) {
                     // just went from valid to invalid subId, so notify phone state listeners
                     // with final broadcast
                     mPhone.notifyServiceStateChangedForSubId(mOutOfServiceSS,
                             ServiceStateTracker.this.mPrevSubId);
                 }
-                // If the new subscription ID isn't valid, then we don't need to do all the
-                // UI updating, so we're done.
-                return;
+            } else {
+                Context context = mPhone.getContext();
+
+                mPhone.notifyPhoneStateChanged();
+
+                if (!SubscriptionManager.isValidSubscriptionId(mPrevSubId)) {
+                    // just went from invalid to valid subId, so notify with current service
+                    // state in case our service state was never broadcasted (we don't notify
+                    // service states when the subId is invalid)
+                    mPhone.notifyServiceStateChanged(mPhone.getServiceState());
+                }
+
+                boolean restoreSelection = !context.getResources().getBoolean(
+                        com.android.internal.R.bool.skip_restoring_network_selection);
+                mPhone.sendSubscriptionSettings(restoreSelection);
+
+                setDataNetworkTypeForPhone(mSS.getRilDataRadioTechnology());
+
+                // Remove old network selection sharedPreferences since SP key names are now
+                // changed to include subId. This will be done only once when upgrading from an
+                // older build that did not include subId in the names.
+                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
+                        context);
+                String oldNetworkSelection = sp.getString(
+                        Phone.NETWORK_SELECTION_KEY, "");
+                String oldNetworkSelectionName = sp.getString(
+                        Phone.NETWORK_SELECTION_NAME_KEY, "");
+                String oldNetworkSelectionShort = sp.getString(
+                        Phone.NETWORK_SELECTION_SHORT_KEY, "");
+                if (!TextUtils.isEmpty(oldNetworkSelection)
+                        || !TextUtils.isEmpty(oldNetworkSelectionName)
+                        || !TextUtils.isEmpty(oldNetworkSelectionShort)) {
+                    SharedPreferences.Editor editor = sp.edit();
+                    editor.putString(Phone.NETWORK_SELECTION_KEY + curSubId,
+                            oldNetworkSelection);
+                    editor.putString(Phone.NETWORK_SELECTION_NAME_KEY + curSubId,
+                            oldNetworkSelectionName);
+                    editor.putString(Phone.NETWORK_SELECTION_SHORT_KEY + curSubId,
+                            oldNetworkSelectionShort);
+                    editor.remove(Phone.NETWORK_SELECTION_KEY);
+                    editor.remove(Phone.NETWORK_SELECTION_NAME_KEY);
+                    editor.remove(Phone.NETWORK_SELECTION_SHORT_KEY);
+                    editor.commit();
+                }
+
+                // Once sub id becomes valid, we need to update the service provider name
+                // displayed on the UI again. The old SPN update intents sent to
+                // MobileSignalController earlier were actually ignored due to invalid sub id.
+                updateSpnDisplay();
             }
-
-            Context context = mPhone.getContext();
-
-            mPhone.notifyPhoneStateChanged();
-
-            if (!SubscriptionManager.isValidSubscriptionId(mPrevSubId)) {
-                // just went from invalid to valid subId, so notify with current service
-                // state in case our service state was never broadcasted (we don't notify
-                // service states when the subId is invalid)
-                mPhone.notifyServiceStateChanged(mPhone.getServiceState());
-            }
-
-            boolean restoreSelection = !context.getResources().getBoolean(
-                    com.android.internal.R.bool.skip_restoring_network_selection);
-            mPhone.sendSubscriptionSettings(restoreSelection);
-
-            setDataNetworkTypeForPhone(mSS.getRilDataRadioTechnology());
-
-            if (mSpnUpdatePending) {
-                mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(), mCurShowPlmn,
-                        mCurPlmn, mCurShowSpn, mCurSpn);
-                mSpnUpdatePending = false;
-            }
-
-            // Remove old network selection sharedPreferences since SP key names are now
-            // changed to include subId. This will be done only once when upgrading from an
-            // older build that did not include subId in the names.
-            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
-                    context);
-            String oldNetworkSelection = sp.getString(
-                    Phone.NETWORK_SELECTION_KEY, "");
-            String oldNetworkSelectionName = sp.getString(
-                    Phone.NETWORK_SELECTION_NAME_KEY, "");
-            String oldNetworkSelectionShort = sp.getString(
-                    Phone.NETWORK_SELECTION_SHORT_KEY, "");
-            if (!TextUtils.isEmpty(oldNetworkSelection)
-                    || !TextUtils.isEmpty(oldNetworkSelectionName)
-                    || !TextUtils.isEmpty(oldNetworkSelectionShort)) {
-                SharedPreferences.Editor editor = sp.edit();
-                editor.putString(Phone.NETWORK_SELECTION_KEY + mSubId,
-                        oldNetworkSelection);
-                editor.putString(Phone.NETWORK_SELECTION_NAME_KEY + mSubId,
-                        oldNetworkSelectionName);
-                editor.putString(Phone.NETWORK_SELECTION_SHORT_KEY + mSubId,
-                        oldNetworkSelectionShort);
-                editor.remove(Phone.NETWORK_SELECTION_KEY);
-                editor.remove(Phone.NETWORK_SELECTION_NAME_KEY);
-                editor.remove(Phone.NETWORK_SELECTION_SHORT_KEY);
-                editor.commit();
-            }
-
-            // Once sub id becomes valid, we need to update the service provider name
-            // displayed on the UI again. The old SPN update intents sent to
-            // MobileSignalController earlier were actually ignored due to invalid sub id.
-            updateSpnDisplay();
+            mSubId = curSubId;
         }
     };
 
@@ -560,8 +544,12 @@ public class ServiceStateTracker extends Handler {
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
             if (action.equals(Intent.ACTION_LOCALE_CHANGED)) {
+                log("ACTION_LOCALE_CHANGED");
                 // Update emergency string or operator name, polling service state.
                 pollState();
+                // Depends on modem, ServiceState is not necessarily updated, so make sure updating
+                // SPN.
+                updateSpnDisplay();
             } else if (action.equals(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED)) {
                 String lastKnownNetworkCountry = intent.getStringExtra(
                         TelephonyManager.EXTRA_LAST_KNOWN_NETWORK_COUNTRY);
@@ -623,6 +611,12 @@ public class ServiceStateTracker extends Handler {
      */
     private DataNetworkControllerCallback mDataDisconnectedCallback;
 
+    /**
+     * AccessNetworksManagerCallback is used for preferred on the IWLAN when preferred transport
+     * type changed in AccessNetworksManager.
+     */
+    private AccessNetworksManagerCallback mAccessNetworksManagerCallback = null;
+
     public ServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci) {
         mNitzState = TelephonyComponentFactory.getInstance()
                 .inject(NitzStateMachine.class.getName())
@@ -652,12 +646,7 @@ public class ServiceStateTracker extends Handler {
         mCi.registerForCellInfoList(this, EVENT_UNSOL_CELL_INFO_LIST, null);
         mCi.registerForPhysicalChannelConfiguration(this, EVENT_PHYSICAL_CHANNEL_CONFIG, null);
 
-        if (mPhone.isSubscriptionManagerServiceEnabled()) {
-            mSubscriptionManagerService = SubscriptionManagerService.getInstance();
-        } else {
-            mSubscriptionController = SubscriptionController.getInstance();
-        }
-
+        mSubscriptionManagerService = SubscriptionManagerService.getInstance();
         mSubscriptionManager = SubscriptionManager.from(phone.getContext());
         mSubscriptionManager.addOnSubscriptionsChangedListener(
                 new android.os.HandlerExecutor(this), mOnSubscriptionsChangedListener);
@@ -670,7 +659,7 @@ public class ServiceStateTracker extends Handler {
 
         mAccessNetworksManager = mPhone.getAccessNetworksManager();
         mOutOfServiceSS = new ServiceState();
-        mOutOfServiceSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), false);
+        mOutOfServiceSS.setOutOfService(false);
 
         for (int transportType : mAccessNetworksManager.getAvailableTransports()) {
             mRegStateManagers.append(transportType, new NetworkRegistrationManager(
@@ -693,7 +682,7 @@ public class ServiceStateTracker extends Handler {
                 Settings.Global.ENABLE_CELLULAR_ON_BOOT, 1);
         mDesiredPowerState = (enableCellularOnBoot > 0) && ! (airplaneMode > 0);
         if (!mDesiredPowerState) {
-            mRadioPowerOffReasons.add(Phone.RADIO_POWER_REASON_USER);
+            mRadioPowerOffReasons.add(TelephonyManager.RADIO_POWER_REASON_USER);
         }
         mRadioPowerLog.log("init : airplane mode = " + airplaneMode + " enableCellularOnBoot = " +
                 enableCellularOnBoot);
@@ -735,6 +724,23 @@ public class ServiceStateTracker extends Handler {
                 }
             }
         };
+
+        mAccessNetworksManagerCallback = new AccessNetworksManagerCallback(this::post) {
+            @Override
+            public void onPreferredTransportChanged(int networkCapability) {
+                // Check if preferred on IWLAN was changed in ServiceState.
+                boolean isIwlanPreferred = mAccessNetworksManager.isAnyApnOnIwlan();
+                if (mSS.isIwlanPreferred() != isIwlanPreferred) {
+                    log("onPreferredTransportChanged: IwlanPreferred is changed to "
+                            + isIwlanPreferred);
+                    mSS.setIwlanPreferred(isIwlanPreferred);
+                    mPhone.notifyServiceStateChanged(mPhone.getServiceState());
+                }
+            }
+        };
+        if (mAccessNetworksManagerCallback != null) {
+            mAccessNetworksManager.registerCallback(mAccessNetworksManagerCallback);
+        }
     }
 
     @VisibleForTesting
@@ -770,9 +776,9 @@ public class ServiceStateTracker extends Handler {
         }
 
         mSS = new ServiceState();
-        mSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), false);
+        mSS.setOutOfService(false);
         mNewSS = new ServiceState();
-        mNewSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), false);
+        mNewSS.setOutOfService(false);
         mLastCellInfoReqTime = 0;
         mLastCellInfoList = null;
         mStartedGprsRegCheck = false;
@@ -873,13 +879,20 @@ public class ServiceStateTracker extends Handler {
             mCSST.dispose();
             mCSST = null;
         }
+        if (mAccessNetworksManagerCallback != null) {
+            mAccessNetworksManager.unregisterCallback(mAccessNetworksManagerCallback);
+            mAccessNetworksManagerCallback = null;
+        }
     }
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public boolean getDesiredPowerState() {
         return mDesiredPowerState;
     }
-    public boolean getPowerStateFromCarrier() { return !mRadioDisabledByCarrier; }
+
+    public boolean getPowerStateFromCarrier() {
+        return !mRadioPowerOffReasons.contains(TelephonyManager.RADIO_POWER_REASON_CARRIER);
+    }
 
     public List<PhysicalChannelConfig> getPhysicalChannelConfigList() {
         return mLastPhysicalChannelConfigList;
@@ -1069,7 +1082,7 @@ public class ServiceStateTracker extends Handler {
      * @return the current reasons for which the radio is off.
      */
     public Set<Integer> getRadioPowerOffReasons() {
-        return mRadioPowerOffReasons;
+        return Set.copyOf(mRadioPowerOffReasons);
     }
 
     /**
@@ -1095,7 +1108,7 @@ public class ServiceStateTracker extends Handler {
     public void setRadioPower(boolean power, boolean forEmergencyCall,
             boolean isSelectedPhoneForEmergencyCall, boolean forceApply) {
         setRadioPowerForReason(power, forEmergencyCall, isSelectedPhoneForEmergencyCall, forceApply,
-                Phone.RADIO_POWER_REASON_USER);
+                TelephonyManager.RADIO_POWER_REASON_USER);
     }
 
     /**
@@ -1133,23 +1146,6 @@ public class ServiceStateTracker extends Handler {
 
         mDesiredPowerState = power;
         setPowerStateToDesired(forEmergencyCall, isSelectedPhoneForEmergencyCall, forceApply);
-    }
-
-    /**
-     * Radio power set from carrier action. if set to false means carrier desire to turn radio off
-     * and radio wont be re-enabled unless carrier explicitly turn it back on.
-     * @param enable indicate if radio power is enabled or disabled from carrier action.
-     */
-    public void setRadioPowerFromCarrier(boolean enable) {
-        boolean disableByCarrier = !enable;
-        if (mRadioDisabledByCarrier == disableByCarrier) {
-            log("setRadioPowerFromCarrier mRadioDisabledByCarrier is already "
-                    + disableByCarrier + " Do nothing.");
-            return;
-        }
-
-        mRadioDisabledByCarrier = disableByCarrier;
-        setPowerStateToDesired();
     }
 
     /**
@@ -1651,7 +1647,8 @@ public class ServiceStateTracker extends Handler {
                 if (ar.exception == null) {
                     boolean enable = (boolean) ar.result;
                     if (DBG) log("EVENT_RADIO_POWER_FROM_CARRIER: " + enable);
-                    setRadioPowerFromCarrier(enable);
+                    setRadioPowerForReason(enable, false, false, false,
+                            TelephonyManager.RADIO_POWER_REASON_CARRIER);
                 }
                 break;
 
@@ -1660,8 +1657,8 @@ public class ServiceStateTracker extends Handler {
                 if (ar.exception == null) {
                     List<PhysicalChannelConfig> list = (List<PhysicalChannelConfig>) ar.result;
                     if (VDBG) {
-                        log("EVENT_PHYSICAL_CHANNEL_CONFIG: size=" + list.size() + " list="
-                                + list);
+                        log("EVENT_PHYSICAL_CHANNEL_CONFIG: list=" + list
+                                + (list == null ? "" : ", list.size()=" + list.size()));
                     }
                     mLastPhysicalChannelConfigList = list;
                     boolean hasChanged = false;
@@ -1680,6 +1677,7 @@ public class ServiceStateTracker extends Handler {
                     // Notify NR frequency, NR connection status or bandwidths changed.
                     if (hasChanged) {
                         mPhone.notifyServiceStateChanged(mPhone.getServiceState());
+                        mServiceStateChangedRegistrants.notifyRegistrants();
                         TelephonyMetrics.getInstance().writeServiceStateChanged(
                                 mPhone.getPhoneId(), mSS);
                         mPhone.getVoiceCallSessionStats().onServiceStateChanged(mSS);
@@ -2091,16 +2089,20 @@ public class ServiceStateTracker extends Handler {
         if (physicalChannelConfigs != null) {
             for (PhysicalChannelConfig config : physicalChannelConfigs) {
                 if (isNrPhysicalChannelConfig(config) && isInternetPhysicalChannelConfig(config)) {
-                    // Update the NR frequency range if there is an internet data connection
+                    // Update the NR frequency range if there is an active internet data connection
                     // associated with this NR physical channel channel config.
-                    newFrequencyRange = ServiceState.getBetterNRFrequencyRange(
-                            newFrequencyRange, config.getFrequencyRange());
-                    break;
+                    // If there are multiple valid configs, use the highest frequency range value.
+                    newFrequencyRange = Math.max(newFrequencyRange, config.getFrequencyRange());
                 }
             }
         }
 
         boolean hasChanged = newFrequencyRange != ss.getNrFrequencyRange();
+        if (hasChanged) {
+            log(String.format("NR frequency range changed from %s to %s.",
+                    ServiceState.frequencyRangeToString(ss.getNrFrequencyRange()),
+                    ServiceState.frequencyRangeToString(newFrequencyRange)));
+        }
         ss.setNrFrequencyRange(newFrequencyRange);
         return hasChanged;
     }
@@ -2131,6 +2133,11 @@ public class ServiceStateTracker extends Handler {
         }
 
         boolean hasChanged = newNrState != oldNrState;
+        if (hasChanged) {
+            log(String.format("NR state changed from %s to %s.",
+                    NetworkRegistrationInfo.nrStateToString(oldNrState),
+                    NetworkRegistrationInfo.nrStateToString(newNrState)));
+        }
         regInfo.setNrState(newNrState);
         ss.addNetworkRegistrationInfo(regInfo);
         return hasChanged;
@@ -2728,7 +2735,7 @@ public class ServiceStateTracker extends Handler {
 
     private void notifySpnDisplayUpdate(CarrierDisplayNameData data) {
         int subId = mPhone.getSubId();
-        // Update ACTION_SERVICE_PROVIDERS_UPDATED IFF any value changes
+        // Update ACTION_SERVICE_PROVIDERS_UPDATED if any value changes
         if (mSubId != subId
                 || data.shouldShowPlmn() != mCurShowPlmn
                 || data.shouldShowSpn() != mCurShowSpn
@@ -2758,22 +2765,12 @@ public class ServiceStateTracker extends Handler {
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
             mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
 
-            if (mPhone.isSubscriptionManagerServiceEnabled()) {
-                if (SubscriptionManager.isValidSubscriptionId(subId)) {
-                    mSubscriptionManagerService.setCarrierName(subId, TextUtils.emptyIfNull(
-                            getCarrierName(data.shouldShowPlmn(), data.getPlmn(),
-                                    data.shouldShowSpn(), data.getSpn())));
-                }
-            } else {
-                if (!mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(),
-                        data.shouldShowPlmn(), data.getPlmn(), data.shouldShowSpn(),
-                        data.getSpn())) {
-                    mSpnUpdatePending = true;
-                }
+            if (SubscriptionManager.isValidSubscriptionId(subId)) {
+                mSubscriptionManagerService.setCarrierName(subId, TextUtils.emptyIfNull(
+                        getCarrierName(data.shouldShowPlmn(), data.getPlmn(),
+                                data.shouldShowSpn(), data.getSpn())));
             }
         }
-
-        mSubId = subId;
         mCurShowSpn = data.shouldShowSpn();
         mCurShowPlmn = data.shouldShowPlmn();
         mCurSpn = data.getSpn();
@@ -3093,12 +3090,12 @@ public class ServiceStateTracker extends Handler {
     protected void setPowerStateToDesired(boolean forEmergencyCall,
             boolean isSelectedPhoneForEmergencyCall, boolean forceApply) {
         if (DBG) {
-            String tmpLog = "setPowerStateToDesired: mDeviceShuttingDown=" + mDeviceShuttingDown +
-                    ", mDesiredPowerState=" + mDesiredPowerState +
-                    ", getRadioState=" + mCi.getRadioState() +
-                    ", mRadioDisabledByCarrier=" + mRadioDisabledByCarrier +
-                    ", IMS reg state=" + mImsRegistrationOnOff +
-                    ", pending radio off=" + hasMessages(EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT);
+            String tmpLog = "setPowerStateToDesired: mDeviceShuttingDown=" + mDeviceShuttingDown
+                    + ", mDesiredPowerState=" + mDesiredPowerState
+                    + ", getRadioState=" + mCi.getRadioState()
+                    + ", mRadioPowerOffReasons=" + mRadioPowerOffReasons
+                    + ", IMS reg state=" + mImsRegistrationOnOff
+                    + ", pending radio off=" + hasMessages(EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT);
             log(tmpLog);
             mRadioPowerLog.log(tmpLog);
         }
@@ -3110,10 +3107,10 @@ public class ServiceStateTracker extends Handler {
         }
 
         // If we want it on and it's off, turn it on
-        if (mDesiredPowerState && !mRadioDisabledByCarrier
+        if (mDesiredPowerState && mRadioPowerOffReasons.isEmpty()
                 && (forceApply || mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF)) {
             mCi.setRadioPower(true, forEmergencyCall, isSelectedPhoneForEmergencyCall, null);
-        } else if ((!mDesiredPowerState || mRadioDisabledByCarrier) && mCi.getRadioState()
+        } else if ((!mDesiredPowerState || !mRadioPowerOffReasons.isEmpty()) && mCi.getRadioState()
                 == TelephonyManager.RADIO_POWER_ON) {
             if (DBG) log("setPowerStateToDesired: powerOffRadioSafely()");
             powerOffRadioSafely();
@@ -3260,7 +3257,6 @@ public class ServiceStateTracker extends Handler {
                 + " mImsRegistrationOnOff=" + mImsRegistrationOnOff
                 + "}");
 
-
         if (mImsRegistrationOnOff && !registered) {
             // moving to deregistered, only send this event if we need to re-evaluate
             if (getRadioPowerOffDelayTimeoutForImsRegistration() > 0) {
@@ -3273,6 +3269,9 @@ public class ServiceStateTracker extends Handler {
             }
         }
         mImsRegistrationOnOff = registered;
+
+        // It's possible ServiceState changes did not trigger SPN display update; we update it here.
+        updateSpnDisplay();
     }
 
     public void onImsCapabilityChanged() {
@@ -3309,7 +3308,7 @@ public class ServiceStateTracker extends Handler {
                 nri = mNewSS.getNetworkRegistrationInfo(
                         NetworkRegistrationInfo.DOMAIN_PS,
                         AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
-                mNewSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), false);
+                mNewSS.setOutOfService(false);
                 // Add the IWLAN registration info back to service state.
                 if (nri != null) {
                     mNewSS.addNetworkRegistrationInfo(nri);
@@ -3326,7 +3325,7 @@ public class ServiceStateTracker extends Handler {
                 nri = mNewSS.getNetworkRegistrationInfo(
                         NetworkRegistrationInfo.DOMAIN_PS,
                         AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
-                mNewSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), true);
+                mNewSS.setOutOfService(true);
                 // Add the IWLAN registration info back to service state.
                 if (nri != null) {
                     mNewSS.addNetworkRegistrationInfo(nri);
@@ -3421,8 +3420,8 @@ public class ServiceStateTracker extends Handler {
         updateNrFrequencyRangeFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
         updateNrStateFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
 
-        if (TelephonyUtils.IS_DEBUGGABLE && mPhone.mTelephonyTester != null) {
-            mPhone.mTelephonyTester.overrideServiceState(mNewSS);
+        if (TelephonyUtils.IS_DEBUGGABLE && mPhone.getTelephonyTester() != null) {
+            mPhone.getTelephonyTester().overrideServiceState(mNewSS);
         }
 
         NetworkRegistrationInfo networkRegState = mNewSS.getNetworkRegistrationInfo(
@@ -3453,14 +3452,10 @@ public class ServiceStateTracker extends Handler {
                 mSS.getState() == ServiceState.STATE_POWER_OFF
                         && mNewSS.getState() != ServiceState.STATE_POWER_OFF;
 
-        SparseBooleanArray hasDataAttached = new SparseBooleanArray(
-                mAccessNetworksManager.getAvailableTransports().length);
-        SparseBooleanArray hasDataDetached = new SparseBooleanArray(
-                mAccessNetworksManager.getAvailableTransports().length);
-        SparseBooleanArray hasRilDataRadioTechnologyChanged = new SparseBooleanArray(
-                mAccessNetworksManager.getAvailableTransports().length);
-        SparseBooleanArray hasDataRegStateChanged = new SparseBooleanArray(
-                mAccessNetworksManager.getAvailableTransports().length);
+        SparseBooleanArray hasDataAttached = new SparseBooleanArray();
+        SparseBooleanArray hasDataDetached = new SparseBooleanArray();
+        SparseBooleanArray hasRilDataRadioTechnologyChanged = new SparseBooleanArray();
+        SparseBooleanArray hasDataRegStateChanged = new SparseBooleanArray();
         boolean anyDataRegChanged = false;
         boolean anyDataRatChanged = false;
         boolean hasAlphaRawChanged =
@@ -3557,9 +3552,6 @@ public class ServiceStateTracker extends Handler {
 
         boolean hasCssIndicatorChanged = (mSS.getCssIndicator() != mNewSS.getCssIndicator());
 
-        boolean hasBandwidthChanged = !Arrays.equals(
-                mSS.getCellBandwidths(), mNewSS.getCellBandwidths());
-
         boolean has4gHandoff = false;
         boolean hasMultiApnSupport = false;
         boolean hasLostMultiApnSupport = false;
@@ -3603,7 +3595,6 @@ public class ServiceStateTracker extends Handler {
                     + " hasCssIndicatorChanged = " + hasCssIndicatorChanged
                     + " hasNrFrequencyRangeChanged = " + hasNrFrequencyRangeChanged
                     + " hasNrStateChanged = " + hasNrStateChanged
-                    + " hasBandwidthChanged = " + hasBandwidthChanged
                     + " hasAirplaneModeOnlChanged = " + hasAirplaneModeOnChanged);
         }
 
@@ -3650,7 +3641,7 @@ public class ServiceStateTracker extends Handler {
         ServiceState oldMergedSS = new ServiceState(mPhone.getServiceState());
         mSS = new ServiceState(mNewSS);
 
-        mNewSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), false);
+        mNewSS.setOutOfService(false);
 
         mCellIdentity = primaryCellIdentity;
         if (mSS.getState() == ServiceState.STATE_IN_SERVICE && primaryCellIdentity != null) {
@@ -3694,10 +3685,6 @@ public class ServiceStateTracker extends Handler {
 
         if (hasCssIndicatorChanged) {
             mCssIndicatorChangedRegistrants.notifyRegistrants();
-        }
-
-        if (hasBandwidthChanged) {
-            mBandwidthChangedRegistrants.notifyRegistrants();
         }
 
         if (hasRejectCauseChanged) {
@@ -4500,23 +4487,11 @@ public class ServiceStateTracker extends Handler {
         }
         Context context = mPhone.getContext();
 
-        if (mPhone.isSubscriptionManagerServiceEnabled()) {
-            SubscriptionInfoInternal subInfo = mSubscriptionManagerService
-                    .getSubscriptionInfoInternal(mPhone.getSubId());
-            if (subInfo == null || !subInfo.isVisible()) {
-                log("cannot setNotification on invisible subid mSubId=" + mSubId);
-                return;
-            }
-        } else {
-            SubscriptionInfo info = mSubscriptionController
-                    .getActiveSubscriptionInfo(mPhone.getSubId(), context.getOpPackageName(),
-                            context.getAttributionTag());
-
-            //if subscription is part of a group and non-primary, suppress all notifications
-            if (info == null || (info.isOpportunistic() && info.getGroupUuid() != null)) {
-                log("cannot setNotification on invisible subid mSubId=" + mSubId);
-                return;
-            }
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerService
+                .getSubscriptionInfoInternal(mPhone.getSubId());
+        if (subInfo == null || !subInfo.isVisible()) {
+            log("cannot setNotification on invisible subid mSubId=" + mSubId);
+            return;
         }
 
         // Needed because sprout RIL sends these when they shouldn't?
@@ -5304,9 +5279,8 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mImsRegistrationOnOff=" + mImsRegistrationOnOff);
         pw.println(" pending radio off event="
                 + hasMessages(EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT));
-        pw.println(" mRadioDisabledByCarrier" + mRadioDisabledByCarrier);
+        pw.println(" mRadioPowerOffReasons=" + mRadioPowerOffReasons);
         pw.println(" mDeviceShuttingDown=" + mDeviceShuttingDown);
-        pw.println(" mSpnUpdatePending=" + mSpnUpdatePending);
         pw.println(" mCellInfoMinIntervalMs=" + mCellInfoMinIntervalMs);
         pw.println(" mEriManager=" + mEriManager);
 
@@ -5529,8 +5503,7 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
-     * This method adds IWLAN registration info for legacy mode devices camped on IWLAN. It also
-     * makes some adjustments when the device camps on IWLAN in airplane mode.
+     * This method makes some adjustments when the device camps on IWLAN in airplane mode.
      */
     private void processIwlanRegistrationInfo() {
         if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) {
@@ -5544,7 +5517,7 @@ public class ServiceStateTracker extends Handler {
             }
             // operator info should be kept in SS
             String operator = mNewSS.getOperatorAlphaLong();
-            mNewSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), true);
+            mNewSS.setOutOfService(true);
             if (resetIwlanRatVal) {
                 mNewSS.setDataRegState(ServiceState.STATE_IN_SERVICE);
                 NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
@@ -5554,17 +5527,6 @@ public class ServiceStateTracker extends Handler {
                         .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
                         .build();
                 mNewSS.addNetworkRegistrationInfo(nri);
-                if (mAccessNetworksManager.isInLegacyMode()) {
-                    // If in legacy mode, simulate the behavior that IWLAN registration info
-                    // is reported through WWAN transport.
-                    nri = new NetworkRegistrationInfo.Builder()
-                            .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                            .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
-                            .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
-                            .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
-                            .build();
-                    mNewSS.addNetworkRegistrationInfo(nri);
-                }
                 mNewSS.setOperatorAlphaLong(operator);
                 // Since it's in airplane mode, cellular must be out of service. The only possible
                 // transport for data to go through is the IWLAN transport. Setting this to true
@@ -5573,31 +5535,6 @@ public class ServiceStateTracker extends Handler {
                 log("pollStateDone: mNewSS = " + mNewSS);
             }
             return;
-        }
-
-        // If the device operates in legacy mode and camps on IWLAN, modem reports IWLAN as a RAT
-        // through WWAN registration info. To be consistent with the behavior with AP-assisted mode,
-        // we manually make a WLAN registration info for clients to consume. In this scenario,
-        // both WWAN and WLAN registration info are the IWLAN registration info and that's the
-        // unfortunate limitation we have when the device operates in legacy mode. In AP-assisted
-        // mode, the WWAN registration will correctly report the actual cellular registration info
-        // when the device camps on IWLAN.
-        if (mAccessNetworksManager.isInLegacyMode()) {
-            NetworkRegistrationInfo wwanNri = mNewSS.getNetworkRegistrationInfo(
-                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-            if (wwanNri != null && wwanNri.getAccessNetworkTechnology()
-                    == TelephonyManager.NETWORK_TYPE_IWLAN) {
-                NetworkRegistrationInfo wlanNri = new NetworkRegistrationInfo.Builder()
-                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
-                        .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
-                        .setRegistrationState(wwanNri.getNetworkRegistrationState())
-                        .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
-                        .setRejectCause(wwanNri.getRejectCause())
-                        .setEmergencyOnly(wwanNri.isEmergencyEnabled())
-                        .setAvailableServices(wwanNri.getAvailableServices())
-                        .build();
-                mNewSS.addNetworkRegistrationInfo(wlanNri);
-            }
         }
     }
 
@@ -5853,25 +5790,6 @@ public class ServiceStateTracker extends Handler {
      */
     public void unregisterForCssIndicatorChanged(Handler h) {
         mCssIndicatorChangedRegistrants.remove(h);
-    }
-
-    /**
-     * Registers for cell bandwidth changed.
-     * @param h handler to notify
-     * @param what what code of message when delivered
-     * @param obj placed in Message.obj
-     */
-    public void registerForBandwidthChanged(Handler h, int what, Object obj) {
-        Registrant r = new Registrant(h, what, obj);
-        mBandwidthChangedRegistrants.add(r);
-    }
-
-    /**
-     * Unregisters for cell bandwidth changed.
-     * @param h handler to notify
-     */
-    public void unregisterForBandwidthChanged(Handler h) {
-        mBandwidthChangedRegistrants.remove(h);
     }
 
     /**

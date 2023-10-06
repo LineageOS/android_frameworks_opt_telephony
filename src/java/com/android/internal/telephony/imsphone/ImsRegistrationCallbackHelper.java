@@ -20,8 +20,10 @@ import android.annotation.AnyThread;
 import android.annotation.NonNull;
 import android.net.Uri;
 import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.aidl.IImsRegistrationCallback;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.util.Log;
 
 import java.util.concurrent.Executor;
@@ -40,7 +42,7 @@ public class ImsRegistrationCallbackHelper {
         /**
          * Handle the callback when IMS is registered.
          */
-        void handleImsRegistered(int imsRadioTech);
+        void handleImsRegistered(@NonNull ImsRegistrationAttributes attributes);
 
         /**
          * Handle the callback when IMS is registering.
@@ -50,7 +52,9 @@ public class ImsRegistrationCallbackHelper {
         /**
          * Handle the callback when IMS is unregistered.
          */
-        void handleImsUnregistered(ImsReasonInfo imsReasonInfo);
+        void handleImsUnregistered(ImsReasonInfo imsReasonInfo,
+                @RegistrationManager.SuggestedAction int suggestedAction,
+                @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech);
 
         /**
          * Handle the callback when the list of subscriber {@link Uri}s associated with this IMS
@@ -66,9 +70,9 @@ public class ImsRegistrationCallbackHelper {
     private final RegistrationManager.RegistrationCallback mImsRegistrationCallback =
             new RegistrationManager.RegistrationCallback() {
                 @Override
-                public void onRegistered(int imsRadioTech) {
+                public void onRegistered(@NonNull ImsRegistrationAttributes attributes) {
                     updateRegistrationState(RegistrationManager.REGISTRATION_STATE_REGISTERED);
-                    mImsRegistrationUpdate.handleImsRegistered(imsRadioTech);
+                    mImsRegistrationUpdate.handleImsRegistered(attributes);
                 }
 
                 @Override
@@ -79,8 +83,17 @@ public class ImsRegistrationCallbackHelper {
 
                 @Override
                 public void onUnregistered(ImsReasonInfo imsReasonInfo) {
+                    onUnregistered(imsReasonInfo, RegistrationManager.SUGGESTED_ACTION_NONE,
+                            ImsRegistrationImplBase.REGISTRATION_TECH_NONE);
+                }
+
+                @Override
+                public void onUnregistered(ImsReasonInfo imsReasonInfo,
+                        @RegistrationManager.SuggestedAction int suggestedAction,
+                        @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech) {
                     updateRegistrationState(RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED);
-                    mImsRegistrationUpdate.handleImsUnregistered(imsReasonInfo);
+                    mImsRegistrationUpdate.handleImsUnregistered(imsReasonInfo, suggestedAction,
+                            imsRadioTech);
                 }
 
                 @Override

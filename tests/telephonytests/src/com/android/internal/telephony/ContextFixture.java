@@ -176,6 +176,11 @@ public class ContextFixture implements TestFixture<Context> {
                     mKeyValuePairs.put(request, (String)args.get("value"));
                     mNumKeyValuePairs++;
                     break;
+                case Settings.CALL_METHOD_PUT_CONFIG:
+                    logd("PUT_config called");
+                    logd("adding config flag: " + request + "-" + args.getString("value"));
+                    mFlags.put(request, args.getString("value"));
+                    break;
                 case Settings.CALL_METHOD_LIST_CONFIG:
                     logd("LIST_config: " + mFlags);
                     Bundle result = new Bundle();
@@ -351,6 +356,8 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.POWER_SERVICE;
             } else if (serviceClass == EuiccManager.class) {
                 return Context.EUICC_SERVICE;
+            } else if (serviceClass == AlarmManager.class) {
+                return Context.ALARM_SERVICE;
             }
             return super.getSystemServiceName(serviceClass);
         }
@@ -773,6 +780,7 @@ public class ContextFixture implements TestFixture<Context> {
 
         doReturn(mBundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
         doReturn(mBundle).when(mCarrierConfigManager).getConfig();
+        doReturn(mBundle).when(mCarrierConfigManager).getConfigForSubId(anyInt(), anyString());
         doAnswer(invocation -> mNetworkId++).when(mNetwork).getNetId();
         doReturn(mNetwork).when(mConnectivityManager).registerNetworkAgent(
                 any(), any(), any(), any(), any(), any(), anyInt());

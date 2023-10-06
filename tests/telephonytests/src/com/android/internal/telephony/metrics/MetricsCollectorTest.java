@@ -18,6 +18,7 @@ package com.android.internal.telephony.metrics;
 
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_DATA_SERVICE_SWITCH;
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_SERVICE_STATE;
+import static com.android.internal.telephony.TelephonyStatsLog.OUTGOING_SHORT_CODE_SMS;
 import static com.android.internal.telephony.TelephonyStatsLog.SIM_SLOT_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.SUPPORTED_RADIO_ACCESS_FAMILY;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_RAT_USAGE;
@@ -43,6 +44,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
+import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingShortCodeSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
@@ -102,7 +104,7 @@ public class MetricsCollectorTest extends TelephonyTest {
         mActivePort = mock(UiccPort.class);
         mServiceStateStats = mock(ServiceStateStats.class);
         mMetricsCollector =
-                new MetricsCollector(mContext, mPersistAtomsStorage);
+                new MetricsCollector(mContext, mPersistAtomsStorage, mDeviceStateHelper);
         doReturn(mSST).when(mSecondPhone).getServiceStateTracker();
         doReturn(mServiceStateStats).when(mSST).getServiceStateStats();
     }
@@ -411,5 +413,46 @@ public class MetricsCollectorTest extends TelephonyTest {
         assertThat(actualAtoms).hasSize(3);
         assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
         // TODO(b/153196254): verify atom contents
+    }
+
+    @Test
+    public void onPullAtom_outgoingShortCodeSms_empty() {
+        doReturn(new OutgoingShortCodeSms[0]).when(mPersistAtomsStorage)
+                .getOutgoingShortCodeSms(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(OUTGOING_SHORT_CODE_SMS, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(0);
+        assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
+    }
+
+    @Test
+    public void onPullAtom_outgoingShortCodeSms_tooFrequent() {
+        doReturn(null).when(mPersistAtomsStorage).getOutgoingShortCodeSms(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(OUTGOING_SHORT_CODE_SMS, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(0);
+        assertThat(result).isEqualTo(StatsManager.PULL_SKIP);
+        verify(mPersistAtomsStorage, times(1))
+                .getOutgoingShortCodeSms(eq(MIN_COOLDOWN_MILLIS));
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    public void onPullAtom_outgoingShortCodeSms_multipleSms() {
+        OutgoingShortCodeSms outgoingShortCodeSms = new OutgoingShortCodeSms();
+        doReturn(new OutgoingShortCodeSms[] {outgoingShortCodeSms, outgoingShortCodeSms,
+                outgoingShortCodeSms, outgoingShortCodeSms})
+                .when(mPersistAtomsStorage)
+                .getOutgoingShortCodeSms(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(OUTGOING_SHORT_CODE_SMS, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(4);
+        assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
     }
 }

@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.data;
 
+import static android.telephony.TelephonyManager.HAL_SERVICE_DATA;
+
 import android.annotation.CallbackExecutor;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
@@ -52,6 +54,7 @@ import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.Annotation.ValidationStatus;
 import android.telephony.AnomalyReporter;
+import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
 import android.telephony.DataSpecificRegistrationInfo;
 import android.telephony.LinkCapacityEstimate;
@@ -923,8 +926,9 @@ public class DataNetwork extends StateMachine {
         mDataAllowedReason = dataAllowedReason;
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
         mAttachedNetworkRequestList.addAll(networkRequestList);
-        mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, INVALID_CID);
-        mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, INVALID_CID);
+        for (int transportType : mAccessNetworksManager.getAvailableTransports()) {
+            mCid.put(transportType, INVALID_CID);
+        }
         mTelephonyDisplayInfo = mPhone.getDisplayInfoController().getTelephonyDisplayInfo();
         mTcpBufferSizes = mDataConfigManager.getTcpConfigString(mTelephonyDisplayInfo);
 
@@ -1336,13 +1340,14 @@ public class DataNetwork extends StateMachine {
                 }
             }
 
-            // If we've ever received PCO data before connected, now it's the time to
-            // process it.
+            // If we've ever received PCO data before connected, now it's the time to process it.
             mPcoData.getOrDefault(mCid.get(mTransport), Collections.emptyMap())
                     .forEach((pcoId, pcoData) -> {
                         onPcoDataChanged(pcoData);
                     });
 
+            mDataNetworkCallback.invokeFromExecutor(
+                    () -> mDataNetworkCallback.onLinkStatusChanged(DataNetwork.this, mLinkStatus));
             notifyPreciseDataConnectionState();
             updateSuspendState();
         }
@@ -1594,6 +1599,9 @@ public class DataNetwork extends StateMachine {
             //************************************************************//
 
             if (mEverConnected) {
+                mLinkStatus = DataCallResponse.LINK_STATUS_INACTIVE;
+                mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                        .onLinkStatusChanged(DataNetwork.this, mLinkStatus));
                 mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
                         .onDisconnected(DataNetwork.this, mFailCause, mTearDownReason));
                 if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
@@ -2298,8 +2306,13 @@ public class DataNetwork extends StateMachine {
         if (mLinkStatus != response.getLinkStatus()) {
             mLinkStatus = response.getLinkStatus();
             log("Link status updated to " + DataUtils.linkStatusToString(mLinkStatus));
-            mDataNetworkCallback.invokeFromExecutor(
-                    () -> mDataNetworkCallback.onLinkStatusChanged(DataNetwork.this, mLinkStatus));
+            if (isConnected()) {
+                // If the data network is in a transition state, the link status will be notified
+                // upon entering connected or disconnected state. If the data network is already
+                // connected, send the updated link status from the updated data call response.
+                mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                        .onLinkStatusChanged(DataNetwork.this, mLinkStatus));
+            }
         }
 
         // Set link addresses
@@ -2572,9 +2585,9 @@ public class DataNetwork extends StateMachine {
             log("Remove network since deactivate request returned an error.");
             mFailCause = DataFailCause.RADIO_NOT_AVAILABLE;
             transitionTo(mDisconnectedState);
-        } else if (mPhone.getHalVersion().less(RIL.RADIO_HAL_VERSION_2_0)) {
+        } else if (mPhone.getHalVersion(HAL_SERVICE_DATA).less(RIL.RADIO_HAL_VERSION_2_0)) {
             log("Remove network on deactivate data response on old HAL "
-                    + mPhone.getHalVersion());
+                    + mPhone.getHalVersion(HAL_SERVICE_DATA));
             mFailCause = DataFailCause.LOST_CONNECTION;
             transitionTo(mDisconnectedState);
         }
@@ -2609,16 +2622,17 @@ public class DataNetwork extends StateMachine {
                 reason == TEAR_DOWN_REASON_AIRPLANE_MODE_ON ? DataService.REQUEST_REASON_SHUTDOWN
                         : DataService.REQUEST_REASON_NORMAL,
                 obtainMessage(EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE));
-        mDataCallSessionStats.setDeactivateDataCallReason(DataService.REQUEST_REASON_NORMAL);
+        mDataCallSessionStats.setDeactivateDataCallReason(reason);
         mInvokedDataDeactivation = true;
     }
 
     /**
-     * @return {@code true} if this is an IMS network and tear down should be delayed until call
-     * ends on this data network.
+     * @return {@code true} if we shall delay tear down this network because an active voice call is
+     * relying on it and
+     * {@link CarrierConfigManager#KEY_DELAY_IMS_TEAR_DOWN_UNTIL_CALL_END_BOOL} is enabled.
      */
     public boolean shouldDelayImsTearDownDueToInCall() {
-        return mDataConfigManager.isImsDelayTearDownEnabled()
+        return mDataConfigManager.isImsDelayTearDownUntilVoiceCallEndEnabled()
                 && mNetworkCapabilities != null
                 && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL)
                 && mPhone.getImsPhone() != null

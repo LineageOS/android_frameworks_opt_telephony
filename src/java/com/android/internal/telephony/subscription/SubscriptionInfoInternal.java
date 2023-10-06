@@ -1200,30 +1200,10 @@ public class SubscriptionInfoInternal {
                 .build();
     }
 
-    /**
-     * Get ID stripped PII information on user build.
-     *
-     * @param id The PII id.
-     *
-     * @return The stripped string.
-     */
-    public static String givePrintableId(String id) {
-        String idToPrint = null;
-        if (id != null) {
-            int len = id.length();
-            if (len > 6 && !TelephonyUtils.IS_DEBUGGABLE) {
-                idToPrint = id.substring(0, len - 6) + Rlog.pii(false, id.substring(len - 6));
-            } else {
-                idToPrint = id;
-            }
-        }
-        return idToPrint;
-    }
-
     @Override
     public String toString() {
         return "[SubscriptionInfoInternal: id=" + mId
-                + " iccId=" + givePrintableId(mIccId)
+                + " iccId=" + SubscriptionInfo.getPrintableId(mIccId)
                 + " simSlotIndex=" + mSimSlotIndex
                 + " portIndex=" + mPortIndex
                 + " isEmbedded=" + mIsEmbedded
@@ -1243,7 +1223,7 @@ public class SubscriptionInfoInternal {
                 + " mnc=" + mMnc
                 + " ehplmns=" + mEhplmns
                 + " hplmns=" + mHplmns
-                + " cardString=" + givePrintableId(mCardString)
+                + " cardString=" + SubscriptionInfo.getPrintableId(mCardString)
                 + " cardId=" + mCardId
                 + " nativeAccessRules=" + IccUtils.bytesToHexString(mNativeAccessRules)
                 + " carrierConfigAccessRules=" + IccUtils.bytesToHexString(
@@ -1261,7 +1241,7 @@ public class SubscriptionInfoInternal {
                 + " wifiCallingModeForRoaming="
                 + ImsMmTelManager.wifiCallingModeToString(mWifiCallingModeForRoaming)
                 + " enabledMobileDataPolicies=" + mEnabledMobileDataPolicies
-                + " imsi=" + givePrintableId(mImsi)
+                + " imsi=" + SubscriptionInfo.getPrintableId(mImsi)
                 + " rcsUceEnabled=" + mIsRcsUceEnabled
                 + " crossSimCallingEnabled=" + mIsCrossSimCallingEnabled
                 + " rcsConfig=" + IccUtils.bytesToHexString(mRcsConfig)

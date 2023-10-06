@@ -21,6 +21,7 @@ import android.hardware.radio.RadioError;
 import android.hardware.radio.V1_0.DataRegStateResult;
 import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
+import android.hardware.radio.modem.ImeiInfo;
 import android.net.KeepalivePacketData;
 import android.net.LinkProperties;
 import android.os.AsyncResult;
@@ -66,6 +67,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILUtils;
 import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.SmsResponse;
+import com.android.internal.telephony.SrvccConnection;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
@@ -186,8 +188,17 @@ public class SimulatedCommands extends BaseCommands
     public boolean mSetRadioPowerForEmergencyCall;
     public boolean mSetRadioPowerAsSelectedPhoneForEmergencyCall;
 
+    public boolean mCallWaitActivated = false;
+    private SrvccConnection[] mSrvccConnections;
+
     // mode for Icc Sim Authentication
     private int mAuthenticationMode;
+
+    private int[] mImsRegistrationInfo = new int[4];
+
+    private boolean mN1ModeEnabled = false;
+    private boolean mVonrEnabled = false;
+
     //***** Constructor
     public
     SimulatedCommands() {
@@ -1432,6 +1443,14 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void queryCallWaiting(int serviceClass, Message response) {
+        if (response != null && serviceClass == SERVICE_CLASS_NONE) {
+            int[] r = new int[2];
+            r[0] = (mCallWaitActivated ? 1 : 0);
+            r[1] = (mCallWaitActivated ? SERVICE_CLASS_VOICE : SERVICE_CLASS_NONE);
+            resultSuccess(response, r);
+            return;
+        }
+
         unimplemented(response);
     }
 
@@ -1440,11 +1459,15 @@ public class SimulatedCommands extends BaseCommands
      * @param serviceClass is a sum of SERVICE_CLASS_*
      * @param response is callback message
      */
-
     @Override
     public void setCallWaiting(boolean enable, int serviceClass,
             Message response) {
-        unimplemented(response);
+        if ((serviceClass & SERVICE_CLASS_VOICE) == SERVICE_CLASS_VOICE) {
+            mCallWaitActivated = enable;
+        }
+        if (response != null) {
+            resultSuccess(response, null);
+        }
     }
 
     /**
@@ -1477,12 +1500,17 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void setNetworkSelectionModeAutomatic(Message result) {unimplemented(result);}
+    public void setNetworkSelectionModeAutomatic(Message result) {
+        SimulatedCommandsVerifier.getInstance().setNetworkSelectionModeAutomatic(result);
+        mMockNetworkSelectionMode = 0;
+    }
     @Override
     public void exitEmergencyCallbackMode(Message result) {unimplemented(result);}
     @Override
     public void setNetworkSelectionModeManual(String operatorNumeric, int ran, Message result) {
-        unimplemented(result);
+        SimulatedCommandsVerifier.getInstance().setNetworkSelectionModeManual(
+                operatorNumeric, ran, result);
+        mMockNetworkSelectionMode = 1;
     }
 
     /**
@@ -1499,9 +1527,12 @@ public class SimulatedCommands extends BaseCommands
         getNetworkSelectionModeCallCount.incrementAndGet();
         int ret[] = new int[1];
 
-        ret[0] = 0;
+        ret[0] = mMockNetworkSelectionMode;
         resultSuccess(result, ret);
     }
+
+    /** 0 for automatic selection and a 1 for manual selection. */
+    private int mMockNetworkSelectionMode = 0;
 
     private final AtomicInteger getNetworkSelectionModeCallCount = new AtomicInteger(0);
 
@@ -1792,6 +1823,16 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
+    public void getImei(Message response) {
+        SimulatedCommandsVerifier.getInstance().getImei(response);
+        ImeiInfo imeiInfo = new ImeiInfo();
+        imeiInfo.imei = FAKE_IMEI;
+        imeiInfo.svn = FAKE_IMEISV;
+        imeiInfo.type = ImeiInfo.ImeiType.SECONDARY;
+        resultSuccess(response, imeiInfo);
+    }
+
+    @Override
     public void
     getCDMASubscription(Message result) {
         String ret[] = new String[5];
@@ -1891,8 +1932,8 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void setCdmaBroadcastActivation(boolean activate, Message response) {
-        unimplemented(response);
-
+        SimulatedCommandsVerifier.getInstance().setCdmaBroadcastActivation(activate, response);
+        resultSuccess(response, null);
     }
 
     @Override
@@ -1903,7 +1944,8 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs, Message response) {
-        unimplemented(response);
+        SimulatedCommandsVerifier.getInstance().setCdmaBroadcastConfig(configs, response);
+        resultSuccess(response, null);
     }
 
     public void forceDataDormancy(Message response) {
@@ -1913,7 +1955,8 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void setGsmBroadcastActivation(boolean activate, Message response) {
-        unimplemented(response);
+        SimulatedCommandsVerifier.getInstance().setGsmBroadcastActivation(activate, response);
+        resultSuccess(response, null);
     }
 
 
@@ -1921,7 +1964,7 @@ public class SimulatedCommands extends BaseCommands
     public void setGsmBroadcastConfig(SmsBroadcastConfigInfo[] config, Message response) {
         SimulatedCommandsVerifier.getInstance().setGsmBroadcastConfig(config, response);
         if (mSendSetGsmBroadcastConfigResponse) {
-            unimplemented(response);
+            resultSuccess(response, null);
         }
     }
 
@@ -2135,19 +2178,18 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void iccCloseLogicalChannel(int channel, Message response) {
+    public void iccCloseLogicalChannel(int channel, boolean isEs10, Message response) {
         unimplemented(response);
     }
 
     @Override
     public void iccTransmitApduLogicalChannel(int channel, int cla, int instruction,
-                                              int p1, int p2, int p3, String data,
-                                              Message response) {
+            int p1, int p2, int p3, String data, boolean isEs10Command, Message response) {
         SimulatedCommandsVerifier.getInstance().iccTransmitApduLogicalChannel(channel, cla,
-                instruction, p1, p2, p3, data, response);
-        if(mIccIoResultForApduLogicalChannel!=null) {
+                instruction, p1, p2, p3, data, isEs10Command, response);
+        if (mIccIoResultForApduLogicalChannel != null) {
             resultSuccess(response, mIccIoResultForApduLogicalChannel);
-        }else {
+        } else {
             resultFail(response, null, new RuntimeException("IccIoResult not set"));
         }
     }
@@ -2557,5 +2599,45 @@ public class SimulatedCommands extends BaseCommands
     public void triggerPcoData(int cid, String bearerProto, int pcoId, byte[] contents) {
         PcoData response = new PcoData(cid, bearerProto, pcoId, contents);
         mPcoDataRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
+    }
+
+    @Override
+    public void setSrvccCallInfo(SrvccConnection[] srvccConnections, Message result) {
+        mSrvccConnections = srvccConnections;
+    }
+
+    public SrvccConnection[] getSrvccConnections() {
+        return mSrvccConnections;
+    }
+
+    @Override
+    public void updateImsRegistrationInfo(int regState,
+            int imsRadioTech, int suggestedAction, int capabilities, Message result) {
+        mImsRegistrationInfo[0] = regState;
+        mImsRegistrationInfo[1] = imsRadioTech;
+        mImsRegistrationInfo[2] = suggestedAction;
+        mImsRegistrationInfo[3] = capabilities;
+    }
+
+    public int[] getImsRegistrationInfo() {
+        return mImsRegistrationInfo;
+    }
+
+    @Override
+    public void setN1ModeEnabled(boolean enable, Message result) {
+        mN1ModeEnabled = enable;
+    }
+
+    public boolean isN1ModeEnabled() {
+        return mN1ModeEnabled;
+    }
+
+    @Override
+    public void isVoNrEnabled(Message message, WorkSource workSource) {
+        resultSuccess(message, (Object) mVonrEnabled);
+    }
+
+    public void setVonrEnabled(boolean vonrEnable) {
+        mVonrEnabled = vonrEnable;
     }
 }

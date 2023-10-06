@@ -20,8 +20,11 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
 
 import android.content.Intent;
+import android.content.res.Resources;
 import android.os.Message;
 import android.provider.Telephony;
 import android.test.suitebuilder.annotation.MediumTest;
@@ -34,6 +37,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -135,6 +140,41 @@ public class SmsStorageMonitorTest extends TelephonyTest {
 
         verify(mSimulatedCommandsVerifier, times(2 + MAX_RETRIES))
                 .reportSmsMemoryStatus(eq(false), any(Message.class));
+    }
+
+    @Test @SmallTest
+    public void testReportSmsMemoryStatusToIms() {
+        Resources mockResources = Mockito.mock(Resources.class);
+        doReturn(mockResources).when(mContext).getResources();
+        doReturn(true).when(mockResources).getBoolean(anyInt());
+        doReturn(true).when(mIccSmsInterfaceManager.mDispatchersController).isIms();
+
+        mSimulatedCommands.notifyRadioOn();
+        processAllMessages();
+
+        verify(mSimulatedCommandsVerifier, never()).reportSmsMemoryStatus(anyBoolean(),
+                any(Message.class));
+
+        // Send DEVICE_STORAGE_FULL
+        mContextFixture.getTestDouble().sendBroadcast(
+                new Intent(Intent.ACTION_DEVICE_STORAGE_FULL));
+        processAllMessages();
+
+        verify(mSimulatedCommandsVerifier).reportSmsMemoryStatus(eq(false), any(Message.class));
+        assertFalse(mSmsStorageMonitor.isStorageAvailable());
+
+        mSimulatedCommands.notifyRadioOn();
+        processAllMessages();
+
+        verify(mSimulatedCommandsVerifier).reportSmsMemoryStatus(eq(false), any(Message.class));
+
+        // Send DEVICE_STORAGE_NOT_FULL
+        mContextFixture.getTestDouble().sendBroadcast(
+                new Intent(Intent.ACTION_DEVICE_STORAGE_NOT_FULL));
+        processAllMessages();
+
+        verify(mIccSmsInterfaceManager.mDispatchersController)
+                .reportSmsMemoryStatus(any(Message.class));
     }
 
     @Test @SmallTest

@@ -48,7 +48,8 @@ public class TransmitApduLogicalChannelInvocation
     protected void sendRequestMessage(ApduCommand command, Message msg) {
         Rlog.v(LOG_TAG, "Send: " + command);
         mCi.iccTransmitApduLogicalChannel(command.channel, command.cla | command.channel,
-                command.ins, command.p1, command.p2, command.p3, command.cmdHex, msg);
+                command.ins, command.p1, command.p2, command.p3, command.cmdHex, command.isEs10,
+                msg);
     }
 
     @Override

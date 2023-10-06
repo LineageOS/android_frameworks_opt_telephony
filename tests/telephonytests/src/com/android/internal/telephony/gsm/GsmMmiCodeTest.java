@@ -333,4 +333,3 @@ public class GsmMmiCodeTest extends TelephonyTest {
         doReturn(bundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
     }
 }
-
