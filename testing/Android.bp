@@ -16,7 +16,7 @@ android_library {
         "guava",
         "junit",
         "mockito-target-minus-junit4",
-        "truth-prebuilt",
+        "truth",
     ],
 
     sdk_version: "test_current",
