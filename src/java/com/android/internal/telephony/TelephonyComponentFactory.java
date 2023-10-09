@@ -441,9 +441,23 @@ public class TelephonyComponentFactory {
      * @param phone The phone instance
      * @param looper Looper for the handler.
      * @return The access networks manager
+     * @deprecated {@link #makeAccessNetworksManager(Phone, Looper, FeatureFlags)} instead
      */
     public AccessNetworksManager makeAccessNetworksManager(Phone phone, Looper looper) {
-        return new AccessNetworksManager(phone, looper);
+        return new AccessNetworksManager(phone, looper, new FeatureFlagsImpl());
+    }
+
+    /**
+     * Make access networks manager
+     *
+     * @param phone The phone instance
+     * @param looper Looper for the handler.
+     * @param featureFlags feature flags.
+     * @return The access networks manager
+     */
+    public AccessNetworksManager makeAccessNetworksManager(Phone phone, Looper looper,
+            @NonNull FeatureFlags featureFlags) {
+        return new AccessNetworksManager(phone, looper, featureFlags);
     }
 
     public CdmaSubscriptionSourceManager

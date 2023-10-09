@@ -55,6 +55,7 @@ import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.TrafficDescriptor;
 import android.text.TextUtils;
 
+import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConfigurationManager;
 import com.android.internal.telephony.util.TelephonyUtils;
@@ -943,6 +944,47 @@ public class DataServiceManager extends Handler {
     public void unregisterForApnUnthrottled(Handler h) {
         if (h != null) {
             mApnUnthrottledRegistrants.remove(h);
+        }
+    }
+
+    /**
+     * Request data network validation.
+     *
+     * <p>Validates a given data network to ensure that the network can work properly.
+     *
+     * <p>Depending on the {@link DataServiceCallback.ResultCode}, Listener can determine whether
+     * validation has been triggered, has an error or whether it is a feature that is not supported.
+     *
+     * @param cid The identifier of the data network which is provided in DataCallResponse
+     * @param onCompleteMessage The result message for this request. Null if the client does not
+     * care about the result.
+     */
+    public void requestValidation(int cid, @Nullable Message onCompleteMessage) {
+        if (DBG) log("requestValidation");
+        if (!mBound) {
+            loge("DataService is not bound.");
+            sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
+            return;
+        }
+
+        IIntegerConsumer callback = new IIntegerConsumer.Stub() {
+            @Override
+            public void accept(int result) {
+                mMessageMap.remove(asBinder());
+                sendCompleteMessage(onCompleteMessage, result);
+            }
+        };
+        if (onCompleteMessage != null) {
+            mMessageMap.put(callback.asBinder(), onCompleteMessage);
+        }
+        try {
+            mIDataService.requestValidation(mPhone.getPhoneId(), cid, callback);
+        } catch (RemoteException e) {
+            loge("Cannot invoke requestValidation on data service.");
+            if (callback != null) {
+                mMessageMap.remove(callback.asBinder());
+            }
+            sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
         }
     }
 

@@ -60,10 +60,12 @@ import android.telephony.TelephonyManager;
 import android.telephony.TelephonyManager.DataState;
 import android.telephony.TelephonyManager.SimState;
 import android.telephony.TelephonyRegistryManager;
+import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataCallResponse.HandoverFailureMode;
 import android.telephony.data.DataCallResponse.LinkStatus;
 import android.telephony.data.DataProfile;
+import android.telephony.data.DataServiceCallback;
 import android.telephony.ims.ImsException;
 import android.telephony.ims.ImsManager;
 import android.telephony.ims.ImsReasonInfo;
@@ -104,6 +106,7 @@ import com.android.internal.telephony.ims.ImsResolver;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.util.TelephonyUtils;
+import com.android.internal.util.FunctionalUtils;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -126,6 +129,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -3884,6 +3888,43 @@ public class DataNetworkController extends Handler {
 
         // Data is disallowed while using satellite
         return true;
+    }
+
+    /**
+     * Request network validation.
+     *
+     * Nnetwork validation request is sent to the DataNetwork that matches the network capability
+     * in the list of DataNetwork owned by the DNC.
+     *
+     * @param capability network capability {@link NetCapability}
+     */
+    public void requestNetworkValidation(@NetCapability int capability,
+            @NonNull Consumer<Integer> resultCodeCallback) {
+
+        if (DataUtils.networkCapabilityToApnType(capability) == ApnSetting.TYPE_NONE) {
+            // If the capability is not an apn type based capability, sent an invalid argument.
+            loge("requestNetworkValidation: the capability is not an apn type based. capability:"
+                    + capability);
+            FunctionalUtils.ignoreRemoteException(resultCodeCallback::accept)
+                    .accept(DataServiceCallback.RESULT_ERROR_INVALID_ARG);
+            return;
+        }
+
+        // Find DataNetwork that matches the capability.
+        List<DataNetwork> list = mDataNetworkList.stream()
+                .filter(dataNetwork ->
+                        dataNetwork.getNetworkCapabilities().hasCapability(capability))
+                .toList();
+
+        if (!list.isEmpty()) {
+            // request network validation.
+            list.forEach(dataNetwork -> dataNetwork.requestNetworkValidation(resultCodeCallback));
+        } else {
+            // If not found, sent an invalid argument.
+            loge("requestNetworkValidation: No matching DataNetwork was found");
+            FunctionalUtils.ignoreRemoteException(resultCodeCallback::accept)
+                    .accept(DataServiceCallback.RESULT_ERROR_INVALID_ARG);
+        }
     }
 
     /**
