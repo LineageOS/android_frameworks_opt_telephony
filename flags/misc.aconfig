@@ -7,3 +7,10 @@ flag {
   bug: "296968778"
   is_fixed_read_only: true
 }
+
+flag {
+  name: "log_mms_sms_database_access_info"
+  namespace: "telephony"
+  description: "Whether to log MMS/SMS database access info and report anomaly when getting exception."
+  bug: "275225402"
+}
