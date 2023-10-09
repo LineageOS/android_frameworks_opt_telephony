@@ -36,6 +36,7 @@ import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioIndicationType;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.RadioResponseType;
+import android.hardware.radio.modem.ImeiInfo;
 import android.net.KeepalivePacketData;
 import android.net.LinkProperties;
 import android.os.AsyncResult;
@@ -5782,6 +5783,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 mT53AudCntrlInfoRegistrants.notifyRegistrants(
                         new AsyncResult(null, infoRec.record, null));
             }
+        }
+    }
+
+    void notifyRegistrantsImeiMappingChanged(ImeiInfo imeiInfo) {
+        if (mImeiInfoRegistrants != null) {
+            mImeiInfoRegistrants.notifyRegistrants(
+                    new AsyncResult(null, imeiInfo, null));
         }
     }
 
