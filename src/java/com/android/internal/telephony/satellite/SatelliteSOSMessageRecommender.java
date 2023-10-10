@@ -225,6 +225,10 @@ public class SatelliteSOSMessageRecommender extends Handler {
      */
     public void onEmergencyCallConnectionStateChanged(
             String callId, @Connection.ConnectionState int state) {
+        if (!mSatelliteController.isSatelliteSupported()) {
+            logd("onEmergencyCallConnectionStateChanged: satellite is not supported");
+            return;
+        }
         Pair<String, Integer> argument = new Pair<>(callId, state);
         sendMessage(obtainMessage(EVENT_EMERGENCY_CALL_CONNECTION_STATE_CHANGED, argument));
     }
