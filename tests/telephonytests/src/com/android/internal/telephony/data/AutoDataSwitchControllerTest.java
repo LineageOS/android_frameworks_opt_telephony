@@ -170,8 +170,20 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         // Verify attempting to switch
         verify(mMockedPhoneSwitcherCallback).onRequireValidation(PHONE_2, true/*needValidation*/);
 
-        // 1. Service state becomes not ideal - secondary lost its advantage score
+        // 1.1 Service state becomes not ideal - secondary lost its advantage score,
+        // but primary is OOS, so continue to switch.
         clearInvocations(mMockedPhoneSwitcherCallback);
+        displayInfoChanged(PHONE_2, mBadTelephonyDisplayInfo);
+        signalStrengthChanged(PHONE_2, SignalStrength.SIGNAL_STRENGTH_POOR);
+        processAllFutureMessages();
+
+        verify(mMockedPhoneSwitcherCallback, never())
+                .onRequireCancelAnyPendingAutoSwitchValidation();
+
+        // 1.2 Service state becomes not ideal - secondary lost its advantage score,
+        // since primary is in service, no need to switch.
+        clearInvocations(mMockedPhoneSwitcherCallback);
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         displayInfoChanged(PHONE_2, mBadTelephonyDisplayInfo);
         signalStrengthChanged(PHONE_2, SignalStrength.SIGNAL_STRENGTH_POOR);
         processAllFutureMessages();
@@ -211,10 +223,23 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
     @Test
     public void testCancelSwitch_onPrimary_rat_signalStrength() {
-        // 4.1 Display info and signal strength on secondary phone became bad
+        // 4.1.1 Display info and signal strength on secondary phone became bad,
+        // but primary is still OOS, so still switch to the secondary.
         prepareIdealUsesNonDdsCondition();
         processAllFutureMessages();
         clearInvocations(mMockedPhoneSwitcherCallback);
+        displayInfoChanged(PHONE_2, mBadTelephonyDisplayInfo);
+        signalStrengthChanged(PHONE_2, SignalStrength.SIGNAL_STRENGTH_MODERATE);
+        processAllFutureMessages();
+        verify(mMockedPhoneSwitcherCallback, never())
+                .onRequireCancelAnyPendingAutoSwitchValidation();
+
+        // 4.1.2 Display info and signal strength on secondary phone became bad,
+        // but primary become service, then don't switch.
+        prepareIdealUsesNonDdsCondition();
+        processAllFutureMessages();
+        clearInvocations(mMockedPhoneSwitcherCallback);
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         displayInfoChanged(PHONE_2, mBadTelephonyDisplayInfo);
         signalStrengthChanged(PHONE_2, SignalStrength.SIGNAL_STRENGTH_MODERATE);
         processAllFutureMessages();
