@@ -855,6 +855,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         processAllMessages();
         // Satellite should not be powered off since the feature flag oemEnabledSatelliteFlag is
         // disabled
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
         verifySatelliteEnabled(true, SATELLITE_RESULT_SUCCESS);
     }
 
