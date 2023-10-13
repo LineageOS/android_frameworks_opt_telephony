@@ -327,8 +327,12 @@ public class TelephonyComponentFactory {
         return new IccPhoneBookInterfaceManager(phone);
     }
 
-    public IccSmsInterfaceManager makeIccSmsInterfaceManager(Phone phone) {
-        return new IccSmsInterfaceManager(phone);
+    /**
+     * Returns a new {@link IccSmsInterfaceManager} instance.
+     */
+    public IccSmsInterfaceManager makeIccSmsInterfaceManager(Phone phone,
+            @NonNull FeatureFlags featureFlags) {
+        return new IccSmsInterfaceManager(phone, featureFlags);
     }
 
     /**

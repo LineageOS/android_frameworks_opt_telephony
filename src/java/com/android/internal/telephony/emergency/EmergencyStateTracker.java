@@ -47,7 +47,6 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
-import android.telephony.emergency.EmergencyNumber;
 import android.util.ArraySet;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -981,9 +980,10 @@ public class EmergencyStateTracker {
      * This should be called once an emergency SMS is sent.
      *
      * @param smsId the SMS id on which to end the emergency SMS.
-     * @param emergencyNumber the emergency number which was used for the emergency SMS.
+     * @param success the flag specifying whether an emergency SMS is successfully sent or not.
+     *                {@code true} if SMS is successfully sent, {@code false} otherwise.
      */
-    public void endSms(@NonNull String smsId, EmergencyNumber emergencyNumber) {
+    public void endSms(@NonNull String smsId, boolean success) {
         mOngoingEmergencySmsIds.remove(smsId);
 
         // If the outgoing emergency SMSs are empty, we can try to exit the emergency mode.

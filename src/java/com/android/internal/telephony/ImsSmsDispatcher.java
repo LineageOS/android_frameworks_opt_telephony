@@ -202,10 +202,13 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         tracker.onSent(mContext);
                         mTrackers.remove(token);
                         mPhone.notifySmsSent(tracker.mDestAddress);
+                        mSmsDispatchersController.notifySmsSentToEmergencyStateTracker(
+                                tracker.mDestAddress, tracker.mMessageId);
                         break;
                     case ImsSmsImplBase.SEND_STATUS_ERROR:
                         tracker.onFailed(mContext, reason, networkReasonCode);
                         mTrackers.remove(token);
+                        notifySmsSentFailedToEmergencyStateTracker(tracker);
                         break;
                     case ImsSmsImplBase.SEND_STATUS_ERROR_RETRY:
                         int maxRetryCountOverIms = getMaxRetryCountOverIms();
@@ -224,6 +227,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         } else {
                             tracker.onFailed(mContext, reason, networkReasonCode);
                             mTrackers.remove(token);
+                            notifySmsSentFailedToEmergencyStateTracker(tracker);
                         }
                         break;
                     case ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK:
