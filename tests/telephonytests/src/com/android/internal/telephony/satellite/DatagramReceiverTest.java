@@ -54,8 +54,6 @@ import android.testing.TestableLooper;
 import android.util.Pair;
 
 import com.android.internal.telephony.IVoidConsumer;
-import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 
@@ -236,92 +234,6 @@ public class DatagramReceiverTest extends TelephonyTest {
                     .sendToTarget();
             return null;
         }).when(mMockSatelliteModemInterface).pollPendingSatelliteDatagrams(any(Message.class));
-
-        mDatagramReceiverUT.pollPendingSatelliteDatagrams(SUB_ID, mResultListener::offer);
-
-        processAllMessages();
-
-        mInOrder.verify(mMockDatagramController)
-                .updateReceiveStatus(eq(SUB_ID),
-                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING), eq(0),
-                        eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
-        mInOrder.verify(mMockDatagramController)
-                .updateReceiveStatus(eq(SUB_ID),
-                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED),
-                        eq(0), eq(SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR));
-
-        assertThat(mResultListener.peek()).isEqualTo(
-                SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR);
-    }
-
-    @Test
-    public void testPollPendingSatelliteDatagrams_usingCommandsInterface_phoneNull()
-            throws Exception {
-        doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
-        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {null});
-
-        mDatagramReceiverUT.pollPendingSatelliteDatagrams(SUB_ID, mResultListener::offer);
-
-        processAllMessages();
-
-        mInOrder.verify(mMockDatagramController)
-                .updateReceiveStatus(eq(SUB_ID),
-                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING), eq(0),
-                        eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
-        mInOrder.verify(mMockDatagramController)
-                .updateReceiveStatus(eq(SUB_ID),
-                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED),
-                        eq(0), eq(SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE));
-        mInOrder.verify(mMockDatagramController)
-                .updateReceiveStatus(eq(SUB_ID),
-                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE),
-                        eq(0), eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
-
-        assertThat(mResultListener.peek())
-                .isEqualTo(SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
-    }
-
-    @Test
-    public void testPollPendingSatelliteDatagrams_usingCommandsInterface_success()
-            throws Exception {
-        doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
-        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone});
-        doAnswer(invocation -> {
-            Message message = (Message) invocation.getArguments()[0];
-
-            mDatagramReceiverUT.obtainMessage(2 /*EVENT_POLL_PENDING_SATELLITE_DATAGRAMS_DONE*/,
-                            new AsyncResult(message.obj, null, null))
-                    .sendToTarget();
-            return null;
-        }).when(mPhone).pollPendingSatelliteDatagrams(any(Message.class));
-
-        mDatagramReceiverUT.pollPendingSatelliteDatagrams(SUB_ID, mResultListener::offer);
-
-        processAllMessages();
-
-        mInOrder.verify(mMockDatagramController)
-                .updateReceiveStatus(eq(SUB_ID),
-                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING), eq(0),
-                        eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
-
-        assertThat(mResultListener.peek()).isEqualTo(SatelliteManager.SATELLITE_RESULT_SUCCESS);
-    }
-
-    @Test
-    public void testPollPendingSatelliteDatagrams_usingCommandsInterface_failure()
-            throws Exception {
-        doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
-        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone});
-        doAnswer(invocation -> {
-            Message message = (Message) invocation.getArguments()[0];
-
-            mDatagramReceiverUT.obtainMessage(2 /*EVENT_POLL_PENDING_SATELLITE_DATAGRAMS_DONE*/,
-                            new AsyncResult(message.obj, null,
-                                    new SatelliteManager.SatelliteException(
-                                            SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR)))
-                    .sendToTarget();
-            return null;
-        }).when(mPhone).pollPendingSatelliteDatagrams(any(Message.class));
 
         mDatagramReceiverUT.pollPendingSatelliteDatagrams(SUB_ID, mResultListener::offer);
 

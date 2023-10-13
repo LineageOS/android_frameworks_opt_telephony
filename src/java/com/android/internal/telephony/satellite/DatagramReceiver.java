@@ -424,35 +424,7 @@ public class DatagramReceiver extends Handler {
                 request = (DatagramReceiverHandlerRequest) msg.obj;
                 onCompleted =
                         obtainMessage(EVENT_POLL_PENDING_SATELLITE_DATAGRAMS_DONE, request);
-
-                if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
-                    SatelliteModemInterface.getInstance()
-                            .pollPendingSatelliteDatagrams(onCompleted);
-                    break;
-                }
-
-                Phone phone = request.phone;
-                if (phone != null) {
-                    phone.pollPendingSatelliteDatagrams(onCompleted);
-                } else {
-                    loge("pollPendingSatelliteDatagrams: No phone object");
-                    mDatagramController.updateReceiveStatus(request.subId,
-                            SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED,
-                            mDatagramController.getReceivePendingCount(),
-                            SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
-
-                    mDatagramController.updateReceiveStatus(request.subId,
-                            SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
-                            mDatagramController.getReceivePendingCount(),
-                            SatelliteManager.SATELLITE_RESULT_SUCCESS);
-
-                    reportMetrics(null, SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
-                    mControllerMetricsStats.reportIncomingDatagramCount(
-                                    SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
-                    // Send response for current request
-                    ((Consumer<Integer>) request.argument)
-                            .accept(SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
-                }
+                SatelliteModemInterface.getInstance().pollPendingSatelliteDatagrams(onCompleted);
                 break;
             }
 
@@ -534,15 +506,9 @@ public class DatagramReceiver extends Handler {
         if (satelliteDatagramListenerHandler == null) {
             satelliteDatagramListenerHandler = new SatelliteDatagramListenerHandler(
                     mLooper, validSubId);
-            if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
-                SatelliteModemInterface.getInstance().registerForSatelliteDatagramsReceived(
-                        satelliteDatagramListenerHandler,
-                        SatelliteDatagramListenerHandler.EVENT_SATELLITE_DATAGRAM_RECEIVED, null);
-            } else {
-                Phone phone = SatelliteServiceUtils.getPhone();
-                phone.registerForSatelliteDatagramsReceived(satelliteDatagramListenerHandler,
-                        SatelliteDatagramListenerHandler.EVENT_SATELLITE_DATAGRAM_RECEIVED, null);
-            }
+            SatelliteModemInterface.getInstance().registerForSatelliteDatagramsReceived(
+                    satelliteDatagramListenerHandler,
+                    SatelliteDatagramListenerHandler.EVENT_SATELLITE_DATAGRAM_RECEIVED, null);
         }
 
         satelliteDatagramListenerHandler.addListener(callback);
@@ -568,15 +534,8 @@ public class DatagramReceiver extends Handler {
 
             if (!handler.hasListeners()) {
                 mSatelliteDatagramListenerHandlers.remove(validSubId);
-                if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
-                    SatelliteModemInterface.getInstance()
-                            .unregisterForSatelliteDatagramsReceived(handler);
-                } else {
-                    Phone phone = SatelliteServiceUtils.getPhone();
-                    if (phone != null) {
-                        phone.unregisterForSatelliteDatagramsReceived(handler);
-                    }
-                }
+                SatelliteModemInterface.getInstance().unregisterForSatelliteDatagramsReceived(
+                        handler);
             }
         }
     }
