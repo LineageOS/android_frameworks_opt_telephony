@@ -463,7 +463,7 @@ public class GsmCdmaPhone extends Phone {
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, LOG_TAG);
         mIccSmsInterfaceManager = mTelephonyComponentFactory
                 .inject(IccSmsInterfaceManager.class.getName())
-                .makeIccSmsInterfaceManager(this);
+                .makeIccSmsInterfaceManager(this, mFeatureFlags);
 
         mCi.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
         mCi.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);

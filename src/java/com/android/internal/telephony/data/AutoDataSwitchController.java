@@ -638,18 +638,21 @@ public class AutoDataSwitchController extends Handler {
                 Phone secondaryDataPhone = null;
                 debugMessage.append(", found phone ").append(phoneId).append(" in HOME reg");
 
-                if (isRatSignalStrengthBasedSwitchEnabled()) {
-                    // Use score if RAT/signal strength based switch is enabled.
-                    int defaultScore = mPhonesSignalStatus[defaultPhoneId].getRatSignalScore();
-                    int candidateScore = mPhonesSignalStatus[phoneId].getRatSignalScore();
-                    if ((candidateScore - defaultScore) > mScoreTolerance) {
-                        debugMessage.append(" with higher score ").append(candidateScore)
-                                .append(" versus current ").append(defaultScore);
-                        secondaryDataPhone = PhoneFactory.getPhone(phoneId);
-                    } else {
-                        debugMessage.append(", but its score ").append(candidateScore)
-                                .append(" doesn't meet the bar to switch given the current ")
-                                .append(defaultScore);
+                if (isInService(mPhonesSignalStatus[defaultPhoneId].mDataRegState)) {
+                    // Use score if RAT/signal strength based switch is enabled and both phone are
+                    // in service.
+                    if (isRatSignalStrengthBasedSwitchEnabled()) {
+                        int defaultScore = mPhonesSignalStatus[defaultPhoneId].getRatSignalScore();
+                        int candidateScore = mPhonesSignalStatus[phoneId].getRatSignalScore();
+                        if ((candidateScore - defaultScore) > mScoreTolerance) {
+                            debugMessage.append(" with higher score ").append(candidateScore)
+                                    .append(" versus current ").append(defaultScore);
+                            secondaryDataPhone = PhoneFactory.getPhone(phoneId);
+                        } else {
+                            debugMessage.append(", but its score ").append(candidateScore)
+                                    .append(" doesn't meet the bar to switch given the current ")
+                                    .append(defaultScore);
+                        }
                     }
                 } else {
                     // Only OOS/in service switch is enabled.

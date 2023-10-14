@@ -6,3 +6,10 @@ flag {
   description: "Previously, the DB allows insertion of a random sub Id, but doesn't allow query it. This change rejects such interaction."
   bug: "294125411"
 }
+
+flag {
+  name: "sms_domain_selection_enabled"
+  namespace: "telephony"
+  description: "This flag controls AP domain selection support for normal/emergency SMS."
+  bug: "262804071"
+}
