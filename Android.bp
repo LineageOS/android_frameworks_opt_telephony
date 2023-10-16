@@ -90,7 +90,6 @@ java_library {
         "android.hardware.radio.modem-V3-java",
         "android.hardware.radio.network-V3-java",
         "android.hardware.radio.sim-V3-java",
-        "android.hardware.radio.satellite-V1-java",
         "android.hardware.radio.voice-V3-java",
         "voip-common",
         "ims-common",

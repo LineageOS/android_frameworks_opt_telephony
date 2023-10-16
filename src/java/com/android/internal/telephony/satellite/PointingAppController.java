@@ -42,7 +42,6 @@ import android.text.TextUtils;
 
 import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.telephony.Phone;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -276,31 +275,24 @@ public class PointingAppController {
      * Register to start receiving updates for satellite position and datagram transfer state
      * @param subId The subId of the subscription to register for receiving the updates.
      * @param callback The callback to notify of satellite transmission updates.
-     * @param phone The Phone object to unregister for receiving the updates.
      */
     public void registerForSatelliteTransmissionUpdates(int subId,
-            ISatelliteTransmissionUpdateCallback callback, Phone phone) {
+            ISatelliteTransmissionUpdateCallback callback) {
         SatelliteTransmissionUpdateHandler handler =
                 mSatelliteTransmissionUpdateHandlers.get(subId);
         if (handler != null) {
             handler.addListener(callback);
-            return;
         } else {
             handler = new SatelliteTransmissionUpdateHandler(Looper.getMainLooper());
             handler.addListener(callback);
             mSatelliteTransmissionUpdateHandlers.put(subId, handler);
-            if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
-                SatelliteModemInterface.getInstance().registerForSatellitePositionInfoChanged(
-                        handler, SatelliteTransmissionUpdateHandler.EVENT_POSITION_INFO_CHANGED,
-                        null);
-                SatelliteModemInterface.getInstance().registerForDatagramTransferStateChanged(
-                        handler,
-                        SatelliteTransmissionUpdateHandler.EVENT_DATAGRAM_TRANSFER_STATE_CHANGED,
-                        null);
-            } else {
-                phone.registerForSatellitePositionInfoChanged(handler,
-                        SatelliteTransmissionUpdateHandler.EVENT_POSITION_INFO_CHANGED, null);
-            }
+            SatelliteModemInterface.getInstance().registerForSatellitePositionInfoChanged(
+                    handler, SatelliteTransmissionUpdateHandler.EVENT_POSITION_INFO_CHANGED,
+                    null);
+            SatelliteModemInterface.getInstance().registerForDatagramTransferStateChanged(
+                    handler,
+                    SatelliteTransmissionUpdateHandler.EVENT_DATAGRAM_TRANSFER_STATE_CHANGED,
+                    null);
         }
     }
 
@@ -310,11 +302,10 @@ public class PointingAppController {
      * @param subId The subId of the subscription to unregister for receiving the updates.
      * @param result The callback to get the error code in case of failure
      * @param callback The callback that was passed to {@link
-     * #registerForSatelliteTransmissionUpdates(int, ISatelliteTransmissionUpdateCallback, Phone)}.
-     * @param phone The Phone object to unregister for receiving the updates
+     * #registerForSatelliteTransmissionUpdates(int, ISatelliteTransmissionUpdateCallback)}.
      */
     public void unregisterForSatelliteTransmissionUpdates(int subId, Consumer<Integer> result,
-            ISatelliteTransmissionUpdateCallback callback, Phone phone) {
+            ISatelliteTransmissionUpdateCallback callback) {
         SatelliteTransmissionUpdateHandler handler =
                 mSatelliteTransmissionUpdateHandlers.get(subId);
         if (handler != null) {
@@ -323,20 +314,11 @@ public class PointingAppController {
                 result.accept(SatelliteManager.SATELLITE_RESULT_SUCCESS);
                 return;
             }
-
             mSatelliteTransmissionUpdateHandlers.remove(subId);
-            if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
-                SatelliteModemInterface.getInstance().unregisterForSatellitePositionInfoChanged(
-                        handler);
-                SatelliteModemInterface.getInstance().unregisterForDatagramTransferStateChanged(
-                        handler);
-            } else {
-                if (phone == null) {
-                    result.accept(SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
-                    return;
-                }
-                phone.unregisterForSatellitePositionInfoChanged(handler);
-            }
+
+            SatelliteModemInterface satelliteModemInterface = SatelliteModemInterface.getInstance();
+            satelliteModemInterface.unregisterForSatellitePositionInfoChanged(handler);
+            satelliteModemInterface.unregisterForDatagramTransferStateChanged(handler);
         }
     }
 
@@ -348,7 +330,7 @@ public class PointingAppController {
      * {@link android.telephony.satellite.SatelliteTransmissionUpdateCallback
      * #onSatellitePositionChanged(pointingInfo)}.
      */
-    public void startSatelliteTransmissionUpdates(@NonNull Message message, @Nullable Phone phone) {
+    public void startSatelliteTransmissionUpdates(@NonNull Message message) {
         if (mStartedSatelliteTransmissionUpdates) {
             logd("startSatelliteTransmissionUpdates: already started");
             AsyncResult.forMessage(message, null, new SatelliteManager.SatelliteException(
@@ -356,20 +338,8 @@ public class PointingAppController {
             message.sendToTarget();
             return;
         }
-        if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
-            SatelliteModemInterface.getInstance().startSendingSatellitePointingInfo(message);
-            mStartedSatelliteTransmissionUpdates = true;
-            return;
-        }
-        if (phone != null) {
-            phone.startSatellitePositionUpdates(message);
-            mStartedSatelliteTransmissionUpdates = true;
-        } else {
-            loge("startSatelliteTransmissionUpdates: No phone object");
-            AsyncResult.forMessage(message, null, new SatelliteManager.SatelliteException(
-                    SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE));
-            message.sendToTarget();
-        }
+        SatelliteModemInterface.getInstance().startSendingSatellitePointingInfo(message);
+        mStartedSatelliteTransmissionUpdates = true;
     }
 
     /**
@@ -377,20 +347,9 @@ public class PointingAppController {
      * Reset the flag mStartedSatelliteTransmissionUpdates
      * This can be called by the pointing UI when the user stops pointing to the satellite.
      */
-    public void stopSatelliteTransmissionUpdates(@NonNull Message message, @Nullable Phone phone) {
+    public void stopSatelliteTransmissionUpdates(@NonNull Message message) {
         setStartedSatelliteTransmissionUpdates(false);
-        if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
-            SatelliteModemInterface.getInstance().stopSendingSatellitePointingInfo(message);
-            return;
-        }
-        if (phone != null) {
-            phone.stopSatellitePositionUpdates(message);
-        } else {
-            loge("startSatelliteTransmissionUpdates: No phone object");
-            AsyncResult.forMessage(message, null, new SatelliteManager.SatelliteException(
-                    SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE));
-            message.sendToTarget();
-        }
+        SatelliteModemInterface.getInstance().stopSendingSatellitePointingInfo(message);
     }
 
     /**
