@@ -2264,7 +2264,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *
      * @return Current signal strength as SignalStrength
      */
-    public SignalStrength getSignalStrength() {
+    public @NonNull SignalStrength getSignalStrength() {
         SignalStrengthController ssc = getSignalStrengthController();
         if (ssc == null) {
             return new SignalStrength();

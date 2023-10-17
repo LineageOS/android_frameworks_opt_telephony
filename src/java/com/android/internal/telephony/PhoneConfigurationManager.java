@@ -28,10 +28,12 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
+import android.provider.DeviceConfig;
 import android.sysprop.TelephonyProperties;
 import android.telephony.PhoneCapability;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -46,18 +48,21 @@ import java.util.NoSuchElementException;
  * This class manages phone's configuration which defines the potential capability (static) of the
  * phone and its current activated capability (current).
  * It gets and monitors static and current phone capability from the modem; send broadcast
- * if they change, and and sends commands to modem to enable or disable phones.
+ * if they change, and sends commands to modem to enable or disable phones.
  */
 public class PhoneConfigurationManager {
     public static final String DSDA = "dsda";
     public static final String DSDS = "dsds";
     public static final String TSTS = "tsts";
     public static final String SSSS = "";
+    /** DeviceConfig key for whether Virtual DSDA is enabled. */
+    private static final String KEY_ENABLE_VIRTUAL_DSDA = "enable_virtual_dsda";
     private static final String LOG_TAG = "PhoneCfgMgr";
     private static final int EVENT_SWITCH_DSDS_CONFIG_DONE = 100;
     private static final int EVENT_GET_MODEM_STATUS = 101;
     private static final int EVENT_GET_MODEM_STATUS_DONE = 102;
     private static final int EVENT_GET_PHONE_CAPABILITY_DONE = 103;
+    private static final int EVENT_DEVICE_CONFIG_CHANGED = 104;
 
     private static PhoneConfigurationManager sInstance = null;
     private final Context mContext;
@@ -70,6 +75,11 @@ public class PhoneConfigurationManager {
     private final Map<Integer, Boolean> mPhoneStatusMap;
     private MockableInterface mMi = new MockableInterface();
     private TelephonyManager mTelephonyManager;
+    /**
+     * True if 'Virtual DSDA' i.e., in-call IMS connectivity on both subs with only single logical
+     * modem, is enabled.
+     */
+    private boolean mVirtualDsdaEnabled;
     private static final RegistrantList sMultiSimConfigChangeRegistrants = new RegistrantList();
     private static final String ALLOW_MOCK_MODEM_PROPERTY = "persist.radio.allow_mock_modem";
     private static final String BOOT_ALLOW_MOCK_MODEM_PROPERTY = "ro.boot.radio.allow_mock_modem";
@@ -102,6 +112,16 @@ public class PhoneConfigurationManager {
         mRadioConfig = RadioConfig.getInstance();
         mHandler = new ConfigManagerHandler();
         mPhoneStatusMap = new HashMap<>();
+        mVirtualDsdaEnabled = DeviceConfig.getBoolean(
+                DeviceConfig.NAMESPACE_TELEPHONY, KEY_ENABLE_VIRTUAL_DSDA, false);
+        DeviceConfig.addOnPropertiesChangedListener(
+                DeviceConfig.NAMESPACE_TELEPHONY, Runnable::run,
+                properties -> {
+                    if (TextUtils.equals(DeviceConfig.NAMESPACE_TELEPHONY,
+                            properties.getNamespace())) {
+                        mHandler.sendEmptyMessage(EVENT_DEVICE_CONFIG_CHANGED);
+                    }
+                });
 
         notifyCapabilityChanged();
 
@@ -127,10 +147,7 @@ public class PhoneConfigurationManager {
     // If virtual DSDA is enabled for this UE, then updates maxActiveVoiceSubscriptions to 2.
     private PhoneCapability maybeUpdateMaxActiveVoiceSubscriptions(
             final PhoneCapability staticCapability) {
-        boolean enableVirtualDsda = mContext.getResources().getBoolean(
-                com.android.internal.R.bool.config_enable_virtual_dsda);
-
-        if (staticCapability.getLogicalModemList().size() > 1 && enableVirtualDsda) {
+        if (staticCapability.getLogicalModemList().size() > 1 && mVirtualDsdaEnabled) {
             return new PhoneCapability.Builder(staticCapability)
                     .setMaxActiveVoiceSubscriptions(2)
                     .build();
@@ -197,13 +214,22 @@ public class PhoneConfigurationManager {
                     ar = (AsyncResult) msg.obj;
                     if (ar != null && ar.exception == null) {
                         mStaticCapability = (PhoneCapability) ar.result;
-                        mStaticCapability =
-                                maybeUpdateMaxActiveVoiceSubscriptions(mStaticCapability);
                         notifyCapabilityChanged();
                     } else {
                         log(msg.what + " failure. Not getting phone capability." + ar.exception);
                     }
                     break;
+                case EVENT_DEVICE_CONFIG_CHANGED:
+                    boolean isVirtualDsdaEnabled = DeviceConfig.getBoolean(
+                            DeviceConfig.NAMESPACE_TELEPHONY, KEY_ENABLE_VIRTUAL_DSDA, false);
+                    if (isVirtualDsdaEnabled != mVirtualDsdaEnabled) {
+                        log("EVENT_DEVICE_CONFIG_CHANGED: from " + mVirtualDsdaEnabled + " to "
+                                + isVirtualDsdaEnabled);
+                        mVirtualDsdaEnabled = isVirtualDsdaEnabled;
+                    }
+                    break;
+                default:
+                    log("Unknown event: " + msg.what);
             }
         }
     }
@@ -317,6 +343,7 @@ public class PhoneConfigurationManager {
                     mHandler, EVENT_GET_PHONE_CAPABILITY_DONE);
             mRadioConfig.getPhoneCapability(callback);
         }
+        mStaticCapability = maybeUpdateMaxActiveVoiceSubscriptions(mStaticCapability);
         log("getStaticPhoneCapability: mStaticCapability " + mStaticCapability);
         return mStaticCapability;
     }

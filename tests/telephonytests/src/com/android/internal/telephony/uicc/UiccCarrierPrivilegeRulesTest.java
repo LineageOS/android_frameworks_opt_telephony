@@ -570,7 +570,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
             public Void answer(InvocationOnMock invocation) throws Throwable {
                 currentFileId.set((String) invocation.getArguments()[6]);
                 Message message = (Message) invocation.getArguments()[8];
-                AsyncResult ar = new AsyncResult(null, new int[]{2}, null);
+                AsyncResult ar = new AsyncResult(null, new IccIoResult(0x90, 0x00, ""), null);
                 message.obj = ar;
                 message.sendToTarget();
                 return null;
@@ -668,7 +668,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
             public Void answer(InvocationOnMock invocation) throws Throwable {
                 currentFileId.set((String) invocation.getArguments()[6]);
                 Message message = (Message) invocation.getArguments()[8];
-                AsyncResult ar = new AsyncResult(null, new int[]{2}, null);
+                AsyncResult ar = new AsyncResult(null, new IccIoResult(0x90, 0x00, ""), null);
                 message.obj = ar;
                 message.sendToTarget();
                 return null;
