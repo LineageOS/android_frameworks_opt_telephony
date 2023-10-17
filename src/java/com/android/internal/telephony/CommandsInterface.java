@@ -74,7 +74,6 @@ public interface CommandsInterface {
     // Used as parameters for call forward methods below
     static final int CF_ACTION_DISABLE          = 0;
     static final int CF_ACTION_ENABLE           = 1;
-//  static final int CF_ACTION_UNUSED           = 2;
     static final int CF_ACTION_REGISTRATION     = 3;
     static final int CF_ACTION_ERASURE          = 4;
 
@@ -628,85 +627,85 @@ public interface CommandsInterface {
     @UnsupportedAppUsage
     void setEmergencyCallbackMode(Handler h, int what, Object obj);
 
-     /**
-      * Fires on any CDMA OTA provision status change
-      */
-     @UnsupportedAppUsage
-     void registerForCdmaOtaProvision(Handler h,int what, Object obj);
-     @UnsupportedAppUsage
-     void unregisterForCdmaOtaProvision(Handler h);
+    /**
+     * Fires on any CDMA OTA provision status change
+     */
+    @UnsupportedAppUsage
+    void registerForCdmaOtaProvision(Handler h, int what, Object obj);
+    @UnsupportedAppUsage
+    void unregisterForCdmaOtaProvision(Handler h);
 
-     /**
-      * Registers the handler when out-band ringback tone is needed.<p>
-      *
-      *  Messages received from this:
-      *  Message.obj will be an AsyncResult
-      *  AsyncResult.userObj = obj
-      *  AsyncResult.result = boolean. <p>
-      */
-     void registerForRingbackTone(Handler h, int what, Object obj);
-     void unregisterForRingbackTone(Handler h);
+    /**
+     * Registers the handler when out-band ringback tone is needed.<p>
+     *
+     *  Messages received from this:
+     *  Message.obj will be an AsyncResult
+     *  AsyncResult.userObj = obj
+     *  AsyncResult.result = boolean. <p>
+     */
+    void registerForRingbackTone(Handler h, int what, Object obj);
+    void unregisterForRingbackTone(Handler h);
 
-     /**
-      * Registers the handler when mute/unmute need to be resent to get
-      * uplink audio during a call.<p>
-      *
-      * @param h Handler for notification message.
-      * @param what User-defined message code.
-      * @param obj User object.
-      *
-      */
-     void registerForResendIncallMute(Handler h, int what, Object obj);
-     void unregisterForResendIncallMute(Handler h);
+    /**
+     * Registers the handler when mute/unmute need to be resent to get
+     * uplink audio during a call.<p>
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     *
+     */
+    void registerForResendIncallMute(Handler h, int what, Object obj);
+    void unregisterForResendIncallMute(Handler h);
 
-     /**
-      * Registers the handler for when Cdma subscription changed events
-      *
-      * @param h Handler for notification message.
-      * @param what User-defined message code.
-      * @param obj User object.
-      *
-      */
-     void registerForCdmaSubscriptionChanged(Handler h, int what, Object obj);
-     void unregisterForCdmaSubscriptionChanged(Handler h);
+    /**
+     * Registers the handler for when Cdma subscription changed events
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     *
+     */
+    void registerForCdmaSubscriptionChanged(Handler h, int what, Object obj);
+    void unregisterForCdmaSubscriptionChanged(Handler h);
 
-     /**
-      * Registers the handler for when Cdma prl changed events
-      *
-      * @param h Handler for notification message.
-      * @param what User-defined message code.
-      * @param obj User object.
-      *
-      */
-     void registerForCdmaPrlChanged(Handler h, int what, Object obj);
-     void unregisterForCdmaPrlChanged(Handler h);
+    /**
+     * Registers the handler for when Cdma prl changed events
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     *
+     */
+    void registerForCdmaPrlChanged(Handler h, int what, Object obj);
+    void unregisterForCdmaPrlChanged(Handler h);
 
-     /**
-      * Registers the handler for when Cdma prl changed events
-      *
-      * @param h Handler for notification message.
-      * @param what User-defined message code.
-      * @param obj User object.
-      *
-      */
-     void registerForExitEmergencyCallbackMode(Handler h, int what, Object obj);
-     void unregisterForExitEmergencyCallbackMode(Handler h);
+    /**
+     * Registers the handler for when Cdma prl changed events
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     *
+     */
+    void registerForExitEmergencyCallbackMode(Handler h, int what, Object obj);
+    void unregisterForExitEmergencyCallbackMode(Handler h);
 
-     /**
-      * Registers the handler for RIL_UNSOL_RIL_CONNECT events.
-      *
-      * When ril connects or disconnects a message is sent to the registrant
-      * which contains an AsyncResult, ar, in msg.obj. The ar.result is an
-      * Integer which is the version of the ril or -1 if the ril disconnected.
-      *
-      * @param h Handler for notification message.
-      * @param what User-defined message code.
-      * @param obj User object.
-      */
-     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-     void registerForRilConnected(Handler h, int what, Object obj);
-     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-     void unregisterForRilConnected(Handler h);
+    /**
+     * Registers the handler for RIL_UNSOL_RIL_CONNECT events.
+     *
+     * When ril connects or disconnects a message is sent to the registrant
+     * which contains an AsyncResult, ar, in msg.obj. The ar.result is an
+     * Integer which is the version of the ril or -1 if the ril disconnected.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
+    void registerForRilConnected(Handler h, int what, Object obj);
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
+    void unregisterForRilConnected(Handler h);
 
     /**
      * Registers the handler for RIL_UNSOL_SIM_DETACH_FROM_NETWORK_CONFIG_CHANGED events.
@@ -921,7 +920,7 @@ public interface CommandsInterface {
      * CLIR_INVOCATION  == on "CLIR invocation" (restrict CLI presentation)
      */
     void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
-              boolean hasKnownUserIntentEmergency, int clirMode, Message result);
+            boolean hasKnownUserIntentEmergency, int clirMode, Message result);
 
     /**
      *  returned message
@@ -935,7 +934,7 @@ public interface CommandsInterface {
      * CLIR_INVOCATION  == on "CLIR invocation" (restrict CLI presentation)
      */
     void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
-              boolean hasKnownUserIntentEmergency, int clirMode, UUSInfo uusInfo, Message result);
+            boolean hasKnownUserIntentEmergency, int clirMode, UUSInfo uusInfo, Message result);
 
     /**
      *  returned message
@@ -1372,7 +1371,7 @@ public interface CommandsInterface {
      */
     @UnsupportedAppUsage
     void setCallForward(int action, int cfReason, int serviceClass,
-                String number, int timeSeconds, Message response);
+            String number, int timeSeconds, Message response);
 
     /**
      * cfReason is one of CF_REASON_*
@@ -1450,7 +1449,7 @@ public interface CommandsInterface {
 
     @UnsupportedAppUsage
     void queryFacilityLock (String facility, String password, int serviceClass,
-        Message response);
+            Message response);
 
     /**
      * (AsyncResult)response.obj).result will be an Integer representing
@@ -1465,7 +1464,7 @@ public interface CommandsInterface {
      */
 
     void queryFacilityLockForApp(String facility, String password, int serviceClass, String appId,
-        Message response);
+            Message response);
 
     /**
      * @param facility one of CB_FACILTY_*
@@ -1476,7 +1475,7 @@ public interface CommandsInterface {
      */
     @UnsupportedAppUsage
     void setFacilityLock (String facility, boolean lockState, String password,
-        int serviceClass, Message response);
+            int serviceClass, Message response);
 
     /**
      * Set the facility lock for the app with this AID on the ICC card.
@@ -1489,7 +1488,7 @@ public interface CommandsInterface {
      * @param response is callback message
      */
     void setFacilityLockForApp(String facility, boolean lockState, String password,
-        int serviceClass, String appId, Message response);
+            int serviceClass, String appId, Message response);
 
     void sendUSSD (String ussdString, Message response);
 
@@ -1526,7 +1525,7 @@ public interface CommandsInterface {
     @UnsupportedAppUsage
     void setPreferredNetworkType(int networkType , Message response);
 
-     /**
+    /**
      *  Query the preferred network type setting
      *
      * @param response is callback message to report one of  NT_*_TYPE
@@ -1543,7 +1542,7 @@ public interface CommandsInterface {
     void setAllowedNetworkTypesBitmap(
             @TelephonyManager.NetworkTypeBitMask int networkTypeBitmask, Message response);
 
-     /**
+    /**
      *  Query the allowed network types setting.
      *
      * @param response is callback message to report allowed network types bitmask
@@ -2148,7 +2147,7 @@ public interface CommandsInterface {
         return HalVersion.UNKNOWN;
     }
 
-   /**
+    /**
      * Sets user selected subscription at Modem.
      *
      * @param slotId
@@ -2613,7 +2612,7 @@ public interface CommandsInterface {
         return true;
     };
 
-   /**
+    /**
      * Return the class name of the currently bound modem service.
      *
      * @return the class name of the modem service.
@@ -2622,18 +2621,18 @@ public interface CommandsInterface {
         return "default";
     };
 
-   /**
+    /**
      * Request the SIM phonebook records of all activated UICC applications
      *
      * @param result Callback message containing the count of ADN valid record.
      */
-    public void getSimPhonebookRecords(Message result);
+    void getSimPhonebookRecords(Message result);
 
-   /**
+    /**
      * Request the SIM phonebook Capacity of all activated UICC applications
      *
      */
-    public void getSimPhonebookCapacity(Message result);
+    void getSimPhonebookCapacity(Message result);
 
     /**
      * Request to insert/delete/update the SIM phonebook record
@@ -2641,7 +2640,7 @@ public interface CommandsInterface {
      * @param phonebookRecordInfo adn record information to be updated
      * @param result Callback message containing the SIM phonebook record index.
      */
-    public void updateSimPhonebookRecord(SimPhonebookRecord phonebookRecordInfo, Message result);
+    void updateSimPhonebookRecord(SimPhonebookRecord phonebookRecordInfo, Message result);
 
     /**
      * Registers the handler when the SIM phonebook is changed.
@@ -2650,14 +2649,14 @@ public interface CommandsInterface {
      * @param what User-defined message code.
      * @param obj User object .
      */
-    public void registerForSimPhonebookChanged(Handler h, int what, Object obj);
+    void registerForSimPhonebookChanged(Handler h, int what, Object obj);
 
     /**
      * Unregister for notifications when SIM phonebook has already init done.
      *
      * @param h Handler to be removed from the registrant list.
      */
-    public void unregisterForSimPhonebookChanged(Handler h);
+    void unregisterForSimPhonebookChanged(Handler h);
 
     /**
      * Registers the handler when a group of SIM phonebook records received.
@@ -2666,14 +2665,14 @@ public interface CommandsInterface {
      * @param what User-defined message code.
      * @param obj User object.
      */
-    public void registerForSimPhonebookRecordsReceived(Handler h, int what, Object obj);
+    void registerForSimPhonebookRecordsReceived(Handler h, int what, Object obj);
 
     /**
      * Unregister for notifications when a group of SIM phonebook records received.
      *
      * @param h Handler to be removed from the registrant list.
      */
-     public void unregisterForSimPhonebookRecordsReceived(Handler h);
+    void unregisterForSimPhonebookRecordsReceived(Handler h);
 
     /**
      * Registers for notifications of connection setup failure.
@@ -2892,263 +2891,4 @@ public interface CommandsInterface {
      * @param result Callback message to receive the result.
      */
     default void isN1ModeEnabled(Message result) {}
-
-    /**
-     * Get feature capabilities supported by satellite.
-     *
-     * @param result Message that will be sent back to the requester
-     */
-    default void getSatelliteCapabilities(Message result) {}
-
-    /**
-     * Turn satellite modem on/off.
-     *
-     * @param result Message that will be sent back to the requester
-     * @param on {@code true} for turning on.
-     *           {@code false} for turning off.
-     */
-    default void setSatellitePower(Message result, boolean on) {}
-
-    /**
-     * Get satellite modem state.
-     *
-     * @param result Message that will be sent back to the requester
-     */
-    default void getSatellitePowerState(Message result) {}
-
-    /**
-     * Get satellite provision state.
-     *
-     * @param result Message that will be sent back to the requester
-     */
-    default void getSatelliteProvisionState(Message result) {}
-
-    /**
-     * Check whether satellite modem is supported by the device.
-     *
-     * @param result Message that will be sent back to the requester
-     */
-    default void isSatelliteSupported(Message result) {}
-
-    /**
-     * Provision the subscription with a satellite provider. This is needed to register the
-     * subscription if the provider allows dynamic registration.
-     *
-     * @param result Message that will be sent back to the requester.
-     * @param imei IMEI of the SIM associated with the satellite modem.
-     * @param msisdn MSISDN of the SIM associated with the satellite modem.
-     * @param imsi IMSI of the SIM associated with the satellite modem.
-     * @param features List of features to be provisioned.
-     */
-    default void provisionSatelliteService(
-            Message result, String imei, String msisdn, String imsi, int[] features) {}
-
-    /**
-     * Add contacts that are allowed to be used for satellite communication. This is applicable for
-     * incoming messages as well.
-     *
-     * @param result Message that will be sent back to the requester.
-     * @param contacts List of allowed contacts to be added.
-     */
-    default void addAllowedSatelliteContacts(Message result, String[] contacts) {}
-
-    /**
-     * Remove contacts that are allowed to be used for satellite communication. This is applicable
-     * for incoming messages as well.
-     *
-     * @param result Message that will be sent back to the requester.
-     * @param contacts List of allowed contacts to be removed.
-     */
-    default void removeAllowedSatelliteContacts(Message result, String[] contacts) {}
-
-    /**
-     * Send text messages.
-     *
-     * @param result Message that will be sent back to the requester.
-     * @param messages List of messages in text format to be sent.
-     * @param destination The recipient of the message.
-     * @param latitude The current latitude of the device.
-     * @param longitude The current longitude of the device. The location (i.e., latitude and
-     *        longitude) of the device will be filled for emergency messages.
-     */
-    default void sendSatelliteMessages(Message result, String[] messages, String destination,
-            double latitude, double longitude) {}
-
-    /**
-     * Get pending messages.
-     *
-     * @param result Message that will be sent back to the requester.
-     */
-    default void getPendingSatelliteMessages(Message result) {}
-
-    /**
-     * Get current satellite registration mode.
-     *
-     * @param result Message that will be sent back to the requester.
-     */
-    default void getSatelliteMode(Message result) {}
-
-    /**
-     * Set the filter for what type of indication framework want to receive from modem.
-     *
-     * @param result Message that will be sent back to the requester.
-     * @param filterBitmask The filter bitmask identifying what type of indication Telephony
-     *                      framework wants to receive from modem.
-     */
-    default void setSatelliteIndicationFilter(Message result, int filterBitmask) {}
-
-    /**
-     * User started pointing to the satellite. Modem should continue to update the ponting input
-     * as user moves device.
-     *
-     * @param result Message that will be sent back to the requester.
-     */
-    default void startSendingSatellitePointingInfo(Message result) {}
-
-    /**
-     * Stop sending satellite pointing info to the framework.
-     *
-     * @param result Message that will be sent back to the requester.
-     */
-    default void stopSendingSatellitePointingInfo(Message result) {}
-
-    /**
-     * Get max number of characters per text message.
-     *
-     * @param result Message that will be sent back to the requester.
-     */
-    default void getMaxCharactersPerSatelliteTextMessage(Message result) {}
-
-    /**
-     * Get whether satellite communication is allowed for the current location.
-     *
-     * @param result Message that will be sent back to the requester.
-     */
-    default void isSatelliteCommunicationAllowedForCurrentLocation(Message result) {}
-
-    /**
-     * Get the time after which the satellite will be visible.
-     *
-     * @param result Message that will be sent back to the requester.
-     */
-    default void getTimeForNextSatelliteVisibility(Message result) {}
-
-    /**
-     * Registers for pending message count from satellite modem.
-     *
-     * @param h Handler for notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     */
-    default void registerForPendingSatelliteMessageCount(@NonNull Handler h,
-            int what, @Nullable Object obj) {}
-
-    /**
-     * Unregisters for pending message count from satellite modem.
-     *
-     * @param h Handler to be removed from the registrant list.
-     */
-    default void unregisterForPendingSatelliteMessageCount(@NonNull Handler h) {}
-
-    /**
-     * Registers for new messages from satellite modem.
-     *
-     * @param h Handler for notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     */
-    default void registerForNewSatelliteMessages(@NonNull Handler h,
-            int what, @Nullable Object obj) {}
-
-    /**
-     * Unregisters for new messages from satellite modem.
-     *
-     * @param h Handler to be removed from the registrant list.
-     */
-    default void unregisterForNewSatelliteMessages(@NonNull Handler h) {}
-
-    /**
-     * Registers for messages transfer complete from satellite modem.
-     *
-     * @param h Handler for notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     */
-    default void registerForSatelliteMessagesTransferComplete(@NonNull Handler h,
-            int what, @Nullable Object obj) {}
-
-    /**
-     * Unregisters for messages transfer complete from satellite modem.
-     *
-     * @param h Handler to be removed from the registrant list.
-     */
-    default void unregisterForSatelliteMessagesTransferComplete(@NonNull Handler h) {}
-
-    /**
-     * Registers for pointing info changed from satellite modem.
-     *
-     * @param h Handler for notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     */
-    default void registerForSatellitePointingInfoChanged(@NonNull Handler h,
-            int what, @Nullable Object obj) {}
-
-    /**
-     * Unregisters for pointing info changed from satellite modem.
-     *
-     * @param h Handler to be removed from the registrant list.
-     */
-    default void unregisterForSatellitePointingInfoChanged(@NonNull Handler h) {}
-
-    /**
-     * Registers for mode changed from satellite modem.
-     *
-     * @param h Handler for notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     */
-    default void registerForSatelliteModeChanged(@NonNull Handler h,
-            int what, @Nullable Object obj) {}
-
-    /**
-     * Unregisters for mode changed from satellite modem.
-     *
-     * @param h Handler to be removed from the registrant list.
-     */
-    default void unregisterForSatelliteModeChanged(@NonNull Handler h) {}
-
-    /**
-     * Registers for radio technology changed from satellite modem.
-     *
-     * @param h Handler for notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     */
-    default void registerForSatelliteRadioTechnologyChanged(@NonNull Handler h,
-            int what, @Nullable Object obj) {}
-
-    /**
-     * Unregisters for radio technology changed from satellite modem.
-     *
-     * @param h Handler to be removed from the registrant list.
-     */
-    default void unregisterForSatelliteRadioTechnologyChanged(@NonNull Handler h) {}
-
-    /**
-     * Registers for provision state changed from satellite modem.
-     *
-     * @param h Handler for notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     */
-    default void registerForSatelliteProvisionStateChanged(@NonNull Handler h,
-            int what, @Nullable Object obj) {}
-
-    /**
-     * Unregisters for provision state changed from satellite modem.
-     *
-     * @param h Handler to be removed from the registrant list.
-     */
-    default void unregisterForSatelliteProvisionStateChanged(@NonNull Handler h) {}
 }

@@ -102,7 +102,6 @@ import android.util.Pair;
 import com.android.internal.R;
 import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.IVoidConsumer;
-import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
@@ -961,12 +960,11 @@ public class SatelliteControllerTest extends TelephonyTest {
         mSatelliteControllerUT.startSatelliteTransmissionUpdates(SUB_ID, mIIntegerConsumer,
                 mStartTransmissionUpdateCallback);
         verify(mMockPointingAppController).registerForSatelliteTransmissionUpdates(anyInt(),
-                eq(mStartTransmissionUpdateCallback), any());
+                eq(mStartTransmissionUpdateCallback));
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
         assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
-        verify(mMockPointingAppController).startSatelliteTransmissionUpdates(any(Message.class),
-                any(Phone.class));
+        verify(mMockPointingAppController).startSatelliteTransmissionUpdates(any(Message.class));
         verify(mMockPointingAppController).setStartedSatelliteTransmissionUpdates(eq(true));
 
         resetSatelliteControllerUT();
@@ -983,7 +981,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         assertEquals(SATELLITE_RESULT_INVALID_TELEPHONY_STATE,
                 (long) mIIntegerConsumerResults.get(0));
         verify(mMockPointingAppController).unregisterForSatelliteTransmissionUpdates(anyInt(),
-                any(),  eq(mStartTransmissionUpdateCallback), any(Phone.class));
+                any(),  eq(mStartTransmissionUpdateCallback));
         verify(mMockPointingAppController).setStartedSatelliteTransmissionUpdates(eq(false));
     }
 
@@ -1042,12 +1040,11 @@ public class SatelliteControllerTest extends TelephonyTest {
         mSatelliteControllerUT.stopSatelliteTransmissionUpdates(SUB_ID, mIIntegerConsumer,
                 mStopTransmissionUpdateCallback);
         verify(mMockPointingAppController).unregisterForSatelliteTransmissionUpdates(anyInt(),
-                any(),  eq(mStopTransmissionUpdateCallback), any(Phone.class));
+                any(),  eq(mStopTransmissionUpdateCallback));
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
         assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
-        verify(mMockPointingAppController).stopSatelliteTransmissionUpdates(any(Message.class),
-                any(Phone.class));
+        verify(mMockPointingAppController).stopSatelliteTransmissionUpdates(any(Message.class));
 
         resetSatelliteControllerUT();
         mIIntegerConsumerResults.clear();
@@ -2269,8 +2266,7 @@ public class SatelliteControllerTest extends TelephonyTest {
             AsyncResult.forMessage(message, null, exception);
             message.sendToTarget();
             return null;
-        }).when(mMockPointingAppController).startSatelliteTransmissionUpdates(any(Message.class),
-                any());
+        }).when(mMockPointingAppController).startSatelliteTransmissionUpdates(any(Message.class));
     }
 
     private void setUpResponseForStopSatelliteTransmissionUpdates(
@@ -2282,8 +2278,7 @@ public class SatelliteControllerTest extends TelephonyTest {
             AsyncResult.forMessage(message, null, exception);
             message.sendToTarget();
             return null;
-        }).when(mMockPointingAppController).stopSatelliteTransmissionUpdates(any(Message.class),
-                any());
+        }).when(mMockPointingAppController).stopSatelliteTransmissionUpdates(any(Message.class));
     }
 
     private boolean waitForRequestIsSatelliteSupportedResult(int expectedNumberOfEvents) {

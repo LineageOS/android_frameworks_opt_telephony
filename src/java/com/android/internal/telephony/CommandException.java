@@ -352,28 +352,6 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.RF_HARDWARE_ISSUE);
             case RILConstants.NO_RF_CALIBRATION_INFO:
                 return new CommandException(Error.NO_RF_CALIBRATION_INFO);
-            case RILConstants.ENCODING_NOT_SUPPORTED:
-                return new CommandException(Error.ENCODING_NOT_SUPPORTED);
-            case RILConstants.FEATURE_NOT_SUPPORTED:
-                return new CommandException(Error.FEATURE_NOT_SUPPORTED);
-            case RILConstants.INVALID_CONTACT:
-                return new CommandException(Error.INVALID_CONTACT);
-            case RILConstants.MODEM_INCOMPATIBLE:
-                return new CommandException(Error.MODEM_INCOMPATIBLE);
-            case RILConstants.NETWORK_TIMEOUT:
-                return new CommandException(Error.NETWORK_TIMEOUT);
-            case RILConstants.NO_SATELLITE_SIGNAL:
-                return new CommandException(Error.NO_SATELLITE_SIGNAL);
-            case RILConstants.NOT_SUFFICIENT_ACCOUNT_BALANCE:
-                return new CommandException(Error.NOT_SUFFICIENT_ACCOUNT_BALANCE);
-            case RILConstants.RADIO_TECHNOLOGY_NOT_SUPPORTED:
-                return new CommandException(Error.RADIO_TECHNOLOGY_NOT_SUPPORTED);
-            case RILConstants.SUBSCRIBER_NOT_AUTHORIZED:
-                return new CommandException(Error.SUBSCRIBER_NOT_AUTHORIZED);
-            case RILConstants.SWITCHED_FROM_SATELLITE_TO_TERRESTRIAL:
-                return new CommandException(Error.SWITCHED_FROM_SATELLITE_TO_TERRESTRIAL);
-            case RILConstants.UNIDENTIFIED_SUBSCRIBER:
-                return new CommandException(Error.UNIDENTIFIED_SUBSCRIBER);
             default:
                 Rlog.e("GSM", "Unrecognized RIL errno " + ril_errno);
                 return new CommandException(Error.INVALID_RESPONSE);

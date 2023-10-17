@@ -130,7 +130,6 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
     @Test
     public void testSendSatelliteDatagram_usingSatelliteModemInterface_success() throws  Exception {
-        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
         doAnswer(invocation -> {
             Message message = (Message) invocation.getArguments()[3];
 
@@ -243,7 +242,6 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
     @Test
     public void testSendSatelliteDatagram_usingSatelliteModemInterface_failure() throws  Exception {
-        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
         doAnswer(invocation -> {
             Message message = (Message) invocation.getArguments()[3];
 
@@ -282,129 +280,17 @@ public class DatagramDispatcherTest extends TelephonyTest {
     }
 
     @Test
-    public void testSendSatelliteDatagram_usingCommandsInterface_phoneNull() throws Exception {
-        doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
-        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {null});
-
-        mDatagramDispatcherUT.sendSatelliteDatagram(SUB_ID, DATAGRAM_TYPE1, mDatagram,
-                true, mResultListener::offer);
-
-        processAllMessages();
-
-        mInOrder.verify(mMockDatagramController).needsWaitingForSatelliteConnected();
-        mInOrder.verify(mMockDatagramController).isPollingInIdleState();
-        mInOrder.verify(mMockDatagramController)
-                .updateSendStatus(eq(SUB_ID),
-                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING), eq(1),
-                        eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
-        mInOrder.verify(mMockDatagramController)
-                .updateSendStatus(eq(SUB_ID),
-                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_FAILED), eq(0),
-                        eq(SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE));
-        mInOrder.verify(mMockDatagramController)
-                .updateSendStatus(eq(SUB_ID),
-                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE), eq(0),
-                        eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
-        verifyNoMoreInteractions(mMockDatagramController);
-
-        assertThat(mResultListener.peek())
-                .isEqualTo(SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
-    }
-
-    @Test
-    public void testSendSatelliteDatagram_usingCommandsInterface_success() throws  Exception {
-        doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
-        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone});
+    public void testSendSatelliteDatagram_DemoMode_Align_Success() throws Exception {
         doAnswer(invocation -> {
-            Message message = (Message) invocation.getArguments()[0];
-
-            mDatagramDispatcherUT.obtainMessage(2 /*EVENT_SEND_SATELLITE_DATAGRAM_DONE*/,
+            Message message = (Message) invocation.getArguments()[3];
+            mTestDemoModeDatagramDispatcher.obtainMessage(2 /*EVENT_SEND_SATELLITE_DATAGRAM_DONE*/,
                             new AsyncResult(message.obj, null, null))
                     .sendToTarget();
             return null;
-        }).when(mPhone).sendSatelliteDatagram(any(Message.class), any(SatelliteDatagram.class),
-                anyBoolean());
-
-        mDatagramDispatcherUT.sendSatelliteDatagram(SUB_ID, DATAGRAM_TYPE2, mDatagram,
-                true, mResultListener::offer);
-
-        processAllMessages();
-
-        mInOrder.verify(mMockDatagramController).needsWaitingForSatelliteConnected();
-        mInOrder.verify(mMockDatagramController).isPollingInIdleState();
-        mInOrder.verify(mMockDatagramController)
-                .updateSendStatus(eq(SUB_ID),
-                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING), eq(1),
-                        eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
-        mInOrder.verify(mMockDatagramController)
-                .updateSendStatus(eq(SUB_ID),
-                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_SUCCESS), eq(0),
-                        eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
-        mInOrder.verify(mMockDatagramController)
-                .updateSendStatus(eq(SUB_ID),
-                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE), eq(0),
-                        eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
-        verifyNoMoreInteractions(mMockDatagramController);
-
-        assertThat(mResultListener.peek()).isEqualTo(SatelliteManager.SATELLITE_RESULT_SUCCESS);
-    }
-
-    @Test
-    public void testSendSatelliteDatagram_usingCommandsInterface_failure() throws  Exception {
-        doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
-        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone});
-        doAnswer(invocation -> {
-            Message message = (Message) invocation.getArguments()[0];
-
-            mDatagramDispatcherUT.obtainMessage(2 /*EVENT_SEND_SATELLITE_DATAGRAM_DONE*/,
-                            new AsyncResult(message.obj, null,
-                                    new SatelliteManager.SatelliteException(
-                                            SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR)))
-                    .sendToTarget();
-            return null;
-        }).when(mPhone).sendSatelliteDatagram(any(Message.class), any(SatelliteDatagram.class),
-                anyBoolean());
-
-        mDatagramDispatcherUT.sendSatelliteDatagram(SUB_ID, DATAGRAM_TYPE1, mDatagram,
-                true, mResultListener::offer);
-
-        processAllMessages();
-
-        mInOrder.verify(mMockDatagramController).needsWaitingForSatelliteConnected();
-        mInOrder.verify(mMockDatagramController).isPollingInIdleState();
-        mInOrder.verify(mMockDatagramController)
-                .updateSendStatus(eq(SUB_ID),
-                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING), eq(1),
-                        eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
-        mInOrder.verify(mMockDatagramController)
-                .updateSendStatus(eq(SUB_ID),
-                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_FAILED), eq(0),
-                        eq(SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR));
-        mInOrder.verify(mMockDatagramController)
-                .updateSendStatus(eq(SUB_ID),
-                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE), eq(0),
-                        eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
-        verifyNoMoreInteractions(mMockDatagramController);
-
-        assertThat(mResultListener.peek()).isEqualTo(
-                SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR);
-    }
-
-    @Test
-    public void testSendSatelliteDatagram_DemoMode_Align_Success() throws Exception {
+        }).when(mMockSatelliteModemInterface).sendSatelliteDatagram(any(SatelliteDatagram.class),
+                anyBoolean(), anyBoolean(), any(Message.class));
         mTestDemoModeDatagramDispatcher.setDemoMode(true);
         mTestDemoModeDatagramDispatcher.setDeviceAlignedWithSatellite(true);
-        doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
-        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone});
-        doAnswer(invocation -> {
-            Message message = (Message) invocation.getArguments()[0];
-
-            mDatagramDispatcherUT.obtainMessage(2 /*EVENT_SEND_SATELLITE_DATAGRAM_DONE*/,
-                            new AsyncResult(message.obj, null, null))
-                    .sendToTarget();
-            return null;
-        }).when(mPhone).sendSatelliteDatagram(any(Message.class), any(SatelliteDatagram.class),
-                anyBoolean());
 
         mTestDemoModeDatagramDispatcher.sendSatelliteDatagram(SUB_ID, DATAGRAM_TYPE1, mDatagram,
                 true, mResultListener::offer);
@@ -430,22 +316,19 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
     @Test
     public void testSendSatelliteDatagram_DemoMode_Align_failed() throws Exception {
-        long previousTimer = mTestDemoModeDatagramDispatcher.getSatelliteAlignedTimeoutDuration();
-        mTestDemoModeDatagramDispatcher.setDemoMode(true);
-        mTestDemoModeDatagramDispatcher.setDuration(TEST_EXPIRE_TIMER_SATELLITE_ALIGN);
-        mTestDemoModeDatagramDispatcher.setDeviceAlignedWithSatellite(false);
-
-        doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
-        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone});
         doAnswer(invocation -> {
-            Message message = (Message) invocation.getArguments()[0];
-
+            Message message = (Message) invocation.getArguments()[3];
             mTestDemoModeDatagramDispatcher.obtainMessage(2 /*EVENT_SEND_SATELLITE_DATAGRAM_DONE*/,
                             new AsyncResult(message.obj, null, null))
                     .sendToTarget();
             return null;
-        }).when(mPhone).sendSatelliteDatagram(any(Message.class), any(SatelliteDatagram.class),
-                anyBoolean());
+        }).when(mMockSatelliteModemInterface).sendSatelliteDatagram(any(SatelliteDatagram.class),
+                anyBoolean(), anyBoolean(), any(Message.class));
+
+        long previousTimer = mTestDemoModeDatagramDispatcher.getSatelliteAlignedTimeoutDuration();
+        mTestDemoModeDatagramDispatcher.setDemoMode(true);
+        mTestDemoModeDatagramDispatcher.setDuration(TEST_EXPIRE_TIMER_SATELLITE_ALIGN);
+        mTestDemoModeDatagramDispatcher.setDeviceAlignedWithSatellite(false);
 
         mTestDemoModeDatagramDispatcher.sendSatelliteDatagram(SUB_ID, DATAGRAM_TYPE1, mDatagram,
                 true, mResultListener::offer);
@@ -472,18 +355,16 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
     @Test
     public void testSendSatelliteDatagram_DemoMode_data_type_location_sharing() throws Exception {
-        mTestDemoModeDatagramDispatcher.setDemoMode(true);
-        doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
-        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone});
         doAnswer(invocation -> {
-            Message message = (Message) invocation.getArguments()[0];
-
+            Message message = (Message) invocation.getArguments()[3];
             mDatagramDispatcherUT.obtainMessage(2 /*EVENT_SEND_SATELLITE_DATAGRAM_DONE*/,
                             new AsyncResult(message.obj, null, null))
                     .sendToTarget();
             return null;
-        }).when(mPhone).sendSatelliteDatagram(any(Message.class), any(SatelliteDatagram.class),
-                anyBoolean());
+        }).when(mMockSatelliteModemInterface).sendSatelliteDatagram(any(SatelliteDatagram.class),
+                anyBoolean(), anyBoolean(), any(Message.class));
+        mTestDemoModeDatagramDispatcher.setDemoMode(true);
+        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone});
 
         mTestDemoModeDatagramDispatcher.sendSatelliteDatagram(SUB_ID, DATAGRAM_TYPE2, mDatagram,
                 true, mResultListener::offer);

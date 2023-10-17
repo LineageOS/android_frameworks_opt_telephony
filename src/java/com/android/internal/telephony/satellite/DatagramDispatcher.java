@@ -190,50 +190,11 @@ public class DatagramDispatcher extends Handler {
                         (SendSatelliteDatagramArgument) request.argument;
                 onCompleted = obtainMessage(EVENT_SEND_SATELLITE_DATAGRAM_DONE, request);
 
-                if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
-                    SatelliteModemInterface.getInstance().sendSatelliteDatagram(argument.datagram,
-                            argument.datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE,
-                            argument.needFullScreenPointingUI, onCompleted);
-                    break;
-                }
-
-                Phone phone = request.phone;
-                if (phone != null) {
-                    phone.sendSatelliteDatagram(onCompleted, argument.datagram,
-                            argument.needFullScreenPointingUI);
-                } else {
-                    loge("sendSatelliteDatagram: No phone object");
-                    synchronized (mLock) {
-                        // Remove current datagram from pending map
-                        if (argument.datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {
-                            mPendingEmergencyDatagramsMap.remove(argument.datagramId);
-                        } else {
-                            mPendingNonEmergencyDatagramsMap.remove(argument.datagramId);
-                        }
-
-                        // Update send status
-                        mDatagramController.updateSendStatus(argument.subId,
-                                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_FAILED,
-                                getPendingDatagramCount(),
-                                SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
-                        mDatagramController.updateSendStatus(argument.subId,
-                                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
-                                0, SatelliteManager.SATELLITE_RESULT_SUCCESS);
-
-                        // report phone == null case
-                        reportSendDatagramCompleted(argument,
-                                SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
-                        argument.callback.accept(
-                                SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
-
-                        // Abort sending all the pending datagrams
-                        abortSendingPendingDatagrams(argument.subId,
-                                SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
-                    }
-                }
+                SatelliteModemInterface.getInstance().sendSatelliteDatagram(argument.datagram,
+                        argument.datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE,
+                        argument.needFullScreenPointingUI, onCompleted);
                 break;
             }
-
             case EVENT_SEND_SATELLITE_DATAGRAM_DONE: {
                 ar = (AsyncResult) msg.obj;
                 request = (DatagramDispatcherHandlerRequest) ar.userObj;
