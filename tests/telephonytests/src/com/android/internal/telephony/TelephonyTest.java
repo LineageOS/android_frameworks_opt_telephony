@@ -611,7 +611,7 @@ public abstract class TelephonyTest {
         doReturn(mCarrierActionAgent).when(mTelephonyComponentFactory)
                 .makeCarrierActionAgent(nullable(Phone.class));
         doReturn(mDeviceStateMonitor).when(mTelephonyComponentFactory)
-                .makeDeviceStateMonitor(nullable(Phone.class));
+                .makeDeviceStateMonitor(nullable(Phone.class), any(FeatureFlags.class));
         doReturn(mAccessNetworksManager).when(mTelephonyComponentFactory)
                 .makeAccessNetworksManager(nullable(Phone.class), any(Looper.class));
         doReturn(mNitzStateMachine).when(mTelephonyComponentFactory)
