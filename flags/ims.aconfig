@@ -6,3 +6,10 @@ flag {
     description: "This flag controls Conference’s hold & unHold operation changed to send a message"
     bug:"288002989"
 }
+
+flag {
+    name: "ignore_already_terminated_incoming_call_before_registering_listener"
+    namespace: "telephony"
+    description: "This flag ignores the incoming call by throwing an exception if the call was already terminated before the framework registers the listener for the incoming call"
+    bug:"289461637"
+}
