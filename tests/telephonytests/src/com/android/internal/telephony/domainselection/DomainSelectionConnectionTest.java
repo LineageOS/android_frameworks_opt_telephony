@@ -131,19 +131,16 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
     public void testWwanSelectorCallbackAsync() throws Exception {
         mDsc = new DomainSelectionConnection(mPhone, SELECTOR_TYPE_CALLING, true,
                 mDomainSelectionController);
-        replaceInstance(DomainSelectionConnection.class, "mWwanSelectedExecutor",
-                mDsc, new Executor() {
-                    public void execute(Runnable command) {
-                        command.run();
-                    }
-                });
 
         TransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
 
         assertNotNull(transportCallback);
 
+        replaceInstance(DomainSelectionConnection.class, "mLooper",
+                mDsc, mTestableLooper.getLooper());
         Consumer<WwanSelectorCallback> consumer = Mockito.mock(Consumer.class);
         transportCallback.onWwanSelected(consumer);
+        processAllMessages();
 
         verify(consumer).accept(any());
     }
@@ -171,6 +168,7 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
         Consumer<EmergencyRegResult> consumer = Mockito.mock(Consumer.class);
 
         wwanCallback.onRequestEmergencyNetworkScan(preferredNetworks, scanType, null, consumer);
+        processAllMessages();
 
         ArgumentCaptor<Handler> handlerCaptor = ArgumentCaptor.forClass(Handler.class);
         ArgumentCaptor<Integer> eventCaptor = ArgumentCaptor.forClass(Integer.class);
@@ -220,11 +218,13 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
         CancellationSignal signal = new CancellationSignal();
         wwanCallback.onRequestEmergencyNetworkScan(new ArrayList<>(),
                 SCAN_TYPE_NO_PREFERENCE, signal, Mockito.mock(Consumer.class));
+        processAllMessages();
 
         verify(mPhone).registerForEmergencyNetworkScan(any(), anyInt(), any());
         verify(mPhone).triggerEmergencyNetworkScan(any(), anyInt(), any());
 
         signal.cancel();
+        processAllMessages();
 
         verify(mPhone).cancelEmergencyNetworkScan(eq(false), any());
     }
