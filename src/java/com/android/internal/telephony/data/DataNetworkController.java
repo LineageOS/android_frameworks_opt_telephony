@@ -900,7 +900,7 @@ public class DataNetworkController extends Handler {
                     }
                 });
         mDataRetryManager = new DataRetryManager(mPhone, this,
-                mDataServiceManagers, looper,
+                mDataServiceManagers, looper, mFeatureFlags,
                 new DataRetryManagerCallback(this::post) {
                     @Override
                     public void onDataNetworkSetupRetry(

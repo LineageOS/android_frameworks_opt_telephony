@@ -184,6 +184,7 @@ public abstract class TelephonyTest {
     }
 
     // Mocked classes
+    protected FeatureFlags mFeatureFlags;
     protected GsmCdmaPhone mPhone;
     protected GsmCdmaPhone mPhone2;
     protected ImsPhone mImsPhone;
@@ -422,6 +423,7 @@ public abstract class TelephonyTest {
     protected void setUp(String tag) throws Exception {
         TAG = tag;
         enableStrictMode();
+        mFeatureFlags = Mockito.mock(FeatureFlags.class);
         mPhone = Mockito.mock(GsmCdmaPhone.class);
         mPhone2 = Mockito.mock(GsmCdmaPhone.class);
         mImsPhone = Mockito.mock(ImsPhone.class);
