@@ -962,7 +962,8 @@ public class DataRetryManager extends Handler {
     public DataRetryManager(@NonNull Phone phone,
             @NonNull DataNetworkController dataNetworkController,
             @NonNull SparseArray<DataServiceManager> dataServiceManagers,
-            @NonNull Looper looper, @NonNull DataRetryManagerCallback dataRetryManagerCallback) {
+            @NonNull Looper looper,
+            @NonNull DataRetryManagerCallback dataRetryManagerCallback) {
         super(looper);
         mPhone = phone;
         mRil = phone.mCi;
@@ -1514,9 +1515,11 @@ public class DataRetryManager extends Handler {
         DataThrottlingEntry entry = new DataThrottlingEntry(dataProfile, networkRequestList,
                 dataNetwork, transport, retryType, expirationTime);
         // Remove previous entry that contains the same data profile. Therefore it should always
-        // contain at maximum all the distinct data profiles of the current subscription.
+        // contain at maximu all the distinct data profiles of the current subscription times each
+        // transport.
         mDataThrottlingEntries.removeIf(
-                throttlingEntry -> dataProfile.equals(throttlingEntry.dataProfile));
+                throttlingEntry -> dataProfile.equals(throttlingEntry.dataProfile)
+                        && (throttlingEntry.transport == transport));
 
         if (mDataThrottlingEntries.size() >= MAXIMUM_HISTORICAL_ENTRIES) {
             // If we don't see the anomaly report after U release, we should remove this check for
@@ -1578,7 +1581,8 @@ public class DataRetryManager extends Handler {
             // in DataProfileInfo.aidl), so we need to get the equivalent data profile from data
             // profile manager.
             Stream<DataThrottlingEntry> stream = mDataThrottlingEntries.stream();
-            stream = stream.filter(entry -> entry.expirationTimeMillis > now);
+            stream = stream.filter(entry -> entry.expirationTimeMillis > now
+                    && (entry.transport == transport));
             if (dataProfile.getApnSetting() != null) {
                 stream = stream
                         .filter(entry -> entry.dataProfile.getApnSetting() != null)
