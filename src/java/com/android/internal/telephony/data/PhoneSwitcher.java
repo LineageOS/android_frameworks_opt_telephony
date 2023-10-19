@@ -1776,7 +1776,7 @@ public class PhoneSwitcher extends Handler {
         // If validation feature is not supported, set it directly. Otherwise,
         // start validation on the subscription first.
         if (!mValidator.isValidationFeatureSupported()) {
-            setAutoSelectedDataSubIdInternal(subIdToValidate);
+            setAutoSelectedDataSubIdInternal(subId);
             sendSetOpptCallbackHelper(callback, SET_OPPORTUNISTIC_SUB_SUCCESS);
             return;
         }

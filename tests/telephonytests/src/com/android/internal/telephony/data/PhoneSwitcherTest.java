@@ -865,6 +865,37 @@ public class PhoneSwitcherTest extends TelephonyTest {
     }
 
     @Test
+    public void testSetAutoSelectedValidationFeatureNotSupported() throws Exception {
+        doReturn(false).when(mCellularNetworkValidator).isValidationFeatureSupported();
+        initialize();
+
+        // Phone 0 has sub 1, phone 1 has sub 2.
+        // Sub 1 is default data sub.
+        // Both are active subscriptions are active sub, as they are in both active slots.
+        setSlotIndexToSubId(0, 1);
+        setSlotIndexToSubId(1, 2);
+        setDefaultDataSubId(1);
+
+        doReturn(new SubscriptionInfoInternal.Builder(mSubscriptionManagerService
+                .getSubscriptionInfoInternal(2)).setOpportunistic(1).build())
+                .when(mSubscriptionManagerService).getSubscriptionInfoInternal(2);
+
+        mPhoneSwitcherUT.trySetOpportunisticDataSubscription(2, false, mSetOpptDataCallback1);
+        processAllMessages();
+        mPhoneSwitcherUT.mValidationCallback.onNetworkAvailable(null, 2);
+        processAllMessages();
+        assertEquals(2, mPhoneSwitcherUT.getAutoSelectedDataSubId());
+
+        // Switch to the default sub, verify AutoSelectedDataSubId is the default value.
+        clearInvocations(mSetOpptDataCallback1);
+        mPhoneSwitcherUT.trySetOpportunisticDataSubscription(SubscriptionManager
+                .DEFAULT_SUBSCRIPTION_ID, true, mSetOpptDataCallback1);
+        processAllMessages();
+        assertEquals(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                mPhoneSwitcherUT.getAutoSelectedDataSubId());
+    }
+
+    @Test
     @SmallTest
     public void testSetPreferredDataModemCommand() throws Exception {
         doReturn(true).when(mMockRadioConfig).isSetPreferredDataCommandSupported();
@@ -1540,7 +1571,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
                 .when(mSubscriptionManagerService).getSubscriptionInfoInternal(2);
 
         // Switch to primary before a primary is selected/inactive.
-        setDefaultDataSubId(-1);
+        setDefaultDataSubId(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         mPhoneSwitcherUT.trySetOpportunisticDataSubscription(
                 SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, false, mSetOpptDataCallback1);
         processAllMessages();
@@ -2158,7 +2189,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         doReturn(true).when(mDataConfigManager).isPingTestBeforeAutoDataSwitchRequired();
     }
 
-    private void setDefaultDataSubId(int defaultDataSub) throws Exception {
+    private void setDefaultDataSubId(int defaultDataSub) {
         mDefaultDataSub = defaultDataSub;
         doReturn(mDefaultDataSub).when(mSubscriptionManagerService).getDefaultDataSubId();
         if (defaultDataSub == 1) {
