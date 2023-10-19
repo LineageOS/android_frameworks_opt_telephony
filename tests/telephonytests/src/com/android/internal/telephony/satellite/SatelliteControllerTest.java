@@ -16,7 +16,12 @@
 
 package com.android.internal.telephony.satellite;
 
+import static android.telephony.satellite.NtnSignalStrength.NTN_SIGNAL_STRENGTH_GOOD;
+import static android.telephony.satellite.NtnSignalStrength.NTN_SIGNAL_STRENGTH_GREAT;
+import static android.telephony.satellite.NtnSignalStrength.NTN_SIGNAL_STRENGTH_NONE;
+import static android.telephony.satellite.NtnSignalStrength.NTN_SIGNAL_STRENGTH_POOR;
 import static android.telephony.satellite.SatelliteManager.KEY_DEMO_MODE_ENABLED;
+import static android.telephony.satellite.SatelliteManager.KEY_NTN_SIGNAL_STRENGTH;
 import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_CAPABILITIES;
 import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_COMMUNICATION_ALLOWED;
 import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_ENABLED;
@@ -87,10 +92,12 @@ import android.os.PersistableBundle;
 import android.os.ResultReceiver;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
+import android.telephony.satellite.INtnSignalStrengthCallback;
 import android.telephony.satellite.ISatelliteDatagramCallback;
 import android.telephony.satellite.ISatelliteProvisionStateCallback;
 import android.telephony.satellite.ISatelliteStateCallback;
 import android.telephony.satellite.ISatelliteTransmissionUpdateCallback;
+import android.telephony.satellite.NtnSignalStrength;
 import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
@@ -335,7 +342,7 @@ public class SatelliteControllerTest extends TelephonyTest {
                     mQueriedSatelliteAllowed = false;
                 }
             } else {
-                logd("mSatelliteSupportReceiver: resultCode=" + resultCode);
+                logd("mSatelliteAllowedReceiver: resultCode=" + resultCode);
                 mQueriedSatelliteAllowed = false;
             }
             try {
@@ -370,6 +377,36 @@ public class SatelliteControllerTest extends TelephonyTest {
                 mSatelliteVisibilityTimeSemaphore.release();
             } catch (Exception ex) {
                 loge("mSatelliteAllowedReceiver: Got exception in releasing semaphore, ex=" + ex);
+            }
+        }
+    };
+
+    private @NtnSignalStrength.NtnSignalStrengthLevel int mQueriedNtnSignalStrengthLevel =
+            NTN_SIGNAL_STRENGTH_NONE;
+    private int mQueriedNtnSignalStrengthResultCode = SATELLITE_RESULT_SUCCESS;
+    private Semaphore mRequestNtnSignalStrengthSemaphore = new Semaphore(0);
+    private ResultReceiver mRequestNtnSignalStrengthReceiver = new ResultReceiver(null) {
+        @Override
+        protected void onReceiveResult(int resultCode, Bundle resultData) {
+            mQueriedNtnSignalStrengthResultCode = resultCode;
+            if (resultCode == SATELLITE_RESULT_SUCCESS) {
+                if (resultData.containsKey(KEY_NTN_SIGNAL_STRENGTH)) {
+                    NtnSignalStrength result = resultData.getParcelable(KEY_NTN_SIGNAL_STRENGTH);
+                    logd("result.getLevel()=" + result.getLevel());
+                    mQueriedNtnSignalStrengthLevel = result.getLevel();
+                } else {
+                    loge("KEY_NTN_SIGNAL_STRENGTH does not exist.");
+                    mQueriedNtnSignalStrengthLevel = NTN_SIGNAL_STRENGTH_NONE;
+                }
+            } else {
+                logd("KEY_NTN_SIGNAL_STRENGTH: resultCode=" + resultCode);
+                mQueriedNtnSignalStrengthLevel = NTN_SIGNAL_STRENGTH_NONE;
+            }
+            try {
+                mRequestNtnSignalStrengthSemaphore.release();
+            } catch (Exception ex) {
+                loge("mRequestNtnSignalStrengthReceiver: Got exception in releasing semaphore, ex="
+                        + ex);
             }
         }
     };
@@ -2002,6 +2039,198 @@ public class SatelliteControllerTest extends TelephonyTest {
                 SATELLITE_MODEM_STATE_CONNECTED);
     }
 
+    @Test
+    public void testRequestNtnSignalStrengthWithFeatureFlagEnabled() {
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
+
+        resetSatelliteControllerUT();
+
+        mRequestNtnSignalStrengthSemaphore.drainPermits();
+        setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(false, SATELLITE_RESULT_SUCCESS);
+
+        @NtnSignalStrength.NtnSignalStrengthLevel int expectedLevel = NTN_SIGNAL_STRENGTH_GREAT;
+        setUpResponseForRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_SUCCESS);
+        /* In case request is not successful, result should be NTN_SIGNAL_STRENGTH_NONE */
+        verifyRequestNtnSignalStrength(NTN_SIGNAL_STRENGTH_NONE, SATELLITE_RESULT_NOT_SUPPORTED);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_RESULT_SUCCESS);
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+
+        doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_SUCCESS);
+        verifyRequestNtnSignalStrength(NTN_SIGNAL_STRENGTH_NONE,
+                SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
+
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_SUCCESS);
+        verifyRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_SUCCESS);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        // reset cache to NTN_SIGNAL_STRENGTH_NONE
+        sendNtnSignalStrengthChangedEvent(NTN_SIGNAL_STRENGTH_NONE, null);
+        processAllMessages();
+        expectedLevel = NTN_SIGNAL_STRENGTH_POOR;
+        setUpResponseForRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_SUCCESS);
+        verifyRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_SUCCESS);
+    }
+
+    @Test
+    public void testRequestNtnSignalStrengthWithFeatureFlagDisabled() {
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(false);
+
+        resetSatelliteControllerUT();
+        mRequestNtnSignalStrengthSemaphore.drainPermits();
+        doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+
+        @NtnSignalStrength.NtnSignalStrengthLevel int expectedLevel = NTN_SIGNAL_STRENGTH_GREAT;
+        setUpResponseForRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_SUCCESS);
+        verifyRequestNtnSignalStrength(NTN_SIGNAL_STRENGTH_NONE,
+                SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
+
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_SUCCESS);
+        verifyRequestNtnSignalStrength(NTN_SIGNAL_STRENGTH_NONE,
+                SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
+
+        expectedLevel = NTN_SIGNAL_STRENGTH_POOR;
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_SUCCESS);
+        verifyRequestNtnSignalStrength(NTN_SIGNAL_STRENGTH_NONE,
+                SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
+
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_MODEM_ERROR);
+        verifyRequestNtnSignalStrength(NTN_SIGNAL_STRENGTH_NONE,
+                SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
+    }
+
+    @Test
+    public void testRegisterForNtnSignalStrengthChangedWithFeatureFlagEnabled() {
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
+
+        Semaphore semaphore = new Semaphore(0);
+        final NtnSignalStrength[] signalStrength = new NtnSignalStrength[1];
+        INtnSignalStrengthCallback callback =
+                new INtnSignalStrengthCallback.Stub() {
+                    @Override
+                    public void onNtnSignalStrengthChanged(NtnSignalStrength ntnSignalStrength) {
+                        logd("onNtnSignalStrengthChanged: ntnSignalStrength="
+                                + ntnSignalStrength);
+                        try {
+                            signalStrength[0] = ntnSignalStrength;
+                            semaphore.release();
+                        } catch (Exception ex) {
+                            loge("onNtnSignalStrengthChanged: Got exception in releasing "
+                                    + "semaphore, ex=" + ex);
+                        }
+                    }
+                };
+
+        int errorCode = mSatelliteControllerUT.registerForNtnSignalStrengthChanged(SUB_ID,
+                callback);
+        assertEquals(SATELLITE_RESULT_INVALID_TELEPHONY_STATE, errorCode);
+        @NtnSignalStrength.NtnSignalStrengthLevel int expectedLevel = NTN_SIGNAL_STRENGTH_NONE;
+
+        setUpResponseForRequestIsSatelliteSupported(false,
+                SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(false, SATELLITE_RESULT_SUCCESS);
+        errorCode = mSatelliteControllerUT.registerForNtnSignalStrengthChanged(SUB_ID, callback);
+        assertEquals(SATELLITE_RESULT_NOT_SUPPORTED, errorCode);
+        verifyRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_NOT_SUPPORTED);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_RESULT_SUCCESS);
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        setUpResponseForRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        errorCode = mSatelliteControllerUT.registerForNtnSignalStrengthChanged(SUB_ID, callback);
+        assertEquals(SATELLITE_RESULT_SUCCESS, errorCode);
+        verifyRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_SUCCESS);
+
+        expectedLevel = NTN_SIGNAL_STRENGTH_GOOD;
+        sendNtnSignalStrengthChangedEvent(expectedLevel, null);
+        processAllMessages();
+        assertTrue(waitForForEvents(
+                semaphore, 1, "testRegisterForNtnSignalStrengthChanged"));
+        assertEquals(expectedLevel, signalStrength[0].getLevel());
+        verifyRequestNtnSignalStrength(NTN_SIGNAL_STRENGTH_GOOD, SATELLITE_RESULT_SUCCESS);
+
+        expectedLevel = NTN_SIGNAL_STRENGTH_POOR;
+        sendNtnSignalStrengthChangedEvent(expectedLevel, null);
+        processAllMessages();
+        assertTrue(waitForForEvents(
+                semaphore, 1, "testRegisterForNtnSignalStrengthChanged"));
+        assertEquals(expectedLevel, signalStrength[0].getLevel());
+        verifyRequestNtnSignalStrength(NTN_SIGNAL_STRENGTH_POOR, SATELLITE_RESULT_SUCCESS);
+
+        mSatelliteControllerUT.unregisterForNtnSignalStrengthChanged(SUB_ID, callback);
+        sendNtnSignalStrengthChangedEvent(NTN_SIGNAL_STRENGTH_GREAT, null);
+        processAllMessages();
+        assertFalse(waitForForEvents(
+                semaphore, 1, "testRegisterForNtnSignalStrengthChanged"));
+        /* Even if all listeners are unregistered, the cache is updated with the latest value when a
+         new value event occurs. */
+        verifyRequestNtnSignalStrength(NTN_SIGNAL_STRENGTH_GREAT, SATELLITE_RESULT_SUCCESS);
+    }
+
+    @Test
+    public void testRegisterForNtnSignalStrengthChangedWithFeatureFlagDisabled() {
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(false);
+
+        Semaphore semaphore = new Semaphore(0);
+        final NtnSignalStrength[] signalStrength = new NtnSignalStrength[1];
+        INtnSignalStrengthCallback callback =
+                new INtnSignalStrengthCallback.Stub() {
+                    @Override
+                    public void onNtnSignalStrengthChanged(NtnSignalStrength ntnSignalStrength) {
+                        logd("onNtnSignalStrengthChanged: ntnSignalStrength="
+                                + ntnSignalStrength);
+                        try {
+                            signalStrength[0] = ntnSignalStrength;
+                            semaphore.release();
+                        } catch (Exception ex) {
+                            loge("onNtnSignalStrengthChanged: Got exception in releasing "
+                                    + "semaphore, ex=" + ex);
+                        }
+                    }
+                };
+
+        int errorCode = mSatelliteControllerUT.registerForNtnSignalStrengthChanged(SUB_ID,
+                callback);
+        assertEquals(SATELLITE_RESULT_REQUEST_NOT_SUPPORTED, errorCode);
+
+        setUpResponseForRequestIsSatelliteSupported(false,
+                SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(false, SATELLITE_RESULT_NOT_SUPPORTED);
+        errorCode = mSatelliteControllerUT.registerForNtnSignalStrengthChanged(SUB_ID, callback);
+        assertEquals(SATELLITE_RESULT_REQUEST_NOT_SUPPORTED, errorCode);
+        setUpResponseForRequestNtnSignalStrength(NTN_SIGNAL_STRENGTH_NONE,
+                SATELLITE_RESULT_SUCCESS);
+        verifyRequestNtnSignalStrength(NTN_SIGNAL_STRENGTH_NONE,
+                SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(false, SATELLITE_RESULT_NOT_SUPPORTED);
+        errorCode = mSatelliteControllerUT.registerForNtnSignalStrengthChanged(SUB_ID, callback);
+        assertEquals(SATELLITE_RESULT_REQUEST_NOT_SUPPORTED, errorCode);
+        verifyRequestNtnSignalStrength(NTN_SIGNAL_STRENGTH_NONE,
+                SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
+
+        @NtnSignalStrength.NtnSignalStrengthLevel int expectedNtnSignalStrengthLevel =
+                NTN_SIGNAL_STRENGTH_GOOD;
+        sendNtnSignalStrengthChangedEvent(expectedNtnSignalStrengthLevel, null);
+        processAllMessages();
+        assertTrue(waitForForEvents(
+                semaphore, 0, "testRegisterForNtnSignalStrengthChanged"));
+    }
+
     private void resetSatelliteControllerUTEnabledState() {
         logd("resetSatelliteControllerUTEnabledState");
         setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_RESULT_RADIO_NOT_AVAILABLE);
@@ -2229,6 +2458,20 @@ public class SatelliteControllerTest extends TelephonyTest {
         }).when(mMockSatelliteModemInterface).requestSatelliteCapabilities(any(Message.class));
     }
 
+    private void setUpResponseForRequestNtnSignalStrength(
+            @NtnSignalStrength.NtnSignalStrengthLevel int ntnSignalStrengthLevel,
+            @SatelliteManager.SatelliteResult int error) {
+        SatelliteException exception = (error == SATELLITE_RESULT_SUCCESS)
+                ? null : new SatelliteException(error);
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[0];
+            AsyncResult.forMessage(message, new NtnSignalStrength(ntnSignalStrengthLevel),
+                    exception);
+            message.sendToTarget();
+            return null;
+        }).when(mMockSatelliteModemInterface).requestNtnSignalStrength(any(Message.class));
+    }
+
     private boolean waitForForEvents(
             Semaphore semaphore, int expectedNumberOfEvents, String caller) {
         for (int i = 0; i < expectedNumberOfEvents; i++) {
@@ -2391,6 +2634,22 @@ public class SatelliteControllerTest extends TelephonyTest {
         return true;
     }
 
+    private boolean waitForRequestNtnSignalStrengthResult(int expectedNumberOfEvents) {
+        for (int i = 0; i < expectedNumberOfEvents; i++) {
+            try {
+                if (!mRequestNtnSignalStrengthSemaphore.tryAcquire(TIMEOUT,
+                        TimeUnit.MILLISECONDS)) {
+                    loge("Timeout to receive requestNtnSignalStrength() callback");
+                    return false;
+                }
+            } catch (Exception ex) {
+                loge("requestNtnSignalStrength: Got exception=" + ex);
+                return false;
+            }
+        }
+        return true;
+    }
+
     private boolean waitForIIntegerConsumerResult(int expectedNumberOfEvents) {
         for (int i = 0; i < expectedNumberOfEvents; i++) {
             try {
@@ -2434,6 +2693,17 @@ public class SatelliteControllerTest extends TelephonyTest {
         assertEquals(provisioned, mQueriedIsSatelliteProvisioned);
     }
 
+    private void verifyRequestNtnSignalStrength(
+            @NtnSignalStrength.NtnSignalStrengthLevel int signalStrengthLevel,
+            int expectedErrorCode) {
+        mRequestNtnSignalStrengthSemaphore.drainPermits();
+        mSatelliteControllerUT.requestNtnSignalStrength(SUB_ID, mRequestNtnSignalStrengthReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestNtnSignalStrengthResult(1));
+        assertEquals(expectedErrorCode, mQueriedNtnSignalStrengthResultCode);
+        assertEquals(signalStrengthLevel, mQueriedNtnSignalStrengthLevel);
+    }
+
     private void sendProvisionedStateChangedEvent(boolean provisioned, Throwable exception) {
         Message msg = mSatelliteControllerUT.obtainMessage(
                 26 /* EVENT_SATELLITE_PROVISION_STATE_CHANGED */);
@@ -2445,6 +2715,16 @@ public class SatelliteControllerTest extends TelephonyTest {
         Message msg = mSatelliteControllerUT.obtainMessage(
                 28 /* EVENT_SATELLITE_MODEM_STATE_CHANGED */);
         msg.obj = new AsyncResult(null, state, exception);
+        msg.sendToTarget();
+    }
+
+    private void sendNtnSignalStrengthChangedEvent(
+            @NtnSignalStrength.NtnSignalStrengthLevel int ntnSignalStrengthLevel,
+            Throwable exception) {
+        Message msg = mSatelliteControllerUT.obtainMessage(
+                34 /* EVENT_NTN_SIGNAL_STRENGTH_CHANGED */);
+        msg.obj = new AsyncResult(null, new NtnSignalStrength(ntnSignalStrengthLevel),
+                exception);
         msg.sendToTarget();
     }
 

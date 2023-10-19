@@ -31,6 +31,7 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.satellite.AntennaPosition;
+import android.telephony.satellite.NtnSignalStrength;
 import android.telephony.satellite.PointingInfo;
 import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
@@ -209,6 +210,16 @@ public class SatelliteServiceUtils {
         if (datagram == null) return null;
         byte[] data = datagram.data == null ? new byte[0] : datagram.data;
         return new SatelliteDatagram(data);
+    }
+
+    /**
+     * Convert non-terrestrial signal strength from service definition to framework definition.
+     * @param ntnSignalStrength The non-terrestrial signal strength from the satellite service.
+     * @return The converted non-terrestrial signal strength for the framework.
+     */
+    @Nullable public static NtnSignalStrength fromModemInterface(
+            android.telephony.satellite.stub.NtnSignalStrength ntnSignalStrength) {
+        return new NtnSignalStrength(ntnSignalStrength.signalStrengthLevel);
     }
 
     /**

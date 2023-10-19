@@ -31,10 +31,12 @@ import android.os.Message;
 import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.telephony.Rlog;
+import android.telephony.satellite.NtnSignalStrength;
 import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
 import android.telephony.satellite.SatelliteManager.SatelliteException;
+import android.telephony.satellite.stub.INtnSignalStrengthConsumer;
 import android.telephony.satellite.stub.ISatellite;
 import android.telephony.satellite.stub.ISatelliteCapabilitiesConsumer;
 import android.telephony.satellite.stub.ISatelliteListener;
@@ -87,6 +89,8 @@ public class SatelliteModemInterface {
     @NonNull private final RegistrantList mPendingDatagramsRegistrants = new RegistrantList();
     @NonNull private final RegistrantList mSatelliteDatagramsReceivedRegistrants =
             new RegistrantList();
+    @NonNull private final RegistrantList mNtnSignalStrengthChangedRegistrants =
+            new RegistrantList();
 
     @NonNull private final ISatelliteListener mListener = new ISatelliteListener.Stub() {
         @Override
@@ -135,6 +139,13 @@ public class SatelliteModemInterface {
                     break;
             }
             mDatagramTransferStateChangedRegistrants.notifyResult(datagramTransferState);
+        }
+
+        @Override
+        public void onNtnSignalStrengthChanged(
+                android.telephony.satellite.stub.NtnSignalStrength ntnSignalStrength) {
+            mNtnSignalStrengthChangedRegistrants.notifyResult(
+                    SatelliteServiceUtils.fromModemInterface(ntnSignalStrength));
         }
     };
 
@@ -438,6 +449,27 @@ public class SatelliteModemInterface {
      */
     public void unregisterForSatelliteDatagramsReceived(@NonNull Handler h) {
         mSatelliteDatagramsReceivedRegistrants.remove(h);
+    }
+
+    /**
+     * Registers for non-terrestrial signal strength level changed.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForNtnSignalStrengthChanged(
+            @NonNull Handler h, int what, @Nullable Object obj) {
+        mNtnSignalStrengthChangedRegistrants.add(h, what, obj);
+    }
+
+    /**
+     * Unregisters for non-terrestrial signal strength level changed.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForNtnSignalStrengthChanged(@NonNull Handler h) {
+        mNtnSignalStrengthChangedRegistrants.remove(h);
     }
 
     /**
@@ -1153,6 +1185,102 @@ public class SatelliteModemInterface {
         }
     }
 
+    /**
+     * Request to get the signal strength of the satellite connection.
+     *
+     * @param message The Message to send to result of the operation to.
+     */
+    public void requestNtnSignalStrength(@NonNull Message message) {
+        if (mSatelliteService != null) {
+            try {
+                mSatelliteService.requestSignalStrength(
+                        new IIntegerConsumer.Stub() {
+                            @Override
+                            public void accept(int result) {
+                                int error = SatelliteServiceUtils.fromSatelliteError(result);
+                                logd("requestNtnSignalStrength: " + error);
+                                Binder.withCleanCallingIdentity(() ->
+                                        sendMessageWithResult(message, null, error));
+                            }
+                        }, new INtnSignalStrengthConsumer.Stub() {
+                            @Override
+                            public void accept(NtnSignalStrength result) {
+                                logd("requestNtnSignalStrength: " + result);
+                                Binder.withCleanCallingIdentity(() -> sendMessageWithResult(
+                                        message, result,
+                                        SatelliteManager.SATELLITE_RESULT_SUCCESS));
+                            }
+                        });
+            } catch (RemoteException e) {
+                loge("requestNtnSignalStrength: RemoteException " + e);
+                sendMessageWithResult(message, null,
+                        SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR);
+            }
+        } else {
+            loge("requestNtnSignalStrength: Satellite service is unavailable.");
+            sendMessageWithResult(message, null,
+                    SatelliteManager.SATELLITE_RESULT_RADIO_NOT_AVAILABLE);
+        }
+    }
+
+    /**
+     * The satellite service should report the NTN signal strength via
+     * ISatelliteListener#onNtnSignalStrengthChanged when the NTN signal strength changes.
+     *
+     * @param message The Message to send to result of the operation to.
+     */
+    public void startSendingNtnSignalStrength(@NonNull Message message) {
+        if (mSatelliteService != null) {
+            try {
+                mSatelliteService.startSendingNtnSignalStrength(new IIntegerConsumer.Stub() {
+                    @Override
+                    public void accept(int result) {
+                        int error = SatelliteServiceUtils.fromSatelliteError(result);
+                        logd("startSendingNtnSignalStrength: " + error);
+                        Binder.withCleanCallingIdentity(() ->
+                                sendMessageWithResult(message, null, error));
+                    }
+                });
+            } catch (RemoteException e) {
+                loge("startSendingNtnSignalStrength: RemoteException " + e);
+                sendMessageWithResult(message, null,
+                        SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR);
+            }
+        } else {
+            loge("startSendingNtnSignalStrength: Satellite service is unavailable.");
+            sendMessageWithResult(message, null,
+                    SatelliteManager.SATELLITE_RESULT_RADIO_NOT_AVAILABLE);
+        }
+    }
+
+    /**
+     * The satellite service should stop reporting NTN signal strength to the framework.
+     *
+     * @param message The Message to send to result of the operation to.
+     */
+    public void stopSendingNtnSignalStrength(@NonNull Message message) {
+        if (mSatelliteService != null) {
+            try {
+                mSatelliteService.stopSendingNtnSignalStrength(new IIntegerConsumer.Stub() {
+                    @Override
+                    public void accept(int result) {
+                        int error = SatelliteServiceUtils.fromSatelliteError(result);
+                        logd("stopSendingNtnSignalStrength: " + error);
+                        Binder.withCleanCallingIdentity(() ->
+                                sendMessageWithResult(message, null, error));
+                    }
+                });
+            } catch (RemoteException e) {
+                loge("stopSendingNtnSignalStrength: RemoteException " + e);
+                sendMessageWithResult(message, null,
+                        SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR);
+            }
+        } else {
+            loge("stopSendingNtnSignalStrength: Satellite service is unavailable.");
+            sendMessageWithResult(message, null,
+                    SatelliteManager.SATELLITE_RESULT_RADIO_NOT_AVAILABLE);
+        }
+    }
 
     public boolean isSatelliteServiceSupported() {
         return mIsSatelliteServiceSupported;
