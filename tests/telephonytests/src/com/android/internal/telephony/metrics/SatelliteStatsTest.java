@@ -225,6 +225,9 @@ public class SatelliteStatsTest extends TelephonyTest {
                         .setCountOfTimerStarted(5)
                         .setImsRegistered(false)
                         .setCellularServiceState(TelephonyProtoEnums.SERVICE_STATE_OUT_OF_SERVICE)
+                        .setIsMultiSim(false)
+                        .setRecommendingHandoverType(0)
+                        .setIsSatelliteAllowedInCurrentLocation(true)
                         .build();
 
         mSatelliteStats.onSatelliteSosMessageRecommender(param);
@@ -238,6 +241,10 @@ public class SatelliteStatsTest extends TelephonyTest {
         assertEquals(param.getCountOfTimerStarted(), stats.countOfTimerStarted);
         assertEquals(param.isImsRegistered(), stats.isImsRegistered);
         assertEquals(param.getCellularServiceState(), stats.cellularServiceState);
+        assertEquals(param.isMultiSim(), stats.isMultiSim);
+        assertEquals(param.getRecommendingHandoverType(), stats.recommendingHandoverType);
+        assertEquals(param.isSatelliteAllowedInCurrentLocation(),
+                stats.isSatelliteAllowedInCurrentLocation);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 }

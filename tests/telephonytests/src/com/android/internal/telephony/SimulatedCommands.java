@@ -1014,7 +1014,6 @@ public class SimulatedCommands extends BaseCommands
 
     @VisibleForTesting
     public int getGetOperatorCallCount() {
-        final int count = mGetOperatorCallCount.get();
         return mGetOperatorCallCount.get();
     }
 
@@ -1153,7 +1152,7 @@ public class SimulatedCommands extends BaseCommands
                         "fd00:976a:c305:1d::8 fd00:976a:c202:1d::7 fd00:976a:c305:1d::5"));
                 mSetupDataCallResult.mtu = 1440;
             } catch (Exception e) {
-
+                Rlog.e(LOG_TAG, "setupDataCall: e=" + e);
             }
         }
 
@@ -1993,7 +1992,7 @@ public class SimulatedCommands extends BaseCommands
         if (!mShouldReturnCellInfo) return;
 
         if (mCellInfoList == null) {
-            ArrayList<CellInfo> mCellInfoList = new ArrayList();
+            mCellInfoList = new ArrayList();
             mCellInfoList.add(getCellInfoGsm());
         }
 

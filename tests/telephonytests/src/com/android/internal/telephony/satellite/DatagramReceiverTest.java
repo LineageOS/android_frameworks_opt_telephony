@@ -429,7 +429,7 @@ public class DatagramReceiverTest extends TelephonyTest {
 
     @Test
     public void testRegisterForSatelliteDatagram_satelliteNotSupported() {
-        when(mMockSatelliteController.isSatelliteSupported()).thenReturn(false);
+        when(mMockSatelliteController.isSatelliteSupportedViaOem()).thenReturn(false);
 
         ISatelliteDatagramCallback callback = new ISatelliteDatagramCallback() {
             @Override

@@ -732,12 +732,19 @@ public class SatelliteStats {
         private final int mCountOfTimerStarted;
         private final boolean mIsImsRegistered;
         private final int mCellularServiceState;
+        private final boolean mIsMultiSim;
+        private final int mRecommendingHandoverType;
+        private final boolean mIsSatelliteAllowedInCurrentLocation;
 
         private SatelliteSosMessageRecommenderParams(Builder builder) {
             this.mIsDisplaySosMessageSent = builder.mIsDisplaySosMessageSent;
             this.mCountOfTimerStarted = builder.mCountOfTimerStarted;
             this.mIsImsRegistered = builder.mIsImsRegistered;
             this.mCellularServiceState = builder.mCellularServiceState;
+            this.mIsMultiSim = builder.mIsMultiSim;
+            this.mRecommendingHandoverType = builder.mRecommendingHandoverType;
+            this.mIsSatelliteAllowedInCurrentLocation =
+                    builder.mIsSatelliteAllowedInCurrentLocation;
         }
 
         public boolean isDisplaySosMessageSent() {
@@ -756,6 +763,18 @@ public class SatelliteStats {
             return mCellularServiceState;
         }
 
+        public boolean isMultiSim() {
+            return mIsMultiSim;
+        }
+
+        public int getRecommendingHandoverType() {
+            return mRecommendingHandoverType;
+        }
+
+        public boolean isSatelliteAllowedInCurrentLocation() {
+            return mIsSatelliteAllowedInCurrentLocation;
+        }
+
         /**
          * A builder class to create {@link SatelliteProvisionParams} data structure class
          */
@@ -764,6 +783,10 @@ public class SatelliteStats {
             private int mCountOfTimerStarted = -1;
             private boolean mIsImsRegistered = false;
             private int mCellularServiceState = -1;
+            private boolean mIsMultiSim = false;
+            private int mRecommendingHandoverType = -1;
+            private boolean mIsSatelliteAllowedInCurrentLocation = false;
+
 
             /**
              * Sets resultCode value of {@link SatelliteSosMessageRecommender} atom
@@ -803,6 +826,34 @@ public class SatelliteStats {
             }
 
             /**
+             * Sets isMultiSim value of {@link SatelliteSosMessageRecommender} atom
+             * then returns Builder class
+             */
+            public Builder setIsMultiSim(boolean isMultiSim) {
+                this.mIsMultiSim = isMultiSim;
+                return this;
+            }
+
+            /**
+             * Sets recommendingHandoverType value of {@link SatelliteSosMessageRecommender} atom
+             * then returns Builder class
+             */
+            public Builder setRecommendingHandoverType(int recommendingHandoverType) {
+                this.mRecommendingHandoverType = recommendingHandoverType;
+                return this;
+            }
+
+            /**
+             * Sets isSatelliteAllowedInCurrentLocation value of
+             * {@link SatelliteSosMessageRecommender} atom then returns Builder class.
+             */
+            public Builder setIsSatelliteAllowedInCurrentLocation(
+                    boolean satelliteAllowedInCurrentLocation) {
+                mIsSatelliteAllowedInCurrentLocation = satelliteAllowedInCurrentLocation;
+                return this;
+            }
+
+            /**
              * Returns SosMessageRecommenderParams, which contains whole component of
              * {@link SatelliteSosMessageRecommenderParams} atom
              */
@@ -818,7 +869,11 @@ public class SatelliteStats {
                     + "isDisplaySosMessageSent=" + mIsDisplaySosMessageSent
                     + ", countOfTimerStarted=" + mCountOfTimerStarted
                     + ", isImsRegistered=" + mIsImsRegistered
-                    + ", cellularServiceState=" + mCellularServiceState + ")";
+                    + ", cellularServiceState=" + mCellularServiceState
+                    + ", isMultiSim=" + mIsMultiSim
+                    + ", recommendingHandoverType=" + mRecommendingHandoverType
+                    + ", isSatelliteAllowedInCurrentLocation="
+                    + mIsSatelliteAllowedInCurrentLocation + ")";
         }
     }
 
@@ -899,6 +954,9 @@ public class SatelliteStats {
         proto.countOfTimerStarted = param.getCountOfTimerStarted();
         proto.isImsRegistered = param.isImsRegistered();
         proto.cellularServiceState = param.getCellularServiceState();
+        proto.isMultiSim = param.isMultiSim();
+        proto.recommendingHandoverType = param.getRecommendingHandoverType();
+        proto.isSatelliteAllowedInCurrentLocation = param.isSatelliteAllowedInCurrentLocation();
         proto.count = 1;
         mAtomsStorage.addSatelliteSosMessageRecommenderStats(proto);
     }

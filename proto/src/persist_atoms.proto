@@ -677,4 +677,7 @@ message SatelliteSosMessageRecommender {
     optional bool is_ims_registered = 3;
     optional int32 cellular_service_state = 4;
     optional int32 count = 5;
+    optional bool is_multi_sim = 6;
+    optional int32 recommending_handover_type = 7;
+    optional bool is_satellite_allowed_in_current_location = 8;
 }
