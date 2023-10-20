@@ -786,7 +786,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                     perSimStatus.minimumVoltageClass, // simVoltageClass
                     perSimStatus.userModifiedApnTypes, // userModifiedApnTypeBitmask
                     perSimStatus.unmeteredNetworks, // unmeteredNetworks
-                    perSimStatus.vonrEnabled); // vonrEnabled
+                    perSimStatus.vonrEnabled, // vonrEnabled
+                    perSimStatus.crossSimCallingEnabled); // crossSimCallingEnabled
             data.add(statsEvent);
             result = StatsManager.PULL_SUCCESS;
         }

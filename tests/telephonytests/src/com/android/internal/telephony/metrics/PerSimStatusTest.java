@@ -107,6 +107,7 @@ public class PerSimStatusTest extends TelephonyTest {
                 .when(imsMmTelManager1)
                 .getVoWiFiRoamingModeSetting();
         doReturn(false).when(imsMmTelManager1).isVtSettingEnabled();
+        doReturn(true).when(imsMmTelManager1).isCrossSimCallingEnabled();
         doReturn(false).when(mPhone).getDataRoamingEnabled();
         doReturn(1L)
                 .when(mPhone)
@@ -152,6 +153,7 @@ public class PerSimStatusTest extends TelephonyTest {
                 .when(imsMmTelManager2)
                 .getVoWiFiRoamingModeSetting();
         doReturn(true).when(imsMmTelManager2).isVtSettingEnabled();
+        doReturn(false).when(imsMmTelManager2).isCrossSimCallingEnabled();
         doReturn(false).when(mSecondPhone).getDataRoamingEnabled();
         doReturn(1L)
                 .when(mSecondPhone)
@@ -191,6 +193,8 @@ public class PerSimStatusTest extends TelephonyTest {
                 perSimStatus1.minimumVoltageClass);
         assertEquals(NETWORK_TYPE_BITMASK_GSM, perSimStatus1.unmeteredNetworks);
         assertEquals(false, perSimStatus1.vonrEnabled);
+        assertEquals(true, perSimStatus1.crossSimCallingEnabled);
+
         assertEquals(101, perSimStatus2.carrierId);
         assertEquals(1, perSimStatus2.phoneNumberSourceUicc);
         assertEquals(2, perSimStatus2.phoneNumberSourceCarrier);
@@ -210,6 +214,7 @@ public class PerSimStatusTest extends TelephonyTest {
                 perSimStatus2.minimumVoltageClass);
         assertEquals(NETWORK_TYPE_BITMASK_GSM, perSimStatus2.unmeteredNetworks);
         assertEquals(false, perSimStatus2.vonrEnabled);
+        assertEquals(false, perSimStatus2.crossSimCallingEnabled);
     }
 
     @Test
@@ -279,6 +284,7 @@ public class PerSimStatusTest extends TelephonyTest {
                 perSimStatus.minimumVoltageClass);
         assertEquals(NETWORK_TYPE_BITMASK_GSM, perSimStatus.unmeteredNetworks);
         assertEquals(true, perSimStatus.vonrEnabled);
+        assertEquals(false, perSimStatus.crossSimCallingEnabled);
     }
 
     @Test
@@ -340,6 +346,7 @@ public class PerSimStatusTest extends TelephonyTest {
                 perSimStatus.minimumVoltageClass);
         assertEquals(NETWORK_TYPE_BITMASK_GSM, perSimStatus.unmeteredNetworks);
         assertEquals(true, perSimStatus.vonrEnabled);
+        assertEquals(false, perSimStatus.crossSimCallingEnabled);
     }
 
     @Test
@@ -397,5 +404,6 @@ public class PerSimStatusTest extends TelephonyTest {
                 perSimStatus.minimumVoltageClass);
         assertEquals(NETWORK_TYPE_BITMASK_GSM, perSimStatus.unmeteredNetworks);
         assertEquals(true, perSimStatus.vonrEnabled);
+        assertEquals(false, perSimStatus.crossSimCallingEnabled);
     }
 }
