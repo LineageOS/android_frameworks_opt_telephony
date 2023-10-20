@@ -498,15 +498,17 @@ public class TelephonyComponentFactory {
      * @param dataServiceManager Data service manager instance.
      * @param looper The looper to be used by the handler. Currently the handler thread is the phone
      * process's main thread.
+     * @param featureFlags Feature flags controlling which feature is enabled.     *
      * @param callback Callback for passing events back to data network controller.
      * @return The data profile manager instance.
      */
     public @NonNull DataProfileManager makeDataProfileManager(@NonNull Phone phone,
             @NonNull DataNetworkController dataNetworkController,
             @NonNull DataServiceManager dataServiceManager, @NonNull Looper looper,
+            @NonNull FeatureFlags featureFlags,
             @NonNull DataProfileManager.DataProfileManagerCallback callback) {
         return new DataProfileManager(phone, dataNetworkController, dataServiceManager, looper,
-                callback);
+                featureFlags, callback);
     }
 
     /**

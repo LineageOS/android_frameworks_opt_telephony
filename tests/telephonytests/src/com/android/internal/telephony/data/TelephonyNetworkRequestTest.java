@@ -87,6 +87,24 @@ public class TelephonyNetworkRequestTest extends TelephonyTest {
             .setMaxConnsTime(789)
             .build();
 
+    private static final ApnSetting RCS_APN_SETTING = new ApnSetting.Builder()
+            .setId(2165)
+            .setOperatorNumeric("12345")
+            .setEntryName("rcs")
+            .setApnName("rcs")
+            .setUser("user")
+            .setPassword("passwd")
+            .setApnTypeBitmask(ApnSetting.TYPE_RCS)
+            .setProtocol(ApnSetting.PROTOCOL_IPV6)
+            .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+            .setCarrierEnabled(true)
+            .setNetworkTypeBitmask(0)
+            .setProfileId(1234)
+            .setMaxConns(321)
+            .setWaitTime(456)
+            .setMaxConnsTime(789)
+            .build();
+
     @Before
     public void setUp() throws Exception {
         logd("TelephonyNetworkRequestTest +Setup!");
@@ -211,6 +229,20 @@ public class TelephonyNetworkRequestTest extends TelephonyTest {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
                 .build();
         assertThat(internetRequest.canBeSatisfiedBy(caps)).isTrue();
+
+        TelephonyNetworkRequest rcsRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_RCS)
+                        .build(), mPhone);
+        caps = new NetworkCapabilities.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_RCS)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
+                .build();
+        assertThat(rcsRequest.canBeSatisfiedBy(caps)).isTrue();
     }
 
     @Test
@@ -223,17 +255,25 @@ public class TelephonyNetworkRequestTest extends TelephonyTest {
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
                         .build(), mPhone);
+        TelephonyNetworkRequest rcsRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_RCS)
+                        .build(), mPhone);
         DataProfile internetDataProfile = new DataProfile.Builder()
                 .setApnSetting(INTERNET_APN_SETTING)
                 .build();
         DataProfile mmsDataProfile = new DataProfile.Builder()
                 .setApnSetting(MMS_APN_SETTING)
                 .build();
+        DataProfile rcsDataProfile = new DataProfile.Builder()
+                .setApnSetting(RCS_APN_SETTING)
+                .build();
 
         assertThat(internetRequest.canBeSatisfiedBy(internetDataProfile)).isTrue();
         assertThat(internetRequest.canBeSatisfiedBy(mmsDataProfile)).isFalse();
         assertThat(mmsRequest.canBeSatisfiedBy(internetDataProfile)).isFalse();
         assertThat(mmsRequest.canBeSatisfiedBy(mmsDataProfile)).isTrue();
+        assertThat(rcsRequest.canBeSatisfiedBy(rcsDataProfile)).isTrue();
     }
 
     @Test
