@@ -983,8 +983,11 @@ public class RILUtils {
         dpi.persistent = dp.isPersistent();
         dpi.preferred = dp.isPreferred();
         dpi.alwaysOn = false;
+        dpi.infrastructureBitmap = android.hardware.radio.data.DataProfileInfo
+                .INFRASTRUCTURE_CELLULAR;
         if (dp.getApnSetting() != null) {
             dpi.alwaysOn = dp.getApnSetting().isAlwaysOn();
+            dpi.infrastructureBitmap = dp.getApnSetting().getInfrastructureBitmask();
         }
         dpi.trafficDescriptor = convertToHalTrafficDescriptorAidl(dp.getTrafficDescriptor());
 
@@ -1022,6 +1025,7 @@ public class RILUtils {
                 .setRoamingProtocol(dpi.roamingProtocol)
                 .setUser(dpi.user)
                 .setAlwaysOn(dpi.alwaysOn)
+                .setInfrastructureBitmask(dpi.infrastructureBitmap)
                 .build();
 
         TrafficDescriptor td;

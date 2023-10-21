@@ -154,6 +154,9 @@ public class ApnSettingTest extends TelephonyTest {
         assertTrue(createApnSetting(
                 ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_MMS | ApnSetting.TYPE_EMERGENCY)
                 .canHandleType(ApnSetting.TYPE_EMERGENCY));
+        assertTrue(createApnSetting(
+                ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_RCS | ApnSetting.TYPE_EMERGENCY)
+                .canHandleType(ApnSetting.TYPE_RCS));
         assertFalse(createApnSetting(ApnSetting.TYPE_ALL)
                 .canHandleType(ApnSetting.TYPE_MCX));
         assertTrue(createApnSetting(
