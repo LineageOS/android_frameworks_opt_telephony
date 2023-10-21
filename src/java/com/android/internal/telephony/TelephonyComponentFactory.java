@@ -480,8 +480,8 @@ public class TelephonyComponentFactory {
     }
 
     public PhoneSwitcher makePhoneSwitcher(int maxDataAttachModemCount, Context context,
-            Looper looper) {
-        return PhoneSwitcher.make(maxDataAttachModemCount, context, looper);
+            Looper looper, @NonNull FeatureFlags featureFlags) {
+        return PhoneSwitcher.make(maxDataAttachModemCount, context, looper, featureFlags);
     }
 
     /**

@@ -265,7 +265,8 @@ public class PhoneFactory {
 
                 sPhoneSwitcher = TelephonyComponentFactory.getInstance().inject(
                         PhoneSwitcher.class.getName()).
-                        makePhoneSwitcher(maxActivePhones, sContext, Looper.myLooper());
+                        makePhoneSwitcher(maxActivePhones, sContext, Looper.myLooper(),
+                                featureFlags);
 
                 sProxyController = ProxyController.getInstance(context);
 
