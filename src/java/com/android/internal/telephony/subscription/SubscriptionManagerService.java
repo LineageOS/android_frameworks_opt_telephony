@@ -96,6 +96,7 @@ import com.android.internal.telephony.TelephonyPermissions;
 import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.flags.FeatureFlags;
+import com.android.internal.telephony.flags.Flags;
 import com.android.internal.telephony.subscription.SubscriptionDatabaseManager.SubscriptionDatabaseManagerCallback;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
@@ -1460,8 +1461,11 @@ public class SubscriptionManagerService extends ISub.Stub {
                         loge("updateSubscription: ICC card is not available.");
                     }
 
-                    // Clear the cached Ims phone number before proceeding with Ims Registration
-                    setNumberFromIms(subId, new String(""));
+                    if (Flags.clearCachedImsPhoneNumberWhenDeviceLostImsRegistration()) {
+                        // Clear the cached Ims phone number
+                        // before proceeding with Ims Registration
+                        setNumberFromIms(subId, new String(""));
+                    }
 
                     // Attempt to restore SIM specific settings when SIM is loaded.
                     Bundle result = mContext.getContentResolver().call(

@@ -1118,6 +1118,9 @@ public class ImsPhoneTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testClearPhoneNumberForSourceIms() {
+        doReturn(true).when(mFeatureFlags)
+                .clearCachedImsPhoneNumberWhenDeviceLostImsRegistration();
+
         // In reality the method under test runs in phone process so has MODIFY_PHONE_STATE
         mContextFixture.addCallingOrSelfPermission(MODIFY_PHONE_STATE);
         int subId = 1;
