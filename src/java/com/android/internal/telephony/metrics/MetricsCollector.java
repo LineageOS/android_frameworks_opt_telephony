@@ -1068,7 +1068,10 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 roundAndConvertMillisToSeconds(stats.videoCapableMillis),
                 roundAndConvertMillisToSeconds(stats.videoAvailableMillis),
                 roundAndConvertMillisToSeconds(stats.utCapableMillis),
-                roundAndConvertMillisToSeconds(stats.utAvailableMillis));
+                roundAndConvertMillisToSeconds(stats.utAvailableMillis),
+                roundAndConvertMillisToSeconds(stats.registeringMillis),
+                roundAndConvertMillisToSeconds(stats.unregisteredMillis),
+                stats.isIwlanCrossSim);
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationTermination termination) {
@@ -1081,7 +1084,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 termination.reasonCode,
                 termination.extraCode,
                 termination.extraMessage,
-                termination.count);
+                termination.count,
+                termination.isIwlanCrossSim);
     }
 
     private static StatsEvent buildStatsEvent(NetworkRequestsV2 networkRequests) {

@@ -1759,7 +1759,8 @@ public class PersistAtomsStorage {
         for (ImsRegistrationStats stats : mAtoms.imsRegistrationStats) {
             if (stats.carrierId == key.carrierId
                     && stats.simSlotIndex == key.simSlotIndex
-                    && stats.rat == key.rat) {
+                    && stats.rat == key.rat
+                    && stats.isIwlanCrossSim == key.isIwlanCrossSim) {
                 return stats;
             }
         }
@@ -1775,6 +1776,7 @@ public class PersistAtomsStorage {
             if (termination.carrierId == key.carrierId
                     && termination.isMultiSim == key.isMultiSim
                     && termination.ratAtEnd == key.ratAtEnd
+                    && termination.isIwlanCrossSim == key.isIwlanCrossSim
                     && termination.setupFailed == key.setupFailed
                     && termination.reasonCode == key.reasonCode
                     && termination.extraCode == key.extraCode
