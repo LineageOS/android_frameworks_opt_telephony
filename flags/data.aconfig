@@ -26,4 +26,11 @@ flag {
   namespace: "telephony"
   description: "Force networks that have PRIORITIZE_BANDWIDTH or PRIORITIZE_LATENCY to be metered."
   bug: "301310451"
+  }
+
+flag {
+  name: "slicing_additional_error_codes"
+  namespace: "telephony"
+  description: "Support additional slicing error codes and functionality."
+  bug: "307378699"
 }
