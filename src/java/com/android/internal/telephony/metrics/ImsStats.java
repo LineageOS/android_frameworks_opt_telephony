@@ -23,6 +23,7 @@ import static android.telephony.ims.feature.MmTelFeature.MmTelCapabilities.CAPAB
 import static android.telephony.ims.feature.MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_UT;
 import static android.telephony.ims.feature.MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VIDEO;
 import static android.telephony.ims.feature.MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
@@ -39,6 +40,7 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.ProvisioningManager;
 import android.telephony.ims.RegistrationManager.ImsRegistrationState;
 import android.telephony.ims.feature.MmTelFeature.MmTelCapabilities;
@@ -285,6 +287,7 @@ public class ImsStats {
             mLastRegistrationStats.rat = newRat;
             ratChanged = true;
         }
+        mLastRegistrationStats.isIwlanCrossSim = radioTech == REGISTRATION_TECH_CROSS_SIM;
 
         boolean voiceAvailableNow = capabilities.isCapable(CAPABILITY_TYPE_VOICE);
         boolean voiceAvailabilityChanged =
@@ -324,15 +327,18 @@ public class ImsStats {
     }
 
     /** Updates the stats when IMS registration succeeds. */
-    public synchronized void onImsRegistered(@TransportType int imsRadioTech) {
+    public synchronized void onImsRegistered(ImsRegistrationAttributes attributes) {
         conclude();
 
-        mLastTransportType = imsRadioTech;
+        mLastTransportType = attributes.getTransportType();
         // NOTE: status can be unregistered (no registering phase)
         if (mLastRegistrationState == REGISTRATION_STATE_NOT_REGISTERED) {
             updateImsRegistrationStats();
         }
-        mLastRegistrationStats.rat = convertTransportTypeToNetworkType(imsRadioTech);
+        mLastRegistrationStats.rat =
+                convertTransportTypeToNetworkType(attributes.getTransportType());
+        mLastRegistrationStats.isIwlanCrossSim = attributes.getRegistrationTechnology()
+                == REGISTRATION_TECH_CROSS_SIM;
         mLastRegistrationState = REGISTRATION_STATE_REGISTERED;
     }
 
@@ -344,6 +350,8 @@ public class ImsStats {
         ImsRegistrationTermination termination = new ImsRegistrationTermination();
         if (mLastRegistrationState != REGISTRATION_STATE_NOT_REGISTERED) {
             termination.carrierId = mLastRegistrationStats.carrierId;
+            termination.ratAtEnd = getRatAtEnd(mLastRegistrationStats.rat);
+            termination.isIwlanCrossSim = mLastRegistrationStats.isIwlanCrossSim;
         } else {
             // if the registration state is from unregistered to unregistered.
             termination.carrierId = mPhone.getDefaultPhone().getCarrierId();
@@ -428,6 +436,7 @@ public class ImsStats {
             case REGISTRATION_TECH_NONE:
                 return null;
             case REGISTRATION_TECH_IWLAN:
+            case REGISTRATION_TECH_CROSS_SIM:
                 return mLastWlanCapableFeatures;
             default:
                 return mLastWwanCapableFeatures;
@@ -442,6 +451,7 @@ public class ImsStats {
             case REGISTRATION_TECH_LTE:
                 return TelephonyManager.NETWORK_TYPE_LTE;
             case REGISTRATION_TECH_IWLAN:
+            case REGISTRATION_TECH_CROSS_SIM:
                 return TelephonyManager.NETWORK_TYPE_IWLAN;
             case REGISTRATION_TECH_NR:
                 return TelephonyManager.NETWORK_TYPE_NR;
@@ -457,6 +467,7 @@ public class ImsStats {
         dest.carrierId = source.carrierId;
         dest.simSlotIndex = source.simSlotIndex;
         dest.rat = source.rat;
+        dest.isIwlanCrossSim = source.isIwlanCrossSim;
 
         return dest;
     }
