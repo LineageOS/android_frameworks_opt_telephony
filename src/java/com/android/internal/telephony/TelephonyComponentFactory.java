@@ -406,8 +406,12 @@ public class TelephonyComponentFactory {
         return new AppSmsManager(context);
     }
 
-    public DeviceStateMonitor makeDeviceStateMonitor(Phone phone) {
-        return new DeviceStateMonitor(phone);
+    /**
+     * Create a DeviceStateMonitor.
+     */
+    public DeviceStateMonitor makeDeviceStateMonitor(Phone phone,
+            @NonNull FeatureFlags featureFlags) {
+        return new DeviceStateMonitor(phone, featureFlags);
     }
 
     /**

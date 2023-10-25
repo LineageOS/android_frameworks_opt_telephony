@@ -74,6 +74,7 @@ import com.android.internal.R;
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.DeviceStateMonitor;
 import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.flags.FeatureFlags;
@@ -146,7 +147,7 @@ public class SatelliteController extends Handler {
     private static final int EVENT_REQUEST_NTN_SIGNAL_STRENGTH_DONE = 33;
     private static final int EVENT_NTN_SIGNAL_STRENGTH_CHANGED = 34;
     private static final int CMD_START_SENDING_NTN_SIGNAL_STRENGTH = 35;
-    private static final int EVENT_START_SENDING_NTN_SIGNAL_STRENGTH_DONE = 36;
+    private static final int EVENT_UPDATE_SIGNAL_STRENGTH_REPORTING = 36;
 
     @NonNull private static SatelliteController sInstance;
     @NonNull private final Context mContext;
@@ -159,6 +160,7 @@ public class SatelliteController extends Handler {
     @NonNull private final SubscriptionManagerService mSubscriptionManagerService;
     private final CommandsInterface mCi;
     private ContentResolver mContentResolver = null;
+    private final DeviceStateMonitor mDSM;
 
     private final Object mRadioStateLock = new Object();
 
@@ -299,6 +301,7 @@ public class SatelliteController extends Handler {
         mFeatureFlags = featureFlags;
         Phone phone = SatelliteServiceUtils.getPhone();
         mCi = phone.mCi;
+        mDSM = phone.getDeviceStateMonitor();
         // Create the SatelliteModemInterface singleton, which is used to manage connections
         // to the satellite service and HAL interface.
         mSatelliteModemInterface = SatelliteModemInterface.make(mContext, this);
@@ -353,6 +356,8 @@ public class SatelliteController extends Handler {
                         handleCarrierConfigChanged(slotIndex, subId, carrierId, specificCarrierId);
         mCarrierConfigManager.registerCarrierConfigChangeListener(
                         new HandlerExecutor(new Handler(looper)), mCarrierConfigChangeListener);
+        mDSM.registerForSignalStrengthReportDecision(this, CMD_START_SENDING_NTN_SIGNAL_STRENGTH,
+                null);
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
@@ -1129,26 +1134,29 @@ public class SatelliteController extends Handler {
             }
 
             case CMD_START_SENDING_NTN_SIGNAL_STRENGTH: {
-                logd("CMD_START_SENDING_NTN_SIGNAL_STRENGTH");
-                request = (SatelliteControllerHandlerRequest) msg.obj;
-                boolean startSendingNtnSignalStrength =  (boolean) request.argument;
-                if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
-                    onCompleted = obtainMessage(EVENT_START_SENDING_NTN_SIGNAL_STRENGTH_DONE,
-                            request);
-                    if (startSendingNtnSignalStrength) {
-                        mSatelliteModemInterface.startSendingNtnSignalStrength(onCompleted);
-                    } else {
-                        mSatelliteModemInterface.stopSendingNtnSignalStrength(onCompleted);
-                    }
+                ar = (AsyncResult) msg.obj;
+                boolean shouldReport = (boolean) ar.result;
+                logd("CMD_START_SENDING_NTN_SIGNAL_STRENGTH: shouldReport=" + shouldReport);
+                request = new SatelliteControllerHandlerRequest(shouldReport,
+                        SatelliteServiceUtils.getPhone());
+                if (SATELLITE_RESULT_SUCCESS != evaluateOemSatelliteRequestAllowed(true)) {
+                    return;
+                }
+                onCompleted = obtainMessage(EVENT_UPDATE_SIGNAL_STRENGTH_REPORTING,
+                        request);
+                if (shouldReport) {
+                    mSatelliteModemInterface.startSendingNtnSignalStrength(onCompleted);
+                } else {
+                    mSatelliteModemInterface.stopSendingNtnSignalStrength(onCompleted);
                 }
                 break;
             }
 
-            case EVENT_START_SENDING_NTN_SIGNAL_STRENGTH_DONE: {
+            case EVENT_UPDATE_SIGNAL_STRENGTH_REPORTING: {
                 ar = (AsyncResult) msg.obj;
                 request = (SatelliteControllerHandlerRequest) ar.userObj;
                 int errorCode =  SatelliteServiceUtils.getSatelliteError(ar,
-                        "EVENT_START_SENDING_NTN_SIGNAL_STRENGTH_DONE");
+                        "EVENT_UPDATE_SIGNAL_STRENGTH_REPORTING");
                 if (errorCode != SATELLITE_RESULT_SUCCESS) {
                     loge(((boolean) request.argument ? "startSendingNtnSignalStrength"
                             : "stopSendingNtnSignalStrength") + "returns " + errorCode);
