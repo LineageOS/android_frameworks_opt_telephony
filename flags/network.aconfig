@@ -6,3 +6,10 @@ flag {
     description: "enabling this flag allows KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY to control N1 mode enablement"
     bug:"302033535"
 }
+
+flag {
+  name: "hide_roaming_icon"
+  namespace: "telephony"
+  description: "Allow carriers to hide the roaming (R) icon when roaming."
+  bug: "301467052"
+}

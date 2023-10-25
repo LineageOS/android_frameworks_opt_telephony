@@ -448,8 +448,8 @@ public class TelephonyComponentFactory {
     /**
      * Create a new DisplayInfoController.
      */
-    public DisplayInfoController makeDisplayInfoController(Phone phone) {
-        return new DisplayInfoController(phone);
+    public DisplayInfoController makeDisplayInfoController(Phone phone, FeatureFlags featureFlags) {
+        return new DisplayInfoController(phone, featureFlags);
     }
 
     /**
