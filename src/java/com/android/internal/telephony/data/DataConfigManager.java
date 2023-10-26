@@ -598,10 +598,20 @@ public class DataConfigManager extends Handler {
      */
     public @NonNull @NetCapability Set<Integer> getMeteredNetworkCapabilities(boolean isRoaming) {
         Set<Integer> meteredApnTypes = isRoaming ? mRoamingMeteredApnTypes : mMeteredApnTypes;
-        return meteredApnTypes.stream()
+        Set<Integer> meteredCapabilities = meteredApnTypes.stream()
                 .map(DataUtils::apnTypeToNetworkCapability)
                 .filter(cap -> cap >= 0)
-                .collect(Collectors.toUnmodifiableSet());
+                .collect(Collectors.toSet());
+
+        // Consumer slices are the slices that are allowed to be accessed by regular application to
+        // get better performance. They should be metered. This can be turned into configurations in
+        // the future.
+        if (mFeatureFlags.meteredEmbbUrlcc()) {
+            meteredCapabilities.add(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH);
+            meteredCapabilities.add(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY);
+        }
+
+        return Collections.unmodifiableSet(meteredCapabilities);
     }
 
     /**

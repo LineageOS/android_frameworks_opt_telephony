@@ -20,3 +20,10 @@ flag {
   description: "Allow bring up MMTEL in nonVops area specified by carrier config."
   bug: "241198464"
 }
+
+flag {
+  name: "metered_embb_urlcc"
+  namespace: "telephony"
+  description: "Force networks that have PRIORITIZE_BANDWIDTH or PRIORITIZE_LATENCY to be metered."
+  bug: "301310451"
+}
