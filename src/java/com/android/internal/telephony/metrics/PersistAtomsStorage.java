@@ -407,6 +407,8 @@ public class PersistAtomsStorage {
             existingStats.videoAvailableMillis += stats.videoAvailableMillis;
             existingStats.utCapableMillis += stats.utCapableMillis;
             existingStats.utAvailableMillis += stats.utAvailableMillis;
+            existingStats.registeringMillis += stats.registeringMillis;
+            existingStats.unregisteredMillis += stats.unregisteredMillis;
             existingStats.lastUsedMillis = getWallTimeMillis();
         } else {
             stats.lastUsedMillis = getWallTimeMillis();
@@ -2279,6 +2281,10 @@ public class PersistAtomsStorage {
                     normalizeDurationTo24H(stats[i].utCapableMillis, intervalMillis);
             stats[i].utAvailableMillis =
                     normalizeDurationTo24H(stats[i].utAvailableMillis, intervalMillis);
+            stats[i].registeringMillis =
+                    normalizeDurationTo24H(stats[i].registeringMillis, intervalMillis);
+            stats[i].unregisteredMillis =
+                    normalizeDurationTo24H(stats[i].unregisteredMillis, intervalMillis);
         }
         return stats;
     }

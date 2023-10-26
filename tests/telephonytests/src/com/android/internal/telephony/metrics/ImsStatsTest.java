@@ -308,12 +308,73 @@ public class ImsStatsTest extends TelephonyTest {
         mImsStats.onImsCapabilitiesChanged(
                 REGISTRATION_TECH_LTE, new MmTelCapabilities(CAPABILITY_TYPE_ALL));
 
+        mImsStats.onImsUnregistered(
+                new ImsReasonInfo(ImsReasonInfo.CODE_REGISTRATION_ERROR, 999, "Timeout"));
+
         mImsStats.incTimeMillis(2000L);
         mImsStats.conclude();
 
-        // No atom should be generated
+        ArgumentCaptor<ImsRegistrationTermination> terminationCaptor =
+                ArgumentCaptor.forClass(ImsRegistrationTermination.class);
+        verify(mPersistAtomsStorage).addImsRegistrationTermination(terminationCaptor.capture());
+        ImsRegistrationTermination termination = terminationCaptor.getValue();
+        assertEquals(CARRIER1_ID, termination.carrierId);
+        assertFalse(termination.isMultiSim);
+        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, termination.ratAtEnd);
+        assertTrue(termination.setupFailed);
+        assertEquals(ImsReasonInfo.CODE_REGISTRATION_ERROR, termination.reasonCode);
+        assertEquals(999, termination.extraCode);
+        assertEquals("Timeout", termination.extraMessage);
+
+        // Registering duration should be counted
+        ArgumentCaptor<ImsRegistrationStats> statsCaptor =
+                ArgumentCaptor.forClass(ImsRegistrationStats.class);
+        verify(mPersistAtomsStorage).addImsRegistrationStats(statsCaptor.capture());
+        ImsRegistrationStats stats = statsCaptor.getValue();
+        assertEquals(CARRIER1_ID, stats.carrierId);
+        assertEquals(0, stats.simSlotIndex);
+        assertEquals(TelephonyManager.NETWORK_TYPE_UNKNOWN, stats.rat);
+        assertEquals(2000L, stats.unregisteredMillis);
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    @SmallTest
+    public void conclude_registering() throws Exception {
+        // IMS over LTE
+        mImsStats.onSetFeatureResponse(
+                CAPABILITY_TYPE_VOICE,
+                REGISTRATION_TECH_LTE,
+                ProvisioningManager.PROVISIONING_VALUE_ENABLED);
+        mImsStats.onSetFeatureResponse(
+                CAPABILITY_TYPE_VIDEO,
+                REGISTRATION_TECH_LTE,
+                ProvisioningManager.PROVISIONING_VALUE_ENABLED);
+        mImsStats.onSetFeatureResponse(
+                CAPABILITY_TYPE_UT,
+                REGISTRATION_TECH_LTE,
+                ProvisioningManager.PROVISIONING_VALUE_ENABLED);
+        mImsStats.onSetFeatureResponse(
+                CAPABILITY_TYPE_SMS,
+                REGISTRATION_TECH_LTE,
+                ProvisioningManager.PROVISIONING_VALUE_ENABLED);
+        mImsStats.onImsCapabilitiesChanged(
+                REGISTRATION_TECH_LTE, new MmTelCapabilities(CAPABILITY_TYPE_ALL));
+
+        mImsStats.onImsRegistering(TRANSPORT_TYPE_WLAN);
+
+        mImsStats.incTimeMillis(2000L);
+        mImsStats.conclude();
+
+        // Registering duration should be counted
         ArgumentCaptor<ImsRegistrationStats> captor =
                 ArgumentCaptor.forClass(ImsRegistrationStats.class);
+        verify(mPersistAtomsStorage).addImsRegistrationStats(captor.capture());
+        ImsRegistrationStats stats = captor.getValue();
+        assertEquals(CARRIER1_ID, stats.carrierId);
+        assertEquals(0, stats.simSlotIndex);
+        assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, stats.rat);
+        assertEquals(2000L, stats.registeringMillis);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -510,6 +571,57 @@ public class ImsStatsTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void onImsRegistered_afterImsRegistering() throws Exception {
+        mImsStats.onImsRegistering(TRANSPORT_TYPE_WWAN);
+        mImsStats.incTimeMillis(2000L);
+        mImsStats.onImsRegistered(TRANSPORT_TYPE_WWAN);
+
+        // Registering duration should be counted
+        ArgumentCaptor<ImsRegistrationStats> captor =
+                ArgumentCaptor.forClass(ImsRegistrationStats.class);
+        verify(mPersistAtomsStorage).addImsRegistrationStats(captor.capture());
+        ImsRegistrationStats stats = captor.getValue();
+        assertEquals(CARRIER1_ID, stats.carrierId);
+        assertEquals(0, stats.simSlotIndex);
+        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, stats.rat);
+        assertEquals(0L, stats.registeredMillis);
+        assertEquals(2000L, stats.registeringMillis);
+    }
+
+    @Test
+    @SmallTest
+    public void onImsRegistering_afterImsUnregistered() throws Exception {
+        mImsStats.onImsUnregistered(
+                new ImsReasonInfo(ImsReasonInfo.CODE_REGISTRATION_ERROR, 999, "Timeout"));
+        mImsStats.incTimeMillis(2000L);
+        mImsStats.onImsRegistering(TRANSPORT_TYPE_WWAN);
+
+        // Atom with termination info should be generated
+        ArgumentCaptor<ImsRegistrationTermination> terminationCaptor =
+                ArgumentCaptor.forClass(ImsRegistrationTermination.class);
+        verify(mPersistAtomsStorage).addImsRegistrationTermination(terminationCaptor.capture());
+        ImsRegistrationTermination termination = terminationCaptor.getValue();
+        assertEquals(CARRIER1_ID, termination.carrierId);
+        assertFalse(termination.isMultiSim);
+        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, termination.ratAtEnd);
+        assertTrue(termination.setupFailed);
+        assertEquals(ImsReasonInfo.CODE_REGISTRATION_ERROR, termination.reasonCode);
+        assertEquals(999, termination.extraCode);
+        assertEquals("Timeout", termination.extraMessage);
+
+        ArgumentCaptor<ImsRegistrationStats> statsCaptor =
+                ArgumentCaptor.forClass(ImsRegistrationStats.class);
+        verify(mPersistAtomsStorage).addImsRegistrationStats(statsCaptor.capture());
+        ImsRegistrationStats stats = statsCaptor.getValue();
+        assertEquals(CARRIER1_ID, stats.carrierId);
+        assertEquals(0, stats.simSlotIndex);
+        assertEquals(TelephonyManager.NETWORK_TYPE_UNKNOWN, stats.rat);
+        assertEquals(2000L, stats.unregisteredMillis);
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    @SmallTest
     public void onImsUnregistered_setupFailure() throws Exception {
         mImsStats.onImsUnregistered(
                 new ImsReasonInfo(ImsReasonInfo.CODE_REGISTRATION_ERROR, 999, "Timeout"));
@@ -521,7 +633,7 @@ public class ImsStatsTest extends TelephonyTest {
         ImsRegistrationTermination termination = captor.getValue();
         assertEquals(CARRIER1_ID, termination.carrierId);
         assertFalse(termination.isMultiSim);
-        assertEquals(TelephonyManager.NETWORK_TYPE_UNKNOWN, termination.ratAtEnd);
+        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, termination.ratAtEnd);
         assertTrue(termination.setupFailed);
         assertEquals(ImsReasonInfo.CODE_REGISTRATION_ERROR, termination.reasonCode);
         assertEquals(999, termination.extraCode);
@@ -532,16 +644,26 @@ public class ImsStatsTest extends TelephonyTest {
     @Test
     @SmallTest
     public void onImsUnregistered_setupFailureWithProgress() throws Exception {
-        mImsStats.onImsRegistering(REGISTRATION_TECH_LTE);
+        mImsStats.onImsRegistering(TRANSPORT_TYPE_WWAN);
         mImsStats.incTimeMillis(2000L);
         mImsStats.onImsUnregistered(
                 new ImsReasonInfo(ImsReasonInfo.CODE_REGISTRATION_ERROR, 999, "Timeout"));
 
         // Atom with termination info should be generated
-        ArgumentCaptor<ImsRegistrationTermination> captor =
+        ArgumentCaptor<ImsRegistrationStats> statsCaptor =
+                ArgumentCaptor.forClass(ImsRegistrationStats.class);
+        verify(mPersistAtomsStorage).addImsRegistrationStats(statsCaptor.capture());
+        ImsRegistrationStats stats = statsCaptor.getValue();
+        assertEquals(CARRIER1_ID, stats.carrierId);
+        assertEquals(0, stats.simSlotIndex);
+        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, stats.rat);
+        assertEquals(0L, stats.registeredMillis);
+        assertEquals(2000L, stats.registeringMillis);
+
+        ArgumentCaptor<ImsRegistrationTermination> terminationCaptor =
                 ArgumentCaptor.forClass(ImsRegistrationTermination.class);
-        verify(mPersistAtomsStorage).addImsRegistrationTermination(captor.capture());
-        ImsRegistrationTermination termination = captor.getValue();
+        verify(mPersistAtomsStorage).addImsRegistrationTermination(terminationCaptor.capture());
+        ImsRegistrationTermination termination = terminationCaptor.getValue();
         assertEquals(CARRIER1_ID, termination.carrierId);
         assertFalse(termination.isMultiSim);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, termination.ratAtEnd);
@@ -604,7 +726,7 @@ public class ImsStatsTest extends TelephonyTest {
         ImsRegistrationTermination termination = captor.getValue();
         assertEquals(CARRIER1_ID, termination.carrierId);
         assertFalse(termination.isMultiSim);
-        assertEquals(TelephonyManager.NETWORK_TYPE_UNKNOWN, termination.ratAtEnd);
+        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, termination.ratAtEnd);
         assertTrue(termination.setupFailed);
         assertEquals(ImsReasonInfo.CODE_REGISTRATION_ERROR, termination.reasonCode);
         assertEquals(0, termination.extraCode);
@@ -630,7 +752,7 @@ public class ImsStatsTest extends TelephonyTest {
         ImsRegistrationTermination termination = captor.getValue();
         assertEquals(CARRIER1_ID, termination.carrierId);
         assertFalse(termination.isMultiSim);
-        assertEquals(TelephonyManager.NETWORK_TYPE_UNKNOWN, termination.ratAtEnd);
+        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, termination.ratAtEnd);
         assertTrue(termination.setupFailed);
         assertEquals(ImsReasonInfo.CODE_REGISTRATION_ERROR, termination.reasonCode);
         assertEquals(0, termination.extraCode);
