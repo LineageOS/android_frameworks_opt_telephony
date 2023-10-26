@@ -96,7 +96,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executor;
-
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class DataNetworkTest extends TelephonyTest {
@@ -428,8 +427,8 @@ public class DataNetworkTest extends TelephonyTest {
         setSuccessfulSetupDataResponse(
                 mMockedWwanDataServiceManager, 123, Collections.emptyList(), mDefaultQos);
 
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mInternetDataProfile, networkRequestList,
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mInternetDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 DataAllowedReason.NORMAL, mDataNetworkCallback);
         replaceInstance(DataNetwork.class, "mDataCallSessionStats",
@@ -537,8 +536,8 @@ public class DataNetworkTest extends TelephonyTest {
 
         setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
 
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mInternetDataProfile, networkRequestList,
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mInternetDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 DataAllowedReason.NORMAL, mDataNetworkCallback);
         replaceInstance(DataNetwork.class, "mDataCallSessionStats",
@@ -633,8 +632,8 @@ public class DataNetworkTest extends TelephonyTest {
                 .build(), mPhone));
         setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
 
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mInternetDataProfile, networkRequestList,
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mInternetDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 DataAllowedReason.NORMAL, mDataNetworkCallback);
         processAllMessages();
@@ -652,20 +651,7 @@ public class DataNetworkTest extends TelephonyTest {
 
     @Test
     public void testCreateImsDataNetwork() throws Exception {
-        NetworkRequestList networkRequestList = new NetworkRequestList();
-        networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                .build(), mPhone));
-
-        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
-
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mImsDataProfile, networkRequestList,
-                AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                DataAllowedReason.NORMAL, mDataNetworkCallback);
-        replaceInstance(DataNetwork.class, "mDataCallSessionStats",
-                mDataNetworkUT, mDataCallSessionStats);
-        processAllMessages();
+        createImsDataNetwork(true/*isMmtel*/);
 
         ArgumentCaptor<LinkProperties> linkPropertiesCaptor =
                 ArgumentCaptor.forClass(LinkProperties.class);
@@ -686,7 +672,7 @@ public class DataNetworkTest extends TelephonyTest {
                 eq(DataCallResponse.PDU_SESSION_ID_NOT_SET), nullable(NetworkSliceInfo.class),
                 any(TrafficDescriptor.class), eq(true), any(Message.class));
         assertThat(mDataNetworkUT.getId()).isEqualTo(123);
-        assertThat(networkRequestList.get(0).getState())
+        assertThat(mDataNetworkUT.getAttachedNetworkRequestList().get(0).getState())
                 .isEqualTo(TelephonyNetworkRequest.REQUEST_STATE_SATISFIED);
         LinkProperties lp = mDataNetworkUT.getLinkProperties();
         assertThat(lp.getAddresses()).containsExactly(
@@ -742,8 +728,8 @@ public class DataNetworkTest extends TelephonyTest {
         );
         setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123, tds);
 
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mEnterpriseDataProfile, networkRequestList,
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mEnterpriseDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, DataAllowedReason.NORMAL,
                 mDataNetworkCallback);
         replaceInstance(DataNetwork.class, "mDataCallSessionStats",
@@ -776,8 +762,8 @@ public class DataNetworkTest extends TelephonyTest {
         );
         setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123, tds);
 
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mUrlccDataProfile, networkRequestList,
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mUrlccDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, DataAllowedReason.NORMAL,
                 mDataNetworkCallback);
         replaceInstance(DataNetwork.class, "mDataCallSessionStats",
@@ -809,8 +795,8 @@ public class DataNetworkTest extends TelephonyTest {
         );
         setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123, tds);
 
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mEmbbDataProfile, networkRequestList,
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mEmbbDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, DataAllowedReason.NORMAL,
                 mDataNetworkCallback);
         replaceInstance(DataNetwork.class, "mDataCallSessionStats",
@@ -843,8 +829,8 @@ public class DataNetworkTest extends TelephonyTest {
 
         setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123, tds);
 
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mCbsDataProfile, networkRequestList,
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mCbsDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, DataAllowedReason.NORMAL,
                 mDataNetworkCallback);
         replaceInstance(DataNetwork.class, "mDataCallSessionStats",
@@ -875,8 +861,8 @@ public class DataNetworkTest extends TelephonyTest {
                         .getBytes())
         );
 
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mCbsDataProfile, networkRequestList,
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mCbsDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, DataAllowedReason.NORMAL,
                 mDataNetworkCallback);
         replaceInstance(DataNetwork.class, "mDataCallSessionStats",
@@ -957,9 +943,10 @@ public class DataNetworkTest extends TelephonyTest {
 
         setSuccessfulSetupDataResponse(mMockedWlanDataServiceManager, 123);
 
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mImsDataProfile, networkRequestList, AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
-                DataAllowedReason.NORMAL, mDataNetworkCallback);
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mImsDataProfile, networkRequestList,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN, DataAllowedReason.NORMAL,
+                mDataNetworkCallback);
         replaceInstance(DataNetwork.class, "mDataCallSessionStats",
                 mDataNetworkUT, mDataCallSessionStats);
         processAllMessages();
@@ -1179,8 +1166,8 @@ public class DataNetworkTest extends TelephonyTest {
 
         setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
 
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mInternetDataProfile, networkRequestList,
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mInternetDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 DataAllowedReason.NORMAL, mDataNetworkCallback);
         replaceInstance(DataNetwork.class, "mDataCallSessionStats",
@@ -1278,8 +1265,8 @@ public class DataNetworkTest extends TelephonyTest {
         doReturn(false).when(mDataSettingsManager).isDataEnabled();
         setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
 
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mInternetDataProfile, networkRequestList,
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mInternetDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 DataAllowedReason.RESTRICTED_REQUEST, mDataNetworkCallback);
         replaceInstance(DataNetwork.class, "mDataCallSessionStats",
@@ -1321,8 +1308,8 @@ public class DataNetworkTest extends TelephonyTest {
         doReturn(false).when(mDataSettingsManager).isDataRoamingEnabled();
         setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
 
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mInternetDataProfile, networkRequestList,
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mInternetDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 DataAllowedReason.RESTRICTED_REQUEST, mDataNetworkCallback);
         replaceInstance(DataNetwork.class, "mDataCallSessionStats",
@@ -1428,7 +1415,7 @@ public class DataNetworkTest extends TelephonyTest {
 
     @Test
     public void testNetworkAgentConfig() throws Exception {
-        testCreateImsDataNetwork();
+        createImsDataNetwork(false/*IsMmtel*/);
 
         ArgumentCaptor<NetworkAgentConfig> captor = ArgumentCaptor
                 .forClass(NetworkAgentConfig.class);
@@ -1454,8 +1441,8 @@ public class DataNetworkTest extends TelephonyTest {
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build(), mPhone));
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mInternetDataProfile, networkRequestList,
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mInternetDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 DataAllowedReason.NORMAL, mDataNetworkCallback);
         NetworkCapabilities caps = mDataNetworkUT.getNetworkCapabilities();
@@ -1547,7 +1534,8 @@ public class DataNetworkTest extends TelephonyTest {
     }
 
     @Test
-    public void testMovingToNonVops() throws Exception {
+    public void testMovingToNonVopsRequestedMmtel() throws Exception {
+        createImsDataNetwork(true/*isMmtel*/);
         DataSpecificRegistrationInfo dsri = new DataSpecificRegistrationInfo.Builder(8)
                 .setNrAvailable(true)
                 .setEnDcAvailable(true)
@@ -1557,7 +1545,6 @@ public class DataNetworkTest extends TelephonyTest {
                 .build();
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
-        testCreateImsDataNetwork();
 
         assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_MMTEL)).isTrue();
@@ -1575,6 +1562,37 @@ public class DataNetworkTest extends TelephonyTest {
         // MMTEL should not be removed.
         assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_MMTEL)).isTrue();
+    }
+
+    @Test
+    public void testNonMmtelImsMovingToNonVops() throws Exception {
+        createImsDataNetwork(false/*isMmtel*/);
+        DataSpecificRegistrationInfo dsri = new DataSpecificRegistrationInfo.Builder(8)
+                .setNrAvailable(true)
+                .setEnDcAvailable(true)
+                .setVopsSupportInfo(new LteVopsSupportInfo(
+                        LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
+                        LteVopsSupportInfo.LTE_STATUS_SUPPORTED))
+                .build();
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
+
+        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_MMTEL)).isTrue();
+
+        dsri = new DataSpecificRegistrationInfo.Builder(8)
+                .setNrAvailable(true)
+                .setEnDcAvailable(true)
+                .setVopsSupportInfo(new LteVopsSupportInfo(
+                        LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED))
+                .build();
+        logd("Trigger non VoPS");
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
+        // MMTEL should be removed to reflect the actual Vops status.
+        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_MMTEL)).isFalse();
     }
 
     @Test
@@ -1808,8 +1826,8 @@ public class DataNetworkTest extends TelephonyTest {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build(), mPhone));
 
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mInternetDataProfile, networkRequestList,
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mInternetDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 DataAllowedReason.NORMAL, mDataNetworkCallback);
         replaceInstance(DataNetwork.class, "mDataCallSessionStats",
@@ -1951,8 +1969,8 @@ public class DataNetworkTest extends TelephonyTest {
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build(), mPhone));
-        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                m5gDataProfile, networkRequestList,
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, m5gDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, DataAllowedReason.NORMAL,
                 mDataNetworkCallback);
         replaceInstance(DataNetwork.class, "mDataCallSessionStats",
@@ -1997,5 +2015,23 @@ public class DataNetworkTest extends TelephonyTest {
                 eq(DataFailCause.RADIO_NOT_AVAILABLE), eq(DataNetwork.TEAR_DOWN_REASON_NONE));
         verify(mDataNetworkCallback).onLinkStatusChanged(eq(mDataNetworkUT),
                 eq(DataCallResponse.LINK_STATUS_INACTIVE));
+    }
+
+    private void createImsDataNetwork(boolean isMmtel) throws Exception {
+        NetworkRequestList networkRequestList = new NetworkRequestList();
+        NetworkRequest.Builder builder = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+        if (isMmtel) builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
+        networkRequestList.add(new TelephonyNetworkRequest(builder.build(), mPhone));
+
+        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
+
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mImsDataProfile, networkRequestList,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                DataAllowedReason.NORMAL, mDataNetworkCallback);
+        replaceInstance(DataNetwork.class, "mDataCallSessionStats",
+                mDataNetworkUT, mDataCallSessionStats);
+        processAllMessages();
     }
 }
