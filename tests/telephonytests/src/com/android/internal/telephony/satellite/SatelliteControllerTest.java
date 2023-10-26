@@ -2231,6 +2231,84 @@ public class SatelliteControllerTest extends TelephonyTest {
                 semaphore, 0, "testRegisterForNtnSignalStrengthChanged"));
     }
 
+    @Test
+    public void testSendingNtnSignalStrengthWithFeatureEnabled() {
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
+
+        int expectedResult = SATELLITE_RESULT_SUCCESS;
+        // startSendingNtnSignalStrength() is requested when screen on event comes.
+        reset(mMockSatelliteModemInterface);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForRequestIsSatelliteSupported(true, expectedResult);
+        setUpResponseForRequestIsSatelliteProvisioned(true, expectedResult);
+        verifySatelliteSupported(true, expectedResult);
+        verifySatelliteProvisioned(true, expectedResult);
+        setUpResponseForStartSendingNtnSignalStrength(expectedResult);
+        sendCmdStartSendingNtnSignalStrengthChangedEvent(true);
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, times(1))
+                .startSendingNtnSignalStrength(any(Message.class));
+
+        // stopSendingNtnSignalStrength() is requested when screen off event comes.
+        reset(mMockSatelliteModemInterface);
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_RESULT_SUCCESS);
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForStopSendingNtnSignalStrength(expectedResult);
+        sendCmdStartSendingNtnSignalStrengthChangedEvent(false);
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, times(1))
+                .stopSendingNtnSignalStrength(any(Message.class));
+
+        // startSendingNtnSignalStrength() is requested but received fail from the service.
+        reset(mMockSatelliteModemInterface);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForStartSendingNtnSignalStrength(SATELLITE_RESULT_INVALID_MODEM_STATE);
+        sendCmdStartSendingNtnSignalStrengthChangedEvent(true);
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, times(1))
+                .startSendingNtnSignalStrength(any(Message.class));
+
+        // stopSendingNtnSignalStrength() is requested but received fail from the service.
+        reset(mMockSatelliteModemInterface);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForStopSendingNtnSignalStrength(SATELLITE_RESULT_NO_RESOURCES);
+        sendCmdStartSendingNtnSignalStrengthChangedEvent(false);
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, times(1))
+                .stopSendingNtnSignalStrength(any(Message.class));
+    }
+
+    @Test
+    public void testSendingNtnSignalStrengthWithFeatureDisabled() {
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(false);
+
+        int expectedResult = SATELLITE_RESULT_SUCCESS;
+        // startSendingNtnSignalStrength() is requested when screen on event comes.
+        reset(mMockSatelliteModemInterface);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForRequestIsSatelliteSupported(true, expectedResult);
+        setUpResponseForRequestIsSatelliteProvisioned(true, expectedResult);
+        verifySatelliteSupported(false, SATELLITE_RESULT_NOT_SUPPORTED);
+        verifySatelliteProvisioned(false, SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
+        setUpResponseForStartSendingNtnSignalStrength(expectedResult);
+        sendCmdStartSendingNtnSignalStrengthChangedEvent(true);
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, never())
+                .startSendingNtnSignalStrength(any(Message.class));
+
+        // stopSendingNtnSignalStrength() is requested when screen off event comes.
+        reset(mMockSatelliteModemInterface);
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_RESULT_SUCCESS);
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForStopSendingNtnSignalStrength(expectedResult);
+        sendCmdStartSendingNtnSignalStrengthChangedEvent(false);
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, never())
+                .stopSendingNtnSignalStrength(any(Message.class));
+    }
+
     private void resetSatelliteControllerUTEnabledState() {
         logd("resetSatelliteControllerUTEnabledState");
         setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_RESULT_RADIO_NOT_AVAILABLE);
@@ -2524,6 +2602,30 @@ public class SatelliteControllerTest extends TelephonyTest {
         }).when(mMockPointingAppController).stopSatelliteTransmissionUpdates(any(Message.class));
     }
 
+    private void setUpResponseForStartSendingNtnSignalStrength(
+            @SatelliteManager.SatelliteResult int error) {
+        SatelliteException exception = (error == SATELLITE_RESULT_SUCCESS)
+                ? null : new SatelliteException(error);
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[0];
+            AsyncResult.forMessage(message, null, exception);
+            message.sendToTarget();
+            return null;
+        }).when(mMockSatelliteModemInterface).startSendingNtnSignalStrength(any(Message.class));
+    }
+
+    private void setUpResponseForStopSendingNtnSignalStrength(
+            @SatelliteManager.SatelliteResult int error) {
+        SatelliteException exception = (error == SATELLITE_RESULT_SUCCESS)
+                ? null : new SatelliteException(error);
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[0];
+            AsyncResult.forMessage(message, null, exception);
+            message.sendToTarget();
+            return null;
+        }).when(mMockSatelliteModemInterface).stopSendingNtnSignalStrength(any(Message.class));
+    }
+
     private boolean waitForRequestIsSatelliteSupportedResult(int expectedNumberOfEvents) {
         for (int i = 0; i < expectedNumberOfEvents; i++) {
             try {
@@ -2723,6 +2825,23 @@ public class SatelliteControllerTest extends TelephonyTest {
             Throwable exception) {
         Message msg = mSatelliteControllerUT.obtainMessage(
                 34 /* EVENT_NTN_SIGNAL_STRENGTH_CHANGED */);
+        msg.obj = new AsyncResult(null, new NtnSignalStrength(ntnSignalStrengthLevel),
+                exception);
+        msg.sendToTarget();
+    }
+
+    private void sendCmdStartSendingNtnSignalStrengthChangedEvent(boolean shouldReport) {
+        Message msg = mSatelliteControllerUT.obtainMessage(
+                35 /* CMD_START_SENDING_NTN_SIGNAL_STRENGTH */);
+        msg.obj = new AsyncResult(null, shouldReport, null);
+        msg.sendToTarget();
+    }
+
+    private void sendStartSendingNtnSignalStrengthChangedEvent(
+            @NtnSignalStrength.NtnSignalStrengthLevel int ntnSignalStrengthLevel,
+            Throwable exception) {
+        Message msg = mSatelliteControllerUT.obtainMessage(
+                36 /* EVENT_START_SENDING_NTN_SIGNAL_STRENGTH_DONE */);
         msg.obj = new AsyncResult(null, new NtnSignalStrength(ntnSignalStrengthLevel),
                 exception);
         msg.sendToTarget();
