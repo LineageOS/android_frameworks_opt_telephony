@@ -372,6 +372,7 @@ public class DataStallRecoveryManager extends Handler {
                                     0) != 0) {
                         mIsAirPlaneModeEnableDuringDataStall = true;
                     }
+                    setRecoveryAction(mLastAction);
                 }
                 break;
             case EVENT_CONTENT_DSRM_ENABLED_ACTIONS_CHANGED:
@@ -527,6 +528,7 @@ public class DataStallRecoveryManager extends Handler {
         // during data stalled.
         if (mDataStalled && enabled) {
             mMobileDataChangedToEnabledDuringDataStall = true;
+            setRecoveryAction(mLastAction);
         }
     }
 
