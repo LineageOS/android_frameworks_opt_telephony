@@ -14,3 +14,10 @@ flag {
   description: "Whether to log MMS/SMS database access info and report anomaly when getting exception."
   bug: "275225402"
 }
+
+flag {
+  name: "enable_wps_check_api_flag"
+  namespace: "telephony"
+  description: "Enable system api isWpsCallNumber. Its an utility api to check if the dialed number is for Wireless Priority Service call."
+  bug: "304272356"
+}

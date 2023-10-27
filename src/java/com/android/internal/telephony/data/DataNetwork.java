@@ -99,6 +99,7 @@ import com.android.internal.telephony.data.DataRetryManager.DataRetryEntry;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.data.LinkBandwidthEstimator.LinkBandwidthEstimatorCallback;
 import com.android.internal.telephony.data.TelephonyNetworkAgent.TelephonyNetworkAgentCallback;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.metrics.DataCallSessionStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.ArrayUtils;
@@ -440,9 +441,9 @@ public class DataNetwork extends StateMachine {
             // Connectivity service will support NOT_METERED as a mutable and requestable
             // capability.
             NetworkCapabilities.NET_CAPABILITY_NOT_METERED,
-            // Even though MMTEL is an immutable capability, we still make it an mutable capability
-            // here before we have a better solution to deal with network transition from VoPS
-            // to non-VoPS network.
+            // Dynamically add and remove MMTEL capability when network transition between VoPS
+            // and non-VoPS network if the request is not MMTEL. For MMTEL, we retain the capability
+            // to prevent immediate tear down.
             NetworkCapabilities.NET_CAPABILITY_MMTEL
     );
 
@@ -489,6 +490,9 @@ public class DataNetwork extends StateMachine {
 
     /** The phone instance. */
     private final @NonNull Phone mPhone;
+
+    /** Feature flags */
+    private final @NonNull FeatureFlags mFlags;
 
     /**
      * The subscription id. This is assigned when the network is created, and not supposed to
@@ -897,7 +901,7 @@ public class DataNetwork extends StateMachine {
      * @param dataAllowedReason The reason that why setting up this data network is allowed.
      * @param callback The callback to receives data network state update.
      */
-    public DataNetwork(@NonNull Phone phone, @NonNull Looper looper,
+    public DataNetwork(@NonNull Phone phone, FeatureFlags featureFlags, @NonNull Looper looper,
             @NonNull SparseArray<DataServiceManager> dataServiceManagers,
             @NonNull DataProfile dataProfile,
             @NonNull NetworkRequestList networkRequestList,
@@ -911,6 +915,7 @@ public class DataNetwork extends StateMachine {
         initializeStateMachine();
 
         mPhone = phone;
+        mFlags = featureFlags;
         mSubId = phone.getSubId();
         mRil = mPhone.mCi;
         mLinkProperties = new LinkProperties();
@@ -2141,30 +2146,34 @@ public class DataNetwork extends StateMachine {
             }
         }
 
-        // Once we set the MMTEL capability, we should never remove it because it's an immutable
+        // If MMTEL capability is requested, we should not remove it because it's an immutable
         // capability defined by connectivity service. When the device enters from VoPS to non-VoPS,
         // we should perform grace tear down from data network controller if needed.
-        if (mNetworkCapabilities != null
-                && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL)) {
-            // Previous capability has MMTEL, so add it again.
+        if (hasNetworkCapabilityInNetworkRequests(NetworkCapabilities.NET_CAPABILITY_MMTEL)) {
+            // Request has MMTEL, add it again so the network won't be unwanted by connectivity.
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
-        } else {
+        } else if (mDataProfile.canSatisfy(NetworkCapabilities.NET_CAPABILITY_IMS)) {
+            // Request has IMS capability only.
             // Always add MMTEL capability on IMS network unless network explicitly indicates VoPS
             // not supported.
-            if (mDataProfile.canSatisfy(NetworkCapabilities.NET_CAPABILITY_IMS)) {
-                builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
-                if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
-                    NetworkRegistrationInfo nri = getNetworkRegistrationInfo();
-                    if (nri != null) {
-                        DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
-                        // Check if the network is non-VoPS.
-                        if (dsri != null && dsri.getVopsSupportInfo() != null
-                                && !dsri.getVopsSupportInfo().isVopsSupported()
-                                && !mDataConfigManager.shouldKeepNetworkUpInNonVops()) {
-                            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
-                        }
-                        log("updateNetworkCapabilities: dsri=" + dsri);
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
+            if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+                NetworkRegistrationInfo nri = getNetworkRegistrationInfo();
+                if (nri != null) {
+                    DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
+                    // Check if the network is non-VoPS.
+                    if (dsri != null && dsri.getVopsSupportInfo() != null
+                            && !dsri.getVopsSupportInfo().isVopsSupported()
+                            // Reflect the actual MMTEL if flag on.
+                            && (mFlags.allowMmtelInNonVops()
+                            // Deceive Connectivity service to satisfy an MMTEL request, this should
+                            // be useless because we reach here if no MMTEL request, then removing
+                            // MMTEL capability shouldn't have any impacts.
+                            || !mDataConfigManager.shouldKeepNetworkUpInNonVops(
+                                    nri.getNetworkRegistrationState()))) {
+                        builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
                     }
+                    log("updateNetworkCapabilities: dsri=" + dsri);
                 }
             }
         }
@@ -2721,7 +2730,7 @@ public class DataNetwork extends StateMachine {
     public boolean shouldDelayImsTearDownDueToInCall() {
         return mDataConfigManager.isImsDelayTearDownUntilVoiceCallEndEnabled()
                 && mNetworkCapabilities != null
-                && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL)
+                && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
                 && mPhone.getImsPhone() != null
                 && mPhone.getImsPhone().getCallTracker().getState()
                 != PhoneConstants.State.IDLE;

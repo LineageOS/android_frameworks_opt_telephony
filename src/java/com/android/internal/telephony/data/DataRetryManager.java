@@ -51,6 +51,7 @@ import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCa
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataProfileManager.DataProfileManagerCallback;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -140,6 +141,9 @@ public class DataRetryManager extends Handler {
 
     /** The phone instance. */
     private final @NonNull Phone mPhone;
+
+    /** Featureflags. */
+    private final @NonNull FeatureFlags mFlags;
 
     /** The RIL instance. */
     private final @NonNull CommandsInterface mRil;
@@ -952,10 +956,12 @@ public class DataRetryManager extends Handler {
     public DataRetryManager(@NonNull Phone phone,
             @NonNull DataNetworkController dataNetworkController,
             @NonNull SparseArray<DataServiceManager> dataServiceManagers,
-            @NonNull Looper looper, @NonNull DataRetryManagerCallback dataRetryManagerCallback) {
+            @NonNull Looper looper, @NonNull FeatureFlags flags,
+            @NonNull DataRetryManagerCallback dataRetryManagerCallback) {
         super(looper);
         mPhone = phone;
         mRil = phone.mCi;
+        mFlags = flags;
         mLogTag = "DRM-" + mPhone.getPhoneId();
         mDataRetryManagerCallbacks.add(dataRetryManagerCallback);
 
@@ -1480,9 +1486,12 @@ public class DataRetryManager extends Handler {
         DataThrottlingEntry entry = new DataThrottlingEntry(dataProfile, networkRequestList,
                 dataNetwork, transport, retryType, expirationTime);
         // Remove previous entry that contains the same data profile. Therefore it should always
-        // contain at maximum all the distinct data profiles of the current subscription.
+        // contain at maximu all the distinct data profiles of the current subscription times each
+        // transport.
         mDataThrottlingEntries.removeIf(
-                throttlingEntry -> dataProfile.equals(throttlingEntry.dataProfile));
+                throttlingEntry -> dataProfile.equals(throttlingEntry.dataProfile)
+                        && (!mFlags.unthrottleCheckTransport()
+                        || throttlingEntry.transport == transport));
 
         if (mDataThrottlingEntries.size() >= MAXIMUM_HISTORICAL_ENTRIES) {
             // If we don't see the anomaly report after U release, we should remove this check for
@@ -1544,7 +1553,8 @@ public class DataRetryManager extends Handler {
             // in DataProfileInfo.aidl), so we need to get the equivalent data profile from data
             // profile manager.
             Stream<DataThrottlingEntry> stream = mDataThrottlingEntries.stream();
-            stream = stream.filter(entry -> entry.expirationTimeMillis > now);
+            stream = stream.filter(entry -> entry.expirationTimeMillis > now
+                    && (!mFlags.unthrottleCheckTransport() || entry.transport == transport));
             if (dataProfile.getApnSetting() != null) {
                 stream = stream
                         .filter(entry -> entry.dataProfile.getApnSetting() != null)
