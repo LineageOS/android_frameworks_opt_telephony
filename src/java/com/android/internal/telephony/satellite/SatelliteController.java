@@ -794,7 +794,7 @@ public class SatelliteController extends Handler {
                     }
                     SessionMetricsStats.getInstance()
                             .setInitializationResult(error)
-                            .setRadioTechnology(SatelliteManager.NT_RADIO_TECHNOLOGY_PROPRIETARY)
+                            .setRadioTechnology(getSupportedNtnRadioTechnology())
                             .reportSessionMetrics();
                 } else {
                     mControllerMetricsStats.onSatelliteDisabled();
@@ -1195,14 +1195,15 @@ public class SatelliteController extends Handler {
         Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(callback::accept);
         int error = evaluateOemSatelliteRequestAllowed(true);
         if (error != SATELLITE_RESULT_SUCCESS) {
-            result.accept(error);
+            sendErrorAndReportSessionMetrics(error, result);
             return;
         }
 
         if (enableSatellite) {
             if (!mIsRadioOn) {
                 loge("Radio is not on, can not enable satellite");
-                result.accept(SatelliteManager.SATELLITE_RESULT_INVALID_MODEM_STATE);
+                sendErrorAndReportSessionMetrics(
+                        SatelliteManager.SATELLITE_RESULT_INVALID_MODEM_STATE, result);
                 return;
             }
         } else {
@@ -1216,12 +1217,14 @@ public class SatelliteController extends Handler {
                     if (enableDemoMode != mIsDemoModeEnabled) {
                         loge("Received invalid demo mode while satellite session is enabled"
                                 + " enableDemoMode = " + enableDemoMode);
-                        result.accept(SatelliteManager.SATELLITE_RESULT_INVALID_ARGUMENTS);
+                        sendErrorAndReportSessionMetrics(
+                                SatelliteManager.SATELLITE_RESULT_INVALID_ARGUMENTS, result);
                         return;
                     } else {
                         logd("Enable request matches with current state"
                                 + " enableSatellite = " + enableSatellite);
-                        result.accept(SATELLITE_RESULT_SUCCESS);
+                        sendErrorAndReportSessionMetrics(
+                                SatelliteManager.SATELLITE_RESULT_SUCCESS, result);
                         return;
                     }
                 }
@@ -1246,13 +1249,15 @@ public class SatelliteController extends Handler {
             } else if (mSatelliteEnabledRequest.enableSatellite == request.enableSatellite) {
                 logd("requestSatelliteEnabled enableSatellite: " + enableSatellite
                         + " is already in progress.");
-                result.accept(SatelliteManager.SATELLITE_RESULT_REQUEST_IN_PROGRESS);
+                sendErrorAndReportSessionMetrics(
+                        SatelliteManager.SATELLITE_RESULT_REQUEST_IN_PROGRESS, result);
                 return;
             } else if (mSatelliteEnabledRequest.enableSatellite == false
                     && request.enableSatellite == true) {
                 logd("requestSatelliteEnabled enableSatellite: " + enableSatellite + " cannot be "
                         + "processed. Disable satellite is already in progress.");
-                result.accept(SatelliteManager.SATELLITE_RESULT_ERROR);
+                sendErrorAndReportSessionMetrics(
+                        SatelliteManager.SATELLITE_RESULT_ERROR, result);
                 return;
             }
         }
@@ -2981,6 +2986,30 @@ public class SatelliteController extends Handler {
         }
 
         return SATELLITE_RESULT_SUCCESS;
+    }
+
+    /**
+     * Returns the non-terrestrial network radio technology that the satellite modem currently
+     * supports. If multiple technologies are available, returns the first supported technology.
+     */
+    @VisibleForTesting
+    protected @SatelliteManager.NTRadioTechnology int getSupportedNtnRadioTechnology() {
+        synchronized (mSatelliteCapabilitiesLock) {
+            if (mSatelliteCapabilities != null) {
+                return mSatelliteCapabilities.getSupportedRadioTechnologies()
+                        .stream().findFirst().orElse(SatelliteManager.NT_RADIO_TECHNOLOGY_UNKNOWN);
+            }
+            return SatelliteManager.NT_RADIO_TECHNOLOGY_UNKNOWN;
+        }
+    }
+
+    private void sendErrorAndReportSessionMetrics(@SatelliteManager.SatelliteResult int error,
+            Consumer<Integer> result) {
+        result.accept(error);
+        SessionMetricsStats.getInstance()
+                .setInitializationResult(error)
+                .setRadioTechnology(getSupportedNtnRadioTechnology())
+                .reportSessionMetrics();
     }
 
     private static void logd(@NonNull String log) {

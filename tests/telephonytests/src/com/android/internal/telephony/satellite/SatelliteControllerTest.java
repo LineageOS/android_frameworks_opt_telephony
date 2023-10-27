@@ -764,9 +764,9 @@ public class SatelliteControllerTest extends TelephonyTest {
         verify(mMockDatagramController, times(4)).setDemoMode(eq(false));
         verify(mMockControllerMetricsStats, times(2)).onSatelliteEnabled();
         verify(mMockControllerMetricsStats, times(2)).reportServiceEnablementSuccessCount();
-        verify(mMockSessionMetricsStats, times(3)).setInitializationResult(anyInt());
-        verify(mMockSessionMetricsStats, times(3)).setRadioTechnology(anyInt());
-        verify(mMockSessionMetricsStats, times(3)).reportSessionMetrics();
+        verify(mMockSessionMetricsStats, times(7)).setInitializationResult(anyInt());
+        verify(mMockSessionMetricsStats, times(7)).setRadioTechnology(anyInt());
+        verify(mMockSessionMetricsStats, times(7)).reportSessionMetrics();
 
         // Successfully enable satellite when it is already enabled.
         mIIntegerConsumerResults.clear();
@@ -921,6 +921,9 @@ public class SatelliteControllerTest extends TelephonyTest {
         assertTrue(waitForRequestSatelliteCapabilitiesResult(1));
         assertEquals(SATELLITE_RESULT_SUCCESS, mQueriedSatelliteCapabilitiesResultCode);
         assertEquals(mSatelliteCapabilities, mQueriedSatelliteCapabilities);
+        assertTrue(
+                mQueriedSatelliteCapabilities.getSupportedRadioTechnologies().contains(
+                        mSatelliteControllerUT.getSupportedNtnRadioTechnology()));
 
         resetSatelliteControllerUT();
         setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
@@ -1992,6 +1995,9 @@ public class SatelliteControllerTest extends TelephonyTest {
         assertTrue(waitForRequestSatelliteCapabilitiesResult(1));
         assertEquals(SATELLITE_RESULT_SUCCESS, mQueriedSatelliteCapabilitiesResultCode);
         assertEquals(mEmptySatelliteCapabilities, mQueriedSatelliteCapabilities);
+        assertEquals(SatelliteManager.NT_RADIO_TECHNOLOGY_UNKNOWN,
+                mSatelliteControllerUT.getSupportedNtnRadioTechnology());
+
         assertFalse(satelliteController.isSatelliteAttachRequired());
 
         setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
@@ -2007,6 +2013,9 @@ public class SatelliteControllerTest extends TelephonyTest {
         assertTrue(waitForRequestSatelliteCapabilitiesResult(1));
         assertEquals(SATELLITE_RESULT_SUCCESS, mQueriedSatelliteCapabilitiesResultCode);
         assertEquals(mSatelliteCapabilities, mQueriedSatelliteCapabilities);
+        assertTrue(
+                mQueriedSatelliteCapabilities.getSupportedRadioTechnologies().contains(
+                        satelliteController.getSupportedNtnRadioTechnology()));
         assertTrue(satelliteController.isSatelliteAttachRequired());
 
         when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(false);
@@ -3022,6 +3031,13 @@ public class SatelliteControllerTest extends TelephonyTest {
         @Override
         protected boolean areAllRadiosDisabled() {
             return allRadiosDisabled;
+        }
+
+        @Override
+        protected int getSupportedNtnRadioTechnology() {
+            int ntRadioTechnology = super.getSupportedNtnRadioTechnology();
+            logd("getCurrentNtnRadioTechnology: val=" + ntRadioTechnology);
+            return ntRadioTechnology;
         }
     }
 }
