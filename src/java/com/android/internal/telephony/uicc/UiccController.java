@@ -597,8 +597,6 @@ public class UiccController extends Handler {
                         log("Received EVENT_RADIO_AVAILABLE/EVENT_RADIO_ON, calling "
                                 + "getIccCardStatus");
                     }
-                    mCis[phoneId].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE,
-                            phoneId));
                     // slot status should be the same on all RILs; request it only for phoneId 0
                     if (phoneId == 0) {
                         if (DBG) {
@@ -608,6 +606,8 @@ public class UiccController extends Handler {
                         mRadioConfig.getSimSlotsStatus(obtainMessage(EVENT_GET_SLOT_STATUS_DONE,
                                 phoneId));
                     }
+                    mCis[phoneId].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE,
+                            phoneId));
                     break;
                 case EVENT_GET_ICC_STATUS_DONE:
                     if (DBG) log("Received EVENT_GET_ICC_STATUS_DONE");
