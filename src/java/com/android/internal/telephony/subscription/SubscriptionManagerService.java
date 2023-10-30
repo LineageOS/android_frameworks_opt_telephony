@@ -45,9 +45,11 @@ import android.os.ParcelUuid;
 import android.os.PersistableBundle;
 import android.os.Process;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 import android.os.TelephonyServiceManager;
 import android.os.UserHandle;
 import android.os.UserManager;
+import android.provider.DeviceConfig;
 import android.provider.Settings;
 import android.provider.Telephony.SimInfo;
 import android.service.carrier.CarrierIdentifier;
@@ -132,6 +134,8 @@ import java.util.stream.Stream;
  */
 public class SubscriptionManagerService extends ISub.Stub {
     private static final String LOG_TAG = "SMSVC";
+    private static final String ALLOW_MOCK_MODEM_PROPERTY = "persist.radio.allow_mock_modem";
+    private static final String BOOT_ALLOW_MOCK_MODEM_PROPERTY = "ro.boot.radio.allow_mock_modem";
 
     /** Whether enabling verbose debugging message or not. */
     private static final boolean VDBG = false;
@@ -1175,6 +1179,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                         if (mFeatureFlags.oemEnabledSatelliteFlag()) {
                             builder.setOnlyNonTerrestrialNetwork(
                                     isSatellitePlmn(mcc + mnc) ? 1 : 0);
+                        } else {
+                            log("updateEmbeddedSubscriptions: oemEnabledSatelliteFlag is disabled");
                         }
                     }
                     // If cardId = unsupported or un-initialized, we have no reason to update DB.
@@ -4145,6 +4151,7 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     private boolean isSatellitePlmn(@NonNull String mccMnc) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            log("isSatellitePlmn: oemEnabledSatelliteFlag is disabled");
             return false;
         }
 
@@ -4155,11 +4162,19 @@ public class SubscriptionManagerService extends ISub.Stub {
         } catch (Resources.NotFoundException ex) {
             loge("isSatellitePlmn: id= " + id + ", ex=" + ex);
         }
-        if (overlayMccMnc == null) {
-            return false;
-        } else {
-            return mccMnc.equals(overlayMccMnc);
+        if (TextUtils.isEmpty(overlayMccMnc) && isMockModemAllowed()) {
+            log("isSatellitePlmn: Read config_satellite_sim_identifier from device config");
+            overlayMccMnc = DeviceConfig.getString(DeviceConfig.NAMESPACE_TELEPHONY,
+                    "config_satellite_sim_identifier", "");
         }
+        log("isSatellitePlmn: overlayMccMnc=" + overlayMccMnc + ", mccMnc=" + mccMnc);
+        return TextUtils.equals(mccMnc, overlayMccMnc);
+    }
+
+    private boolean isMockModemAllowed() {
+        boolean isAllowed = SystemProperties.getBoolean(ALLOW_MOCK_MODEM_PROPERTY, false);
+        return (SystemProperties.getBoolean(ALLOW_MOCK_MODEM_PROPERTY, false)
+                || SystemProperties.getBoolean(BOOT_ALLOW_MOCK_MODEM_PROPERTY, false));
     }
 
     /**
