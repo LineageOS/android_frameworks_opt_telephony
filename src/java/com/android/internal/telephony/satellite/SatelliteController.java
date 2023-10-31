@@ -1300,6 +1300,7 @@ public class SatelliteController extends Handler {
      */
     public boolean isSatelliteEnabled() {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("isSatelliteEnabled: oemEnabledSatelliteFlag is disabled");
             return false;
         }
         if (mIsSatelliteEnabled == null) return false;
@@ -1333,6 +1334,7 @@ public class SatelliteController extends Handler {
      */
     public boolean isDemoModeEnabled() {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("isDemoModeEnabled: oemEnabledSatelliteFlag is disabled");
             return false;
         }
         return mIsDemoModeEnabled;
@@ -1347,6 +1349,7 @@ public class SatelliteController extends Handler {
      */
     public void requestIsSatelliteSupported(int subId, @NonNull ResultReceiver result) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("requestIsSatelliteSupported: oemEnabledSatelliteFlag is disabled");
             result.send(SatelliteManager.SATELLITE_RESULT_NOT_SUPPORTED, null);
             return;
         }
@@ -1558,6 +1561,8 @@ public class SatelliteController extends Handler {
     public void unregisterForSatelliteProvisionStateChanged(
             int subId, @NonNull ISatelliteProvisionStateCallback callback) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("unregisterForSatelliteProvisionStateChanged: "
+                    + "oemEnabledSatelliteFlag is disabled");
             return;
         }
         mSatelliteProvisionStateChangedListeners.remove(callback.asBinder());
@@ -1602,6 +1607,7 @@ public class SatelliteController extends Handler {
     @SatelliteManager.SatelliteResult public int registerForSatelliteModemStateChanged(int subId,
             @NonNull ISatelliteStateCallback callback) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("registerForSatelliteModemStateChanged: oemEnabledSatelliteFlag is disabled");
             return SatelliteManager.SATELLITE_RESULT_NOT_SUPPORTED;
         }
         if (mSatelliteSessionController != null) {
@@ -1625,6 +1631,7 @@ public class SatelliteController extends Handler {
     public void unregisterForSatelliteModemStateChanged(int subId,
             @NonNull ISatelliteStateCallback callback) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("unregisterForSatelliteModemStateChanged: oemEnabledSatelliteFlag is disabled");
             return;
         }
         if (mSatelliteSessionController != null) {
@@ -1646,6 +1653,7 @@ public class SatelliteController extends Handler {
     @SatelliteManager.SatelliteResult public int registerForSatelliteDatagram(int subId,
             @NonNull ISatelliteDatagramCallback callback) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("registerForSatelliteDatagram: oemEnabledSatelliteFlag is disabled");
             return SatelliteManager.SATELLITE_RESULT_NOT_SUPPORTED;
         }
         if (!mSatelliteModemInterface.isSatelliteServiceSupported()) {
@@ -1665,6 +1673,7 @@ public class SatelliteController extends Handler {
     public void unregisterForSatelliteDatagram(int subId,
             @NonNull ISatelliteDatagramCallback callback) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("unregisterForSatelliteDatagram: oemEnabledSatelliteFlag is disabled");
             return;
         }
         if (!mSatelliteModemInterface.isSatelliteServiceSupported()) {
@@ -1779,6 +1788,7 @@ public class SatelliteController extends Handler {
      */
     public void setDeviceAlignedWithSatellite(@NonNull int subId, @NonNull boolean isAligned) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("setDeviceAlignedWithSatellite: oemEnabledSatelliteFlag is disabled");
             return;
         }
         mDatagramController.setDeviceAlignedWithSatellite(isAligned);
@@ -1871,6 +1881,8 @@ public class SatelliteController extends Handler {
      */
     @NonNull public Set<Integer> getSatelliteAttachRestrictionReasonsForCarrier(int subId) {
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
+            logd("getSatelliteAttachRestrictionReasonsForCarrier: carrierEnabledSatelliteFlag is "
+                    + "disabled");
             return new HashSet<>();
         }
         synchronized (mIsSatelliteEnabledLock) {
@@ -1961,9 +1973,13 @@ public class SatelliteController extends Handler {
      */
     public boolean setSatelliteServicePackageName(@Nullable String servicePackageName) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("setSatelliteServicePackageName: oemEnabledSatelliteFlag is disabled");
             return false;
         }
-        if (!isMockModemAllowed()) return false;
+        if (!isMockModemAllowed()) {
+            logd("setSatelliteServicePackageName: mock modem not allowed");
+            return false;
+        }
 
         // Cached states need to be cleared whenever switching satellite vendor services.
         logd("setSatelliteServicePackageName: Resetting cached states");
@@ -1993,6 +2009,7 @@ public class SatelliteController extends Handler {
      */
     public boolean setSatelliteListeningTimeoutDuration(long timeoutMillis) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("setSatelliteListeningTimeoutDuration: oemEnabledSatelliteFlag is disabled");
             return false;
         }
         if (mSatelliteSessionController == null) {
@@ -2011,6 +2028,7 @@ public class SatelliteController extends Handler {
      */
     public boolean setSatelliteDeviceAlignedTimeoutDuration(long timeoutMillis) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("setSatelliteDeviceAlignedTimeoutDuration: oemEnabledSatelliteFlag is disabled");
             return false;
         }
         return mDatagramController.setSatelliteDeviceAlignedTimeoutDuration(timeoutMillis);
@@ -2025,6 +2043,7 @@ public class SatelliteController extends Handler {
      */
     public boolean setSatelliteGatewayServicePackageName(@Nullable String servicePackageName) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("setSatelliteGatewayServicePackageName: oemEnabledSatelliteFlag is disabled");
             return false;
         }
         if (mSatelliteSessionController == null) {
@@ -2046,6 +2065,7 @@ public class SatelliteController extends Handler {
     public boolean setSatellitePointingUiClassName(
             @Nullable String packageName, @Nullable String className) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("setSatellitePointingUiClassName: oemEnabledSatelliteFlag is disabled");
             return false;
         }
         return mPointingAppController.setSatellitePointingUiClassName(packageName, className);
@@ -2065,6 +2085,7 @@ public class SatelliteController extends Handler {
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
     public void onSatelliteServiceConnected() {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("onSatelliteServiceConnected: oemEnabledSatelliteFlag is disabled");
             return;
         }
         if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
@@ -2115,6 +2136,7 @@ public class SatelliteController extends Handler {
      */
     public boolean isSatelliteSupported() {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("isSatelliteSupported: oemEnabledSatelliteFlag is disabled");
             return false;
         }
         Boolean supported = isSatelliteSupportedInternal();
@@ -2128,6 +2150,7 @@ public class SatelliteController extends Handler {
     @NonNull
     public List<String> getSatellitePlmnList(int subId) {
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
+            logd("getSatellitePlmnList: carrierEnabledSatelliteFlag is disabled");
             return new ArrayList<>();
         }
         synchronized (mSupportedSatelliteServicesLock) {
@@ -2148,6 +2171,7 @@ public class SatelliteController extends Handler {
     @NonNull
     public List<Integer> getSupportedSatelliteServices(int subId, String plmn) {
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
+            logd("getSupportedSatelliteServices: carrierEnabledSatelliteFlag is disabled");
             return new ArrayList<>();
         }
         synchronized (mSupportedSatelliteServicesLock) {
