@@ -31,5 +31,6 @@ aconfig_declarations {
       "uicc.aconfig",
       "satellite.aconfig",
       "iwlan.aconfig",
+      "telephony.aconfig",
     ],
 }
