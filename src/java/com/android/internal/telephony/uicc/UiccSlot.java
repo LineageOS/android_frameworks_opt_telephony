@@ -654,6 +654,7 @@ public class UiccSlot extends Handler {
 
     private Map<Integer, String> getPrintableIccIds() {
         Map<Integer, String> printableIccIds = mIccIds.entrySet().stream()
+                .filter(e -> e.getValue() != null)
                 .collect(Collectors.toMap(Map.Entry::getKey,
                         e -> SubscriptionInfo.getPrintableId(e.getValue())));
         return printableIccIds;
