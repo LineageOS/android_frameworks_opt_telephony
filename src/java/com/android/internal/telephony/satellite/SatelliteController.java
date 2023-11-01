@@ -25,6 +25,7 @@ import static android.telephony.satellite.NtnSignalStrength.NTN_SIGNAL_STRENGTH_
 import static android.telephony.satellite.SatelliteManager.EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_SOS;
 import static android.telephony.satellite.SatelliteManager.EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_T911;
 import static android.telephony.satellite.SatelliteManager.KEY_NTN_SIGNAL_STRENGTH;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_COMMUNICATION_RESTRICTION_REASON_ENTITLEMENT;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
@@ -309,7 +310,7 @@ public class SatelliteController extends Handler {
     private int mEnforcedEmergencyCallToSatelliteHandoverType =
             INVALID_EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE;
     private int mDelayInSendingEventDisplayEmergencyMessage = 0;
-
+    private boolean mCarrierSatelliteEnabled;
     /**
      * @return The singleton instance of SatelliteController.
      */
@@ -2469,6 +2470,41 @@ public class SatelliteController extends Handler {
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected long getElapsedRealtime() {
         return SystemClock.elapsedRealtime();
+    }
+
+    /**
+     * Update the satellite EntitlementStatus and PlmnAllowedList after receiving the HTTP response
+     * from the satellite entitlement server.
+     * If the satellite service is enabled then trigger internal satellite enabled for carrier,
+     * otherwise trigger internal satellite disabled for carrier.
+     */
+    public void updateSatelliteEntitlementStatus(int subId, boolean satelliteEnabled,
+            List<String> plmnAllowed, IIntegerConsumer callback) {
+        if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
+            return;
+        }
+
+        if (mCarrierSatelliteEnabled != satelliteEnabled) {
+            logd("update the carrier satellite enabled to " + satelliteEnabled);
+            mCarrierSatelliteEnabled = satelliteEnabled;
+        }
+
+        if (callback == null) {
+            callback = new IIntegerConsumer.Stub() {
+                @Override
+                public void accept(int result) {
+                    logd("updateSatelliteEntitlementStatus:" + result);
+                }
+            };
+        }
+
+        if (mCarrierSatelliteEnabled) {
+            removeSatelliteAttachRestrictionForCarrier(subId,
+                    SATELLITE_COMMUNICATION_RESTRICTION_REASON_ENTITLEMENT, callback);
+        } else {
+            addSatelliteAttachRestrictionForCarrier(subId,
+                    SATELLITE_COMMUNICATION_RESTRICTION_REASON_ENTITLEMENT, callback);
+        }
     }
 
     /**
