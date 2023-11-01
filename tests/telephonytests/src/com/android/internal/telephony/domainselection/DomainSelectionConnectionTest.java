@@ -20,6 +20,8 @@ import static android.telephony.AccessNetworkConstants.AccessNetworkType.UTRAN;
 import static android.telephony.DomainSelectionService.SCAN_TYPE_NO_PREFERENCE;
 import static android.telephony.DomainSelectionService.SELECTOR_TYPE_CALLING;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.eq;
@@ -31,11 +33,14 @@ import static org.mockito.Mockito.verify;
 import android.os.AsyncResult;
 import android.os.CancellationSignal;
 import android.os.Handler;
+import android.telephony.AccessNetworkConstants;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.DomainSelectionService;
 import android.telephony.DomainSelector;
 import android.telephony.EmergencyRegResult;
 import android.telephony.TransportSelectorCallback;
 import android.telephony.WwanSelectorCallback;
+import android.telephony.data.ApnSetting;
 import android.telephony.ims.ImsReasonInfo;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
@@ -43,6 +48,7 @@ import android.testing.TestableLooper;
 
 import com.android.internal.telephony.CallFailCause;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.AccessNetworksManager.QualifiedNetworks;
 
 import org.junit.After;
 import org.junit.Before;
@@ -288,6 +294,31 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
         mDsc.finishSelection();
 
         verify(domainSelector).finishSelection();
+    }
+
+    @Test
+    @SmallTest
+    public void testQualifiedNetworkTypesChanged() throws Exception {
+        mDsc = new DomainSelectionConnection(mPhone, SELECTOR_TYPE_CALLING, true,
+                mDomainSelectionController);
+
+        List<QualifiedNetworks> networksList = new ArrayList<>();
+
+        assertThat(mDsc.getPreferredTransport(ApnSetting.TYPE_EMERGENCY, networksList))
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+        networksList.add(new QualifiedNetworks(ApnSetting.TYPE_EMERGENCY,
+                new int[]{ AccessNetworkType.IWLAN }));
+
+        assertThat(mDsc.getPreferredTransport(ApnSetting.TYPE_EMERGENCY, networksList))
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+
+        networksList.clear();
+        networksList.add(new QualifiedNetworks(ApnSetting.TYPE_EMERGENCY,
+                new int[]{ AccessNetworkType.EUTRAN }));
+
+        assertThat(mDsc.getPreferredTransport(ApnSetting.TYPE_EMERGENCY, networksList))
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
     }
 
     private DomainSelectionService.SelectionAttributes getSelectionAttributes(

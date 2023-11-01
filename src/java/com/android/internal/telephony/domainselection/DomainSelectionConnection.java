@@ -23,7 +23,11 @@ import android.os.CancellationSignal;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.telephony.AccessNetworkConstants;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.RadioAccessNetworkType;
+import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.DisconnectCauses;
 import android.telephony.DomainSelectionService;
 import android.telephony.DomainSelectionService.EmergencyScanType;
@@ -32,12 +36,14 @@ import android.telephony.EmergencyRegResult;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.TransportSelectorCallback;
 import android.telephony.WwanSelectorCallback;
+import android.telephony.data.ApnSetting;
 import android.util.LocalLog;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.infra.AndroidFuture;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.data.AccessNetworksManager.QualifiedNetworks;
 import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.io.PrintWriter;
@@ -193,7 +199,12 @@ public class DomainSelectionConnection {
                             mController.getDomainSelectionServiceExecutor());
                     break;
                 case EVENT_QUALIFIED_NETWORKS_CHANGED:
-                    onQualifiedNetworksChanged();
+                    ar = (AsyncResult) msg.obj;
+                    if (ar == null || ar.result == null) {
+                        loge("handleMessage EVENT_QUALIFIED_NETWORKS_CHANGED null result");
+                        break;
+                    }
+                    onQualifiedNetworksChanged((List<QualifiedNetworks>) ar.result);
                     break;
                 default:
                     loge("handleMessage unexpected msg=" + msg.what);
@@ -473,13 +484,40 @@ public class DomainSelectionConnection {
     /**
      * Notifies the change of qualified networks.
      */
-    protected void onQualifiedNetworksChanged() {
+    protected void onQualifiedNetworksChanged(List<QualifiedNetworks> networksList) {
         if (mIsEmergency
                 && (mSelectorType == DomainSelectionService.SELECTOR_TYPE_CALLING)) {
             // DomainSelectionConnection for emergency calls shall override this.
             throw new IllegalStateException("DomainSelectionConnection for emergency calls"
                     + " should override onQualifiedNetworksChanged()");
         }
+    }
+
+    /**
+     * Get the  preferred transport.
+     *
+     * @param apnType APN type.
+     * @return The preferred transport.
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PROTECTED)
+    public int getPreferredTransport(@ApnType int apnType,
+            List<QualifiedNetworks> networksList) {
+        for (QualifiedNetworks networks : networksList) {
+            if (networks.qualifiedNetworks.length > 0) {
+                if (networks.apnType == apnType) {
+                    return getTransportFromAccessNetwork(networks.qualifiedNetworks[0]);
+                }
+            }
+        }
+
+        loge("getPreferredTransport no network found for " + ApnSetting.getApnTypeString(apnType));
+        return AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
+    }
+
+    private static @TransportType int getTransportFromAccessNetwork(int accessNetwork) {
+        return accessNetwork == AccessNetworkType.IWLAN
+                ? AccessNetworkConstants.TRANSPORT_TYPE_WLAN
+                : AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
     }
 
     /**
