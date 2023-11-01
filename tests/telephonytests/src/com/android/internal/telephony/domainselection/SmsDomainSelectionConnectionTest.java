@@ -28,14 +28,14 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.telephony.DisconnectCause;
 import android.telephony.DomainSelectionService;
-import android.telephony.DomainSelector;
 import android.telephony.NetworkRegistrationInfo;
-import android.telephony.TransportSelectorCallback;
 import android.testing.TestableLooper;
 
 import androidx.test.filters.SmallTest;
 import androidx.test.runner.AndroidJUnit4;
 
+import com.android.internal.telephony.IDomainSelector;
+import com.android.internal.telephony.ITransportSelectorCallback;
 import com.android.internal.telephony.Phone;
 
 import org.junit.After;
@@ -58,7 +58,7 @@ public class SmsDomainSelectionConnectionTest {
     @Mock private Phone mPhone;
     @Mock private DomainSelectionController mDsController;
     @Mock private DomainSelectionConnection.DomainSelectionConnectionCallback mDscCallback;
-    @Mock private DomainSelector mDomainSelector;
+    @Mock private IDomainSelector mDomainSelector;
 
     private Handler mHandler;
     private TestableLooper mTestableLooper;
@@ -107,7 +107,7 @@ public class SmsDomainSelectionConnectionTest {
                 mDsConnection.requestDomainSelection(mDsAttr, mDscCallback);
 
         assertNotNull(future);
-        verify(mDsController).selectDomain(eq(mDsAttr), any(TransportSelectorCallback.class));
+        verify(mDsController).selectDomain(eq(mDsAttr), any(ITransportSelectorCallback.class));
     }
 
     @Test

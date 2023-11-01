@@ -27,19 +27,14 @@ import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
 import android.os.AsyncResult;
-import android.os.CancellationSignal;
 import android.os.Handler;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.DomainSelectionService;
-import android.telephony.DomainSelector;
 import android.telephony.EmergencyRegResult;
-import android.telephony.TransportSelectorCallback;
-import android.telephony.WwanSelectorCallback;
 import android.telephony.data.ApnSetting;
 import android.telephony.ims.ImsReasonInfo;
 import android.testing.AndroidTestingRunner;
@@ -48,6 +43,12 @@ import android.testing.TestableLooper;
 import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.CallFailCause;
+import com.android.internal.telephony.IDomainSelector;
+import com.android.internal.telephony.ITransportSelectorCallback;
+import com.android.internal.telephony.ITransportSelectorResultCallback;
+import com.android.internal.telephony.IWwanSelectorCallback;
+import com.android.internal.telephony.IWwanSelectorResultCallback;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.AccessNetworksManager.QualifiedNetworks;
 
@@ -61,8 +62,6 @@ import org.mockito.Mockito;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.function.Consumer;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -91,90 +90,79 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testTransportSelectorCallback() {
-        mDsc = new DomainSelectionConnection(mPhone, SELECTOR_TYPE_CALLING, true,
+    public void testTransportSelectorCallback() throws Exception {
+        mDsc = createConnection(mPhone, SELECTOR_TYPE_CALLING, true,
                 mDomainSelectionController);
 
-        TransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
+        ITransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
 
         assertNotNull(transportCallback);
     }
 
     @Test
     @SmallTest
-    public void testSelectDomain() {
-        mDsc = new DomainSelectionConnection(mPhone, SELECTOR_TYPE_CALLING, true,
+    public void testSelectDomain() throws Exception {
+        mDsc = createConnection(mPhone, SELECTOR_TYPE_CALLING, true,
                 mDomainSelectionController);
 
-        TransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
+        ITransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
 
         DomainSelectionService.SelectionAttributes attr = getSelectionAttributes(
                 mPhone.getPhoneId(), mPhone.getSubId(), SELECTOR_TYPE_CALLING, true,
-                false, 0, null, null, null, null);
+                false, 0, TELECOM_CALL_ID1, null, null, null);
 
         mDsc.selectDomain(attr);
 
-        verify(mDomainSelectionController).selectDomain(any(), eq(transportCallback));
-    }
-
-    @Test
-    @SmallTest
-    public void testWwanSelectorCallback() throws Exception {
-        mDsc = new DomainSelectionConnection(mPhone, SELECTOR_TYPE_CALLING, true,
-                mDomainSelectionController);
-
-        TransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
-
-        assertNotNull(transportCallback);
-
-        WwanSelectorCallback wwanCallback = null;
-        wwanCallback = transportCallback.onWwanSelected();
-
-        assertNotNull(wwanCallback);
+        verify(mDomainSelectionController).selectDomain(eq(attr), eq(transportCallback));
     }
 
     @Test
     @SmallTest
     public void testWwanSelectorCallbackAsync() throws Exception {
-        mDsc = new DomainSelectionConnection(mPhone, SELECTOR_TYPE_CALLING, true,
+        mDsc = createConnection(mPhone, SELECTOR_TYPE_CALLING, true,
                 mDomainSelectionController);
 
-        TransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
+        ITransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
 
         assertNotNull(transportCallback);
 
-        replaceInstance(DomainSelectionConnection.class, "mLooper",
-                mDsc, mTestableLooper.getLooper());
-        Consumer<WwanSelectorCallback> consumer = Mockito.mock(Consumer.class);
-        transportCallback.onWwanSelected(consumer);
-        processAllMessages();
+        IDomainSelector domainSelector = Mockito.mock(IDomainSelector.class);
+        transportCallback.onCreated(domainSelector);
 
-        verify(consumer).accept(any());
+        IWwanSelectorCallback wwanCallback = onWwanSelected(transportCallback);
+
+        assertNotNull(wwanCallback);
     }
 
     @Test
     @SmallTest
     public void testWwanSelectorCallbackOnRequestEmergencyNetworkScan() throws Exception {
-        mDsc = new DomainSelectionConnection(mPhone, SELECTOR_TYPE_CALLING, true,
+        mDsc = createConnection(mPhone, SELECTOR_TYPE_CALLING, true,
                 mDomainSelectionController);
 
-        TransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
+        ITransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
 
         assertNotNull(transportCallback);
 
-        WwanSelectorCallback wwanCallback = transportCallback.onWwanSelected();
+        DomainSelectionService.SelectionAttributes attr = getSelectionAttributes(
+                mPhone.getPhoneId(), mPhone.getSubId(), SELECTOR_TYPE_CALLING, true,
+                false, 0, TELECOM_CALL_ID1, null, null, null);
+
+        mDsc.selectDomain(attr);
+
+        IDomainSelector domainSelector = Mockito.mock(IDomainSelector.class);
+        transportCallback.onCreated(domainSelector);
+
+        IWwanSelectorCallback wwanCallback = onWwanSelected(transportCallback);
 
         assertNotNull(wwanCallback);
 
-        replaceInstance(DomainSelectionConnection.class, "mLooper",
-                mDsc, mTestableLooper.getLooper());
-        List<Integer> preferredNetworks = new ArrayList<>();
-        preferredNetworks.add(EUTRAN);
-        preferredNetworks.add(UTRAN);
+        int[] preferredNetworks = new int[] { EUTRAN, UTRAN };
         int scanType = SCAN_TYPE_NO_PREFERENCE;
-        Consumer<EmergencyRegResult> consumer = Mockito.mock(Consumer.class);
+        IWwanSelectorResultCallback resultCallback =
+                Mockito.mock(IWwanSelectorResultCallback.class);
 
-        wwanCallback.onRequestEmergencyNetworkScan(preferredNetworks, scanType, null, consumer);
+        wwanCallback.onRequestEmergencyNetworkScan(preferredNetworks, scanType, resultCallback);
         processAllMessages();
 
         ArgumentCaptor<Handler> handlerCaptor = ArgumentCaptor.forClass(Handler.class);
@@ -193,44 +181,45 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
 
         assertNotNull(handler);
 
-        doReturn(new Executor() {
-            public void execute(Runnable r) {
-                r.run();
-            }
-        }).when(mDomainSelectionController).getDomainSelectionServiceExecutor();
         EmergencyRegResult regResult =
                 new EmergencyRegResult(UTRAN, 0, 0, true, false, 0, 0, "", "", "");
         handler.sendMessage(handler.obtainMessage(event, new AsyncResult(null, regResult, null)));
         processAllMessages();
 
-        verify(consumer).accept(eq(regResult));
+        verify(resultCallback).onComplete(eq(regResult));
     }
 
     @Test
     @SmallTest
     public void testWwanSelectorCallbackOnRequestEmergencyNetworkScanAndCancel() throws Exception {
-        mDsc = new DomainSelectionConnection(mPhone, SELECTOR_TYPE_CALLING, true,
+        mDsc = createConnection(mPhone, SELECTOR_TYPE_CALLING, true,
                 mDomainSelectionController);
 
-        TransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
+        ITransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
 
         assertNotNull(transportCallback);
 
-        WwanSelectorCallback wwanCallback = transportCallback.onWwanSelected();
+        DomainSelectionService.SelectionAttributes attr = getSelectionAttributes(
+                mPhone.getPhoneId(), mPhone.getSubId(), SELECTOR_TYPE_CALLING, true,
+                false, 0, null, null, null, null);
+
+        mDsc.selectDomain(attr);
+
+        IDomainSelector domainSelector = Mockito.mock(IDomainSelector.class);
+        transportCallback.onCreated(domainSelector);
+
+        IWwanSelectorCallback wwanCallback = onWwanSelected(transportCallback);
 
         assertNotNull(wwanCallback);
 
-        replaceInstance(DomainSelectionConnection.class, "mLooper",
-                mDsc, mTestableLooper.getLooper());
-        CancellationSignal signal = new CancellationSignal();
-        wwanCallback.onRequestEmergencyNetworkScan(new ArrayList<>(),
-                SCAN_TYPE_NO_PREFERENCE, signal, Mockito.mock(Consumer.class));
+        wwanCallback.onRequestEmergencyNetworkScan(new int[] { },
+                SCAN_TYPE_NO_PREFERENCE, Mockito.mock(IWwanSelectorResultCallback.class));
         processAllMessages();
 
         verify(mPhone).registerForEmergencyNetworkScan(any(), anyInt(), any());
         verify(mPhone).triggerEmergencyNetworkScan(any(), anyInt(), any());
 
-        signal.cancel();
+        wwanCallback.onCancel();
         processAllMessages();
 
         verify(mPhone).cancelEmergencyNetworkScan(eq(false), any());
@@ -239,14 +228,20 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testDomainSelectorCancelSelection() throws Exception {
-        mDsc = new DomainSelectionConnection(mPhone, SELECTOR_TYPE_CALLING, true,
+        mDsc = createConnection(mPhone, SELECTOR_TYPE_CALLING, true,
                 mDomainSelectionController);
 
-        TransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
+        ITransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
 
         assertNotNull(transportCallback);
 
-        DomainSelector domainSelector = Mockito.mock(DomainSelector.class);
+        DomainSelectionService.SelectionAttributes attr = getSelectionAttributes(
+                mPhone.getPhoneId(), mPhone.getSubId(), SELECTOR_TYPE_CALLING, true,
+                false, 0, TELECOM_CALL_ID1, null, null, null);
+
+        mDsc.selectDomain(attr);
+
+        IDomainSelector domainSelector = Mockito.mock(IDomainSelector.class);
         transportCallback.onCreated(domainSelector);
 
         mDsc.cancelSelection();
@@ -257,39 +252,45 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testDomainSelectorReselectDomain() throws Exception {
-        mDsc = new DomainSelectionConnection(mPhone, SELECTOR_TYPE_CALLING, true,
+        mDsc = createConnection(mPhone, SELECTOR_TYPE_CALLING, true,
                 mDomainSelectionController);
 
-        TransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
+        ITransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
 
         assertNotNull(transportCallback);
 
-        DomainSelector domainSelector = Mockito.mock(DomainSelector.class);
+        IDomainSelector domainSelector = Mockito.mock(IDomainSelector.class);
         transportCallback.onCreated(domainSelector);
 
         DomainSelectionService.SelectionAttributes attr = getSelectionAttributes(
                 mPhone.getPhoneId(), mPhone.getSubId(), SELECTOR_TYPE_CALLING, true,
-                false, CallFailCause.ERROR_UNSPECIFIED, null, null, null, null);
+                false, CallFailCause.ERROR_UNSPECIFIED, TELECOM_CALL_ID1, null, null, null);
 
         CompletableFuture<Integer> future = mDsc.reselectDomain(attr);
 
         assertNotNull(future);
         assertFalse(future.isDone());
 
-        verify(domainSelector).reselectDomain(any());
+        verify(domainSelector).reselectDomain(eq(attr));
     }
 
     @Test
     @SmallTest
     public void testDomainSelectorFinishSelection() throws Exception {
-        mDsc = new DomainSelectionConnection(mPhone, SELECTOR_TYPE_CALLING, true,
+        mDsc = createConnection(mPhone, SELECTOR_TYPE_CALLING, true,
                 mDomainSelectionController);
 
-        TransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
+        ITransportSelectorCallback transportCallback = mDsc.getTransportSelectorCallback();
 
         assertNotNull(transportCallback);
 
-        DomainSelector domainSelector = Mockito.mock(DomainSelector.class);
+        DomainSelectionService.SelectionAttributes attr = getSelectionAttributes(
+                mPhone.getPhoneId(), mPhone.getSubId(), SELECTOR_TYPE_CALLING, true,
+                false, 0, TELECOM_CALL_ID1, null, null, null);
+
+        mDsc.selectDomain(attr);
+
+        IDomainSelector domainSelector = Mockito.mock(IDomainSelector.class);
         transportCallback.onCreated(domainSelector);
 
         mDsc.finishSelection();
@@ -300,7 +301,7 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testQualifiedNetworkTypesChanged() throws Exception {
-        mDsc = new DomainSelectionConnection(mPhone, SELECTOR_TYPE_CALLING, true,
+        mDsc = createConnection(mPhone, SELECTOR_TYPE_CALLING, true,
                 mDomainSelectionController);
 
         List<QualifiedNetworks> networksList = new ArrayList<>();
@@ -322,6 +323,15 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
                 .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
     }
 
+    private DomainSelectionConnection createConnection(Phone phone, int selectorType,
+            boolean isEmergency, DomainSelectionController controller) throws Exception {
+        DomainSelectionConnection dsc = new DomainSelectionConnection(phone,
+                selectorType, isEmergency, controller);
+        replaceInstance(DomainSelectionConnection.class, "mLooper",
+                dsc, mTestableLooper.getLooper());
+        return dsc;
+    }
+
     private DomainSelectionService.SelectionAttributes getSelectionAttributes(
             int slotId, int subId, int selectorType, boolean isEmergency,
             boolean exited, int callFailCause, String callId, String number,
@@ -339,5 +349,19 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
         if (regResult != null) builder.setEmergencyRegResult(regResult);
 
         return builder.build();
+    }
+
+    private IWwanSelectorCallback onWwanSelected(ITransportSelectorCallback transportCallback)
+            throws Exception {
+        ITransportSelectorResultCallback cb = Mockito.mock(ITransportSelectorResultCallback.class);
+        transportCallback.onWwanSelectedAsync(cb);
+        processAllMessages();
+
+        ArgumentCaptor<IWwanSelectorCallback> callbackCaptor =
+                ArgumentCaptor.forClass(IWwanSelectorCallback.class);
+
+        verify(cb).onCompleted(callbackCaptor.capture());
+
+        return callbackCaptor.getValue();
     }
 }

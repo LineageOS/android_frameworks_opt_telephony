@@ -19,10 +19,10 @@ package com.android.internal.telephony.domainselection;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.os.AsyncResult;
-import android.os.CancellationSignal;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.RemoteException;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.RadioAccessNetworkType;
@@ -34,14 +34,17 @@ import android.telephony.DomainSelectionService.EmergencyScanType;
 import android.telephony.DomainSelector;
 import android.telephony.EmergencyRegResult;
 import android.telephony.NetworkRegistrationInfo;
-import android.telephony.TransportSelectorCallback;
-import android.telephony.WwanSelectorCallback;
 import android.telephony.data.ApnSetting;
 import android.util.LocalLog;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.infra.AndroidFuture;
+import com.android.internal.telephony.IDomainSelector;
+import com.android.internal.telephony.ITransportSelectorCallback;
+import com.android.internal.telephony.ITransportSelectorResultCallback;
+import com.android.internal.telephony.IWwanSelectorCallback;
+import com.android.internal.telephony.IWwanSelectorResultCallback;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.data.AccessNetworksManager.QualifiedNetworks;
 import com.android.internal.telephony.util.TelephonyUtils;
@@ -49,7 +52,6 @@ import com.android.internal.telephony.util.TelephonyUtils;
 import java.io.PrintWriter;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 
 
 /**
@@ -73,14 +75,20 @@ public class DomainSelectionConnection {
         void onSelectionTerminated(@DisconnectCauses int cause);
     }
 
-    /** An internal class implementing {@link TransportSelectorCallback} interface. */
-    private final class TransportSelectorCallbackWrapper implements TransportSelectorCallback {
+    /**
+     * A wrapper class for {@link ITransportSelectorCallback} interface.
+     */
+    private final class TransportSelectorCallbackAdaptor extends ITransportSelectorCallback.Stub {
         @Override
-        public void onCreated(@NonNull DomainSelector selector) {
+        public void onCreated(@NonNull IDomainSelector selector) {
             synchronized (mLock) {
                 mDomainSelector = selector;
                 if (mDisposed) {
-                    mDomainSelector.cancelSelection();
+                    try {
+                        selector.cancelSelection();
+                    } catch (RemoteException e) {
+                        // ignore exception
+                    }
                     return;
                 }
                 DomainSelectionConnection.this.onCreated();
@@ -96,10 +104,10 @@ public class DomainSelectionConnection {
         }
 
         @Override
-        public @NonNull WwanSelectorCallback onWwanSelected() {
+        public @NonNull IWwanSelectorCallback onWwanSelected() {
             synchronized (mLock) {
                 if (mWwanSelectorCallback == null) {
-                    mWwanSelectorCallback = new WwanSelectorCallbackWrapper();
+                    mWwanSelectorCallback = new WwanSelectorCallbackAdaptor();
                 }
                 if (mDisposed) {
                     return mWwanSelectorCallback;
@@ -110,18 +118,22 @@ public class DomainSelectionConnection {
         }
 
         @Override
-        public void onWwanSelected(final Consumer<WwanSelectorCallback> consumer) {
+        public void onWwanSelectedAsync(@NonNull final ITransportSelectorResultCallback cb) {
             synchronized (mLock) {
                 if (mDisposed) return;
                 if (mWwanSelectorCallback == null) {
-                    mWwanSelectorCallback = new WwanSelectorCallbackWrapper();
+                    mWwanSelectorCallback = new WwanSelectorCallbackAdaptor();
                 }
                 initHandler();
                 mHandler.post(() -> {
                     synchronized (mLock) {
                         if (mDisposed) return;
                         DomainSelectionConnection.this.onWwanSelected();
-                        consumer.accept(mWwanSelectorCallback);
+                    }
+                    try {
+                        cb.onCompleted(mWwanSelectorCallback);
+                    } catch (RemoteException e) {
+                        loge("onWwanSelectedAsync executor exception=" + e);
                     }
                 });
             }
@@ -137,23 +149,22 @@ public class DomainSelectionConnection {
         }
     }
 
-    /** An internal class implementing {@link WwanSelectorCallback} interface. */
-    private final class WwanSelectorCallbackWrapper
-            implements WwanSelectorCallback, CancellationSignal.OnCancelListener {
+    /**
+     * A wrapper class for {@link IWwanSelectorCallback} interface.
+     */
+    private final class WwanSelectorCallbackAdaptor extends IWwanSelectorCallback.Stub {
         @Override
-        public void onRequestEmergencyNetworkScan(@NonNull List<Integer> preferredNetworks,
-                @EmergencyScanType int scanType, @NonNull CancellationSignal signal,
-                @NonNull Consumer<EmergencyRegResult> consumer) {
+        public void onRequestEmergencyNetworkScan(
+                @NonNull @RadioAccessNetworkType int[] preferredNetworks,
+                @EmergencyScanType int scanType, @NonNull IWwanSelectorResultCallback cb) {
             synchronized (mLock) {
                 if (mDisposed) return;
-                if (signal != null) signal.setOnCancelListener(this);
-                mResultCallback = consumer;
+                mResultCallback = cb;
                 initHandler();
                 mHandler.post(() -> {
                     synchronized (mLock) {
                         DomainSelectionConnection.this.onRequestEmergencyNetworkScan(
-                                preferredNetworks.stream().mapToInt(Integer::intValue).toArray(),
-                                scanType);
+                                preferredNetworks, scanType);
                     }
                 });
             }
@@ -189,14 +200,19 @@ public class DomainSelectionConnection {
             AsyncResult ar;
             switch (msg.what) {
                 case EVENT_EMERGENCY_NETWORK_SCAN_RESULT:
-                    mIsWaitingForScanResult = false;
-                    if (mResultCallback == null) break;
                     ar = (AsyncResult) msg.obj;
                     EmergencyRegResult regResult = (EmergencyRegResult) ar.result;
                     if (DBG) logd("EVENT_EMERGENCY_NETWORK_SCAN_RESULT result=" + regResult);
-                    CompletableFuture.runAsync(
-                            () -> mResultCallback.accept(regResult),
-                            mController.getDomainSelectionServiceExecutor());
+                    synchronized (mLock) {
+                        mIsWaitingForScanResult = false;
+                        if (mResultCallback != null) {
+                            try {
+                                mResultCallback.onComplete(regResult);
+                            } catch (RemoteException e) {
+                                loge("EVENT_EMERGENCY_NETWORK_SCAN_RESULT exception=" + e);
+                            }
+                        }
+                    }
                     break;
                 case EVENT_QUALIFIED_NETWORKS_CHANGED:
                     ar = (AsyncResult) msg.obj;
@@ -218,7 +234,7 @@ public class DomainSelectionConnection {
     private boolean mDisposed = false;
     private final Object mLock = new Object();
     private final LocalLog mLocalLog = new LocalLog(30);
-    private final @NonNull TransportSelectorCallback mTransportSelectorCallback;
+    private final @NonNull ITransportSelectorCallback mTransportSelectorCallback;
 
     /**
      * Controls the communication between {@link DomainSelectionConnection} and
@@ -229,11 +245,11 @@ public class DomainSelectionConnection {
     private final boolean mIsEmergency;
 
     /** Interface to receive the request to trigger emergency network scan and selected domain. */
-    private @Nullable WwanSelectorCallback mWwanSelectorCallback;
+    private @Nullable IWwanSelectorCallback mWwanSelectorCallback;
     /** Interface to return the result of emergency network scan. */
-    private @Nullable Consumer<EmergencyRegResult> mResultCallback;
+    private @Nullable IWwanSelectorResultCallback mResultCallback;
     /** Interface to the {@link DomainSelector} created for this service. */
-    private @Nullable DomainSelector mDomainSelector;
+    private @Nullable IDomainSelector mDomainSelector;
 
     /** The slot requested this connection. */
     protected @NonNull Phone mPhone;
@@ -267,7 +283,7 @@ public class DomainSelectionConnection {
         mIsEmergency = isEmergency;
         mLooper = Looper.getMainLooper();
 
-        mTransportSelectorCallback = new TransportSelectorCallbackWrapper();
+        mTransportSelectorCallback = new TransportSelectorCallbackAdaptor();
         mOnComplete = new AndroidFuture<>();
     }
 
@@ -281,13 +297,21 @@ public class DomainSelectionConnection {
     }
 
     /**
-     * Returns the interface for the callbacks.
+     * Returns the callback binder interface.
      *
-     * @return The {@link TransportSelectorCallback} interface.
+     * @return The {@link ITransportSelectorCallback} interface.
      */
-    @VisibleForTesting
-    public @NonNull TransportSelectorCallback getTransportSelectorCallback() {
+    public @Nullable ITransportSelectorCallback getTransportSelectorCallback() {
         return mTransportSelectorCallback;
+    }
+
+    /**
+     * Returns the callback binder interface to handle the emergency scan result.
+     *
+     * @return The {@link IWwanSelectorResultCallback} interface.
+     */
+    public @Nullable IWwanSelectorResultCallback getEmergencyRegResultCallback() {
+        return mResultCallback;
     }
 
     /**
@@ -316,7 +340,7 @@ public class DomainSelectionConnection {
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PROTECTED)
     public void selectDomain(@NonNull DomainSelectionService.SelectionAttributes attr) {
         mSelectionAttributes = attr;
-        mController.selectDomain(attr, getTransportSelectorCallback());
+        mController.selectDomain(attr, mTransportSelectorCallback);
     }
 
     /**
@@ -369,16 +393,18 @@ public class DomainSelectionConnection {
     public void onRequestEmergencyNetworkScan(
             @NonNull @RadioAccessNetworkType int[] preferredNetworks,
             @EmergencyScanType int scanType) {
-        if (mHandler == null) return;
-
         // Can be overridden if required
-        if (!mRegisteredRegistrant) {
-            mPhone.registerForEmergencyNetworkScan(mHandler,
-                    EVENT_EMERGENCY_NETWORK_SCAN_RESULT, null);
-            mRegisteredRegistrant = true;
+        synchronized (mLock) {
+            if (mDisposed || mHandler == null) return;
+
+            if (!mRegisteredRegistrant) {
+                mPhone.registerForEmergencyNetworkScan(mHandler,
+                        EVENT_EMERGENCY_NETWORK_SCAN_RESULT, null);
+                mRegisteredRegistrant = true;
+            }
+            mIsWaitingForScanResult = true;
+            mPhone.triggerEmergencyNetworkScan(preferredNetworks, scanType, null);
         }
-        mIsWaitingForScanResult = true;
-        mPhone.triggerEmergencyNetworkScan(preferredNetworks, scanType, null);
     }
 
     /**
@@ -425,10 +451,15 @@ public class DomainSelectionConnection {
      */
     public void cancelSelection() {
         synchronized (mLock) {
-            if (mDomainSelector != null) {
-                mDomainSelector.cancelSelection();
+            try {
+                if (mDomainSelector != null) {
+                    mDomainSelector.cancelSelection();
+                }
+            } catch (RemoteException e) {
+                loge("cancelSelection exception=" + e);
+            } finally {
+                dispose();
             }
-            dispose();
         }
     }
 
@@ -440,11 +471,19 @@ public class DomainSelectionConnection {
      */
     public @NonNull CompletableFuture<Integer> reselectDomain(
             @NonNull DomainSelectionService.SelectionAttributes attr) {
-        mSelectionAttributes = attr;
-        if (mDomainSelector == null) return null;
-        mOnComplete = new AndroidFuture<>();
-        mDomainSelector.reselectDomain(attr);
-        return mOnComplete;
+        synchronized (mLock) {
+            mSelectionAttributes = attr;
+            mOnComplete = new AndroidFuture<>();
+            try {
+                if (mDomainSelector != null) {
+                    mDomainSelector.reselectDomain(attr);
+                }
+            } catch (RemoteException e) {
+                loge("reselectDomain exception=" + e);
+            } finally {
+                return mOnComplete;
+            }
+        }
     }
 
     /**
@@ -452,10 +491,15 @@ public class DomainSelectionConnection {
      */
     public void finishSelection() {
         synchronized (mLock) {
-            if (mDomainSelector != null) {
-                mDomainSelector.finishSelection();
+            try {
+                if (mDomainSelector != null) {
+                    mDomainSelector.finishSelection();
+                }
+            } catch (RemoteException e) {
+                loge("finishSelection exception=" + e);
+            } finally {
+                dispose();
             }
-            dispose();
         }
     }
 
