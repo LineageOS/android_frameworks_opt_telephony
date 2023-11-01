@@ -130,6 +130,7 @@ public class EmergencyStateTracker {
     private boolean mIsInEcm;
     private boolean mIsTestEmergencyNumber;
     private Runnable mOnEcmExitCompleteRunnable;
+    private int mOngoingCallProperties;
 
     /** For emergency SMS */
     private final Set<String> mOngoingEmergencySmsIds = new ArraySet<>();
@@ -447,6 +448,7 @@ public class EmergencyStateTracker {
             return CompletableFuture.completedFuture(DisconnectCause.ERROR_UNSPECIFIED);
         }
 
+        mOngoingCallProperties = 0;
         mCallEmergencyModeFuture = new CompletableFuture<>();
 
         if (mSmsPhone != null) {
@@ -487,6 +489,7 @@ public class EmergencyStateTracker {
 
         if (Objects.equals(mOngoingCallId, callId)) {
             mOngoingCallId = null;
+            mOngoingCallProperties = 0;
         }
 
         if (wasActive && mActiveEmergencyCalls.isEmpty()
@@ -520,6 +523,7 @@ public class EmergencyStateTracker {
         mIsEmergencyCallStartedDuringEmergencySms = false;
         mCallEmergencyModeFuture = null;
         mOngoingCallId = null;
+        mOngoingCallProperties = 0;
         mPhone = null;
     }
 
@@ -757,7 +761,33 @@ public class EmergencyStateTracker {
     public void onEmergencyCallStateChanged(Call.State state, String callId) {
         if (state == Call.State.ACTIVE) {
             mActiveEmergencyCalls.add(callId);
+            if (Objects.equals(mOngoingCallId, callId)) {
+                Rlog.i(TAG, "call connected " + callId);
+                if (mPhone != null
+                        && isVoWiFi(mOngoingCallProperties)
+                        && mEmergencyMode == EmergencyConstants.MODE_EMERGENCY_WLAN) {
+                    // Recover normal service in cellular when VoWiFi is connected
+                    mPhone.cancelEmergencyNetworkScan(true, null);
+                }
+            }
         }
+    }
+
+    /**
+     * Handles the change of emergency call properties.
+     *
+     * @param properties the new call properties.
+     * @param callId the callId whose state has changed.
+     */
+    public void onEmergencyCallPropertiesChanged(int properties, String callId) {
+        if (Objects.equals(mOngoingCallId, callId)) {
+            mOngoingCallProperties = properties;
+        }
+    }
+
+    private static boolean isVoWiFi(int properties) {
+        return (properties & android.telecom.Connection.PROPERTY_WIFI) > 0
+                || (properties & android.telecom.Connection.PROPERTY_CROSS_SIM) > 0;
     }
 
     /**
