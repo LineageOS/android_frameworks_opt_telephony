@@ -1946,16 +1946,15 @@ public class ServiceStateTracker extends Handler {
                 err = ((CommandException)(ar.exception)).getCommandError();
             }
 
-            if (mCi.getRadioState() != TelephonyManager.RADIO_POWER_ON) {
-                log("handlePollStateResult: Invalid response due to radio off or unavailable. "
-                        + "Set ServiceState to out of service.");
-                pollStateInternal(false);
-                return;
-            }
-
             if (err == CommandException.Error.RADIO_NOT_AVAILABLE) {
-                loge("handlePollStateResult: RIL returned RADIO_NOT_AVAILABLE when radio is on.");
-                cancelPollState();
+                loge("handlePollStateResult: RIL returned RADIO_NOT_AVAILABLE.");
+                if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON) {
+                    cancelPollState();
+                } else {
+                    handlePollStateInternalForRadioOffOrUnavailable(
+                            mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF);
+                    pollStateDone();
+                }
                 return;
             }
 
@@ -3312,42 +3311,17 @@ public class ServiceStateTracker extends Handler {
 
     private void pollStateInternal(boolean modemTriggered) {
         mPollingContext = new int[1];
-        NetworkRegistrationInfo nri;
 
         log("pollState: modemTriggered=" + modemTriggered + ", radioState=" + mCi.getRadioState());
 
         switch (mCi.getRadioState()) {
             case TelephonyManager.RADIO_POWER_UNAVAILABLE:
-                // Preserve the IWLAN registration state, because that should not be affected by
-                // radio availability.
-                nri = mNewSS.getNetworkRegistrationInfo(
-                        NetworkRegistrationInfo.DOMAIN_PS,
-                        AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
-                mNewSS.setOutOfService(false);
-                // Add the IWLAN registration info back to service state.
-                if (nri != null) {
-                    mNewSS.addNetworkRegistrationInfo(nri);
-                }
-                mPhone.getSignalStrengthController().setSignalStrengthDefaultValues();
-                mLastNitzData = null;
-                mNitzState.handleNetworkUnavailable();
+                handlePollStateInternalForRadioOffOrUnavailable(false);
                 pollStateDone();
                 break;
 
             case TelephonyManager.RADIO_POWER_OFF:
-                // Preserve the IWLAN registration state, because that should not be affected by
-                // radio availability.
-                nri = mNewSS.getNetworkRegistrationInfo(
-                        NetworkRegistrationInfo.DOMAIN_PS,
-                        AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
-                mNewSS.setOutOfService(true);
-                // Add the IWLAN registration info back to service state.
-                if (nri != null) {
-                    mNewSS.addNetworkRegistrationInfo(nri);
-                }
-                mPhone.getSignalStrengthController().setSignalStrengthDefaultValues();
-                mLastNitzData = null;
-                mNitzState.handleNetworkUnavailable();
+                handlePollStateInternalForRadioOffOrUnavailable(true);
                 // Don't poll when device is shutting down or the poll was not modemTriggered
                 // (they sent us new radio data) and the current network is not IWLAN
                 if (mDeviceShuttingDown ||
@@ -3389,6 +3363,21 @@ public class ServiceStateTracker extends Handler {
                 }
                 break;
         }
+    }
+
+    private void handlePollStateInternalForRadioOffOrUnavailable(boolean radioOff) {
+        // Preserve the IWLAN registration state, which should not be affected by radio availability
+        NetworkRegistrationInfo nri = mNewSS.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+        mNewSS.setOutOfService(radioOff);
+        // Add the IWLAN registration info back to service state.
+        if (nri != null) {
+            mNewSS.addNetworkRegistrationInfo(nri);
+        }
+        mPhone.getSignalStrengthController().setSignalStrengthDefaultValues();
+        mLastNitzData = null;
+        mNitzState.handleNetworkUnavailable();
     }
 
     /**

@@ -2065,6 +2065,79 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @Test
+    public void testPollStateExceptionRadioPowerOn() {
+        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
+        assertEquals(ServiceState.STATE_IN_SERVICE, sst.getServiceState().getState());
+        assertEquals(ServiceState.STATE_IN_SERVICE,
+                sst.getServiceState().getDataRegistrationState());
+
+        sst.mPollingContext[0] = 1;
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_OPERATOR,
+                new AsyncResult(sst.mPollingContext, null,
+                        new CommandException(CommandException.Error.RADIO_NOT_AVAILABLE))));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        assertEquals(ServiceState.STATE_IN_SERVICE, sst.getServiceState().getState());
+        assertEquals(ServiceState.STATE_IN_SERVICE,
+                sst.getServiceState().getDataRegistrationState());
+        assertEquals(0, sst.mPollingContext[0]);
+    }
+
+    @Test
+    public void testPollStateExceptionRadioPowerOff() {
+        // Turn off radio first.
+        sst.setRadioPower(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(TelephonyManager.RADIO_POWER_OFF, mSimulatedCommands.getRadioState());
+        assertEquals(ServiceState.STATE_POWER_OFF, sst.getServiceState().getState());
+        assertEquals(ServiceState.STATE_POWER_OFF,
+                sst.getServiceState().getDataRegistrationState());
+        // Override service state
+        sst.getServiceState().setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        sst.getServiceState().setDataRegState(ServiceState.STATE_IN_SERVICE);
+
+        sst.mPollingContext[0] = 1;
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_OPERATOR,
+                new AsyncResult(sst.mPollingContext, null,
+                        new CommandException(CommandException.Error.RADIO_NOT_AVAILABLE))));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        assertEquals(ServiceState.STATE_POWER_OFF, sst.getServiceState().getVoiceRegState());
+        assertEquals(ServiceState.STATE_POWER_OFF, sst.getServiceState().getDataRegState());
+        assertEquals(1, sst.mPollingContext[0]);
+    }
+
+    @Test
+    public void testPollStateExceptionRadioPowerOffOnIwlan() {
+        // Turn off radio first.
+        sst.setRadioPower(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(TelephonyManager.RADIO_POWER_OFF, mSimulatedCommands.getRadioState());
+        assertEquals(ServiceState.STATE_POWER_OFF, sst.getServiceState().getState());
+        assertEquals(ServiceState.STATE_POWER_OFF,
+                sst.getServiceState().getDataRegistrationState());
+        // Override service state
+        sst.getServiceState().setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        sst.getServiceState().setDataRegState(ServiceState.STATE_IN_SERVICE);
+        // Override to IWLAN
+        sst.mSS.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN);
+
+        sst.mPollingContext[0] = 1;
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_OPERATOR,
+                new AsyncResult(sst.mPollingContext, null,
+                        new CommandException(CommandException.Error.RADIO_NOT_AVAILABLE))));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        assertNull(null, sst.getServiceState().getOperatorAlpha());
+        assertEquals(ServiceState.STATE_POWER_OFF, sst.getServiceState().getVoiceRegState());
+        assertEquals(ServiceState.STATE_POWER_OFF, sst.getServiceState().getDataRegState());
+        assertEquals(1, sst.mPollingContext[0]);
+    }
+
+    @Test
     public void testCSEmergencyRegistrationState() throws Exception {
         CellIdentityGsm cellIdentity =
                 new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst",
