@@ -13,3 +13,10 @@ flag {
     description: "This flag ignores the incoming call by throwing an exception if the call was already terminated before the framework registers the listener for the incoming call"
     bug:"289461637"
 }
+
+flag {
+    name: "clear_cached_ims_phone_number_when_device_lost_ims_registration"
+    namespace: "telephony"
+    description: "This flag clears cached IMS phone number when device lost IMS registration"
+    bug:"288002989"
+}

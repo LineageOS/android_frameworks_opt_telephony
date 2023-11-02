@@ -30,6 +30,8 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.RemoteException;
+import android.telephony.IBooleanConsumer;
+import android.telephony.IIntegerConsumer;
 import android.telephony.Rlog;
 import android.telephony.satellite.NtnSignalStrength;
 import android.telephony.satellite.SatelliteCapabilities;
@@ -47,8 +49,6 @@ import android.util.Pair;
 import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.ExponentialBackoff;
-import com.android.internal.telephony.IBooleanConsumer;
-import com.android.internal.telephony.IIntegerConsumer;
 
 import java.util.Arrays;
 import java.util.List;
