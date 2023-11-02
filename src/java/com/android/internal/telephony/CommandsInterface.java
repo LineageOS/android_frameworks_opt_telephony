@@ -2897,4 +2897,19 @@ public interface CommandsInterface {
      * @param result Callback message to receive the result.
      */
     default void isN1ModeEnabled(Message result) {}
+
+    /**
+     * Enables or disables cellular identifier disclosure transparency.
+     *
+     * @param enable {@code true} to enable, {@code false} to disable.
+     * @param result Callback message to receive the result.
+     */
+    default void setCellularIdentifierTransparencyEnabled(boolean enable, Message result) {}
+
+    /**
+     * Check whether cellular identifier transparency.
+     *
+     * @param result Callback message to receive the result.
+     */
+    default void isCellularIdentifierTransparencyEnabled(Message result) {}
 }
