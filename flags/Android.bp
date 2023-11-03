@@ -23,6 +23,7 @@ aconfig_declarations {
     package: "com.android.internal.telephony.flags",
     srcs: [
       "data.aconfig",
+      "domainselection.aconfig",
       "ims.aconfig",
       "messaging.aconfig",
       "misc.aconfig",
