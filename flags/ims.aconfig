@@ -20,3 +20,10 @@ flag {
     description: "This flag clears cached IMS phone number when device lost IMS registration"
     bug:"288002989"
 }
+
+flag {
+    name: "update_ims_service_by_gathering_provisioning_changes"
+    namespace: "telephony"
+    description: "This flag is created to prevent unnecessary updates when multiple provisioning items to update ims service are changed."
+    bug:"302281114"
+}
