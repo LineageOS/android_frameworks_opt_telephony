@@ -5132,6 +5132,61 @@ public class RIL extends BaseCommands implements CommandsInterface {
         });
     }
 
+   /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setSecurityAlgorithmsUpdatedEnabled(boolean enable, Message result) {
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
+        if (!canMakeRequest(
+                "setSecurityAlgorithmsUpdatedEnabled",
+                networkProxy,
+                result,
+                RADIO_HAL_VERSION_2_2)) {
+            return;
+        }
+
+        RILRequest rr = obtainRequest(RIL_REQUEST_SET_SECURITY_ALGORITHMS_UPDATED_ENABLED, result,
+                mRILDefaultWorkSource);
+
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                    + " enable=" + enable);
+        }
+
+        radioServiceInvokeHelper(HAL_SERVICE_NETWORK, rr, "setSecurityAlgorithmsUpdatedEnabled",
+                () -> {
+                    networkProxy.setSecurityAlgorithmsUpdatedEnabled(rr.mSerial, enable);
+            });
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void isSecurityAlgorithmsUpdatedEnabled(Message result) {
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
+        if (!canMakeRequest(
+                "isSecurityAlgorithmsUpdatedEnabled",
+                networkProxy,
+                result,
+                RADIO_HAL_VERSION_2_2)) {
+            return;
+        }
+
+        RILRequest rr = obtainRequest(RIL_REQUEST_IS_SECURITY_ALGORITHMS_UPDATED_ENABLED, result,
+                mRILDefaultWorkSource);
+
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+        }
+
+        radioServiceInvokeHelper(
+                HAL_SERVICE_NETWORK, rr, "isSecurityAlgorithmsUpdatedEnabled", () -> {
+                networkProxy.isSecurityAlgorithmsUpdatedEnabled(rr.mSerial);
+            });
+    }
+
     //***** Private Methods
     /**
      * This is a helper function to be called when an indication callback is called for any radio

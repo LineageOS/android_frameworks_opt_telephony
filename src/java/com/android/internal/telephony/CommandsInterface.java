@@ -2912,4 +2912,19 @@ public interface CommandsInterface {
      * @param result Callback message to receive the result.
      */
     default void isCellularIdentifierTransparencyEnabled(Message result) {}
+
+    /**
+     * Enables or disables security algorithm update reports.
+     *
+     * @param enable {@code true} to enable, {@code false} to disable.
+     * @param result Callback message to receive the result.
+     */
+    default void setSecurityAlgorithmsUpdatedEnabled(boolean enable, Message result) {}
+
+    /**
+     * Check whether security algorithm update reports are enabled.
+     *
+     * @param result Callback message to receive the result.
+     */
+    default void isSecurityAlgorithmsUpdatedEnabled(Message result) {}
 }
