@@ -984,6 +984,7 @@ public class DataConfigManager extends Handler {
                     DATA_CONFIG_NETWORK_TYPE_EHRPD,
                     DATA_CONFIG_NETWORK_TYPE_IDEN,
                     DATA_CONFIG_NETWORK_TYPE_LTE,
+                    DATA_CONFIG_NETWORK_TYPE_LTE_CA,
                     DATA_CONFIG_NETWORK_TYPE_HSPAP,
                     DATA_CONFIG_NETWORK_TYPE_GSM,
                     DATA_CONFIG_NETWORK_TYPE_TD_SCDMA,
