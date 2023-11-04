@@ -20,6 +20,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.app.AlarmManager;
 import android.app.DownloadManager;
+import android.app.KeyguardManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -40,6 +41,7 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.flags.FeatureFlags;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -108,6 +110,7 @@ public class CarrierKeyDownloadManager extends Handler {
     private String mURL;
     private boolean mAllowedOverMeteredNetwork = false;
     private boolean mDeleteOldKeyAfterDownload = false;
+    private boolean mIsRequiredToHandleUnlock;
     private TelephonyManager mTelephonyManager;
     private UserManager mUserManager;
 
@@ -116,13 +119,16 @@ public class CarrierKeyDownloadManager extends Handler {
     public int mCarrierId;
     @VisibleForTesting
     public long mDownloadId;
+    private final FeatureFlags mFeatureFlags;
 
-    public CarrierKeyDownloadManager(Phone phone) {
+    public CarrierKeyDownloadManager(Phone phone, FeatureFlags featureFlags) {
         mPhone = phone;
+        mFeatureFlags = featureFlags;
         mContext = phone.getContext();
         IntentFilter filter = new IntentFilter();
         filter.addAction(INTENT_KEY_RENEWAL_ALARM_PREFIX);
         filter.addAction(TelephonyIntents.ACTION_CARRIER_CERTIFICATE_DOWNLOAD);
+        filter.addAction(Intent.ACTION_USER_PRESENT);
         mContext.registerReceiver(mBroadcastReceiver, filter, null, phone);
         mDownloadManager = (DownloadManager) mContext.getSystemService(Context.DOWNLOAD_SERVICE);
         mTelephonyManager = mContext.getSystemService(TelephonyManager.class)
@@ -186,6 +192,16 @@ public class CarrierKeyDownloadManager extends Handler {
                     Log.d(LOG_TAG, "Handling reset intent: " + action);
                     sendEmptyMessage(EVENT_ALARM_OR_CONFIG_CHANGE);
                 }
+            }  else if (action.equals(Intent.ACTION_USER_PRESENT)) {
+                // The Carrier key download fails when SIM is inserted while device is locked
+                // hence adding a retry logic when device is unlocked.
+                Log.d(LOG_TAG,
+                        "device unlocked, isRequiredToHandleUnlock = " + mIsRequiredToHandleUnlock
+                                + ", slotIndex = " + slotIndex);
+                if (mIsRequiredToHandleUnlock) {
+                    mIsRequiredToHandleUnlock = false;
+                    sendEmptyMessage(EVENT_ALARM_OR_CONFIG_CHANGE);
+                }
             }
         }
     };
@@ -224,6 +240,16 @@ public class CarrierKeyDownloadManager extends Handler {
                 // keys, we'll still want to renew the alarms, and try downloading the key a day
                 // later.
                 if (!downloadStartedSuccessfully) {
+                    // If download fails due to the device lock, we will reattempt once the device
+                    // is unlocked.
+                    if (mFeatureFlags.imsiKeyRetryDownloadOnPhoneUnlock()) {
+                        KeyguardManager keyguardManager = mContext.getSystemService(
+                                KeyguardManager.class);
+                        if (keyguardManager.isKeyguardSecure()) {
+                            Log.e(LOG_TAG, "Key download failed in device lock state");
+                            mIsRequiredToHandleUnlock = true;
+                        }
+                    }
                     resetRenewalAlarm();
                 }
             } else {
@@ -233,6 +259,7 @@ public class CarrierKeyDownloadManager extends Handler {
             // delete any existing alarms.
             cleanupRenewalAlarms();
             mPhone.deleteCarrierInfoForImsiEncryption(getSimCarrierId());
+
         }
     }
 
@@ -622,7 +649,8 @@ public class CarrierKeyDownloadManager extends Handler {
             mCarrierId = carrierId;
             mDownloadId = carrierKeyDownloadRequestId;
         } catch (Exception e) {
-            Log.e(LOG_TAG, "exception trying to download key from url: " + mURL);
+            Log.e(LOG_TAG, "exception trying to download key from url: " + mURL + ", Exception = "
+                    + e.getMessage());
             return false;
         }
         return true;
