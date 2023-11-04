@@ -514,6 +514,7 @@ public class GsmCdmaPhone extends Phone {
         mCDM = new CarrierKeyDownloadManager(this, mFeatureFlags);
         mCIM = new CarrierInfoManager();
 
+        mCi.registerForImeiMappingChanged(this, EVENT_IMEI_MAPPING_CHANGED, null);
         initializeCarrierApps();
     }
 
@@ -3170,19 +3171,7 @@ public class GsmCdmaPhone extends Phone {
             }
             break;
             case EVENT_GET_DEVICE_IMEI_DONE :
-                ar = (AsyncResult)msg.obj;
-                if (ar.exception != null || ar.result == null) {
-                    loge("Exception received : " + ar.exception);
-                    break;
-                }
-                ImeiInfo imeiInfo = (ImeiInfo) ar.result;
-                if (!TextUtils.isEmpty(imeiInfo.imei)) {
-                    mImeiType = imeiInfo.type;
-                    mImei = imeiInfo.imei;
-                    mImeiSv = imeiInfo.svn;
-                } else {
-                    // TODO Report telephony anomaly
-                }
+                parseImeiInfo(msg);
                 break;
             case EVENT_GET_DEVICE_IDENTITY_DONE:{
                 ar = (AsyncResult)msg.obj;
@@ -3668,8 +3657,30 @@ public class GsmCdmaPhone extends Phone {
                     rsp.sendToTarget();
                 }
                 break;
+
+            case EVENT_IMEI_MAPPING_CHANGED:
+                logd("EVENT_GET_DEVICE_IMEI_CHANGE_DONE phoneId = " + getPhoneId());
+                parseImeiInfo(msg);
+                break;
+
             default:
                 super.handleMessage(msg);
+        }
+    }
+
+    private void parseImeiInfo(Message msg) {
+        AsyncResult ar = (AsyncResult)msg.obj;
+        if (ar.exception != null || ar.result == null) {
+            loge("parseImeiInfo :: Exception received : " + ar.exception);
+            return;
+        }
+        ImeiInfo imeiInfo = (ImeiInfo) ar.result;
+        if (!TextUtils.isEmpty(imeiInfo.imei)) {
+            mImeiType = imeiInfo.type;
+            mImei = imeiInfo.imei;
+            mImeiSv = imeiInfo.svn;
+        } else {
+            loge("parseImeiInfo :: IMEI value is empty");
         }
     }
 

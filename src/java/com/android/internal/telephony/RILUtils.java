@@ -241,6 +241,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ENTER_EMERGE
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_HARDWARE_CONFIG_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ICC_SLOT_STATUS;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_IMEI_MAPPING_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_KEEPALIVE_STATUS;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_LCEDATA_RECV;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_MODEM_RESTART;
@@ -5269,6 +5270,8 @@ public class RILUtils {
                 return "UNSOL_NOTIFY_ANBR";
             case RIL_UNSOL_TRIGGER_IMS_DEREGISTRATION:
                 return "UNSOL_TRIGGER_IMS_DEREGISTRATION";
+            case RIL_UNSOL_IMEI_MAPPING_CHANGED:
+                return "UNSOL_IMEI_MAPPING_CHANGED";
             default:
                 return "<unknown response " + response + ">";
         }

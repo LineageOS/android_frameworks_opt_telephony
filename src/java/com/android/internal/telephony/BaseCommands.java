@@ -118,6 +118,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mConnectionSetupFailureRegistrants = new RegistrantList();
     protected RegistrantList mNotifyAnbrRegistrants = new RegistrantList();
     protected RegistrantList mTriggerImsDeregistrationRegistrants = new RegistrantList();
+    protected RegistrantList mImeiInfoRegistrants = new RegistrantList();
 
     @UnsupportedAppUsage
     protected Registrant mGsmSmsRegistrant;
@@ -1173,5 +1174,13 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void unregisterForTriggerImsDeregistration(Handler h) {
         mTriggerImsDeregistrationRegistrants.remove(h);
+    }
+
+    /**
+     * Register to listen for the changes in the primary IMEI with respect to the sim slot.
+     */
+    @Override
+    public void registerForImeiMappingChanged(Handler h, int what, Object obj) {
+        mImeiInfoRegistrants.add(h, what, obj);
     }
 }

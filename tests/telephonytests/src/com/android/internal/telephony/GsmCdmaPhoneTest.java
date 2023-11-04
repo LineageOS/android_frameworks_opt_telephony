@@ -2734,4 +2734,31 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         verify(mSimulatedCommandsVerifier).getNetworkSelectionMode(any(Message.class));
         verify(mSimulatedCommandsVerifier).setNetworkSelectionModeAutomatic(any(Message.class));
     }
+
+    /**
+     * Verify the ImeiMappingChange and EVENT_GET_DEVICE_IMEI_CHANGE_DONE are handled properly.
+     */
+    @Test
+    public void testChangeInPrimaryImei() {
+        // Initially assign the primaryImei and test it.
+        Message message = mPhoneUT.obtainMessage(Phone.EVENT_GET_DEVICE_IMEI_DONE);
+        ImeiInfo imeiInfo = new ImeiInfo();
+        imeiInfo.imei = FAKE_IMEI;
+        imeiInfo.svn = FAKE_IMEISV;
+        imeiInfo.type = ImeiInfo.ImeiType.PRIMARY;
+        AsyncResult.forMessage(message, imeiInfo, null);
+        mPhoneUT.handleMessage(message);
+        assertEquals(Phone.IMEI_TYPE_PRIMARY, mPhoneUT.getImeiType());
+        assertEquals(FAKE_IMEI, mPhoneUT.getImei());
+
+        // Now update the same one to secondary and check whether it is reflecting or not.
+        message = mPhoneUT.obtainMessage(Phone.EVENT_IMEI_MAPPING_CHANGED);
+        imeiInfo.imei = FAKE_IMEI;
+        imeiInfo.svn = FAKE_IMEISV;
+        imeiInfo.type = ImeiInfo.ImeiType.SECONDARY;
+        AsyncResult.forMessage(message, imeiInfo, null);
+        mPhoneUT.handleMessage(message);
+        assertEquals(Phone.IMEI_TYPE_SECONDARY, mPhoneUT.getImeiType());
+        assertEquals(FAKE_IMEI, mPhoneUT.getImei());
+    }
 }
