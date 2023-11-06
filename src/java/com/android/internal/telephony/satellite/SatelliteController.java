@@ -3258,6 +3258,31 @@ public class SatelliteController extends Handler {
         }
     }
 
+    /**
+     * This API can be used by only CTS to override the cached value for the device overlay config
+     * value : config_send_satellite_datagram_to_modem_in_demo_mode, which determines whether
+     * outgoing satellite datagrams should be sent to modem in demo mode.
+     *
+     * @param shouldSendToModemInDemoMode Whether send datagram in demo mode should be sent to
+     * satellite modem or not.
+     *
+     * @return {@code true} if the operation is successful, {@code false} otherwise.
+     */
+    public boolean setShouldSendDatagramToModemInDemoMode(boolean shouldSendToModemInDemoMode) {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("setShouldSendDatagramToModemInDemoMode: oemEnabledSatelliteFlag is disabled");
+            return false;
+        }
+
+        if (!isMockModemAllowed()) {
+            logd("setShouldSendDatagramToModemInDemoMode: mock modem not allowed.");
+            return false;
+        }
+
+        mDatagramController.setShouldSendDatagramToModemInDemoMode(shouldSendToModemInDemoMode);
+        return true;
+    }
+
     private static void logd(@NonNull String log) {
         Rlog.d(TAG, log);
     }
