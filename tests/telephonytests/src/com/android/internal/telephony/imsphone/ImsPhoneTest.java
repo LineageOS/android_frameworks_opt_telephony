@@ -24,6 +24,8 @@ import static android.telephony.CarrierConfigManager.USSD_OVER_IMS_PREFERRED;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_NONE;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_RAT_BLOCK;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCK;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_3G;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
@@ -1482,6 +1484,81 @@ public class ImsPhoneTest extends TelephonyTest {
 
         // verify that there is no update in the SimulatedCommands
         assertTrue(regInfo[0] == 1 && regInfo[1] == 1 && regInfo[2] == 1);
+    }
+
+    /**
+     * Verifies that valid state and reason is passed to RIL with RAT suggested actions
+     * when IMS registration state changes to unregistered.
+     */
+    @Test
+    @SmallTest
+    public void testUpdateImsRegistrationInfoWithRatSuggestedAction() {
+        doReturn(true).when(mFeatureFlags)
+                .addRatRelatedSuggestedActionToImsRegistration();
+
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+
+        int[] regInfo = mSimulatedCommands.getImsRegistrationInfo();
+        assertNotNull(regInfo);
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
+
+        RegistrationManager.RegistrationCallback registrationCallback =
+                mImsPhoneUT.getImsMmTelRegistrationCallback();
+
+        ImsReasonInfo reasonInfo = new ImsReasonInfo(ImsReasonInfo.CODE_REGISTRATION_ERROR,
+                ImsReasonInfo.CODE_UNSPECIFIED, "");
+
+        // unregistered with rat block
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_RAT_BLOCK,
+                REGISTRATION_TECH_LTE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
+                && regInfo[2] == SUGGESTED_ACTION_TRIGGER_RAT_BLOCK);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
+
+        // verfies that duplicated notification with the same suggested action is invoked
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_RAT_BLOCK,
+                REGISTRATION_TECH_LTE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
+                && regInfo[2] == SUGGESTED_ACTION_TRIGGER_RAT_BLOCK);
+
+        // unregistered with rat block clear
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCK,
+                REGISTRATION_TECH_LTE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
+                && regInfo[2] == SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCK);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
+
+        // verfies that duplicated notification with the same suggested action is invoked
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCK,
+                REGISTRATION_TECH_LTE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
+                && regInfo[2] == SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCK);
     }
 
     @Test
