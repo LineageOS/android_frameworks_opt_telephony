@@ -101,8 +101,6 @@ import com.android.internal.telephony.data.DataStallRecoveryManager.DataStallRec
 import com.android.internal.telephony.data.LinkBandwidthEstimator.LinkBandwidthEstimatorCallback;
 import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.ims.ImsResolver;
-import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
-import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
@@ -1332,7 +1330,6 @@ public class DataNetworkController extends Handler {
                         .getDataProfileForNetworkRequest(requestList.getFirst(),
                                 TelephonyManager.NETWORK_TYPE_IWLAN,
                                 mServiceState.isUsingNonTerrestrialNetwork(),
-                                isEsimBootStrapProvisioningActivated(),
                                 false/*ignorePermanentFailure*/);
                 if (candidate != null && !dataNetwork.getDataProfile().equals(candidate)) {
                     logv("But skipped because found better data profile " + candidate
@@ -1497,8 +1494,7 @@ public class DataNetworkController extends Handler {
             evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_REQUEST);
             evaluation.setCandidateDataProfile(mDataProfileManager.getDataProfileForNetworkRequest(
                     networkRequest, getDataNetworkType(transport),
-                    mServiceState.isUsingNonTerrestrialNetwork(),
-                    isEsimBootStrapProvisioningActivated(), true));
+                    mServiceState.isUsingNonTerrestrialNetwork(), true));
             networkRequest.setEvaluation(evaluation);
             log(evaluation.toString());
             return evaluation;
@@ -1657,7 +1653,6 @@ public class DataNetworkController extends Handler {
         DataProfile dataProfile = mDataProfileManager
                 .getDataProfileForNetworkRequest(networkRequest, networkType,
                         mServiceState.isUsingNonTerrestrialNetwork(),
-                        isEsimBootStrapProvisioningActivated(),
                         // If the evaluation is due to environmental changes, then we should ignore
                         // the permanent failure reached earlier.
                         reason.isConditionBased());
@@ -2274,22 +2269,6 @@ public class DataNetworkController extends Handler {
                         dataNetwork.getLinkProperties().getInterfaceName()))
                 .findFirst()
                 .orElse(null);
-    }
-
-    /**
-     * Check if the device is in eSIM bootstrap provisioning state.
-     *
-     * @return {@code true} if the device is under eSIM bootstrap provisioning.
-     */
-    public boolean isEsimBootStrapProvisioningActivated() {
-        if (!mFeatureFlags.esimBootstrapProvisioningFlag()) {
-            return false;
-        }
-
-        SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
-                .getSubscriptionInfoInternal(mPhone.getSubId());
-        return subInfo != null
-                && subInfo.getProfileClass() == SubscriptionManager.PROFILE_CLASS_PROVISIONING;
     }
 
     /**

@@ -2290,10 +2290,6 @@ public class DataNetwork extends StateMachine {
             }
         }
 
-        if (mDataNetworkController.isEsimBootStrapProvisioningActivated()) {
-            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
-        }
-
         // If one of the capabilities are for special use, for example, IMS, CBS, then this
         // network should be restricted, regardless data is enabled or not.
         if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())
@@ -3322,8 +3318,7 @@ public class DataNetwork extends StateMachine {
             TelephonyNetworkRequest networkRequest = mAttachedNetworkRequestList.get(0);
             DataProfile dataProfile = mDataNetworkController.getDataProfileManager()
                     .getDataProfileForNetworkRequest(networkRequest, targetNetworkType,
-                            mPhone.getServiceState().isUsingNonTerrestrialNetwork(),
-                            mDataNetworkController.isEsimBootStrapProvisioningActivated(), false);
+                            mPhone.getServiceState().isUsingNonTerrestrialNetwork(), false);
             // Some carriers have different profiles between cellular and IWLAN. We need to
             // dynamically switch profile, but only when those profiles have same APN name.
             if (dataProfile != null && dataProfile.getApnSetting() != null
