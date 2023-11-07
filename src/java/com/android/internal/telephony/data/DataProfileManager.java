@@ -77,13 +77,6 @@ public class DataProfileManager extends Handler {
     private final String mLogTag;
     private final LocalLog mLocalLog = new LocalLog(128);
 
-    /**
-     * Should only be used by update updateDataProfiles() to indicate whether resend IA to modem
-     * regardless whether IA changed.
-     **/
-    private final boolean FORCED_UPDATE_IA = true;
-    private final boolean ONLY_UPDATE_IA_IF_CHANGED = false;
-
     /** Data network controller. */
     private final @NonNull DataNetworkController mDataNetworkController;
 
@@ -193,11 +186,12 @@ public class DataProfileManager extends Handler {
         switch (msg.what) {
             case EVENT_SIM_REFRESH:
                 log("Update data profiles due to SIM refresh.");
-                updateDataProfiles(FORCED_UPDATE_IA);
+                updateDataProfiles(!mDataConfigManager.allowClearInitialAttachDataProfile()
+                        /*force update IA*/);
                 break;
             case EVENT_APN_DATABASE_CHANGED:
                 log("Update data profiles due to APN db updated.");
-                updateDataProfiles(ONLY_UPDATE_IA_IF_CHANGED);
+                updateDataProfiles(false/*force update IA*/);
                 break;
             default:
                 loge("Unexpected event " + msg);
@@ -210,9 +204,8 @@ public class DataProfileManager extends Handler {
      */
     private void onCarrierConfigUpdated() {
         log("Update data profiles due to carrier config updated.");
-        updateDataProfiles(FORCED_UPDATE_IA);
-
-        //TODO: more works needed to be done here.
+        updateDataProfiles(!mDataConfigManager.allowClearInitialAttachDataProfile()
+                /*force update IA*/);
     }
 
     /**
@@ -249,7 +242,8 @@ public class DataProfileManager extends Handler {
      * Update all data profiles, including preferred data profile, and initial attach data profile.
      * Also send those profiles down to the modem if needed.
      *
-     * @param forceUpdateIa If {@code true}, we should always send IA again to modem.
+     * @param forceUpdateIa If {@code true}, we should always send initial attach data profile again
+     *                     to modem.
      */
     private void updateDataProfiles(boolean forceUpdateIa) {
         List<DataProfile> profiles = new ArrayList<>();
@@ -435,7 +429,7 @@ public class DataProfileManager extends Handler {
         if (defaultProfile == null || defaultProfile.equals(mPreferredDataProfile)) return;
         // Save the preferred data profile into database.
         setPreferredDataProfile(defaultProfile);
-        updateDataProfiles(ONLY_UPDATE_IA_IF_CHANGED);
+        updateDataProfiles(false/*force update IA*/);
     }
 
     /**
@@ -558,7 +552,8 @@ public class DataProfileManager extends Handler {
      * attach. In this case, exception can be configured through
      * {@link CarrierConfigManager#KEY_ALLOWED_INITIAL_ATTACH_APN_TYPES_STRING_ARRAY}.
      *
-     * @param forceUpdateIa If {@code true}, we should always send IA again to modem.
+     * @param forceUpdateIa If {@code true}, we should always send initial attach data profile again
+     *                     to modem.
      */
     private void updateInitialAttachDataProfileAtModem(boolean forceUpdateIa) {
         DataProfile initialAttachDataProfile = null;
@@ -580,9 +575,8 @@ public class DataProfileManager extends Handler {
             mInitialAttachDataProfile = initialAttachDataProfile;
             logl("Initial attach data profile updated as " + mInitialAttachDataProfile
                     + " or forceUpdateIa= " + forceUpdateIa);
-            // TODO: Push the null data profile to modem on new AIDL HAL. Modem should clear the IA
-            //  APN, tracking for U b/227579876, now using forceUpdateIa which always push to modem
-            if (mInitialAttachDataProfile != null) {
+            if (mInitialAttachDataProfile != null || mDataConfigManager
+                    .allowClearInitialAttachDataProfile()) {
                 mWwanDataServiceManager.setInitialAttachApn(mInitialAttachDataProfile,
                         mPhone.getServiceState().getDataRoamingFromRegistration(), null);
             }

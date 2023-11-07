@@ -1115,6 +1115,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                     // CARD_ID field should not contain the EID
                     if (cardId >= 0 && mUiccController.getCardIdForDefaultEuicc()
                             != TelephonyManager.UNSUPPORTED_CARD_ID) {
+                        builder.setCardId(cardId);
                         builder.setCardString(mUiccController.convertToCardString(cardId));
                     }
 
@@ -1420,12 +1421,15 @@ public class SubscriptionManagerService extends ISub.Stub {
                     }
 
                     // Attempt to restore SIM specific settings when SIM is loaded.
-                    mContext.getContentResolver().call(
+                    Bundle result = mContext.getContentResolver().call(
                             SubscriptionManager.SIM_INFO_BACKUP_AND_RESTORE_CONTENT_URI,
                             SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_METHOD_NAME,
                             iccId, null);
-                    log("Reload the database.");
-                    mSubscriptionDatabaseManager.reloadDatabase();
+                    if (result != null && result.getBoolean(
+                            SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_DATABASE_UPDATED)) {
+                        logl("Sim specific settings changed the database.");
+                        mSubscriptionDatabaseManager.reloadDatabaseSync();
+                    }
                 }
 
                 log("updateSubscription: " + mSubscriptionDatabaseManager
@@ -3707,12 +3711,16 @@ public class SubscriptionManagerService extends ISub.Stub {
             Bundle bundle = new Bundle();
             bundle.putByteArray(SubscriptionManager.KEY_SIM_SPECIFIC_SETTINGS_DATA, data);
             logl("restoreAllSimSpecificSettingsFromBackup");
-            mContext.getContentResolver().call(
+            Bundle result = mContext.getContentResolver().call(
                     SubscriptionManager.SIM_INFO_BACKUP_AND_RESTORE_CONTENT_URI,
                     SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_METHOD_NAME,
                     null, bundle);
-            // After restoring, we need to reload the content provider into the cache.
-            mSubscriptionDatabaseManager.reloadDatabase();
+
+            if (result != null && result.getBoolean(
+                    SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_DATABASE_UPDATED)) {
+                logl("Sim specific settings changed the database.");
+                mSubscriptionDatabaseManager.reloadDatabaseSync();
+            }
         } finally {
             Binder.restoreCallingIdentity(token);
         }

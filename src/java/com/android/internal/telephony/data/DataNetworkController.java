@@ -1964,21 +1964,31 @@ public class DataNetworkController extends Handler {
             }
             int sourceAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
                     sourceNetworkType);
-
+            NetworkRegistrationInfo nri = mServiceState.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            boolean isWwanInService = false;
+            if (nri != null && nri.isInService()) {
+                isWwanInService = true;
+            }
+            // If WWAN is inService, use the real roaming state reported by modem instead of
+            // using the overridden roaming state, otherwise get last known roaming state stored
+            // in data network.
+            boolean isRoaming = isWwanInService ? mServiceState.getDataRoamingFromRegistration()
+                    : dataNetwork.getLastKnownRoamingState();
             int targetAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
                     getDataNetworkType(DataUtils.getTargetTransport(dataNetwork.getTransport())));
             NetworkCapabilities capabilities = dataNetwork.getNetworkCapabilities();
             log("evaluateDataNetworkHandover: "
                     + "source=" + AccessNetworkType.toString(sourceAccessNetwork)
                     + ", target=" + AccessNetworkType.toString(targetAccessNetwork)
+                    + ", roaming=" + isRoaming
                     + ", ServiceState=" + mServiceState
                     + ", capabilities=" + capabilities);
 
             // Matching the rules by the configured order. Bail out if find first matching rule.
             for (HandoverRule rule : handoverRules) {
-                // Check if the rule is only for roaming and we are not roaming. Use the real
-                // roaming state reported by modem instead of using the overridden roaming state.
-                if (rule.isOnlyForRoaming && !mServiceState.getDataRoamingFromRegistration()) {
+                // Check if the rule is only for roaming and we are not roaming.
+                if (rule.isOnlyForRoaming && !isRoaming) {
                     // If the rule is for roaming only, and the device is not roaming, then bypass
                     // this rule.
                     continue;
@@ -3356,7 +3366,8 @@ public class DataNetworkController extends Handler {
 
         if (oldPsNri == null
                 || oldPsNri.getAccessNetworkTechnology() != newPsNri.getAccessNetworkTechnology()
-                || (!oldPsNri.isInService() && newPsNri.isInService())) {
+                || (!oldPsNri.isInService() && newPsNri.isInService())
+                || (oldPsNri.isRoaming() && !newPsNri.isRoaming())) {
             return true;
         }
 

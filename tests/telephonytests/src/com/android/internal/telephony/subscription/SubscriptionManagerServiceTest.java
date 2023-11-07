@@ -69,8 +69,10 @@ import android.annotation.NonNull;
 import android.app.AppOpsManager;
 import android.app.PropertyInvalidatedCache;
 import android.compat.testing.PlatformCompatChangeRule;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -807,6 +809,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         doReturn(result).when(mEuiccController).blockingGetEuiccProfileInfoList(eq(2));
         doReturn(TelephonyManager.INVALID_PORT_INDEX).when(mUiccSlot)
                 .getPortIndexFromIccId(anyString());
+        doReturn(FAKE_ICCID1).when(mUiccController).convertToCardString(eq(1));
+        doReturn(FAKE_ICCID2).when(mUiccController).convertToCardString(eq(2));
 
         mSubscriptionManagerServiceUT.updateEmbeddedSubscriptions(List.of(1, 2), null);
         processAllMessages();
@@ -827,6 +831,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(subInfo.isEmbedded()).isTrue();
         assertThat(subInfo.isRemovableEmbedded()).isFalse();
         assertThat(subInfo.getNativeAccessRules()).isEqualTo(FAKE_NATIVE_ACCESS_RULES1);
+        // Downloaded esim profile should contain proper cardId
+        assertThat(subInfo.getCardId()).isEqualTo(1);
+        assertThat(subInfo.getCardString()).isEqualTo(FAKE_ICCID1);
 
         subInfo = mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2);
         assertThat(subInfo.getSubscriptionId()).isEqualTo(2);
@@ -843,6 +850,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(subInfo.isEmbedded()).isTrue();
         assertThat(subInfo.isRemovableEmbedded()).isFalse();
         assertThat(subInfo.getNativeAccessRules()).isEqualTo(FAKE_NATIVE_ACCESS_RULES2);
+        // Downloaded esim profile should contain proper cardId
+        assertThat(subInfo.getCardId()).isEqualTo(2);
+        assertThat(subInfo.getCardString()).isEqualTo(FAKE_ICCID2);
     }
 
     @Test
@@ -2212,16 +2222,40 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     }
 
     @Test
-    public void testRestoreAllSimSpecificSettingsFromBackup() {
+    public void testRestoreAllSimSpecificSettingsFromBackup() throws Exception {
         assertThrows(SecurityException.class, ()
                 -> mSubscriptionManagerServiceUT.restoreAllSimSpecificSettingsFromBackup(
                         new byte[0]));
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
 
-        // TODO: Briefly copy the logic from TelephonyProvider to
-        //  SubscriptionDatabaseManagerTest.SubscriptionProvider
+
+        // getSubscriptionDatabaseManager().setWifiCallingEnabled(1, 0);
+
+        // Simulate restoration altered the database directly.
+        ContentValues cvs = new ContentValues();
+        cvs.put(SimInfo.COLUMN_WFC_IMS_ENABLED, 0);
+        mSubscriptionProvider.update(Uri.withAppendedPath(SimInfo.CONTENT_URI, "1"), cvs, null,
+                null);
+
+        // Setting this to false to prevent database reload.
+        mSubscriptionProvider.setRestoreDatabaseChanged(false);
         mSubscriptionManagerServiceUT.restoreAllSimSpecificSettingsFromBackup(
                 new byte[0]);
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1);
+        // Since reload didn't happen, WFC should remains enabled.
+        assertThat(subInfo.getWifiCallingEnabled()).isEqualTo(1);
+
+        // Now the database reload should happen
+        mSubscriptionProvider.setRestoreDatabaseChanged(true);
+        mSubscriptionManagerServiceUT.restoreAllSimSpecificSettingsFromBackup(
+                new byte[0]);
+
+        subInfo = mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1);
+        // Since reload didn't happen, WFC should remains enabled.
+        assertThat(subInfo.getWifiCallingEnabled()).isEqualTo(0);
     }
 
     @Test
