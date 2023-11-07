@@ -233,6 +233,12 @@ public class ImsStats {
         } else {
             ImsRegistrationStats stats = copyOfDimensionsOnly(mLastRegistrationStats);
 
+            if (stats.rat == TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+                logw("conclude: discarding UNKNOWN RAT, duration=%d", duration);
+                mLastTimestamp = now;
+                return;
+            }
+
             switch (mLastRegistrationState) {
                 case REGISTRATION_STATE_REGISTERED:
                     stats.registeredMillis = duration;
@@ -367,16 +373,20 @@ public class ImsStats {
 
         // Reset state to unregistered.
         mLastRegistrationState = REGISTRATION_STATE_NOT_REGISTERED;
-        mLastRegistrationStats.rat = TelephonyManager.NETWORK_TYPE_UNKNOWN;
         mLastAvailableFeatures = new MmTelCapabilities();
     }
 
     /** Updates the RAT when service state changes. */
     public synchronized void onServiceStateChanged(ServiceState state) {
-        if (mLastTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
-                && mLastRegistrationState != REGISTRATION_STATE_NOT_REGISTERED) {
-            mLastRegistrationStats.rat =
-                    ServiceStateStats.getRat(state, NetworkRegistrationInfo.DOMAIN_PS);
+        conclude();
+
+        @NetworkType int newRat = state.getDataNetworkType();
+        MmTelCapabilities lastCapableFeatures = getLastCapableFeaturesForNetworkType(newRat);
+
+        if (lastCapableFeatures != null) {
+            mLastRegistrationStats.rat = newRat;
+        } else {
+            mLastRegistrationStats.rat = TelephonyManager.NETWORK_TYPE_UNKNOWN;
         }
     }
 
@@ -437,6 +447,18 @@ public class ImsStats {
                 return null;
             case REGISTRATION_TECH_IWLAN:
             case REGISTRATION_TECH_CROSS_SIM:
+                return mLastWlanCapableFeatures;
+            default:
+                return mLastWwanCapableFeatures;
+        }
+    }
+
+    @Nullable
+    private MmTelCapabilities getLastCapableFeaturesForNetworkType(@NetworkType int netType) {
+        switch (netType) {
+            case TelephonyManager.NETWORK_TYPE_UNKNOWN:
+                return null;
+            case TelephonyManager.NETWORK_TYPE_IWLAN:
                 return mLastWlanCapableFeatures;
             default:
                 return mLastWwanCapableFeatures;
