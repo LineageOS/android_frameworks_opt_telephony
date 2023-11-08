@@ -21,3 +21,10 @@ flag {
   description: "Enable system api isWpsCallNumber. Its an utility api to check if the dialed number is for Wireless Priority Service call."
   bug: "304272356"
 }
+
+flag {
+  name: "ensure_access_to_call_settings_is_restricted"
+  namespace: "telephony"
+  description: "Check if access to mobile network configs restricted before displaying call options"
+  bug: "309655251"
+}
