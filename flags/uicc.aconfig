@@ -1,11 +1,4 @@
 package: "com.android.internal.telephony.flags"
-
-flag {
-    name: "esim_bootstrap_provisioning_flag"
-    namespace: "telephony"
-    description: "This flag controls eSIM Bootstrap provisioning feature support."
-    bug:"298567545"
-}
 flag {
     name: "imsi_key_retry_download_on_phone_unlock"
     namespace: "telephony"
