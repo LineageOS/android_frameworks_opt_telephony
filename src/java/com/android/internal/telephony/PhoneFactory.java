@@ -62,6 +62,7 @@ import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -521,6 +522,27 @@ public class PhoneFactory {
         return sMetricsCollector;
     }
 
+    /**
+     * Print all feature flag configurations that Telephony is using for debugging purposes.
+     */
+    private static void reflectAndPrintFlagConfigs(IndentingPrintWriter pw) {
+
+        try {
+            // Look away, a forbidden technique (reflection) is being used to allow us to get
+            // all flag configs without having to add them manually to this method.
+            Method[] methods = FeatureFlags.class.getMethods();
+            if (methods.length == 0) {
+                pw.println("NONE");
+                return;
+            }
+            for (Method m : methods) {
+                pw.println(m.getName() + "-> " + m.invoke(sFeatureFlags));
+            }
+        } catch (Exception e) {
+            pw.println("[ERROR]");
+        }
+    }
+
     public static void dump(FileDescriptor fd, PrintWriter printwriter, String[] args) {
         IndentingPrintWriter pw = new IndentingPrintWriter(printwriter, "  ");
         pw.println("PhoneFactory:");
@@ -613,8 +635,15 @@ public class PhoneFactory {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
         pw.flush();
         pw.decreaseIndent();
+
+        pw.println("++++++++++++++++++++++++++++++++");
+        pw.println("Flag Configurations:");
+        pw.increaseIndent();
+        reflectAndPrintFlagConfigs(pw);
+        pw.flush();
+        pw.decreaseIndent();
+        pw.println("++++++++++++++++++++++++++++++++");
     }
 }
