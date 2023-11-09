@@ -43,6 +43,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.concurrent.Executor;
@@ -65,6 +66,7 @@ public class GsmMmiCodeTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mFeatureFlags = Mockito.mock(FeatureFlags.class);
         doReturn(mExecutor).when(mContext).getMainExecutor();
         mGsmCdmaPhoneUT = new GsmCdmaPhone(mContext, mSimulatedCommands, mNotifier, true, 0,
                 PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory, (c, p) -> mImsManager,
