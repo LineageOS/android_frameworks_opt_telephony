@@ -27,3 +27,10 @@ flag {
   description: "Used in the Preferred Network Types menu to determine if the 3G option is displayed."
   bug: "310639009"
 }
+
+flag {
+  name: "support_nr_sa_rrc_idle"
+  namespace: "telephony"
+  description: "Support RRC idle for NR SA."
+  bug: "301467052"
+}
