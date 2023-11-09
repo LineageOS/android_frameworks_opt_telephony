@@ -77,6 +77,7 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
         MockitoAnnotations.initMocks(this);
         doReturn(mMockAccessNetworksManager).when(mPhone).getAccessNetworksManager();
         doReturn(TEST_PHONE_ID).when(mPhone).getPhoneId();
+        doReturn(true).when(mMockDomainSelectionController).selectDomain(any(), any());
         mNormalCallDomainSelectionConnection =
                 new NormalCallDomainSelectionConnection(mPhone, mMockDomainSelectionController);
         replaceInstance(DomainSelectionConnection.class, "mLooper",

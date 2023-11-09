@@ -40,6 +40,7 @@ import android.util.LocalLog;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.ExponentialBackoff;
 import com.android.internal.telephony.IDomainSelectionServiceController;
 import com.android.internal.telephony.ITransportSelectorCallback;
 import com.android.internal.telephony.Phone;
@@ -57,6 +58,27 @@ public class DomainSelectionController {
 
     private static final int EVENT_SERVICE_STATE_CHANGED = 1;
     private static final int EVENT_BARRING_INFO_CHANGED = 2;
+
+    private static final int BIND_START_DELAY_MS = 2 * 1000; // 2 seconds
+    private static final int BIND_MAXIMUM_DELAY_MS = 60 * 1000; // 1 minute
+
+    /**
+     * Returns the currently defined rebind retry timeout. Used for testing.
+     */
+    @VisibleForTesting
+    public interface BindRetry {
+        /**
+         * Returns a long in milliseconds indicating how long the DomainSelectionController
+         * should wait before rebinding for the first time.
+         */
+        long getStartDelay();
+
+        /**
+         * Returns a long in milliseconds indicating the maximum time the DomainSelectionController
+         * should wait before rebinding.
+         */
+        long getMaximumDelay();
+    }
 
     private final HandlerThread mHandlerThread =
             new HandlerThread("DomainSelectionControllerHandler");
@@ -76,6 +98,29 @@ public class DomainSelectionController {
     private IDomainSelectionServiceController mIServiceController;
     // Binding the service is in progress or the service is bound already.
     private boolean mIsBound = false;
+
+    private ExponentialBackoff mBackoff;
+    private boolean mBackoffStarted = false;
+
+    // Retry the bind to the DomainSelectionService that has died after mBindRetry timeout.
+    private Runnable mRestartBindingRunnable = new Runnable() {
+        @Override
+        public void run() {
+            bind();
+        }
+    };
+
+    private BindRetry mBindRetry = new BindRetry() {
+        @Override
+        public long getStartDelay() {
+            return BIND_START_DELAY_MS;
+        }
+
+        @Override
+        public long getMaximumDelay() {
+            return BIND_MAXIMUM_DELAY_MS;
+        }
+    };
 
     private class DomainSelectionServiceConnection implements ServiceConnection {
         // Track the status of whether or not the Service has died in case we need to permanently
@@ -122,9 +167,11 @@ public class DomainSelectionController {
 
         private void onServiceConnectedInternal(IBinder service) {
             synchronized (mLock) {
+                stopBackoffTimer();
                 logi("onServiceConnected with binder: " + service);
                 setServiceController(service);
             }
+            notifyServiceConnected();
         }
 
         private void onServiceDisconnectedInternal() {
@@ -132,6 +179,7 @@ public class DomainSelectionController {
                 setServiceController(null);
             }
             logi("onServiceDisconnected");
+            notifyServiceDisconnected();
         }
 
         private void onBindingDiedInternal() {
@@ -140,8 +188,11 @@ public class DomainSelectionController {
                 mIsBound = false;
                 setServiceController(null);
                 unbindService();
+                notifyBindFailure();
             }
-            loge("onBindingDied");
+            loge("onBindingDied starting retrying in "
+                    + mBackoff.getCurrentDelay() + " mS");
+            notifyServiceDisconnected();
         }
 
         private void onNullBindingInternal() {
@@ -154,6 +205,7 @@ public class DomainSelectionController {
                 setServiceController(null);
                 unbindService();
             }
+            notifyServiceDisconnected();
         }
     }
 
@@ -187,7 +239,7 @@ public class DomainSelectionController {
      * @param context Context object from hosting application.
      */
     public DomainSelectionController(@NonNull Context context) {
-        this(context, null);
+        this(context, null, null);
     }
 
     /**
@@ -195,9 +247,11 @@ public class DomainSelectionController {
      *
      * @param context Context object from hosting application.
      * @param looper Handles event messages.
+     * @param bindRetry The {@link BindRetry} instance.
      */
     @VisibleForTesting
-    public DomainSelectionController(@NonNull Context context, @Nullable Looper looper) {
+    public DomainSelectionController(@NonNull Context context,
+            @Nullable Looper looper, @Nullable BindRetry bindRetry) {
         mContext = context;
 
         if (looper == null) {
@@ -205,6 +259,16 @@ public class DomainSelectionController {
             looper = mHandlerThread.getLooper();
         }
         mHandler = new DomainSelectionControllerHandler(looper);
+
+        if (bindRetry != null) {
+            mBindRetry = bindRetry;
+        }
+        mBackoff = new ExponentialBackoff(
+                mBindRetry.getStartDelay(),
+                mBindRetry.getMaximumDelay(),
+                2, /* multiplier */
+                mHandler,
+                mRestartBindingRunnable);
 
         int numPhones = TelephonyManager.getDefault().getActiveModemCount();
         mConnectionCounts = new int[numPhones];
@@ -266,21 +330,24 @@ public class DomainSelectionController {
      *
      * @param attr Attributetes required to determine the domain.
      * @param callback A callback to receive the response.
+     * @return {@code true} if it requested successfully, otherwise {@code false}.
      */
-    public void selectDomain(@NonNull DomainSelectionService.SelectionAttributes attr,
+    public boolean selectDomain(@NonNull DomainSelectionService.SelectionAttributes attr,
             @NonNull ITransportSelectorCallback callback) {
-        if (attr == null) return;
+        if (attr == null) return false;
         if (DBG) logd("selectDomain");
 
         synchronized (mLock) {
             try  {
                 if (mIServiceController != null) {
                     mIServiceController.selectDomain(attr, callback);
+                    return true;
                 }
             } catch (RemoteException e) {
                 loge("selectDomain e=" + e);
             }
         }
+        return false;
     }
 
     /**
@@ -366,6 +433,19 @@ public class DomainSelectionController {
 
     /**
      * Notifies the {@link DomainSelectionConnection} instances registered
+     * of the service connection.
+     */
+    private void notifyServiceConnected() {
+        for (DomainSelectionConnection c : mConnections) {
+            c.onServiceConnected();
+            Phone phone = c.getPhone();
+            updateServiceState(phone, phone.getServiceStateTracker().getServiceState());
+            updateBarringInfo(phone, phone.mCi.getLastBarringInfo());
+        }
+    }
+
+    /**
+     * Notifies the {@link DomainSelectionConnection} instances registered
      * of the service disconnection.
      */
     private void notifyServiceDisconnected() {
@@ -408,13 +488,17 @@ public class DomainSelectionController {
                     boolean bindSucceeded = mContext.bindService(serviceIntent,
                             mServiceConnection, serviceFlags);
                     if (!bindSucceeded) {
-                        loge("binding failed");
+                        loge("binding failed retrying in "
+                                + mBackoff.getCurrentDelay() + " mS");
                         mIsBound = false;
+                        notifyBindFailure();
                     }
                     return bindSucceeded;
                 } catch (Exception e) {
                     mIsBound = false;
-                    loge("binding e=" + e.getMessage());
+                    notifyBindFailure();
+                    loge("binding e=" + e.getMessage() + ", retrying in "
+                            + mBackoff.getCurrentDelay() + " mS");
                     return false;
                 }
             } else {
@@ -428,6 +512,7 @@ public class DomainSelectionController {
      */
     public void unbind() {
         synchronized (mLock) {
+            stopBackoffTimer();
             mIsBound = false;
             setServiceController(null);
             unbindService();
@@ -442,6 +527,35 @@ public class DomainSelectionController {
                 mServiceConnection = null;
             }
         }
+    }
+
+    /**
+     * Gets the current delay to rebind service.
+     */
+    @VisibleForTesting
+    public long getBindDelay() {
+        return mBackoff.getCurrentDelay();
+    }
+
+    /**
+     * Stops backoff timer.
+     */
+    @VisibleForTesting
+    public void stopBackoffTimer() {
+        logi("stopBackoffTimer " + mBackoffStarted);
+        mBackoffStarted = false;
+        mBackoff.stop();
+    }
+
+    private void notifyBindFailure() {
+        logi("notifyBindFailure " + mBackoffStarted);
+        if (mBackoffStarted) {
+            mBackoff.notifyFailed();
+        } else {
+            mBackoffStarted = true;
+            mBackoff.start();
+        }
+        logi("notifyBindFailure currentDelay=" + getBindDelay());
     }
 
     /**

@@ -58,7 +58,18 @@ import java.util.concurrent.TimeUnit;
 @RunWith(AndroidJUnit4.class)
 public class DomainSelectionControllerTest extends TelephonyTest {
 
-    private static final long DELAY_MS = 50;
+    private static final DomainSelectionController.BindRetry BIND_RETRY =
+            new DomainSelectionController.BindRetry() {
+                @Override
+                public long getStartDelay() {
+                    return 50;
+                }
+
+                @Override
+                public long getMaximumDelay() {
+                    return 1000;
+                }
+            };
 
     // Mocked classes
     IDomainSelectionServiceController mMockServiceControllerBinder;
@@ -75,7 +86,8 @@ public class DomainSelectionControllerTest extends TelephonyTest {
 
         mMockContext = mock(Context.class);
         mMockServiceControllerBinder = mock(IDomainSelectionServiceController.class);
-        mTestController = new DomainSelectionController(mMockContext, Looper.getMainLooper());
+        mTestController = new DomainSelectionController(mMockContext,
+                Looper.getMainLooper(), BIND_RETRY);
         mHandler = mTestController.getHandlerForTest();
 
         when(mMockContext.bindService(any(), any(), anyInt())).thenReturn(true);
@@ -84,6 +96,7 @@ public class DomainSelectionControllerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mTestController.stopBackoffTimer();
         waitForHandlerAction(mHandler, 1000);
         mTestController = null;
         super.tearDown();
@@ -135,7 +148,7 @@ public class DomainSelectionControllerTest extends TelephonyTest {
 
         conn.onServiceDisconnected(mTestComponentName);
 
-        long delay = DELAY_MS;
+        long delay = mTestController.getBindDelay();
         waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
 
         mTestController.unbind();
@@ -166,18 +179,89 @@ public class DomainSelectionControllerTest extends TelephonyTest {
 
         conn.onBindingDied(null /*null*/);
 
-        long delay = DELAY_MS;
+        long delay = BIND_RETRY.getStartDelay();
         waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
         verify(mMockContext).unbindService(eq(conn));
     }
 
+    /**
+     * Ensures that imsServiceBindPermanentError is called when the binder returns null.
+     */
     @SmallTest
     @Test
     public void testBindServiceAndReturnedNull() throws RemoteException {
         bindAndNullServiceError();
 
-        long delay = DELAY_MS;
+        long delay = mTestController.getBindDelay();
         waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
+    }
+
+    /**
+     * Verifies that the DomainSelectionController automatically tries to bind again after
+     * an untimely binder death.
+     */
+    @SmallTest
+    @Test
+    public void testAutoBindAfterBinderDied() throws RemoteException {
+        ServiceConnection conn = bindAndConnectService();
+
+        conn.onBindingDied(null /*null*/);
+
+        long delay = BIND_RETRY.getStartDelay();
+        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
+        // The service should autobind after rebind event occurs
+        verify(mMockContext, times(2)).bindService(any(), any(), anyInt());
+    }
+
+    /**
+     * Due to a bug in ServiceConnection, we will sometimes receive a null binding after the binding
+     * dies. Ignore null binding in this case.
+     */
+    @SmallTest
+    @Test
+    public void testAutoBindAfterBinderDiedIgnoreNullBinding() throws RemoteException {
+        ServiceConnection conn = bindAndConnectService();
+
+        conn.onBindingDied(null);
+        // null binding should be ignored in this case.
+        conn.onNullBinding(null);
+
+        long delay = BIND_RETRY.getStartDelay();
+        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
+        // The service should autobind after rebind event occurs
+        verify(mMockContext, times(2)).bindService(any(), any(), anyInt());
+    }
+
+    /**
+     * Ensure that bindService has only been called once before automatic rebind occurs.
+     */
+    @SmallTest
+    @Test
+    public void testNoAutoBindBeforeTimeout() throws RemoteException {
+        ServiceConnection conn = bindAndConnectService();
+
+        conn.onBindingDied(null /*null*/);
+
+        // Be sure that there are no binds before the RETRY_TIMEOUT expires
+        verify(mMockContext, times(1)).bindService(any(), any(), anyInt());
+    }
+
+    /**
+     * Ensure that calling unbind stops automatic rebind from occurring.
+     */
+    @SmallTest
+    @Test
+    public void testUnbindCauseAutoBindCancelAfterBinderDied() throws RemoteException {
+        ServiceConnection conn = bindAndConnectService();
+
+        conn.onBindingDied(null /*null*/);
+        mTestController.unbind();
+
+        long delay = mTestController.getBindDelay();
+        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
+
+        // Unbind should stop the autobind from occurring.
+        verify(mMockContext, times(1)).bindService(any(), any(), anyInt());
     }
 
     private void bindAndNullServiceError() {
@@ -192,7 +276,7 @@ public class DomainSelectionControllerTest extends TelephonyTest {
         when(controllerStub.queryLocalInterface(any())).thenReturn(mMockServiceControllerBinder);
         connection.onServiceConnected(mTestComponentName, controllerStub);
 
-        long delay = DELAY_MS;
+        long delay = mTestController.getBindDelay();
         waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
         return connection;
     }

@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
 import android.os.Handler;
@@ -68,6 +69,8 @@ public class SmsDomainSelectionConnectionTest {
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
+
+        doReturn(true).when(mDsController).selectDomain(any(), any());
 
         HandlerThread handlerThread = new HandlerThread(
                 SmsDomainSelectionConnectionTest.class.getSimpleName());

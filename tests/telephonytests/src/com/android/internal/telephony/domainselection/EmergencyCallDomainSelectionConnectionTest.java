@@ -87,6 +87,7 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
         super.setUp(this.getClass().getSimpleName());
 
         mDomainSelectionController = Mockito.mock(DomainSelectionController.class);
+        doReturn(true).when(mDomainSelectionController).selectDomain(any(), any());
         mConnectionCallback =
                 Mockito.mock(DomainSelectionConnection.DomainSelectionConnectionCallback.class);
         mEmergencyStateTracker = Mockito.mock(EmergencyStateTracker.class);
