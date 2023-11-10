@@ -88,7 +88,7 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         // Capture listener to emulate the carrier config change notification used later
         ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
                 ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
-        mCarrierSST = new CarrierServiceStateTracker(mPhone, mSST);
+        mCarrierSST = new CarrierServiceStateTracker(mPhone, mSST, mFeatureFlags);
         verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
                 listenerArgumentCaptor.capture());
         mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(0);
@@ -285,6 +285,7 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testEmergencyNotificationBehaviorWhenSilenced() {
+        when(mFeatureFlags.stopSpammingEmergencyNotification()).thenReturn(true);
         logd(LOG_TAG + ":testEmergencyNotificationBehaviorWhenSilenced()");
         sendMessageOnHandler(CarrierServiceStateTracker.NOTIFICATION_EMERGENCY_NETWORK);
 
@@ -312,7 +313,8 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
     public void testNotificationMapWhenDeviceIsWatch() {
         doReturn(true).when(mPackageManager).hasSystemFeature(PackageManager.FEATURE_WATCH);
 
-        CarrierServiceStateTracker tracker = new CarrierServiceStateTracker(mPhone, mSST);
+        CarrierServiceStateTracker tracker = new CarrierServiceStateTracker(mPhone, mSST,
+                mFeatureFlags);
 
         assertTrue(tracker.getNotificationTypeMap().isEmpty());
     }

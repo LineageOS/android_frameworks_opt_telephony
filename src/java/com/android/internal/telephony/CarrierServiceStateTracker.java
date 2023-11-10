@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.NonNull;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -42,6 +43,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.TelephonyManager.NetworkTypeBitMask;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.telephony.util.NotificationChannelController;
 import com.android.telephony.Rlog;
@@ -85,6 +87,7 @@ public class CarrierServiceStateTracker extends Handler {
     private long mAllowedNetworkType = -1;
     private AllowedNetworkTypesListener mAllowedNetworkTypesListener;
     private TelephonyManager mTelephonyManager;
+    @NonNull private final FeatureFlags mFeatureFlags;
 
     /**
      * The listener for allowed network types changed
@@ -105,7 +108,9 @@ public class CarrierServiceStateTracker extends Handler {
         }
     }
 
-    public CarrierServiceStateTracker(Phone phone, ServiceStateTracker sst) {
+    public CarrierServiceStateTracker(Phone phone, ServiceStateTracker sst,
+            @NonNull FeatureFlags featureFlags) {
+        mFeatureFlags = featureFlags;
         this.mPhone = phone;
         this.mSST = sst;
         mTelephonyManager = mPhone.getContext().getSystemService(
@@ -165,11 +170,13 @@ public class CarrierServiceStateTracker extends Handler {
         mAllowedNetworkTypesListener = new AllowedNetworkTypesListener();
         registerAllowedNetworkTypesListener();
 
-        // register a receiver for notification actions
-        mPhone.getContext().registerReceiver(
-                mActionReceiver,
-                new IntentFilter(ACTION_NEVER_ASK_AGAIN),
-                Context.RECEIVER_NOT_EXPORTED);
+        if (mFeatureFlags.stopSpammingEmergencyNotification()) {
+            // register a receiver for notification actions
+            mPhone.getContext().registerReceiver(
+                    mActionReceiver,
+                    new IntentFilter(ACTION_NEVER_ASK_AGAIN),
+                    Context.RECEIVER_NOT_EXPORTED);
+        }
     }
 
     /**
@@ -402,7 +409,8 @@ public class CarrierServiceStateTracker extends Handler {
             return;
         }
 
-        if (shouldSilenceEmrgNetNotif(notificationType, context)) {
+        if (mFeatureFlags.stopSpammingEmergencyNotification()
+                && shouldSilenceEmrgNetNotif(notificationType, context)) {
             Rlog.i(LOG_TAG, "sendNotification: silencing NOTIFICATION_EMERGENCY_NETWORK");
             return;
         }
@@ -681,13 +689,22 @@ public class CarrierServiceStateTracker extends Handler {
                     com.android.internal.R.string.EmergencyCallWarningTitle);
             CharSequence details = res.getText(
                     com.android.internal.R.string.EmergencyCallWarningSummary);
-            return new Notification.Builder(context)
-                    .setContentTitle(title)
-                    .setStyle(new Notification.BigTextStyle().bigText(details))
-                    .setContentText(details)
-                    .setOngoing(true)
-                    .setActions(createDoNotShowAgainAction(context))
-                    .setChannelId(NotificationChannelController.CHANNEL_ID_WFC);
+            if (mFeatureFlags.stopSpammingEmergencyNotification()) {
+                return new Notification.Builder(context)
+                        .setContentTitle(title)
+                        .setStyle(new Notification.BigTextStyle().bigText(details))
+                        .setContentText(details)
+                        .setOngoing(true)
+                        .setActions(createDoNotShowAgainAction(context))
+                        .setChannelId(NotificationChannelController.CHANNEL_ID_WFC);
+            } else {
+                return new Notification.Builder(context)
+                        .setContentTitle(title)
+                        .setStyle(new Notification.BigTextStyle().bigText(details))
+                        .setContentText(details)
+                        .setOngoing(true)
+                        .setChannelId(NotificationChannelController.CHANNEL_ID_WFC);
+            }
         }
 
         /**

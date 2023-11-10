@@ -288,8 +288,9 @@ public class TelephonyComponentFactory {
         return new SmsUsageMonitor(context);
     }
 
-    public ServiceStateTracker makeServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci) {
-        return new ServiceStateTracker(phone, ci);
+    public ServiceStateTracker makeServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci,
+            @NonNull FeatureFlags featureFlags) {
+        return new ServiceStateTracker(phone, ci, featureFlags);
     }
 
     /**

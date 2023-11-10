@@ -94,6 +94,7 @@ import com.android.internal.telephony.data.AccessNetworksManager;
 import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
 import com.android.internal.telephony.data.DataNetwork;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.metrics.RadioPowerStateStats;
 import com.android.internal.telephony.metrics.ServiceStateStats;
@@ -625,7 +626,8 @@ public class ServiceStateTracker extends Handler {
      */
     private AccessNetworksManagerCallback mAccessNetworksManagerCallback = null;
 
-    public ServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci) {
+    public ServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci,
+            FeatureFlags featureFlags) {
         mNitzState = TelephonyComponentFactory.getInstance()
                 .inject(NitzStateMachine.class.getName())
                 .makeNitzStateMachine(phone);
@@ -710,7 +712,7 @@ public class ServiceStateTracker extends Handler {
         mCi.setOnRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
         updatePhoneType();
 
-        mCSST = new CarrierServiceStateTracker(phone, this);
+        mCSST = new CarrierServiceStateTracker(phone, this, featureFlags);
 
         registerForNetworkAttached(mCSST,
                 CarrierServiceStateTracker.CARRIER_EVENT_VOICE_REGISTRATION, null);

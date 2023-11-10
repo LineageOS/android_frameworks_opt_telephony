@@ -91,7 +91,7 @@ public class DisplayInfoControllerTest extends TelephonyTest {
             ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener>
                     listenerArgumentCaptor = ArgumentCaptor.forClass(
                     CarrierConfigManager.CarrierConfigChangeListener.class);
-            mSst = new ServiceStateTracker(mPhone, mSimulatedCommands);
+            mSst = new ServiceStateTracker(mPhone, mSimulatedCommands, mFeatureFlags);
             verify(mCarrierConfigManager, atLeast(2)).registerCarrierConfigChangeListener(any(),
                     listenerArgumentCaptor.capture());
             mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(1);
