@@ -217,7 +217,7 @@ public class SatelliteServiceUtils {
      * @param ntnSignalStrength The non-terrestrial signal strength from the satellite service.
      * @return The converted non-terrestrial signal strength for the framework.
      */
-    @Nullable public static NtnSignalStrength fromModemInterface(
+    @Nullable public static NtnSignalStrength fromNtnSignalStrength(
             android.telephony.satellite.stub.NtnSignalStrength ntnSignalStrength) {
         return new NtnSignalStrength(ntnSignalStrength.signalStrengthLevel);
     }

@@ -65,6 +65,7 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.satellite.INtnSignalStrengthCallback;
+import android.telephony.satellite.ISatelliteCapabilitiesCallback;
 import android.telephony.satellite.ISatelliteDatagramCallback;
 import android.telephony.satellite.ISatelliteProvisionStateCallback;
 import android.telephony.satellite.ISatelliteStateCallback;
@@ -159,6 +160,7 @@ public class SatelliteController extends Handler {
     private static final int CMD_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING = 35;
     private static final int EVENT_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING_DONE = 36;
     private static final int EVENT_SERVICE_STATE_CHANGED = 37;
+    private static final int EVENT_SATELLITE_CAPABILITIES_CHANGED = 38;
 
     @NonNull private static SatelliteController sInstance;
     @NonNull private final Context mContext;
@@ -210,6 +212,8 @@ public class SatelliteController extends Handler {
     private final AtomicBoolean mRegisteredForSatelliteModemStateChangedWithSatelliteService =
             new AtomicBoolean(false);
     private final AtomicBoolean mRegisteredForNtnSignalStrengthChanged = new AtomicBoolean(false);
+    private final AtomicBoolean mRegisteredForSatelliteCapabilitiesChanged =
+            new AtomicBoolean(false);
     /**
      * Map key: subId, value: callback to get error code of the provision request.
      */
@@ -227,6 +231,12 @@ public class SatelliteController extends Handler {
      */
     private final ConcurrentHashMap<IBinder, INtnSignalStrengthCallback>
             mNtnSignalStrengthChangedListeners = new ConcurrentHashMap<>();
+    /**
+     * Map key: binder of the callback, value: callback to receive satellite capabilities changed
+     * events.
+     */
+    private final ConcurrentHashMap<IBinder, ISatelliteCapabilitiesCallback>
+            mSatelliteCapabilitiesChangedListeners = new ConcurrentHashMap<>();
     private final Object mIsSatelliteSupportedLock = new Object();
     @GuardedBy("mIsSatelliteSupportedLock")
     private Boolean mIsSatelliteSupported = null;
@@ -1207,6 +1217,16 @@ public class SatelliteController extends Handler {
                 break;
             }
 
+            case EVENT_SATELLITE_CAPABILITIES_CHANGED: {
+                ar = (AsyncResult) msg.obj;
+                if (ar.result == null) {
+                    loge("EVENT_SATELLITE_CAPABILITIES_CHANGED: result is null");
+                } else {
+                    handleEventSatelliteCapabilitiesChanged((SatelliteCapabilities) ar.result);
+                }
+                break;
+            }
+
             default:
                 Log.w(TAG, "SatelliteControllerHandler: unexpected message code: " +
                         msg.what);
@@ -1972,7 +1992,7 @@ public class SatelliteController extends Handler {
     /**
      * Registers for NTN signal strength changed from satellite modem.
      *
-     * @param subId The subId of the subscription to request for.
+     * @param subId The id of the subscription to request for.
      * @param callback The callback to handle the non-terrestrial network signal strength changed
      * event.
      *
@@ -1993,7 +2013,8 @@ public class SatelliteController extends Handler {
      * Unregisters for NTN signal strength changed from satellite modem.
      * If callback was not registered before, the request will be ignored.
      *
-     * @param subId The subId of the subscription to unregister for provision state changed.
+     * @param subId The id of the subscription to unregister for listening NTN signal strength
+     * changed event.
      * @param callback The callback that was passed to
      * {@link #registerForNtnSignalStrengthChanged(int, INtnSignalStrengthCallback)}
      */
@@ -2004,6 +2025,44 @@ public class SatelliteController extends Handler {
         int error = evaluateOemSatelliteRequestAllowed(true);
         if (error == SATELLITE_RESULT_SUCCESS) {
             mNtnSignalStrengthChangedListeners.remove(callback.asBinder());
+        }
+    }
+
+    /**
+     * Registers for satellite capabilities change event from the satellite service.
+     *
+     * @param subId The id of the subscription to request for.
+     * @param callback The callback to handle the satellite capabilities changed event.
+     *
+     * @return The {@link SatelliteManager.SatelliteResult} result of the operation.
+     */
+    @SatelliteManager.SatelliteResult public int registerForSatelliteCapabilitiesChanged(
+            int subId, @NonNull ISatelliteCapabilitiesCallback callback) {
+        if (DBG) logd("registerForSatelliteCapabilitiesChanged()");
+
+        int error = evaluateOemSatelliteRequestAllowed(true);
+        if (error != SATELLITE_RESULT_SUCCESS) return error;
+
+        mSatelliteCapabilitiesChangedListeners.put(callback.asBinder(), callback);
+        return SATELLITE_RESULT_SUCCESS;
+    }
+
+    /**
+     * Unregisters for satellite capabilities change event from the satellite service.
+     * If callback was not registered before, the request will be ignored.
+     *
+     * @param subId The id of the subscription to unregister for listening satellite capabilities
+     * changed event.
+     * @param callback The callback that was passed to
+     * {@link #registerForSatelliteCapabilitiesChanged(int, ISatelliteCapabilitiesCallback)}
+     */
+    public void unregisterForSatelliteCapabilitiesChanged(
+            int subId, @NonNull ISatelliteCapabilitiesCallback callback) {
+        if (DBG) logd("unregisterForSatelliteCapabilitiesChanged()");
+
+        int error = evaluateOemSatelliteRequestAllowed(true);
+        if (error == SATELLITE_RESULT_SUCCESS) {
+            mSatelliteCapabilitiesChangedListeners.remove(callback.asBinder());
         }
     }
 
@@ -2583,6 +2642,7 @@ public class SatelliteController extends Handler {
             registerForPendingDatagramCount();
             registerForSatelliteModemStateChanged();
             registerForNtnSignalStrengthChanged();
+            registerForSatelliteCapabilitiesChanged();
 
             requestIsSatelliteProvisioned(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                     new ResultReceiver(this) {
@@ -2666,6 +2726,21 @@ public class SatelliteController extends Handler {
         }
     }
 
+    private void registerForSatelliteCapabilitiesChanged() {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("registerForSatelliteCapabilitiesChanged: oemEnabledSatelliteFlag is disabled");
+            return;
+        }
+
+        if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
+            if (!mRegisteredForSatelliteCapabilitiesChanged.get()) {
+                mSatelliteModemInterface.registerForSatelliteCapabilitiesChanged(
+                        this, EVENT_SATELLITE_CAPABILITIES_CHANGED, null);
+                mRegisteredForSatelliteCapabilitiesChanged.set(true);
+            }
+        }
+    }
+
     private void handleEventSatelliteProvisionStateChanged(boolean provisioned) {
         logd("handleSatelliteProvisionStateChangedEvent: provisioned=" + provisioned);
 
@@ -2745,6 +2820,31 @@ public class SatelliteController extends Handler {
         });
         deadCallersList.forEach(listener -> {
             mNtnSignalStrengthChangedListeners.remove(listener.asBinder());
+        });
+    }
+
+    private void handleEventSatelliteCapabilitiesChanged(SatelliteCapabilities capabilities) {
+        logd("handleEventSatelliteCapabilitiesChanged()");
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("handleEventSatelliteCapabilitiesChanged: oemEnabledSatelliteFlag is disabled");
+            return;
+        }
+
+        synchronized (mSatelliteCapabilitiesLock) {
+            mSatelliteCapabilities = capabilities;
+        }
+
+        List<ISatelliteCapabilitiesCallback> deadCallersList = new ArrayList<>();
+        mSatelliteCapabilitiesChangedListeners.values().forEach(listener -> {
+            try {
+                listener.onSatelliteCapabilitiesChanged(capabilities);
+            } catch (RemoteException e) {
+                logd("handleEventSatelliteCapabilitiesChanged RemoteException: " + e);
+                deadCallersList.add(listener);
+            }
+        });
+        deadCallersList.forEach(listener -> {
+            mSatelliteCapabilitiesChangedListeners.remove(listener.asBinder());
         });
     }
 

@@ -96,6 +96,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.satellite.INtnSignalStrengthCallback;
+import android.telephony.satellite.ISatelliteCapabilitiesCallback;
 import android.telephony.satellite.ISatelliteDatagramCallback;
 import android.telephony.satellite.ISatelliteProvisionStateCallback;
 import android.telephony.satellite.ISatelliteStateCallback;
@@ -2396,6 +2397,114 @@ public class SatelliteControllerTest extends TelephonyTest {
         assertFalse(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
     }
 
+    @Test
+    public void testRegisterForSatelliteCapabilitiesChangedWithFeatureFlagEnabled() {
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
+
+        Semaphore semaphore = new Semaphore(0);
+        final SatelliteCapabilities[] satelliteCapabilities = new SatelliteCapabilities[1];
+        ISatelliteCapabilitiesCallback callback =
+                new ISatelliteCapabilitiesCallback.Stub() {
+                    @Override
+                    public void onSatelliteCapabilitiesChanged(SatelliteCapabilities capabilities) {
+                        logd("onSatelliteCapabilitiesChanged: " + capabilities);
+                        try {
+                            satelliteCapabilities[0] = capabilities;
+                            semaphore.release();
+                        } catch (Exception ex) {
+                            loge("onSatelliteCapabilitiesChanged: Got exception in releasing "
+                                    + "semaphore, ex=" + ex);
+                        }
+                    }
+                };
+
+        int errorCode = mSatelliteControllerUT.registerForSatelliteCapabilitiesChanged(SUB_ID,
+                callback);
+        assertEquals(SATELLITE_RESULT_INVALID_TELEPHONY_STATE, errorCode);
+
+        setUpResponseForRequestIsSatelliteSupported(false,
+                SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(false, SATELLITE_RESULT_SUCCESS);
+        errorCode = mSatelliteControllerUT.registerForSatelliteCapabilitiesChanged(SUB_ID,
+                callback);
+        assertEquals(SATELLITE_RESULT_NOT_SUPPORTED, errorCode);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteProvisioned(true,
+                SATELLITE_RESULT_SUCCESS);
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        errorCode = mSatelliteControllerUT.registerForSatelliteCapabilitiesChanged(SUB_ID,
+                callback);
+        assertEquals(SATELLITE_RESULT_SUCCESS, errorCode);
+        SatelliteCapabilities expectedCapabilities = mSatelliteCapabilities;
+        sendSatelliteCapabilitiesChangedEvent(expectedCapabilities, null);
+        processAllMessages();
+        assertTrue(waitForForEvents(
+                semaphore, 1, "testRegisterForSatelliteCapabilitiesChanged"));
+        assertTrue(expectedCapabilities.equals(satelliteCapabilities[0]));
+
+        expectedCapabilities = mEmptySatelliteCapabilities;
+        sendSatelliteCapabilitiesChangedEvent(expectedCapabilities, null);
+        processAllMessages();
+        assertTrue(waitForForEvents(
+                semaphore, 1, "testRegisterForSatelliteCapabilitiesChanged"));
+        assertTrue(expectedCapabilities.equals(satelliteCapabilities[0]));
+
+        mSatelliteControllerUT.unregisterForSatelliteCapabilitiesChanged(SUB_ID, callback);
+        expectedCapabilities = mSatelliteCapabilities;
+        sendSatelliteCapabilitiesChangedEvent(expectedCapabilities, null);
+        processAllMessages();
+        assertTrue(waitForForEvents(
+                semaphore, 0, "testRegisterForSatelliteCapabilitiesChanged"));
+    }
+
+    @Test
+    public void testRegisterForSatelliteCapabilitiesChangedWithFeatureFlagDisabled() {
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(false);
+
+        Semaphore semaphore = new Semaphore(0);
+        final SatelliteCapabilities[] satelliteCapabilities = new SatelliteCapabilities[1];
+        ISatelliteCapabilitiesCallback callback =
+                new ISatelliteCapabilitiesCallback.Stub() {
+                    @Override
+                    public void onSatelliteCapabilitiesChanged(SatelliteCapabilities capabilities) {
+                        logd("onSatelliteCapabilitiesChanged: " + capabilities);
+                        try {
+                            satelliteCapabilities[0] = capabilities;
+                            semaphore.release();
+                        } catch (Exception ex) {
+                            loge("onSatelliteCapabilitiesChanged: Got exception in releasing "
+                                    + "semaphore, ex=" + ex);
+                        }
+                    }
+                };
+
+        int errorCode = mSatelliteControllerUT.registerForSatelliteCapabilitiesChanged(SUB_ID,
+                callback);
+        assertEquals(SATELLITE_RESULT_REQUEST_NOT_SUPPORTED, errorCode);
+
+        setUpResponseForRequestIsSatelliteSupported(false,
+                SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(false, SATELLITE_RESULT_NOT_SUPPORTED);
+        errorCode = mSatelliteControllerUT.registerForSatelliteCapabilitiesChanged(SUB_ID,
+                callback);
+        assertEquals(SATELLITE_RESULT_REQUEST_NOT_SUPPORTED, errorCode);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(false, SATELLITE_RESULT_NOT_SUPPORTED);
+        errorCode = mSatelliteControllerUT.registerForSatelliteCapabilitiesChanged(SUB_ID,
+                callback);
+        assertEquals(SATELLITE_RESULT_REQUEST_NOT_SUPPORTED, errorCode);
+
+        SatelliteCapabilities expectedCapabilities = mSatelliteCapabilities;
+        sendSatelliteCapabilitiesChangedEvent(expectedCapabilities, null);
+        processAllMessages();
+        assertTrue(waitForForEvents(
+                semaphore, 0, "testRegisterForSatelliteCapabilitiesChanged"));
+    }
+
     private void resetSatelliteControllerUTEnabledState() {
         logd("resetSatelliteControllerUTEnabledState");
         setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_RESULT_RADIO_NOT_AVAILABLE);
@@ -2936,7 +3045,14 @@ public class SatelliteControllerTest extends TelephonyTest {
 
     private void sendServiceStateChangedEvent() {
         mSatelliteControllerUT.obtainMessage(37 /* EVENT_SERVICE_STATE_CHANGED */).sendToTarget();
+    }
 
+    private void sendSatelliteCapabilitiesChangedEvent(SatelliteCapabilities capabilities,
+            Throwable exception) {
+        Message msg = mSatelliteControllerUT.obtainMessage(
+                38 /* EVENT_SATELLITE_CAPABILITIES_CHANGED */);
+        msg.obj = new AsyncResult(null, capabilities, exception);
+        msg.sendToTarget();
     }
 
     private void setRadioPower(boolean on) {
