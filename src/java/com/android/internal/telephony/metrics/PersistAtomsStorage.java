@@ -2070,7 +2070,9 @@ public class PersistAtomsStorage {
             if (stats.isDisplaySosMessageSent == key.isDisplaySosMessageSent
                     && stats.countOfTimerStarted == key.countOfTimerStarted
                     && stats.isImsRegistered == key.isImsRegistered
-                    && stats.cellularServiceState == key.cellularServiceState) {
+                    && stats.cellularServiceState == key.cellularServiceState
+                    && stats.isMultiSim == key.isMultiSim
+                    && stats.recommendingHandoverType == key.recommendingHandoverType) {
                 return stats;
             }
         }

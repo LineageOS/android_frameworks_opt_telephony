@@ -1034,6 +1034,9 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteSosMessageRecommender1.isImsRegistered = false;
         mSatelliteSosMessageRecommender1.cellularServiceState =
                 TelephonyProtoEnums.SERVICE_STATE_OUT_OF_SERVICE;
+        mSatelliteSosMessageRecommender1.isMultiSim = true;
+        mSatelliteSosMessageRecommender1.recommendingHandoverType = 1;
+        mSatelliteSosMessageRecommender1.isSatelliteAllowedInCurrentLocation = true;
         mSatelliteSosMessageRecommender1.count = 1;
 
         mSatelliteSosMessageRecommender2 = new SatelliteSosMessageRecommender();
@@ -1042,6 +1045,9 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteSosMessageRecommender2.isImsRegistered = true;
         mSatelliteSosMessageRecommender2.cellularServiceState =
                 TelephonyProtoEnums.SERVICE_STATE_POWER_OFF;
+        mSatelliteSosMessageRecommender2.isMultiSim = false;
+        mSatelliteSosMessageRecommender2.recommendingHandoverType = 0;
+        mSatelliteSosMessageRecommender2.isSatelliteAllowedInCurrentLocation = true;
         mSatelliteSosMessageRecommender2.count = 1;
 
         mSatelliteSosMessageRecommenders =
@@ -4689,7 +4695,11 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                     == expectedStats.isDisplaySosMessageSent
                     && stats.countOfTimerStarted == expectedStats.countOfTimerStarted
                     && stats.isImsRegistered == expectedStats.isImsRegistered
-                    && stats.cellularServiceState == expectedStats.cellularServiceState) {
+                    && stats.cellularServiceState == expectedStats.cellularServiceState
+                    && stats.isMultiSim == expectedStats.isMultiSim
+                    && stats.recommendingHandoverType == expectedStats.recommendingHandoverType
+                    && stats.isSatelliteAllowedInCurrentLocation
+                    == expectedStats.isSatelliteAllowedInCurrentLocation) {
                 actualCount = stats.count;
             }
         }

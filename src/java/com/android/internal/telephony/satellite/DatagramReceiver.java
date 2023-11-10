@@ -496,7 +496,7 @@ public class DatagramReceiver extends Handler {
      */
     @SatelliteManager.SatelliteResult public int registerForSatelliteDatagram(int subId,
             @NonNull ISatelliteDatagramCallback callback) {
-        if (!SatelliteController.getInstance().isSatelliteSupported()) {
+        if (!SatelliteController.getInstance().isSatelliteSupportedViaOem()) {
             return SatelliteManager.SATELLITE_RESULT_NOT_SUPPORTED;
         }
 

@@ -41,7 +41,7 @@ public class ImsMmTelManagerTests extends TelephonyTest {
     ITelephony mMockTelephonyInterface;
     BinderCacheManager<ITelephony> mBinderCache;
 
-    public class LocalCallback extends ImsMmTelManager.RegistrationCallback {
+    public static class LocalCallback extends ImsMmTelManager.RegistrationCallback {
         int mRegResult = -1;
 
         @Override

@@ -1336,7 +1336,10 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.countOfTimerStarted,
                 stats.isImsRegistered,
                 stats.cellularServiceState,
-                stats.count);
+                stats.count,
+                stats.isMultiSim,
+                stats.recommendingHandoverType,
+                stats.isSatelliteAllowedInCurrentLocation);
     }
 
     /** Returns all phones in {@link PhoneFactory}, or an empty array if phones not made yet. */

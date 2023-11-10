@@ -52,7 +52,6 @@ public class EuiccCardTest extends TelephonyTest {
 
     private static class ResultCaptor<T> extends AsyncResultCallback<T> {
         public T result;
-        public Throwable exception;
 
         private CountDownLatch mLatch;
 
@@ -68,7 +67,6 @@ public class EuiccCardTest extends TelephonyTest {
 
         @Override
         public void onException(Throwable e) {
-            exception = e;
             mLatch.countDown();
         }
     }
