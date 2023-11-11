@@ -33,6 +33,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESTRICTED_S
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIGNAL_STRENGTH;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SUPP_SVC_NOTIFICATION;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_VOICE_RADIO_TECH_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CELLULAR_IDENTIFIER_DISCLOSED;
 
 import android.annotation.ElapsedRealtimeLong;
 import android.hardware.radio.network.IRadioNetworkIndication;
@@ -419,6 +420,22 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
 
         mRil.mEmergencyNetworkScanRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
+    }
+
+    /**
+     * Cellular identifier disclosure events
+     * @param indicationType Type of radio indication
+     * @param identifierDisclsoure the result of the Emergency Network Scan
+     */
+    public void cellularIdentifierDisclosed(int indicationType,
+            android.hardware.radio.network.CellularIdentifierDisclosure identifierDisclsoure) {
+        mRil.processIndication(HAL_SERVICE_NETWORK, indicationType);
+
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(RIL_UNSOL_CELLULAR_IDENTIFIER_DISCLOSED, identifierDisclsoure);
+        }
+
+        // TODO (b/276752426) notify registrants of identifier disclosure
     }
 
     @Override

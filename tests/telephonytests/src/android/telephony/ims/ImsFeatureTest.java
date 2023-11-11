@@ -48,7 +48,7 @@ import org.mockito.MockitoAnnotations;
 @RunWith(AndroidJUnit4.class)
 public class ImsFeatureTest {
     // Public for Mockito testing
-    public class CapabilityCallback extends IImsCapabilityCallback.Stub {
+    public static class CapabilityCallback extends IImsCapabilityCallback.Stub {
 
         @Override
         public void onQueryCapabilityConfiguration(int capability, int radioTech, boolean enabled)

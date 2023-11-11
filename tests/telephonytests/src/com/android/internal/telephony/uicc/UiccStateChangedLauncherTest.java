@@ -50,7 +50,6 @@ public class UiccStateChangedLauncherTest extends TelephonyTest {
     private static final String PROVISIONING_PACKAGE_NAME = "test.provisioning.package";
 
     // Mocked classes
-    private Context mContext;
     private Resources mResources;
 
     private IccCardStatus makeCardStatus(CardState state) {
