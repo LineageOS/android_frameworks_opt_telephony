@@ -354,7 +354,7 @@ public class GsmCdmaPhone extends Phone {
         mSignalStrengthController = mTelephonyComponentFactory.inject(
                 SignalStrengthController.class.getName()).makeSignalStrengthController(this);
         mSST = mTelephonyComponentFactory.inject(ServiceStateTracker.class.getName())
-                .makeServiceStateTracker(this, this.mCi);
+                .makeServiceStateTracker(this, this.mCi, featureFlags);
         mEmergencyNumberTracker = mTelephonyComponentFactory
                 .inject(EmergencyNumberTracker.class.getName()).makeEmergencyNumberTracker(
                         this, this.mCi);

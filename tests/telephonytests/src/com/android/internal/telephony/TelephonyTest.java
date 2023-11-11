@@ -578,7 +578,7 @@ public abstract class TelephonyTest {
         doReturn(mTelephonyComponentFactory).when(mTelephonyComponentFactory).inject(anyString());
         doReturn(mSST).when(mTelephonyComponentFactory)
                 .makeServiceStateTracker(nullable(GsmCdmaPhone.class),
-                        nullable(CommandsInterface.class));
+                        nullable(CommandsInterface.class), nullable(FeatureFlags.class));
         doReturn(mEmergencyNumberTracker).when(mTelephonyComponentFactory)
                 .makeEmergencyNumberTracker(nullable(Phone.class),
                         nullable(CommandsInterface.class));

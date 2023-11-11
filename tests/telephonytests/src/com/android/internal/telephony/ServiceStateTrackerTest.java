@@ -201,7 +201,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                     listenerArgumentCaptor =
                             ArgumentCaptor.forClass(
                                     CarrierConfigManager.CarrierConfigChangeListener.class);
-            sst = new ServiceStateTracker(mPhone, mSimulatedCommands);
+            sst = new ServiceStateTracker(mPhone, mSimulatedCommands, mFeatureFlags);
             verify(mCarrierConfigManager, atLeast(3)).registerCarrierConfigChangeListener(any(),
                     listenerArgumentCaptor.capture());
             mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(2);

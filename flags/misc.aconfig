@@ -16,6 +16,13 @@ flag {
 }
 
 flag {
+  name: "stop_spamming_emergency_notification"
+  namespace: "telephony"
+  description: "When set, the no wifi emergency calling availability notif will have a do not ask again button"
+  bug: "275225402"
+}
+
+flag {
   name: "enable_wps_check_api_flag"
   namespace: "telephony"
   description: "Enable system api isWpsCallNumber. Its an utility api to check if the dialed number is for Wireless Priority Service call."
