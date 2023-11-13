@@ -107,6 +107,7 @@ java_library {
         "net-utils-framework-common",
         "telephony-protos",
         "modules-utils-build_system",
+        "modules-utils-fastxmlserializer",
         "modules-utils-statemachine",
     ],
 
