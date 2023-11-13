@@ -892,6 +892,18 @@ public class EmergencyStateTracker {
         }
     }
 
+    /**
+     * Handles the radio power off request.
+     */
+    public void onCellularRadioPowerOffRequested() {
+        synchronized (mLock) {
+            if (isInEcm()) {
+                exitEmergencyCallbackMode(null);
+            }
+            exitEmergencyModeIfDelayed();
+        }
+    }
+
     private static boolean isVoWiFi(int properties) {
         return (properties & android.telecom.Connection.PROPERTY_WIFI) > 0
                 || (properties & android.telecom.Connection.PROPERTY_CROSS_SIM) > 0;

@@ -94,6 +94,8 @@ import com.android.internal.telephony.data.AccessNetworksManager;
 import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
 import com.android.internal.telephony.data.DataNetwork;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
+import com.android.internal.telephony.domainselection.DomainSelectionResolver;
+import com.android.internal.telephony.emergency.EmergencyStateTracker;
 import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.metrics.RadioPowerStateStats;
@@ -4969,6 +4971,9 @@ public class ServiceStateTracker extends Handler {
     public void powerOffRadioSafely() {
         synchronized (this) {
             SatelliteController.getInstance().onCellularRadioPowerOffRequested();
+            if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+                EmergencyStateTracker.getInstance().onCellularRadioPowerOffRequested();
+            }
             if (!mPendingRadioPowerOffAfterDataOff) {
                 // hang up all active voice calls first
                 if (mPhone.isPhoneTypeGsm() && mPhone.isInCall()) {

@@ -125,7 +125,6 @@ public class ImsPhoneTest extends TelephonyTest {
     private ImsPhoneCall mBackgroundCall;
     private ImsPhoneCall mRingingCall;
     private Handler mTestHandler;
-    private DomainSelectionResolver mDomainSelectionResolver;
     Connection mConnection;
     ImsUtInterface mImsUtInterface;
     private FeatureFlags mFeatureFlags;
@@ -152,10 +151,7 @@ public class ImsPhoneTest extends TelephonyTest {
         mTestHandler = mock(Handler.class);
         mConnection = mock(Connection.class);
         mImsUtInterface = mock(ImsUtInterface.class);
-        mDomainSelectionResolver = mock(DomainSelectionResolver.class);
         mFeatureFlags = mock(FeatureFlags.class);
-        doReturn(false).when(mDomainSelectionResolver).isDomainSelectionSupported();
-        DomainSelectionResolver.setDomainSelectionResolver(mDomainSelectionResolver);
 
         mImsCT.mForegroundCall = mForegroundCall;
         mImsCT.mBackgroundCall = mBackgroundCall;
@@ -200,7 +196,6 @@ public class ImsPhoneTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mImsPhoneUT = null;
         mBundle = null;
-        DomainSelectionResolver.setDomainSelectionResolver(null);
         super.tearDown();
     }
 
