@@ -103,12 +103,14 @@ public class SatelliteModemInterface {
         @Override
         public void onSatelliteDatagramReceived(
                 android.telephony.satellite.stub.SatelliteDatagram datagram, int pendingCount) {
+            logd("onSatelliteDatagramReceived: pendingCount=" + pendingCount);
             mSatelliteDatagramsReceivedRegistrants.notifyResult(new Pair<>(
                     SatelliteServiceUtils.fromSatelliteDatagram(datagram), pendingCount));
         }
 
         @Override
         public void onPendingDatagrams() {
+            logd("onPendingDatagrams");
             mPendingDatagramsRegistrants.notifyResult(null);
         }
 

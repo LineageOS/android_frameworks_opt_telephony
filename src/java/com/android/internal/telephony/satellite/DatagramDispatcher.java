@@ -333,6 +333,10 @@ public class DatagramDispatcher extends Handler {
                         SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING,
                         getPendingDatagramCount(), SatelliteManager.SATELLITE_RESULT_SUCCESS);
                 sendRequestAsync(CMD_SEND_SATELLITE_DATAGRAM, datagramArgs, phone);
+            } else {
+                logd("sendSatelliteDatagram: mSendingDatagramInProgress="
+                        + mSendingDatagramInProgress + ", isPollingInIdleState="
+                        + mDatagramController.isPollingInIdleState());
             }
         }
     }
