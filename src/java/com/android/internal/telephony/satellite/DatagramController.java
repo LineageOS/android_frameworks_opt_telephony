@@ -46,6 +46,7 @@ public class DatagramController {
     @NonNull private final PointingAppController mPointingAppController;
     @NonNull private final DatagramDispatcher mDatagramDispatcher;
     @NonNull private final DatagramReceiver mDatagramReceiver;
+
     public static final long MAX_DATAGRAM_ID = (long) Math.pow(2, 16);
     public static final int ROUNDING_UNIT = 10;
     public static final long SATELLITE_ALIGN_TIMEOUT = TimeUnit.SECONDS.toMillis(30);
@@ -401,6 +402,18 @@ public class DatagramController {
             sessionController.onDatagramTransferStateChanged(
                     mSendDatagramTransferState, mReceiveDatagramTransferState);
         }
+    }
+
+    /**
+     * This API can be used by only CTS to override the cached value for the device overlay config
+     * value : config_send_satellite_datagram_to_modem_in_demo_mode, which determines whether
+     * outgoing satellite datagrams should be sent to modem in demo mode.
+     *
+     * @param shouldSendToModemInDemoMode Whether send datagram in demo mode should be sent to
+     * satellite modem or not.
+     */
+    void setShouldSendDatagramToModemInDemoMode(boolean shouldSendToModemInDemoMode) {
+        mDatagramDispatcher.setShouldSendDatagramToModemInDemoMode(shouldSendToModemInDemoMode);
     }
 
     private static void logd(@NonNull String log) {
