@@ -43,6 +43,8 @@ import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
+import com.android.internal.telephony.flags.FeatureFlags;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -62,6 +64,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
 
     private static final int EVENT_MULTI_SIM_CONFIG_CHANGED = 1;
     PhoneConfigurationManager mPcm;
+    private FeatureFlags mFeatureFlags;
 
     @Before
     public void setUp() throws Exception {
@@ -69,6 +72,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         mHandler = mock(Handler.class);
         mMockCi0 = mock(CommandsInterface.class);
         mMockCi1 = mock(CommandsInterface.class);
+        mFeatureFlags = Mockito.mock(FeatureFlags.class);
         mPhone1 = mock(Phone.class);
         mMi = mock(PhoneConfigurationManager.MockableInterface.class);
         mPhone.mCi = mMockCi0;
@@ -89,7 +93,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
     private void init(int numOfSim) throws Exception {
         doReturn(numOfSim).when(mTelephonyManager).getActiveModemCount();
         replaceInstance(PhoneConfigurationManager.class, "sInstance", null, null);
-        mPcm = PhoneConfigurationManager.init(mContext);
+        mPcm = PhoneConfigurationManager.init(mContext, mFeatureFlags);
         replaceInstance(PhoneConfigurationManager.class, "mMi", mPcm, mMi);
         processAllMessages();
     }

@@ -49,3 +49,10 @@ flag {
   bug:"286171724"
 }
 
+flag {
+ name: "notify_data_activity_changed_with_slot"
+  namespace: "telephony"
+  description: "notify data activity changed for slot id"
+  bug: "309896936"
+}
+
