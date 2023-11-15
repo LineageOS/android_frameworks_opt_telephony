@@ -17,12 +17,14 @@
 package com.android.internal.telephony.satellite;
 
 import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
 import static com.android.internal.telephony.satellite.DatagramController.ROUNDING_UNIT;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
+import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
@@ -32,6 +34,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
 
+import com.android.internal.R;
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
@@ -41,6 +44,7 @@ import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 import java.util.LinkedHashMap;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -65,6 +69,8 @@ public class DatagramDispatcher extends Handler {
     private DatagramDispatcherHandlerRequest mSendSatelliteDatagramRequest = null;
 
     private static AtomicLong mNextDatagramId = new AtomicLong(0);
+
+    private AtomicBoolean mShouldSendDatagramToModemInDemoMode = null;
 
     private final Object mLock = new Object();
 
@@ -190,9 +196,14 @@ public class DatagramDispatcher extends Handler {
                         (SendSatelliteDatagramArgument) request.argument;
                 onCompleted = obtainMessage(EVENT_SEND_SATELLITE_DATAGRAM_DONE, request);
 
-                SatelliteModemInterface.getInstance().sendSatelliteDatagram(argument.datagram,
-                        argument.datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE,
-                        argument.needFullScreenPointingUI, onCompleted);
+                if (mIsDemoMode && !shouldSendDatagramToModemInDemoMode()) {
+                    AsyncResult.forMessage(onCompleted, SATELLITE_RESULT_SUCCESS, null);
+                    onCompleted.sendToTarget();
+                } else {
+                    SatelliteModemInterface.getInstance().sendSatelliteDatagram(argument.datagram,
+                            argument.datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE,
+                            argument.needFullScreenPointingUI, onCompleted);
+                }
                 break;
             }
             case EVENT_SEND_SATELLITE_DATAGRAM_DONE: {
@@ -618,6 +629,50 @@ public class DatagramDispatcher extends Handler {
                     0, SatelliteManager.SATELLITE_RESULT_SUCCESS);
             abortSendingPendingDatagrams(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                     SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE);
+        }
+    }
+
+    private boolean shouldSendDatagramToModemInDemoMode() {
+        if (mShouldSendDatagramToModemInDemoMode != null) {
+            return mShouldSendDatagramToModemInDemoMode.get();
+        }
+
+        try {
+            mShouldSendDatagramToModemInDemoMode = new AtomicBoolean(
+                    mContext.getResources().getBoolean(
+                            R.bool.config_send_satellite_datagram_to_modem_in_demo_mode));
+            return mShouldSendDatagramToModemInDemoMode.get();
+
+        } catch (Resources.NotFoundException ex) {
+            loge("shouldSendDatagramToModemInDemoMode: id= "
+                    + R.bool.config_send_satellite_datagram_to_modem_in_demo_mode + ", ex=" + ex);
+            return false;
+        }
+    }
+
+    /**
+     * This API can be used by only CTS to override the cached value for the device overlay config
+     * value : config_send_satellite_datagram_to_modem_in_demo_mode, which determines whether
+     * outgoing satellite datagrams should be sent to modem in demo mode.
+     *
+     * @param shouldSendToModemInDemoMode Whether send datagram in demo mode should be sent to
+     * satellite modem or not. If it is null, the cache will be cleared.
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
+    protected void setShouldSendDatagramToModemInDemoMode(
+            @Nullable Boolean shouldSendToModemInDemoMode) {
+        logd("setShouldSendDatagramToModemInDemoMode(" + (shouldSendToModemInDemoMode == null
+                ? "null" : shouldSendToModemInDemoMode) + ")");
+
+        if (shouldSendToModemInDemoMode == null) {
+            mShouldSendDatagramToModemInDemoMode = null;
+        } else {
+            if (mShouldSendDatagramToModemInDemoMode == null) {
+                mShouldSendDatagramToModemInDemoMode = new AtomicBoolean(
+                        shouldSendToModemInDemoMode);
+            } else {
+                mShouldSendDatagramToModemInDemoMode.set(shouldSendToModemInDemoMode);
+            }
         }
     }
 

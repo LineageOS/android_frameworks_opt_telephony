@@ -1,0 +1,8 @@
+package: "com.android.internal.telephony.flags"
+
+flag {
+    name: "enable_aead_algorithms"
+    namespace: "telephony"
+    description: "Add AEAD algorithms AES-GCM-8, AES-GCM-12 and AES-GCM-16 to IWLAN"
+    bug:"306119890"
+}

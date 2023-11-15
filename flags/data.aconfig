@@ -34,3 +34,10 @@ flag {
   description: "Support additional slicing error codes and functionality."
   bug: "307378699"
 }
+
+flag {
+  name: "apn_setting_field_support_flag"
+  namespace: "telephony"
+  description: "Expose apn setting supporting field"
+  bug: "307038091"
+}
