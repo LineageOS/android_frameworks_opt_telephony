@@ -30,6 +30,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.net.ConnectivityManager;
 import android.net.InetAddresses;
@@ -238,7 +239,8 @@ public class DataNetworkTest extends TelephonyTest {
             final Message msg = (Message) invocation.getArguments()[10];
 
             DataCallResponse response = createDataCallResponse(
-                    cid, DataCallResponse.LINK_STATUS_ACTIVE, tds, defaultQos);
+                    cid, DataCallResponse.LINK_STATUS_ACTIVE, tds, defaultQos,
+                    PreciseDataConnectionState.NETWORK_VALIDATION_UNSUPPORTED);
             msg.getData().putParcelable("data_call_response", response);
             msg.arg1 = DataServiceCallback.RESULT_SUCCESS;
             msg.sendToTarget();
@@ -249,7 +251,7 @@ public class DataNetworkTest extends TelephonyTest {
     }
 
     private DataCallResponse createDataCallResponse(int cid, int linkStatus,
-            List<TrafficDescriptor> tds, Qos defaultQos) {
+            List<TrafficDescriptor> tds, Qos defaultQos, int validationStatus) {
         return new DataCallResponse.Builder()
                 .setCause(0)
                 .setRetryDurationMillis(-1L)
@@ -274,6 +276,7 @@ public class DataNetworkTest extends TelephonyTest {
                 .setQosBearerSessions(new ArrayList<>())
                 .setTrafficDescriptors(tds)
                 .setDefaultQos(defaultQos)
+                .setNetworkValidationStatus(validationStatus)
                 .build();
     }
 
@@ -1996,7 +1999,8 @@ public class DataNetworkTest extends TelephonyTest {
 
         // data state updated
         DataCallResponse response = createDataCallResponse(123,
-                DataCallResponse.LINK_STATUS_DORMANT, Collections.emptyList(), null);
+                DataCallResponse.LINK_STATUS_DORMANT, Collections.emptyList(), null,
+                PreciseDataConnectionState.NETWORK_VALIDATION_UNSUPPORTED);
         mDataNetworkUT.sendMessage(8 /*EVENT_DATA_STATE_CHANGED*/, new AsyncResult(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, List.of(response), null));
         processAllMessages();
@@ -2015,6 +2019,171 @@ public class DataNetworkTest extends TelephonyTest {
                 eq(DataFailCause.RADIO_NOT_AVAILABLE), eq(DataNetwork.TEAR_DOWN_REASON_NONE));
         verify(mDataNetworkCallback).onLinkStatusChanged(eq(mDataNetworkUT),
                 eq(DataCallResponse.LINK_STATUS_INACTIVE));
+    }
+
+    @Test
+    public void testHandleDataNetworkValidationRequestOnDataConnectedState() throws Exception {
+        setupIwlanDataNetwork();
+
+        // First Request
+        mDataNetworkUT.requestNetworkValidation(mIntegerConsumer);
+        processAllMessages();
+        verify(mMockedWlanDataServiceManager).requestValidation(eq(123 /*cid*/),
+                any(Message.class));
+
+        // Duplicate Request
+        mDataNetworkUT.requestNetworkValidation(mIntegerConsumer);
+        processAllMessages();
+        verify(mMockedWlanDataServiceManager).requestValidation(eq(123 /*cid*/),
+                any(Message.class));
+        assertThat(waitForIntegerConsumerResponse(1 /*numOfEvents*/)).isTrue();
+        assertThat(mIntegerConsumerResult).isEqualTo(DataServiceCallback.RESULT_ERROR_BUSY);
+    }
+
+    @Test
+    public void testHandleDataNetworkValidationRequestResultCode() throws Exception {
+        setupDataNetwork();
+        mDataNetworkUT.requestNetworkValidation(mIntegerConsumer);
+        processAllMessages();
+
+        mDataNetworkUT.sendMessage(29 /*EVENT_DATA_NETWORK_VALIDATION_RESPONSE*/,
+                DataServiceCallback.RESULT_SUCCESS);
+        processAllMessages();
+
+        assertThat(waitForIntegerConsumerResponse(1 /*numOfEvents*/)).isTrue();
+        assertThat(mIntegerConsumerResult).isEqualTo(DataServiceCallback.RESULT_SUCCESS);
+
+        //mNetworkValidationResultCodeCallback null case
+        mIntegerConsumerResult = DataServiceCallback.RESULT_ERROR_UNSUPPORTED;
+        mDataNetworkUT.sendMessage(29 /*EVENT_DATA_NETWORK_VALIDATION_RESPONSE*/,
+                DataServiceCallback.RESULT_SUCCESS);
+        processAllMessages();
+        assertThat(waitForIntegerConsumerResponse(1 /*numOfEvents*/)).isFalse();
+        assertThat(mIntegerConsumerResult).isNotEqualTo(DataServiceCallback.RESULT_SUCCESS);
+    }
+
+    @Test
+    public void testHandleDataNetworkValidationRequestNotConnectedState() throws Exception {
+        NetworkRequestList networkRequestList = new NetworkRequestList();
+        NetworkRequest.Builder builder = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
+        networkRequestList.add(new TelephonyNetworkRequest(builder.build(), mPhone));
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mImsDataProfile, networkRequestList,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
+                DataAllowedReason.NORMAL, mDataNetworkCallback);
+        replaceInstance(DataNetwork.class, "mDataCallSessionStats",
+                mDataNetworkUT, mDataCallSessionStats);
+        processAllMessages();
+
+        // Data Not connected State
+        mDataNetworkUT.requestNetworkValidation(mIntegerConsumer);
+        processAllMessages();
+
+        assertThat(waitForIntegerConsumerResponse(1 /*numOfEvents*/)).isTrue();
+        assertThat(mIntegerConsumerResult)
+                .isEqualTo(DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
+    }
+
+    @Test
+    public void testValidationStatusOnPreciseDataConnectionState_FlagEnabled() throws Exception {
+        when(mFeatureFlags.networkValidation()).thenReturn(true);
+        setupIwlanDataNetwork();
+
+        ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
+                ArgumentCaptor.forClass(PreciseDataConnectionState.class);
+        verify(mPhone, times(2)).notifyDataConnection(pdcsCaptor.capture());
+        List<PreciseDataConnectionState> pdcsList = pdcsCaptor.getAllValues();
+
+        assertThat(pdcsList.get(1).getApnSetting()).isEqualTo(mImsApnSetting);
+        assertThat(pdcsList.get(1).getState()).isEqualTo(TelephonyManager.DATA_CONNECTED);
+        assertThat(pdcsList.get(1).getNetworkType()).isEqualTo(TelephonyManager.NETWORK_TYPE_IWLAN);
+        assertThat(pdcsList.get(1).getTransportType())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+        assertThat(pdcsList.get(1).getNetworkValidationStatus())
+                .isEqualTo(PreciseDataConnectionState.NETWORK_VALIDATION_UNSUPPORTED);
+
+        // Request Network Validation
+        mDataNetworkUT.requestNetworkValidation(mIntegerConsumer);
+        processAllMessages();
+        verify(mMockedWlanDataServiceManager).requestValidation(eq(123 /*cid*/),
+                any(Message.class));
+
+        // data state updated with network validation status
+        DataCallResponse response = createDataCallResponse(123,
+                DataCallResponse.LINK_STATUS_ACTIVE, Collections.emptyList(), null,
+                PreciseDataConnectionState.NETWORK_VALIDATION_SUCCESS);
+        mDataNetworkUT.sendMessage(8 /*EVENT_DATA_STATE_CHANGED*/, new AsyncResult(
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN, List.of(response), null));
+        processAllMessages();
+
+        // Verify updated validation status at precise data connection state
+        pdcsCaptor = ArgumentCaptor.forClass(PreciseDataConnectionState.class);
+        verify(mPhone, times(3)).notifyDataConnection(pdcsCaptor.capture());
+
+
+        // data state updated with same network validation status
+        response = createDataCallResponse(123,
+                DataCallResponse.LINK_STATUS_ACTIVE, Collections.emptyList(), null,
+                PreciseDataConnectionState.NETWORK_VALIDATION_SUCCESS);
+        mDataNetworkUT.sendMessage(8 /*EVENT_DATA_STATE_CHANGED*/, new AsyncResult(
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN, List.of(response), null));
+        processAllMessages();
+
+        // Verify precise data connection state not posted again
+        pdcsCaptor = ArgumentCaptor.forClass(PreciseDataConnectionState.class);
+        verify(mPhone, times(3)).notifyDataConnection(pdcsCaptor.capture());
+    }
+
+    @Test
+    public void testValidationStatus_FlagDisabled() throws Exception {
+        // network validation flag disabled
+        when(mFeatureFlags.networkValidation()).thenReturn(false);
+        setupIwlanDataNetwork();
+
+        // precise data connection state posted for setup data call response
+        ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
+                ArgumentCaptor.forClass(PreciseDataConnectionState.class);
+        verify(mPhone, times(2)).notifyDataConnection(pdcsCaptor.capture());
+
+        // data state updated with network validation status
+        DataCallResponse response = createDataCallResponse(123,
+                DataCallResponse.LINK_STATUS_ACTIVE, Collections.emptyList(), null,
+                PreciseDataConnectionState.NETWORK_VALIDATION_SUCCESS);
+        mDataNetworkUT.sendMessage(8 /*EVENT_DATA_STATE_CHANGED*/, new AsyncResult(
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN, List.of(response), null));
+        processAllMessages();
+
+        // Verify updated validation status at precise data connection state not posted due to flag
+        // disabled
+        pdcsCaptor = ArgumentCaptor.forClass(PreciseDataConnectionState.class);
+        verify(mPhone, times(2)).notifyDataConnection(pdcsCaptor.capture());
+        List<PreciseDataConnectionState> pdcsList = pdcsCaptor.getAllValues();
+        assertThat(pdcsList.get(1).getNetworkValidationStatus())
+                .isEqualTo(PreciseDataConnectionState.NETWORK_VALIDATION_UNSUPPORTED);
+    }
+
+    private void setupIwlanDataNetwork() throws Exception {
+        // setup iwlan data network over ims
+        doReturn(mIwlanNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                eq(NetworkRegistrationInfo.DOMAIN_PS),
+                eq(AccessNetworkConstants.TRANSPORT_TYPE_WLAN));
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        NetworkRequestList networkRequestList = new NetworkRequestList();
+        networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                .build(), mPhone));
+        setSuccessfulSetupDataResponse(mMockedWlanDataServiceManager, 123);
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mImsDataProfile, networkRequestList,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
+                DataAllowedReason.NORMAL, mDataNetworkCallback);
+        replaceInstance(DataNetwork.class, "mDataCallSessionStats",
+                mDataNetworkUT, mDataCallSessionStats);
+        processAllMessages();
     }
 
     private void createImsDataNetwork(boolean isMmtel) throws Exception {
