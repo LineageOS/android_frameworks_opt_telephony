@@ -51,6 +51,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -67,6 +68,7 @@ public final class CellBroadcastConfigTrackerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mFeatureFlags = Mockito.mock(FeatureFlags.class);
         mSpyCi = spy(mSimulatedCommands);
         mPhone = new GsmCdmaPhone(mContext, mSpyCi, mNotifier, true, 0,
             PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory, (c, p) -> mImsManager,
