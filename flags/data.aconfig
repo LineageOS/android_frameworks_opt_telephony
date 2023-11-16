@@ -41,3 +41,11 @@ flag {
   description: "Expose apn setting supporting field"
   bug: "307038091"
 }
+
+flag {
+  name: "network_validation"
+  namespace: "telephony"
+  description: "Request network validation for data networks and response status."
+  bug:"286171724"
+}
+

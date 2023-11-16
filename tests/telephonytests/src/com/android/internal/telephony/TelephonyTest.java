@@ -152,7 +152,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 public abstract class TelephonyTest {
     protected static String TAG;
@@ -315,7 +317,37 @@ public abstract class TelephonyTest {
 
     private final List<InstanceKey> mInstanceKeys = new ArrayList<>();
 
-    private static class InstanceKey {
+    protected int mIntegerConsumerResult;
+    protected Semaphore mIntegerConsumerSemaphore = new Semaphore(0);
+    protected  Consumer<Integer> mIntegerConsumer = new Consumer<Integer>() {
+        @Override
+        public void accept(Integer integer) {
+            logd("mIIntegerConsumer: result=" + integer);
+            mIntegerConsumerResult =  integer;
+            try {
+                mIntegerConsumerSemaphore.release();
+            } catch (Exception ex) {
+                logd("mIIntegerConsumer: Got exception in releasing semaphore, ex=" + ex);
+            }
+        }
+    };
+
+    protected boolean waitForIntegerConsumerResponse(int expectedNumberOfEvents) {
+        for (int i = 0; i < expectedNumberOfEvents; i++) {
+            try {
+                if (!mIntegerConsumerSemaphore.tryAcquire(500 /*Timeout*/, TimeUnit.MILLISECONDS)) {
+                    logd("Timeout to receive IIntegerConsumer() callback");
+                    return false;
+                }
+            } catch (Exception ex) {
+                logd("waitForIIntegerConsumerResult: Got exception=" + ex);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private class InstanceKey {
         public final Class mClass;
         public final String mInstName;
         public final Object mObj;

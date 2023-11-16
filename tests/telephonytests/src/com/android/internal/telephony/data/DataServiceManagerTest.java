@@ -267,4 +267,20 @@ public class DataServiceManagerTest extends TelephonyTest {
         waitAndVerifyResult(message, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
         verify(mSimulatedCommandsVerifier, never()).cancelHandover(any(Message.class), anyInt());
     }
+
+    @Test
+    public void testRequestValidation_ServiceNotBound() throws Exception {
+        createDataServiceManager(false);
+        Message message = mHandler.obtainMessage(1234);
+        mDataServiceManagerUT.requestValidation(123, message);
+        waitAndVerifyResult(message, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
+    }
+
+    @Test
+    public void testRequestValidation_ServiceBound() throws Exception {
+        createDataServiceManager(true);
+        Message message = mHandler.obtainMessage(1234);
+        mDataServiceManagerUT.requestValidation(123, message);
+        waitAndVerifyResult(message, DataServiceCallback.RESULT_ERROR_UNSUPPORTED);
+    }
 }

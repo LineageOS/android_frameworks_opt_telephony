@@ -4874,4 +4874,60 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyConnectedNetworkHasNoDataProfile(mNtnDataProfile);
         verifyConnectedNetworkHasNoDataProfile(mEsimBootstrapRcsInfraStructureProfile);
     }
+
+    @Test
+    public void testRequestNetworkValidationWithConnectedNetwork() throws Exception {
+        // IMS preferred on IWLAN.
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(
+                        eq(NetworkCapabilities.NET_CAPABILITY_IMS));
+
+        // Request IMS
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS,
+                        NetworkCapabilities.NET_CAPABILITY_MMTEL));
+        setSuccessfulSetupDataResponse(mMockedDataServiceManagers
+                .get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN), 3);
+        processAllMessages();
+
+        // Make sure IMS on IWLAN.
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
+        DataNetwork dataNetwork = getDataNetworks().get(0);
+        assertThat(dataNetwork.getTransport()).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+
+        mDataNetworkControllerUT.requestNetworkValidation(NetworkCapabilities.NET_CAPABILITY_IMS,
+                mIntegerConsumer);
+        processAllMessages();
+        assertThat(waitForIntegerConsumerResponse(1 /*numOfEvents*/)).isFalse();
+    }
+
+    @Test
+    public void testRequestNetworkValidationWithNoConnectedNetwork()
+            throws Exception {
+        // IMS preferred on IWLAN.
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(
+                        eq(NetworkCapabilities.NET_CAPABILITY_IMS));
+
+        // IMS On Wlan not connected
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        //Connected List is Empty
+        mDataNetworkControllerUT.requestNetworkValidation(NetworkCapabilities.NET_CAPABILITY_IMS,
+                mIntegerConsumer);
+        processAllMessages();
+        assertThat(waitForIntegerConsumerResponse(1 /*numOfEvents*/)).isTrue();
+        assertThat(mIntegerConsumerResult).isEqualTo(DataServiceCallback.RESULT_ERROR_INVALID_ARG);
+    }
+
+    @Test
+    public void testRequestNetworkValidationWithInvalidArg() {
+        mDataNetworkControllerUT.requestNetworkValidation(
+                NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY,
+                mIntegerConsumer);
+        processAllMessages();
+        assertThat(waitForIntegerConsumerResponse(1 /*numOfEvents*/)).isTrue();
+        assertThat(mIntegerConsumerResult).isEqualTo(DataServiceCallback.RESULT_ERROR_INVALID_ARG);
+    }
 }

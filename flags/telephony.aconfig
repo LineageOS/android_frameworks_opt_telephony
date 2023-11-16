@@ -1,0 +1,8 @@
+package: "com.android.internal.telephony.flags"
+
+flag {
+    name: "enforce_telephony_feature_mapping"
+    namespace: "telephony"
+    description: "This flag controls telephony feature flags mapping."
+    bug:"297989574"
+}

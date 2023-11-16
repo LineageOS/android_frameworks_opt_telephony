@@ -35,3 +35,24 @@ flag {
   description: "Check if access to mobile network configs restricted before displaying call options"
   bug: "309655251"
 }
+
+flag {
+  name: "reorganize_roaming_notification"
+  namespace: "telephony"
+  description: "Reorganize conditions to show and dismiss roaming notifications."
+  bug: "310594087"
+}
+
+flag {
+  name: "dismiss_network_selection_notification_on_sim_disable"
+  namespace: "telephony"
+  description: "Fix to dismiss network selection notification when disable sim."
+  bug: "310594186"
+}
+
+flag {
+  name: "load_dds_on_create"
+  namespace: "telephony"
+  description: "Load default data subid on create in PhoneGlobals."
+  bug: "310591561"
+}

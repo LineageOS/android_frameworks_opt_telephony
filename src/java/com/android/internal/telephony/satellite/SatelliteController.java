@@ -214,6 +214,7 @@ public class SatelliteController extends Handler {
     private final AtomicBoolean mRegisteredForNtnSignalStrengthChanged = new AtomicBoolean(false);
     private final AtomicBoolean mRegisteredForSatelliteCapabilitiesChanged =
             new AtomicBoolean(false);
+    private final AtomicBoolean mShouldReportNtnSignalStrength = new AtomicBoolean(false);
     /**
      * Map key: subId, value: callback to get error code of the provision request.
      */
@@ -1184,10 +1185,19 @@ public class SatelliteController extends Handler {
             case CMD_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING: {
                 ar = (AsyncResult) msg.obj;
                 boolean shouldReport = (boolean) ar.result;
-                logd("CMD_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING: shouldReport=" + shouldReport);
+                if (DBG) {
+                    logd("CMD_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING: shouldReport=" + shouldReport);
+                }
                 request = new SatelliteControllerHandlerRequest(shouldReport,
                         SatelliteServiceUtils.getPhone());
                 if (SATELLITE_RESULT_SUCCESS != evaluateOemSatelliteRequestAllowed(true)) {
+                    return;
+                }
+                if (mShouldReportNtnSignalStrength.get() == shouldReport) {
+                    if (DBG) {
+                        logd("CMD_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING : modem state matches the "
+                                + "expected state, return.");
+                    }
                     return;
                 }
                 onCompleted = obtainMessage(EVENT_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING_DONE,
@@ -1203,9 +1213,12 @@ public class SatelliteController extends Handler {
             case EVENT_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING_DONE: {
                 ar = (AsyncResult) msg.obj;
                 request = (SatelliteControllerHandlerRequest) ar.userObj;
+                boolean shouldReport = (boolean) request.argument;
                 int errorCode =  SatelliteServiceUtils.getSatelliteError(ar,
                         "EVENT_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING_DONE");
-                if (errorCode != SATELLITE_RESULT_SUCCESS) {
+                if (errorCode == SATELLITE_RESULT_SUCCESS) {
+                    mShouldReportNtnSignalStrength.set(shouldReport);
+                } else {
                     loge(((boolean) request.argument ? "startSendingNtnSignalStrength"
                             : "stopSendingNtnSignalStrength") + "returns " + errorCode);
                 }
