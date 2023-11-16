@@ -392,6 +392,10 @@ public class DatagramReceiver extends Handler {
 
                 case EVENT_RECEIVED_ACK: {
                     DatagramRetryArgument argument = (DatagramRetryArgument) msg.obj;
+                    if (!sInstance.mPendingAckCountHashMap.containsKey(argument.datagramId)) {
+                        logd("The datagram " + argument.datagramId + " should have been deleted.");
+                        return;
+                    }
                     int pendingAckCount = sInstance.mPendingAckCountHashMap
                             .get(argument.datagramId);
                     pendingAckCount -= 1;

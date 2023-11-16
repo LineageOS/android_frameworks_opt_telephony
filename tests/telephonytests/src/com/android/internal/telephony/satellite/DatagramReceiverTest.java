@@ -23,6 +23,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyInt;
@@ -38,6 +39,7 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.IBinder;
@@ -66,6 +68,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(AndroidTestingRunner.class)
@@ -272,10 +275,13 @@ public class DatagramReceiverTest extends TelephonyTest {
 
     @Test
     public void testSatelliteDatagramReceived_success_zeroPendingCount() {
+        TestSatelliteDatagramCallback testSatelliteDatagramCallback =
+                new TestSatelliteDatagramCallback();
+
+        mSatelliteDatagramListenerHandler.addListener(testSatelliteDatagramCallback);
         mSatelliteDatagramListenerHandler.obtainMessage(1 /*EVENT_SATELLITE_DATAGRAM_RECEIVED*/,
                         new AsyncResult(null, new Pair<>(mDatagram, 0), null))
                 .sendToTarget();
-
         processAllMessages();
 
         mInOrder.verify(mMockDatagramController)
@@ -286,6 +292,14 @@ public class DatagramReceiverTest extends TelephonyTest {
                 .updateReceiveStatus(eq(SUB_ID),
                         eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE),
                         eq(0), eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
+        assertTrue(testSatelliteDatagramCallback.waitForOnSatelliteDatagramReceived());
+
+        assertTrue(testSatelliteDatagramCallback.sendInternalAck());
+        try {
+            processAllFutureMessages();
+        } catch (Exception e) {
+            fail("Unexpected exception e=" + e);
+        }
     }
 
     @Test
@@ -473,6 +487,59 @@ public class DatagramReceiverTest extends TelephonyTest {
 
         public void setDuration(long duration) {
             mLong = duration;
+        }
+    }
+
+    private static class TestSatelliteDatagramCallback extends ISatelliteDatagramCallback.Stub {
+        @Nullable private IVoidConsumer mInternalAck;
+        private final Semaphore mSemaphore = new Semaphore(0);
+
+        @Override
+        public void onSatelliteDatagramReceived(long datagramId,
+                @NonNull SatelliteDatagram datagram, int pendingCount,
+                @NonNull IVoidConsumer internalAck) {
+            logd("onSatelliteDatagramReceived");
+            mInternalAck = internalAck;
+            try {
+                internalAck.accept();
+            } catch (RemoteException e) {
+                logd("onSatelliteDatagramReceived: accept e=" + e);
+                return;
+            }
+
+            try {
+                mSemaphore.release();
+            } catch (Exception e) {
+                logd("onSatelliteDatagramReceived: release e=" + e);
+            }
+        }
+
+        public boolean waitForOnSatelliteDatagramReceived() {
+            logd("waitForOnSatelliteDatagramReceived");
+            try {
+                if (!mSemaphore.tryAcquire(1000, TimeUnit.MILLISECONDS)) {
+                    logd("Timed out to receive onSatelliteDatagramReceived");
+                    return false;
+                }
+            } catch (InterruptedException e) {
+                logd("waitForOnSatelliteDatagramReceived: e=" + e);
+                return false;
+            }
+            return true;
+        }
+
+        public boolean sendInternalAck() {
+            if (mInternalAck == null) {
+                logd("sendInternalAck: mInternalAck is null");
+                return false;
+            }
+            try {
+                mInternalAck.accept();
+            } catch (RemoteException e) {
+                logd("sendInternalAck: accept e=" + e);
+                return false;
+            }
+            return true;
         }
     }
 }

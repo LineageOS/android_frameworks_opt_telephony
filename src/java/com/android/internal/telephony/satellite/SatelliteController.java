@@ -1735,6 +1735,7 @@ public class SatelliteController extends Handler {
         if (!mSatelliteModemInterface.isSatelliteServiceSupported()) {
             return SatelliteManager.SATELLITE_RESULT_NOT_SUPPORTED;
         }
+        logd("registerForSatelliteDatagram: callback=" + callback);
         return mDatagramController.registerForSatelliteDatagram(subId, callback);
     }
 
@@ -1755,6 +1756,7 @@ public class SatelliteController extends Handler {
         if (!mSatelliteModemInterface.isSatelliteServiceSupported()) {
             return;
         }
+        logd("unregisterForSatelliteDatagram: callback=" + callback);
         mDatagramController.unregisterForSatelliteDatagram(subId, callback);
     }
 
