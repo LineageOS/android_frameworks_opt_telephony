@@ -32,6 +32,7 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.ServiceState.RoamingType;
 import android.telephony.TelephonyManager;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
@@ -88,6 +89,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
                             CellularServiceState newServiceState = copyOf(state.mServiceState);
                             newServiceState.voiceRat =
                                     getVoiceRat(mPhone, getServiceStateForPhone(mPhone));
+                            newServiceState.isIwlanCrossSim = isCrossSimCallingRegistered(mPhone);
                             return new TimestampedServiceState(newServiceState, now);
                         });
         addServiceState(lastState, now);
@@ -131,6 +133,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
             newState.foldState = mDeviceStateHelper.getFoldState();
             newState.overrideVoiceService = mOverrideVoiceService.get();
             newState.isDataEnabled = mPhone.getDataSettingsManager().isDataEnabled();
+            newState.isIwlanCrossSim = isCrossSimCallingRegistered(mPhone);
             TimestampedServiceState prevState =
                     mLastState.getAndSet(new TimestampedServiceState(newState, now));
             addServiceStateAndSwitch(
@@ -301,6 +304,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
         copy.foldState = state.foldState;
         copy.overrideVoiceService = state.overrideVoiceService;
         copy.isDataEnabled = state.isDataEnabled;
+        copy.isIwlanCrossSim = state.isIwlanCrossSim;
         return copy;
     }
 
@@ -357,6 +361,14 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
         } else {
             return getRat(state, NetworkRegistrationInfo.DOMAIN_CS);
         }
+    }
+
+    private boolean isCrossSimCallingRegistered(Phone phone) {
+        if (phone.getImsPhone() != null) {
+            return phone.getImsPhone().getImsRegistrationTech()
+                    == ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM;
+        }
+        return false;
     }
 
     /** Returns RAT used by WWAN if WWAN is in service. */
