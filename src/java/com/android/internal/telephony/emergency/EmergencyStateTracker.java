@@ -61,6 +61,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.data.PhoneSwitcher;
+import com.android.internal.telephony.satellite.SatelliteController;
 import com.android.telephony.Rlog;
 
 import java.lang.annotation.Retention;
@@ -1186,8 +1187,10 @@ public class EmergencyStateTracker {
             boolean isTestEmergencyNumber) {
         final boolean isAirplaneModeOn = isAirplaneModeOn(mContext);
         boolean needToTurnOnRadio = !isRadioOn() || isAirplaneModeOn;
+        final SatelliteController satelliteController = SatelliteController.getInstance();
+        boolean needToTurnOffSatellite = satelliteController.isSatelliteEnabled();
 
-        if (needToTurnOnRadio) {
+        if (needToTurnOnRadio || needToTurnOffSatellite) {
             Rlog.i(TAG, "turnOnRadioAndSwitchDds: phoneId=" + phone.getPhoneId() + " for "
                     + emergencyTypeToString(emergencyType));
             if (mRadioOnHelper == null) {
@@ -1198,9 +1201,15 @@ public class EmergencyStateTracker {
                 @Override
                 public void onComplete(RadioOnStateListener listener, boolean isRadioReady) {
                     if (!isRadioReady) {
-                        // Could not turn radio on
-                        Rlog.e(TAG, "Failed to turn on radio.");
-                        completeEmergencyMode(emergencyType, DisconnectCause.POWER_OFF);
+                        if (satelliteController.isSatelliteEnabled()) {
+                            // Could not turn satellite off
+                            Rlog.e(TAG, "Failed to turn off satellite modem.");
+                            completeEmergencyMode(emergencyType, DisconnectCause.SATELLITE_ENABLED);
+                        } else {
+                            // Could not turn radio on
+                            Rlog.e(TAG, "Failed to turn on radio.");
+                            completeEmergencyMode(emergencyType, DisconnectCause.POWER_OFF);
+                        }
                     } else {
                         switchDdsAndSetEmergencyMode(phone, emergencyType);
                     }
@@ -1212,7 +1221,8 @@ public class EmergencyStateTracker {
                     // should be able to make emergency calls at any time after the radio has been
                     // powered on and isn't in the UNAVAILABLE state, even if it is reporting the
                     // OUT_OF_SERVICE state.
-                    return phone.getServiceStateTracker().isRadioOn();
+                    return phone.getServiceStateTracker().isRadioOn()
+                            && !satelliteController.isSatelliteEnabled();
                 }
 
                 @Override

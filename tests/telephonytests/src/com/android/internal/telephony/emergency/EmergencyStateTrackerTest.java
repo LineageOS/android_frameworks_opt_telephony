@@ -207,6 +207,83 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
     }
 
     /**
+     * Test that the EmergencyStateTracker turns off satellite modem, performs a DDS switch and
+     * sets emergency mode switch when we are not roaming and the carrier only supports SUPL over
+     * the data plane.
+     */
+    @Test
+    @SmallTest
+    public void startEmergencyCall_satelliteEnabled_turnOnRadioSwitchDdsAndSetEmergencyMode() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                true /* isSuplDdsSwitchRequiredForEmergencyCall */);
+        // Create test Phones and set radio on
+        Phone testPhone = setupTestPhoneForEmergencyCall(false /* isRoaming */,
+                true /* isRadioOn */);
+        when(mSST.isRadioOn()).thenReturn(true);
+        // Satellite enabled
+        when(mSatelliteController.isSatelliteEnabled()).thenReturn(true);
+
+        setConfigForDdsSwitch(testPhone, null,
+                CarrierConfigManager.Gps.SUPL_EMERGENCY_MODE_TYPE_DP_ONLY, "150");
+        // Spy is used to capture consumer in delayDialForDdsSwitch
+        EmergencyStateTracker spyEst = spy(emergencyStateTracker);
+        CompletableFuture<Integer> unused = spyEst.startEmergencyCall(testPhone, TEST_CALL_ID,
+                false);
+
+        // startEmergencyCall should trigger radio on
+        ArgumentCaptor<RadioOnStateListener.Callback> callback = ArgumentCaptor
+                .forClass(RadioOnStateListener.Callback.class);
+        verify(mRadioOnHelper).triggerRadioOnAndListen(callback.capture(), eq(true), eq(testPhone),
+                eq(false), eq(0));
+        // isOkToCall() should return true once satellite modem is off
+        assertFalse(callback.getValue()
+                .isOkToCall(testPhone, ServiceState.STATE_IN_SERVICE, false));
+        when(mSatelliteController.isSatelliteEnabled()).thenReturn(false);
+        assertTrue(callback.getValue()
+                .isOkToCall(testPhone, ServiceState.STATE_IN_SERVICE, false));
+        // Once radio on is complete, trigger delay dial
+        callback.getValue().onComplete(null, true);
+        ArgumentCaptor<Consumer<Boolean>> completeConsumer = ArgumentCaptor
+                .forClass(Consumer.class);
+        verify(spyEst).switchDdsDelayed(eq(testPhone), completeConsumer.capture());
+        verify(mPhoneSwitcher).overrideDefaultDataForEmergency(eq(testPhone.getPhoneId()),
+                eq(150) /* extensionTime */, any());
+        // After dds switch completes successfully, set emergency mode
+        completeConsumer.getValue().accept(true);
+        verify(testPhone).setEmergencyMode(eq(MODE_EMERGENCY_WWAN), any());
+    }
+
+    /**
+     * Test that if startEmergencyCall fails to turn off satellite modem, then it's future completes
+     * with {@link DisconnectCause#SATELLITE_ENABLED}.
+     */
+    @Test
+    @SmallTest
+    public void startEmergencyCall_satelliteOffFails_returnsDisconnectCauseSatelliteEnabled() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                true /* isSuplDdsSwitchRequiredForEmergencyCall */);
+        // Create test Phones and set radio on
+        Phone testPhone = setupTestPhoneForEmergencyCall(false /* isRoaming */,
+                true /* isRadioOn */);
+        // Satellite enabled
+        when(mSatelliteController.isSatelliteEnabled()).thenReturn(true);
+
+        CompletableFuture<Integer> future = emergencyStateTracker.startEmergencyCall(testPhone,
+                TEST_CALL_ID, false);
+
+        // startEmergencyCall should trigger satellite modem off
+        ArgumentCaptor<RadioOnStateListener.Callback> callback = ArgumentCaptor
+                .forClass(RadioOnStateListener.Callback.class);
+        verify(mRadioOnHelper).triggerRadioOnAndListen(callback.capture(), eq(true), eq(testPhone),
+                eq(false), eq(0));
+        // Verify future completes with DisconnectCause.POWER_OFF if radio not ready
+        CompletableFuture<Void> unused = future.thenAccept((result) -> {
+            assertEquals((Integer) result, (Integer) DisconnectCause.SATELLITE_ENABLED);
+        });
+        callback.getValue().onComplete(null, false /* isRadioReady */);
+    }
+
+    /**
      * Test that the EmergencyStateTracker does not perform a DDS switch when the carrier supports
      * control-plane fallback. Radio is set to on so RadioOnHelper not triggered.
      */
