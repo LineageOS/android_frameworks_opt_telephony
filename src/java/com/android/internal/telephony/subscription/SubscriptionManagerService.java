@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony.subscription;
 
+import static android.content.pm.PackageManager.FEATURE_TELEPHONY_SUBSCRIPTION;
+import static android.telephony.TelephonyManager.ENABLE_FEATURE_MAPPING;
+
 import android.Manifest;
 import android.annotation.CallbackExecutor;
 import android.annotation.ColorInt;
@@ -249,6 +252,10 @@ public class SubscriptionManagerService extends ISub.Stub {
     @Nullable
     private EuiccController mEuiccController;
 
+    /** Package manager instance. */
+    @NonNull
+    private final PackageManager mPackageManager;
+
     /**
      * The main handler of subscription manager service. This is running on phone process's main
      * thread.
@@ -455,6 +462,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         mSubscriptionManager = context.getSystemService(SubscriptionManager.class);
         mEuiccManager = context.getSystemService(EuiccManager.class);
         mAppOpsManager = context.getSystemService(AppOpsManager.class);
+        mPackageManager = context.getPackageManager();
 
         mUiccController = UiccController.getInstance();
         mHandler = new Handler(looper);
@@ -1744,6 +1752,9 @@ public class SubscriptionManagerService extends ISub.Stub {
             throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
                     + "carrier privilege");
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "getAllSubInfoList");
+
         return getSubscriptionInfoStreamAsUser(BINDER_WRAPPER.getCallingUserHandle())
                 // callers have READ_PHONE_STATE or READ_PRIVILEGED_PHONE_STATE can get a full
                 // list. Carrier apps can only get the subscriptions they have privileged.
@@ -1786,6 +1797,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                     + "carrier privilege");
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "getActiveSubscriptionInfo");
+
         SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
                 .getSubscriptionInfoInternal(subId);
         if (subInfo != null && subInfo.isActive()) {
@@ -1813,6 +1826,8 @@ public class SubscriptionManagerService extends ISub.Stub {
             @NonNull String callingPackage, @Nullable String callingFeatureId) {
         enforcePermissions("getActiveSubscriptionInfoForIccId",
                 Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+
+        enforceTelephonyFeatureWithException(callingPackage, "getActiveSubscriptionInfoForIccId");
 
         final long identity = Binder.clearCallingIdentity();
         try {
@@ -1857,6 +1872,9 @@ public class SubscriptionManagerService extends ISub.Stub {
                     + "carrier privilege");
 
         }
+
+        enforceTelephonyFeatureWithException(callingPackage,
+                "getActiveSubscriptionInfoForSimSlotIndex");
 
         if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
             throw new IllegalArgumentException("Invalid slot index " + slotIndex);
@@ -1907,6 +1925,9 @@ public class SubscriptionManagerService extends ISub.Stub {
                     + "permission. Returning empty list here.");
             return Collections.emptyList();
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "getActiveSubscriptionInfoList");
+
         if (isForAllProfiles && !hasAcrossAllUsersPermission()) {
             //TODO(b/308809058 to determine whether the permission enforcement is needed)
             loge("getActiveSubscriptionInfoList: "
@@ -1956,6 +1977,9 @@ public class SubscriptionManagerService extends ISub.Stub {
             loge("getActiveSubInfoCount: "
                     + callingPackage + " has no appropriate permission.");
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "getActiveSubInfoCount");
+
         return getActiveSubIdListAsUser(false, isForAllProfiles
                 ? UserHandle.ALL : BINDER_WRAPPER.getCallingUserHandle()).length;
     }
@@ -1995,6 +2019,9 @@ public class SubscriptionManagerService extends ISub.Stub {
             @Nullable String callingFeatureId) {
         enforcePermissions("getAvailableSubscriptionInfoList",
                 Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+
+        enforceTelephonyFeatureWithException(callingPackage, "getAvailableSubscriptionInfoList");
+
         return getAvailableSubscriptionsInternalStream()
                 .sorted(Comparator.comparing(SubscriptionInfoInternal::getSimSlotIndex)
                         .thenComparing(SubscriptionInfoInternal::getSubscriptionId))
@@ -2104,6 +2131,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                 + SubscriptionManager.subscriptionTypeToString(subscriptionType) + ", "
                 + getCallingPackage());
 
+        enforceTelephonyFeatureWithException(getCurrentPackageName(), "addSubInfo");
+
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
         try {
@@ -2159,6 +2188,9 @@ public class SubscriptionManagerService extends ISub.Stub {
         logl("removeSubInfo: uniqueId=" + SubscriptionInfo.getPrintableId(uniqueId) + ", "
                 + SubscriptionManager.subscriptionTypeToString(subscriptionType) + ", "
                 + getCallingPackage());
+
+        enforceTelephonyFeatureWithException(getCurrentPackageName(), "removeSubInfo");
+
         final long identity = Binder.clearCallingIdentity();
         try {
             SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
@@ -2382,6 +2414,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                 mContext, Binder.getCallingUid(), subId, true, "setOpportunistic",
                 Manifest.permission.MODIFY_PHONE_STATE);
 
+        enforceTelephonyFeatureWithException(callingPackage, "setOpportunistic");
+
         long token = Binder.clearCallingIdentity();
         try {
             mSubscriptionDatabaseManager.setOpportunistic(subId, opportunistic);
@@ -2434,6 +2468,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                     + " carrier privilege permission on all specified subscriptions");
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "createSubscriptionGroup");
+
         long identity = Binder.clearCallingIdentity();
 
         try {
@@ -2470,6 +2506,10 @@ public class SubscriptionManagerService extends ISub.Stub {
             @Nullable ISetOpportunisticDataCallback callback) {
         enforcePermissions("setPreferredDataSubscriptionId",
                 Manifest.permission.MODIFY_PHONE_STATE);
+
+        enforceTelephonyFeatureWithException(getCurrentPackageName(),
+                "setPreferredDataSubscriptionId");
+
         final long token = Binder.clearCallingIdentity();
 
         try {
@@ -2556,6 +2596,8 @@ public class SubscriptionManagerService extends ISub.Stub {
             return Collections.emptyList();
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "getOpportunisticSubscriptions");
+
         return mSubscriptionDatabaseManager.getAllSubscriptions().stream()
                 // callers have READ_PHONE_STATE or READ_PRIVILEGED_PHONE_STATE can get a full
                 // list. Carrier apps can only get the subscriptions they have privileged.
@@ -2607,6 +2649,8 @@ public class SubscriptionManagerService extends ISub.Stub {
         if (subIdList.length == 0) {
             throw new IllegalArgumentException("subIdList is empty.");
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "removeSubscriptionsFromGroup");
 
         long identity = Binder.clearCallingIdentity();
 
@@ -2690,6 +2734,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                     + " permissions on subscriptions and the group.");
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "addSubscriptionsIntoGroup");
+
         long identity = Binder.clearCallingIdentity();
 
         try {
@@ -2758,6 +2804,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                 throw e;
             }
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "getSubscriptionsInGroup");
 
         return mSubscriptionDatabaseManager.getAllSubscriptions().stream()
                 .map(SubscriptionInfoInternal::toSubscriptionInfo)
@@ -2869,6 +2917,9 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     @Override
     public int getDefaultSubIdAsUser(@UserIdInt int userId) {
+        enforceTelephonyFeatureWithException(getCurrentPackageName(),
+                "getDefaultVoiceSubIdAsUser");
+
         return getDefaultAsUser(userId, mDefaultSubId.get());
     }
 
@@ -2944,6 +2995,8 @@ public class SubscriptionManagerService extends ISub.Stub {
             throw new RuntimeException("setDefaultDataSubId called with DEFAULT_SUBSCRIPTION_ID");
         }
 
+        enforceTelephonyFeatureWithException(getCurrentPackageName(), "setDefaultDataSubId");
+
         final long token = Binder.clearCallingIdentity();
         try {
             if (mDefaultDataSubId.set(subId)) {
@@ -3012,6 +3065,8 @@ public class SubscriptionManagerService extends ISub.Stub {
             throw new RuntimeException("setDefaultVoiceSubId called with DEFAULT_SUB_ID");
         }
 
+        enforceTelephonyFeatureWithException(getCurrentPackageName(), "setDefaultVoiceSubId");
+
         final long token = Binder.clearCallingIdentity();
         try {
             if (mDefaultVoiceSubId.set(subId)) {
@@ -3072,6 +3127,8 @@ public class SubscriptionManagerService extends ISub.Stub {
             throw new RuntimeException("setDefaultSmsSubId called with DEFAULT_SUB_ID");
         }
 
+        enforceTelephonyFeatureWithException(getCurrentPackageName(), "setDefaultSmsSubId");
+
         final long token = Binder.clearCallingIdentity();
         try {
             if (mDefaultSmsSubId.set(subId)) {
@@ -3110,6 +3167,9 @@ public class SubscriptionManagerService extends ISub.Stub {
     @RequiresPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE)
     public int[] getActiveSubIdList(boolean visibleOnly) {
         enforcePermissions("getActiveSubIdList", Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+
+        enforceTelephonyFeatureWithException(getCurrentPackageName(), "getActiveSubIdList");
+
         // UserHandle.ALL because this API is exposed as system API.
         return getActiveSubIdListAsUser(visibleOnly, UserHandle.ALL);
     }
@@ -3221,6 +3281,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                     + "accessed through getSubscriptionProperty.");
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "getSubscriptionProperty");
+
         final long token = Binder.clearCallingIdentity();
         try {
             Object value = mSubscriptionDatabaseManager.getSubscriptionProperty(subId, columnName);
@@ -3265,6 +3327,8 @@ public class SubscriptionManagerService extends ISub.Stub {
             throw new IllegalArgumentException("Invalid subscription id " + subId);
         }
 
+        enforceTelephonyFeatureWithException(getCurrentPackageName(), "isSubscriptionEnabled");
+
         final long identity = Binder.clearCallingIdentity();
         try {
             SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
@@ -3293,6 +3357,8 @@ public class SubscriptionManagerService extends ISub.Stub {
         if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
             throw new IllegalArgumentException("Invalid slot index " + slotIndex);
         }
+
+        enforceTelephonyFeatureWithException(getCurrentPackageName(), "getEnabledSubscriptionId");
 
         final long identity = Binder.clearCallingIdentity();
         try {
@@ -3330,6 +3396,9 @@ public class SubscriptionManagerService extends ISub.Stub {
             throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
                     + "carrier privilege");
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "isActiveSubId");
+
         final long identity = Binder.clearCallingIdentity();
         try {
             SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
@@ -3387,6 +3456,9 @@ public class SubscriptionManagerService extends ISub.Stub {
         enforcePermissions("canDisablePhysicalSubscription",
                 Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
 
+        enforceTelephonyFeatureWithException(getCurrentPackageName(),
+                "canDisablePhysicalSubscription");
+
         final long identity = Binder.clearCallingIdentity();
         try {
             Phone phone = PhoneFactory.getDefaultPhone();
@@ -3419,6 +3491,9 @@ public class SubscriptionManagerService extends ISub.Stub {
                 Manifest.permission.MODIFY_PHONE_STATE);
         logl("setUiccApplicationsEnabled: subId=" + subId + ", enabled=" + enabled
                 + ", calling package=" + getCallingPackage());
+
+        enforceTelephonyFeatureWithException(getCurrentPackageName(),
+                "setUiccApplicationsEnabled");
 
         final long identity = Binder.clearCallingIdentity();
         try {
@@ -3462,6 +3537,9 @@ public class SubscriptionManagerService extends ISub.Stub {
         enforcePermissions("setDeviceToDeviceStatusSharing",
                 Manifest.permission.MODIFY_PHONE_STATE);
 
+        enforceTelephonyFeatureWithException(getCurrentPackageName(),
+                "setDeviceToDeviceStatusSharing");
+
         final long identity = Binder.clearCallingIdentity();
         try {
             if (sharing < SubscriptionManager.D2D_SHARING_DISABLED
@@ -3493,6 +3571,9 @@ public class SubscriptionManagerService extends ISub.Stub {
     public int setDeviceToDeviceStatusSharingContacts(@NonNull String contacts, int subId) {
         enforcePermissions("setDeviceToDeviceStatusSharingContacts",
                 Manifest.permission.MODIFY_PHONE_STATE);
+
+        enforceTelephonyFeatureWithException(getCurrentPackageName(),
+                "setDeviceToDeviceStatusSharingContacts");
 
         final long identity = Binder.clearCallingIdentity();
         try {
@@ -3561,6 +3642,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                 Manifest.permission.READ_PHONE_NUMBERS,
                 Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
 
+        enforceTelephonyFeatureWithException(callingPackage, "getPhoneNumber");
+
         final long identity = Binder.clearCallingIdentity();
 
         SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
@@ -3621,6 +3704,9 @@ public class SubscriptionManagerService extends ISub.Stub {
                 Manifest.permission.READ_PHONE_NUMBERS,
                 Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
 
+        enforceTelephonyFeatureWithException(callingPackage,
+                "getPhoneNumberFromFirstAvailableSource");
+
         String numberFromCarrier = getPhoneNumber(subId,
                 SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER, callingPackage,
                 callingFeatureId);
@@ -3667,6 +3753,8 @@ public class SubscriptionManagerService extends ISub.Stub {
             throw new IllegalArgumentException("setPhoneNumber doesn't accept source "
                     + SubscriptionManager.phoneNumberSourceToString(source));
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "setPhoneNumber");
 
         Objects.requireNonNull(number, "number");
 
@@ -3943,6 +4031,9 @@ public class SubscriptionManagerService extends ISub.Stub {
         enforcePermissions("restoreAllSimSpecificSettingsFromBackup",
                 Manifest.permission.MODIFY_PHONE_STATE);
 
+        enforceTelephonyFeatureWithException(getCurrentPackageName(),
+                "restoreAllSimSpecificSettingsFromBackup");
+
         long token = Binder.clearCallingIdentity();
         try {
             Bundle bundle = new Bundle();
@@ -4162,6 +4253,40 @@ public class SubscriptionManagerService extends ISub.Stub {
                             && Objects.equals(oppSubInfo.getGroupUuid(), subInfo.getGroupUuid()));
             mSubscriptionDatabaseManager.setGroupDisabled(
                     oppSubInfo.getSubscriptionId(), groupDisabled);
+        }
+    }
+
+    /**
+     * Get the current calling package name.
+     * @return the current calling package name
+     */
+    @Nullable
+    private String getCurrentPackageName() {
+        if (mPackageManager == null) return null;
+        String[] callingUids = mPackageManager.getPackagesForUid(Binder.getCallingUid());
+        return (callingUids == null) ? null : callingUids[0];
+    }
+
+    /**
+     * Make sure the device has required telephony feature
+     *
+     * @throws UnsupportedOperationException if the device does not have required telephony feature
+     */
+    private void enforceTelephonyFeatureWithException(@Nullable String callingPackage,
+            @NonNull String methodName) {
+        if (callingPackage == null || mPackageManager == null) {
+            return;
+        }
+
+        if (!mFeatureFlags.enforceTelephonyFeatureMappingForPublicApis()
+                || !CompatChanges.isChangeEnabled(ENABLE_FEATURE_MAPPING, callingPackage,
+                Binder.getCallingUserHandle())) {
+            return;
+        }
+
+        if (!mPackageManager.hasSystemFeature(FEATURE_TELEPHONY_SUBSCRIPTION)) {
+            throw new UnsupportedOperationException(
+                    methodName + " is unsupported without " + FEATURE_TELEPHONY_SUBSCRIPTION);
         }
     }
 

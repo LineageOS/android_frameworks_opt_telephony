@@ -42,6 +42,7 @@ android_test {
         "testables",
         "platform-compat-test-rules",
         "flag-junit",
+        "telephony_flags_core_java_lib",
     ],
 
     jarjar_rules: ":jarjar-rules-telephony-tests",
