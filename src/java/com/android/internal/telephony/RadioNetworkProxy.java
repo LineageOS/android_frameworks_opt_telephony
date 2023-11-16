@@ -949,4 +949,34 @@ public class RadioNetworkProxy extends RadioServiceProxy {
         }
         // Only supported on AIDL.
     }
+
+    /**
+     * Checks security algorithm update reports are enabled.
+     *
+     * @param serial Serial number of the request.
+     * @throws RemoteException
+     */
+    public void isSecurityAlgorithmsUpdatedEnabled(int serial) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.isSecurityAlgorithmsUpdatedEnabled(serial);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Enables or disables security algorithm update reports.
+     *
+     * @param serial Serial number of request.
+     * @param enable Indicates whether to enable or disable security algorithm update reports.
+     * @throws RemoteException
+     */
+    public void setSecurityAlgorithmsUpdatedEnabled(int serial,
+            boolean enable) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.setSecurityAlgorithmsUpdatedEnabled(serial, enable);
+        }
+        // Only supported on AIDL.
+    }
 }
