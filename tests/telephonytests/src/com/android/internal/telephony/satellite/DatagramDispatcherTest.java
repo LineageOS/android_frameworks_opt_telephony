@@ -428,7 +428,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
         processAllMessages();
         // As modem is busy receiving datagrams, sending datagram did not proceed further.
         mInOrder.verify(mMockDatagramController).needsWaitingForSatelliteConnected();
-        mInOrder.verify(mMockDatagramController).isPollingInIdleState();
+        mInOrder.verify(mMockDatagramController, times(2)).isPollingInIdleState();
         verifyNoMoreInteractions(mMockDatagramController);
     }
 

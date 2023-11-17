@@ -56,3 +56,10 @@ flag {
   description: "Load default data subid on create in PhoneGlobals."
   bug: "310591561"
 }
+
+flag {
+  name: "enable_telephony_analytics"
+  namespace: "telephony"
+  description: "Enable Telephony Analytics information of Service State , Sms and Call scenarios"
+  bug: "309896524"
+}
