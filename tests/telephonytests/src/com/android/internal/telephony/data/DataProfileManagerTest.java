@@ -54,7 +54,6 @@ import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.data.DataProfileManager.DataProfileManagerCallback;
-import com.android.internal.telephony.flags.FeatureFlags;
 
 import org.junit.After;
 import org.junit.Before;
@@ -99,8 +98,6 @@ public class DataProfileManagerTest extends TelephonyTest {
     private DataProfileManagerCallback mDataProfileManagerCallback;
 
     private DataProfileManager mDataProfileManagerUT;
-
-    private FeatureFlags mFeatureFlags;
 
     private final ApnSettingContentProvider mApnSettingContentProvider =
             new ApnSettingContentProvider();
@@ -835,7 +832,6 @@ public class DataProfileManagerTest extends TelephonyTest {
         logd("DataProfileManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mDataProfileManagerCallback = Mockito.mock(DataProfileManagerCallback.class);
-        mFeatureFlags = Mockito.mock(FeatureFlags.class);
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mApnSettingContentProvider);
 
@@ -1035,6 +1031,7 @@ public class DataProfileManagerTest extends TelephonyTest {
 
     @Test
     public void testSetPreferredDataProfile() {
+        doReturn(true).when(mFeatureFlags).refinePreferredDataProfileSelection();
         TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
