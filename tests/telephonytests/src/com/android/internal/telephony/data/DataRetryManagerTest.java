@@ -786,6 +786,7 @@ public class DataRetryManagerTest extends TelephonyTest {
 
     @Test
     public void testDataRetryLongTimer() {
+        doReturn(true).when(mFeatureFlags).useAlarmCallback();
         // Rule requires a long timer
         DataSetupRetryRule retryRule = new DataSetupRetryRule(
                 "capabilities=internet, retry_interval=120000, maximum_retries=2");
