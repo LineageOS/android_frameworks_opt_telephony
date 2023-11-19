@@ -786,7 +786,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                     perSimStatus.minimumVoltageClass, // simVoltageClass
                     perSimStatus.userModifiedApnTypes, // userModifiedApnTypeBitmask
                     perSimStatus.unmeteredNetworks, // unmeteredNetworks
-                    perSimStatus.vonrEnabled); // vonrEnabled
+                    perSimStatus.vonrEnabled, // vonrEnabled
+                    perSimStatus.crossSimCallingEnabled); // crossSimCallingEnabled
             data.add(statsEvent);
             result = StatsManager.PULL_SUCCESS;
         }
@@ -1060,7 +1061,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 dataCallSession.bandAtEnd,
                 dataCallSession.handoverFailureCauses,
                 dataCallSession.handoverFailureRat,
-                dataCallSession.isNonDds);
+                dataCallSession.isNonDds,
+                dataCallSession.isIwlanCrossSim);
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationStats stats) {
@@ -1079,7 +1081,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 roundAndConvertMillisToSeconds(stats.utCapableMillis),
                 roundAndConvertMillisToSeconds(stats.utAvailableMillis),
                 roundAndConvertMillisToSeconds(stats.registeringMillis),
-                roundAndConvertMillisToSeconds(stats.unregisteredMillis));
+                roundAndConvertMillisToSeconds(stats.unregisteredMillis),
+                stats.isIwlanCrossSim);
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationTermination termination) {
@@ -1092,7 +1095,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 termination.reasonCode,
                 termination.extraCode,
                 termination.extraMessage,
-                termination.count);
+                termination.count,
+                termination.isIwlanCrossSim);
     }
 
     private static StatsEvent buildStatsEvent(NetworkRequestsV2 networkRequests) {
