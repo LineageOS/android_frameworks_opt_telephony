@@ -198,7 +198,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
             }
             return subscriptionInfoList;
         }).when(mSubscriptionManagerService).getActiveSubscriptionInfoList(
-                anyString(), nullable(String.class));
+                anyString(), nullable(String.class), anyBoolean());
 
         doAnswer(invocation -> {
             final boolean visibleOnly = (boolean) invocation.getArguments()[0];

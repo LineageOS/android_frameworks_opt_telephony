@@ -353,7 +353,7 @@ public class SignalStrengthController extends Handler {
 
         List<SubscriptionInfo> subInfoList = SubscriptionManagerService.getInstance()
                 .getActiveSubscriptionInfoList(mPhone.getContext().getOpPackageName(),
-                        mPhone.getContext().getAttributionTag());
+                        mPhone.getContext().getAttributionTag(), true/*isForAllProfile*/);
 
         if (!ArrayUtils.isEmpty(subInfoList)) {
             for (SubscriptionInfo info : subInfoList) {

@@ -766,13 +766,13 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         // Should get an empty list without READ_PHONE_STATE.
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
-                CALLING_PACKAGE, CALLING_FEATURE)).isEmpty();
+                CALLING_PACKAGE, CALLING_FEATURE, true)).isEmpty();
 
         // Grant READ_PHONE_STATE permission for insertion.
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
 
         List<SubscriptionInfo> subInfos = mSubscriptionManagerServiceUT
-                .getActiveSubscriptionInfoList(CALLING_PACKAGE, CALLING_FEATURE);
+                .getActiveSubscriptionInfoList(CALLING_PACKAGE, CALLING_FEATURE, true);
         assertThat(subInfos).hasSize(1);
         assertThat(subInfos.get(0).getIccId()).isEmpty();
         assertThat(subInfos.get(0).getCardString()).isEmpty();
@@ -783,7 +783,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         setCarrierPrivilegesForSubId(true, 1);
 
         subInfos = mSubscriptionManagerServiceUT
-                .getActiveSubscriptionInfoList(CALLING_PACKAGE, CALLING_FEATURE);
+                .getActiveSubscriptionInfoList(CALLING_PACKAGE, CALLING_FEATURE, true);
         assertThat(subInfos).hasSize(1);
         assertThat(subInfos.get(0)).isEqualTo(FAKE_SUBSCRIPTION_INFO1.toSubscriptionInfo());
     }
@@ -963,11 +963,11 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         // Should fail without READ_PHONE_STATE
         assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
-                .getActiveSubInfoCount(CALLING_PACKAGE, CALLING_FEATURE));
+                .getActiveSubInfoCount(CALLING_PACKAGE, CALLING_FEATURE, true));
 
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
         assertThat(mSubscriptionManagerServiceUT.getActiveSubInfoCount(
-                CALLING_PACKAGE, CALLING_FEATURE)).isEqualTo(2);
+                CALLING_PACKAGE, CALLING_FEATURE, true)).isEqualTo(2);
     }
 
     @Test
@@ -1252,7 +1252,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 .isEqualTo(new int[]{subId1, subId2});
         // Test get getActiveSubInfoCount
         assertThat(mSubscriptionManagerServiceUT.getActiveSubInfoCount(
-                CALLING_PACKAGE, CALLING_FEATURE)).isEqualTo(1);
+                CALLING_PACKAGE, CALLING_FEATURE, false)).isEqualTo(1);
         // Test getActiveSubscriptionInfo
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfo(
                 subId1, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId()).isEqualTo(subId1);
@@ -1274,7 +1274,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 .isEqualTo(subId2);
         // Test getActiveSubscriptionInfoList
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
-                CALLING_PACKAGE, CALLING_FEATURE).stream().map(SubscriptionInfo::getSubscriptionId)
+                CALLING_PACKAGE, CALLING_FEATURE, false)
+                .stream().map(SubscriptionInfo::getSubscriptionId)
                 .toList()).isEqualTo(List.of(subId1));
         // Test getAllSubInfoList
         assertThat(mSubscriptionManagerServiceUT.getAllSubInfoList(CALLING_PACKAGE,
@@ -1368,7 +1369,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 .isEqualTo(new int[]{subId1, subId2});
         // Test get getActiveSubInfoCount
         assertThat(mSubscriptionManagerServiceUT.getActiveSubInfoCount(
-                CALLING_PACKAGE, CALLING_FEATURE)).isEqualTo(1);
+                CALLING_PACKAGE, CALLING_FEATURE, false)).isEqualTo(1);
         // Test getActiveSubscriptionInfo
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfo(
                 subId1, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId()).isEqualTo(subId1);
@@ -1390,7 +1391,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 .isEqualTo(subId2);
         // Test getActiveSubscriptionInfoList
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
-                        CALLING_PACKAGE, CALLING_FEATURE).stream()
+                        CALLING_PACKAGE, CALLING_FEATURE, false).stream()
                 .map(SubscriptionInfo::getSubscriptionId)
                 .toList()).isEqualTo(List.of(subId1));
         // Test getAllSubInfoList
@@ -2151,7 +2152,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(mSubscriptionManagerServiceUT.getAllSubInfoList(
                 CALLING_PACKAGE, CALLING_FEATURE).isEmpty()).isTrue();
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
-                CALLING_PACKAGE, CALLING_FEATURE)).isEmpty();
+                CALLING_PACKAGE, CALLING_FEATURE, true)).isEmpty();
     }
 
     @Test
@@ -2357,7 +2358,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         verify(mEuiccController).blockingGetEuiccProfileInfoList(eq(1));
 
         List<SubscriptionInfo> subInfoList = mSubscriptionManagerServiceUT
-                .getActiveSubscriptionInfoList(CALLING_PACKAGE, CALLING_FEATURE);
+                .getActiveSubscriptionInfoList(CALLING_PACKAGE, CALLING_FEATURE, true);
         assertThat(subInfoList).hasSize(1);
         assertThat(subInfoList.get(0).getSimSlotIndex()).isEqualTo(1);
         assertThat(subInfoList.get(0).getSubscriptionId()).isEqualTo(1);
@@ -2475,7 +2476,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         processAllMessages();
 
         List<SubscriptionInfo> subInfoList = mSubscriptionManagerServiceUT
-                .getActiveSubscriptionInfoList(CALLING_PACKAGE, CALLING_FEATURE);
+                .getActiveSubscriptionInfoList(CALLING_PACKAGE, CALLING_FEATURE, true);
 
         assertThat(subInfoList).hasSize(1);
         assertThat(subInfoList.get(0).isActive()).isTrue();
@@ -2595,16 +2596,17 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 CALLING_PACKAGE, CALLING_FEATURE)).isEmpty();
         assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).isEmpty();
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
-                CALLING_PACKAGE, CALLING_FEATURE)).isEmpty();
+                CALLING_PACKAGE, CALLING_FEATURE, true)).isEmpty();
 
         setIdentifierAccess(true);
         mSubscriptionManagerServiceUT.addSubInfo(FAKE_MAC_ADDRESS2, FAKE_CARRIER_NAME2,
                 0, SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM);
         assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).isNotEmpty();
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
-                CALLING_PACKAGE, CALLING_FEATURE)).isNotEmpty();
+                CALLING_PACKAGE, CALLING_FEATURE, true)).isNotEmpty();
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
-                CALLING_PACKAGE, CALLING_FEATURE).get(0).getIccId()).isEqualTo(FAKE_MAC_ADDRESS2);
+                CALLING_PACKAGE, CALLING_FEATURE, true).get(0).getIccId())
+                .isEqualTo(FAKE_MAC_ADDRESS2);
     }
 
     @Test
