@@ -406,6 +406,10 @@ public class DataNetwork extends StateMachine {
     /** Data network tear down due to preferred data switched to another phone. */
     public static final int TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED = 30;
 
+    //********************************************************************************************//
+    // WHENEVER ADD A NEW TEAR DOWN REASON, PLEASE UPDATE DataDeactivateReasonEnum in enums.proto //
+    //********************************************************************************************//
+
     @IntDef(prefix = {"BANDWIDTH_SOURCE_"},
             value = {
                     BANDWIDTH_SOURCE_UNKNOWN,
