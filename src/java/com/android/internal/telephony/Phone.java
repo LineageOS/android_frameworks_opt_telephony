@@ -254,7 +254,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_GET_N1_MODE_ENABLED_DONE = 69;
     protected static final int EVENT_SET_N1_MODE_ENABLED_DONE = 70;
     protected static final int EVENT_IMEI_MAPPING_CHANGED = 71;
-    protected static final int EVENT_LAST = EVENT_IMEI_MAPPING_CHANGED;
+    protected static final int EVENT_CELL_IDENTIFIER_DISCLOSURE = 72;
+    protected static final int EVENT_LAST = EVENT_CELL_IDENTIFIER_DISCLOSURE;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
