@@ -57,6 +57,30 @@
       },
       "revId": "74f8d7d0ff18ed593ad55188274d407e46eb09c4",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8ebae355_11f4da27",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 20178
+      },
+      "writtenOn": "2023-11-22T15:38:46Z",
+      "side": 1,
+      "message": "What if we do a double checked locking instead? This could be a better approach.",
+      "parentUuid": "2e50b24b_2816412d",
+      "range": {
+        "startLine": 30,
+        "startChar": 12,
+        "endLine": 30,
+        "endChar": 24
+      },
+      "revId": "74f8d7d0ff18ed593ad55188274d407e46eb09c4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
