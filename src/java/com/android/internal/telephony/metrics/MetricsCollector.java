@@ -935,7 +935,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 state.isInternetPdnUp,
                 state.foldState,
                 state.overrideVoiceService,
-                state.isDataEnabled);
+                state.isDataEnabled,
+                state.isIwlanCrossSim);
     }
 
     private static StatsEvent buildStatsEvent(VoiceCallRatUsage usage) {
@@ -989,7 +990,10 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 session.lastKnownRat,
                 session.foldState,
                 session.ratSwitchCountAfterConnected,
-                session.handoverInProgress);
+                session.handoverInProgress,
+                session.isIwlanCrossSimAtStart,
+                session.isIwlanCrossSimAtEnd,
+                session.isIwlanCrossSimAtConnected);
     }
 
     private static StatsEvent buildStatsEvent(IncomingSms sms) {

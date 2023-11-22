@@ -1713,7 +1713,8 @@ public class PersistAtomsStorage {
                     && state.isInternetPdnUp == key.isInternetPdnUp
                     && state.foldState == key.foldState
                     && state.overrideVoiceService == key.overrideVoiceService
-                    && state.isDataEnabled == key.isDataEnabled) {
+                    && state.isDataEnabled == key.isDataEnabled
+                    && state.isIwlanCrossSim == key.isIwlanCrossSim) {
                 return state;
             }
         }

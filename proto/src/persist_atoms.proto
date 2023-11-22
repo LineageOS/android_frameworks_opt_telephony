@@ -277,6 +277,9 @@ message VoiceCallSession {
     optional int32 fold_state = 34;
     optional int64 rat_switch_count_after_connected = 35;
     optional bool handover_in_progress = 36;
+    optional bool is_iwlan_cross_sim_at_start = 37;
+    optional bool is_iwlan_cross_sim_at_end = 38;
+    optional bool is_iwlan_cross_sim_at_connected = 39;
 
     // Internal use only
     optional int64 setup_begin_millis = 10001;
@@ -383,6 +386,7 @@ message CellularServiceState {
     optional int32 fold_state = 12;
     optional bool override_voice_service = 13;
     optional bool isDataEnabled = 14;
+    optional bool is_iwlan_cross_sim = 15;
 
     // Internal use only
     optional int64 last_used_millis = 10001;
