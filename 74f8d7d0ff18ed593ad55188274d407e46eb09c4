@@ -16,6 +16,29 @@
       "message": "stack this on top of https://review.lineageos.org/c/LineageOS/android_frameworks_opt_telephony/+/374711 pls",
       "revId": "74f8d7d0ff18ed593ad55188274d407e46eb09c4",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2e50b24b_2816412d",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 25732
+      },
+      "writtenOn": "2023-11-22T14:58:06Z",
+      "side": 1,
+      "message": "I think the null check should be inside of the synchronized block, just mark the method as synchronized? https://docs.oracle.com/javase/tutorial/essential/concurrency/syncmeth.html",
+      "range": {
+        "startLine": 30,
+        "startChar": 12,
+        "endLine": 30,
+        "endChar": 24
+      },
+      "revId": "74f8d7d0ff18ed593ad55188274d407e46eb09c4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
