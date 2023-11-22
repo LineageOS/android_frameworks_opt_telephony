@@ -21,6 +21,7 @@ import static org.junit.Assert.assertTrue;
 
 import android.os.Parcel;
 import android.os.PersistableBundle;
+import android.platform.test.flag.junit.SetFlagsRule;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellInfo;
 import android.telephony.CellSignalStrength;
@@ -30,10 +31,16 @@ import android.telephony.CellSignalStrengthLte;
 import android.telephony.CellSignalStrengthNr;
 import android.telephony.CellSignalStrengthTdscdma;
 import android.telephony.CellSignalStrengthWcdma;
+import android.telephony.NetworkRegistrationInfo;
+import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.internal.telephony.flags.Flags;
+
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -46,6 +53,7 @@ import java.util.List;
 @SmallTest
 @RunWith(JUnit4.class)
 public class SignalStrengthTest {
+    @Rule public final SetFlagsRule mSetFlagsRule = new SetFlagsRule();
     private static final int[] DEFAULT_LTE_RSRP_THRESHOLDS = {
             -128,  // SIGNAL_STRENGTH_POOR
             -118,  // SIGNAL_STRENGTH_MODERATE
@@ -69,6 +77,42 @@ public class SignalStrengthTest {
             -115,  // SIGNAL_STRENGTH_MODERATE
             -105,  // SIGNAL_STRENGTH_GOOD
             -95 }; // SIGNAL_STRENGTH_GREAT
+
+    private static final int[] DEFAULT_NTN_LTE_RSRP_THRESHOLDS = {
+            -118,  // SIGNAL_STRENGTH_POOR
+            -108,  // SIGNAL_STRENGTH_MODERATE
+            -98,  // SIGNAL_STRENGTH_GOOD
+            -88 }; // SIGNAL_STRENGTH_GREAT
+
+    private static final int[] DEFAULT_NTN_LTE_RSRQ_THRESHOLDS = {
+            -17,   // SIGNAL_STRENGTH_POOR
+            -14,   // SIGNAL_STRENGTH_MODERATE
+            -12,   // SIGNAL_STRENGTH_GOOD
+            -10 }; // SIGNAL_STRENGTH_GREAT
+
+    private static final int[] DEFAULT_NTN_LTE_RSSNR_THRESHOLDS = {
+            1,   // SIGNAL_STRENGTH_POOR
+            5,    // SIGNAL_STRENGTH_MODERATE
+            13,    // SIGNAL_STRENGTH_GOOD
+            17 }; // SIGNAL_STRENGTH_GREAT
+
+    // RSRP, RSSNR thresholds boundaries
+    private static final int MIN_RSRP = -140;
+    private static final int MIN_RSRQ = -34;
+    private static final int MAX_RSRQ = 3;
+    private static final int MIN_RSSNR = -20;
+    private static final int MAX_RSSNR = 30;
+
+    // Default NTN & TN LTE thresholds's index
+    private static final int INDEX_SIGNAL_STRENGTH_POOR = 0;
+    private static final int INDEX_SIGNAL_STRENGTH_MODERATE = 1;
+    private static final int INDEX_SIGNAL_STRENGTH_GOOD = 2;
+    private static final int INDEX_SIGNAL_STRENGTH_GREAT = 3;
+
+    @Before
+    public void setUp() {
+        mSetFlagsRule.enableFlags(Flags.FLAG_CARRIER_ENABLED_SATELLITE_FLAG);
+    }
 
     @Test
     public void testDefaults() throws Exception {
@@ -229,6 +273,58 @@ public class SignalStrengthTest {
         return signalStrength;
     }
 
+    private static SignalStrength createSignalStrengthLteReport(int lteRsrp, int lteRsrq,
+            int lteRssnr, boolean isNTN) {
+        CellSignalStrengthLte lte = new CellSignalStrengthLte(
+                -89,               // rssi
+                lteRsrp,               // rsrp
+                lteRsrq,               // rsrq
+                lteRssnr,              // rssnr
+                CellInfo.UNAVAILABLE,  // cqiTableIndex
+                CellInfo.UNAVAILABLE,  // cqi
+                CellInfo.UNAVAILABLE); // timingAdvance
+
+        SignalStrength signalStrength = new SignalStrength(
+                new CellSignalStrengthCdma(),
+                new CellSignalStrengthGsm(),
+                new CellSignalStrengthWcdma(),
+                new CellSignalStrengthTdscdma(),
+                lte,
+                new CellSignalStrengthNr());
+
+        PersistableBundle bundle = new PersistableBundle();
+        bundle.putInt(
+                CarrierConfigManager.KEY_PARAMETERS_USED_FOR_LTE_SIGNAL_BAR_INT,
+                CellSignalStrengthLte.USE_RSRP | CellSignalStrengthLte.USE_RSRQ
+                        | CellSignalStrengthLte.USE_RSSNR);
+        bundle.putIntArray(CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY,
+                DEFAULT_LTE_RSRP_THRESHOLDS);
+        bundle.putIntArray(CarrierConfigManager.KEY_LTE_RSRQ_THRESHOLDS_INT_ARRAY,
+                DEFAULT_LTE_RSRQ_THRESHOLDS);
+        bundle.putIntArray(CarrierConfigManager.KEY_LTE_RSSNR_THRESHOLDS_INT_ARRAY,
+                DEFAULT_LTE_RSSNR_THRESHOLDS);
+        bundle.putInt(
+                CarrierConfigManager.KEY_PARAMETERS_USED_FOR_NTN_LTE_SIGNAL_BAR_INT,
+                CellSignalStrengthLte.USE_RSRP | CellSignalStrengthLte.USE_RSRQ
+                        | CellSignalStrengthLte.USE_RSSNR);
+        bundle.putIntArray(
+                CarrierConfigManager.KEY_NTN_LTE_RSRP_THRESHOLDS_INT_ARRAY,
+                DEFAULT_NTN_LTE_RSRP_THRESHOLDS);
+        bundle.putIntArray(
+                CarrierConfigManager.KEY_NTN_LTE_RSRQ_THRESHOLDS_INT_ARRAY,
+                DEFAULT_NTN_LTE_RSRQ_THRESHOLDS);
+        bundle.putIntArray(
+                CarrierConfigManager.KEY_NTN_LTE_RSSNR_THRESHOLDS_INT_ARRAY,
+                DEFAULT_NTN_LTE_RSSNR_THRESHOLDS);
+        ServiceState serviceState = new ServiceState();
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setIsNonTerrestrialNetwork(isNTN)
+                .build();
+        serviceState.addNetworkRegistrationInfo(nri);
+        signalStrength.updateLevel(bundle, serviceState);
+        return signalStrength;
+    }
+
     @Test
     public void testValidateInput() throws Exception {
 
@@ -265,6 +361,44 @@ public class SignalStrengthTest {
         // Input value of RSSNR: -21[dB]
         ss = createSignalStrengthLteReportRssnr(60, -21);
         assertEquals(SignalStrength.INVALID, ss.getLteRssnr());
+
+        // Test for NTN LTE RSRQ Thresholds based on Boundaries [-34 dB, 3 dB]
+        boolean isNTN = true;
+        int rsrp = DEFAULT_NTN_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        int rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        int rsrq = MAX_RSRQ + 1;
+        ss = createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN);
+        assertEquals(SignalStrength.INVALID, ss.getLteRsrq());
+
+        rsrq = MAX_RSRQ;
+        ss = createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN);
+        assertEquals(3, ss.getLteRsrq());
+
+        rsrq = MIN_RSRQ - 1;
+        ss = createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN);
+        assertEquals(SignalStrength.INVALID, ss.getLteRsrq());
+
+        rsrq = MIN_RSRQ;
+        ss = createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN);
+        assertEquals(-34, ss.getLteRsrq());
+
+        // Test for NTN LTE RSSNR Thresholds based on Boundaries [-20 dBm, 30 dBm]
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT]; // or 3 ?
+        rssnr = MAX_RSSNR + 1;
+        ss = createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN);
+        assertEquals(SignalStrength.INVALID, ss.getLteRssnr());
+
+        rssnr = MAX_RSSNR;
+        ss = createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN);
+        assertEquals(30, ss.getLteRssnr());
+
+        rssnr = MIN_RSSNR - 1;
+        ss = createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN);
+        assertEquals(SignalStrength.INVALID, ss.getLteRssnr());
+
+        rssnr = MIN_RSSNR;
+        ss = createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN);
+        assertEquals(-20, ss.getLteRssnr());
     }
 
     @Test
@@ -279,6 +413,46 @@ public class SignalStrengthTest {
                 createSignalStrengthLteReportRsrq(-98, -14).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_GREAT,
                 createSignalStrengthLteReportRsrq(-98, -12).getLteLevel());
+
+        // When NTN is connected, check the signal strength
+        boolean isNTN = true;
+        int rsrp = DEFAULT_NTN_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        int rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        int rsrq = MIN_RSRQ;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GREAT,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+
+        // When NTN is disconnected, check the signal strength
+        isNTN = false;
+        rsrp = DEFAULT_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        rsrq = MIN_RSRQ;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GREAT,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
     }
 
     @Test
@@ -293,6 +467,46 @@ public class SignalStrengthTest {
                 createSignalStrengthLteReportRsrq(-108, -14).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
                 createSignalStrengthLteReportRsrq(-108, -12).getLteLevel());
+
+        // When NTN is connected, check the signal strength
+        boolean isNTN = true;
+        int rsrp = DEFAULT_NTN_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        int rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        int rsrq = MIN_RSRQ;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+
+        // When NTN is disconnected, check the signal strength
+        isNTN = false;
+        rsrp = DEFAULT_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        rsrq = MIN_RSRQ;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
     }
 
     @Test
@@ -307,6 +521,46 @@ public class SignalStrengthTest {
                 createSignalStrengthLteReportRsrq(-118, -14).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
                 createSignalStrengthLteReportRsrq(-118, -12).getLteLevel());
+
+        // When NTN is connected, check the signal strength
+        boolean isNTN = true;
+        int rsrp = DEFAULT_NTN_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        int rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        int rsrq = MIN_RSRQ;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+
+        // When NTN is disconnected, check the signal strength
+        isNTN = false;
+        rsrp = DEFAULT_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        rsrq = MIN_RSRQ;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
     }
 
     @Test
@@ -321,6 +575,46 @@ public class SignalStrengthTest {
                 createSignalStrengthLteReportRsrq(-128, -14).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
                 createSignalStrengthLteReportRsrq(-128, -12).getLteLevel());
+
+        // When NTN is connected, check the signal strength
+        boolean isNTN = true;
+        int rsrp = DEFAULT_NTN_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        int rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        int rsrq = MIN_RSRQ;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+
+        // When NTN is disconnected, check the signal strength
+        isNTN = false;
+        rsrp = DEFAULT_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        rsrq = MIN_RSRQ;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
     }
 
     @Test
@@ -335,6 +629,45 @@ public class SignalStrengthTest {
                 createSignalStrengthLteReportRsrq(-138, -14).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
                 createSignalStrengthLteReportRsrq(-138, -12).getLteLevel());
+
+        // When NTN is connected, check the signal strength
+        boolean isNTN = true;
+        int rsrp = MIN_RSRP;
+        int rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        int rsrq = MIN_RSRQ;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+
+        // When NTN is disconnected, check the signal strength
+        isNTN = false;
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        rsrq = MIN_RSRQ;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
     }
 
     @Test
@@ -349,6 +682,46 @@ public class SignalStrengthTest {
                 createSignalStrengthLteReportRssnr(-98, 5).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_GREAT,
                 createSignalStrengthLteReportRssnr(-98, 13).getLteLevel());
+
+        // When NTN is connected, check the signal strength
+        boolean isNTN = true;
+        int rsrp = DEFAULT_NTN_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        int rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        int rssnr = MIN_RSSNR;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GREAT,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+
+        // When NTN is disconnected, check the signal strength
+        isNTN = false;
+        rsrp = DEFAULT_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        rssnr = MIN_RSSNR;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GREAT,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
     }
 
     @Test
@@ -363,6 +736,46 @@ public class SignalStrengthTest {
                 createSignalStrengthLteReportRssnr(-108, 5).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
                 createSignalStrengthLteReportRssnr(-108, 13).getLteLevel());
+
+        // When NTN is connected, check the signal strength
+        boolean isNTN = true;
+        int rsrp = DEFAULT_NTN_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        int rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        int rssnr = MIN_RSSNR;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+
+        // When NTN is disconnected, check the signal strength
+        isNTN = false;
+        rsrp = DEFAULT_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        rssnr = MIN_RSSNR;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
     }
 
     @Test
@@ -377,6 +790,46 @@ public class SignalStrengthTest {
                 createSignalStrengthLteReportRssnr(-118, 5).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
                 createSignalStrengthLteReportRssnr(-118, 13).getLteLevel());
+
+        // When NTN is connected, check the signal strength
+        boolean isNTN = true;
+        int rsrp = DEFAULT_NTN_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        int rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        int rssnr = MIN_RSSNR;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+
+        // When NTN is disconnected, check the signal strength
+        isNTN = false;
+        rsrp = DEFAULT_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        rssnr = MIN_RSSNR;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
     }
 
     @Test
@@ -391,6 +844,46 @@ public class SignalStrengthTest {
                 createSignalStrengthLteReportRssnr(-128, 5).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
                 createSignalStrengthLteReportRssnr(-128, 13).getLteLevel());
+
+        // When NTN is connected, check the signal strength
+        boolean isNTN = true;
+        int rsrp = DEFAULT_NTN_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        int rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        int rssnr = MIN_RSSNR;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+
+        // When NTN is disconnected, check the signal strength
+        isNTN = false;
+        rsrp = DEFAULT_LTE_RSRP_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        rssnr = MIN_RSSNR;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
     }
 
     @Test
@@ -405,6 +898,45 @@ public class SignalStrengthTest {
                 createSignalStrengthLteReportRssnr(-138, 5).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
                 createSignalStrengthLteReportRssnr(-138, 13).getLteLevel());
+
+        // When NTN is connected, check the signal strength
+        boolean isNTN = true;
+        int rsrp = MIN_RSRP;
+        int rsrq = DEFAULT_NTN_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        int rssnr = MIN_RSSNR;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_NTN_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+
+        // When NTN is disconnected, check the signal strength
+        isNTN = false;
+        rsrq = DEFAULT_LTE_RSRQ_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        rssnr = MIN_RSSNR;
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_POOR];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_MODERATE];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GOOD];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
+        rssnr = DEFAULT_LTE_RSSNR_THRESHOLDS[INDEX_SIGNAL_STRENGTH_GREAT];
+        assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                createSignalStrengthLteReport(rsrp, rsrq, rssnr, isNTN).getLteLevel());
     }
 }
 

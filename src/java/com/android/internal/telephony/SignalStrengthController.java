@@ -64,6 +64,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.PatternSyntaxException;
 
 /**
@@ -101,6 +102,7 @@ public class SignalStrengthController extends Handler {
     private static final int EVENT_POLL_SIGNAL_STRENGTH                     = 7;
     private static final int EVENT_SIGNAL_STRENGTH_UPDATE                   = 8;
     private static final int EVENT_POLL_SIGNAL_STRENGTH_DONE                = 9;
+    private static final int EVENT_SERVICE_STATE_CHANGED                    = 10;
 
     @NonNull
     private final Phone mPhone;
@@ -146,6 +148,8 @@ public class SignalStrengthController extends Handler {
     @NonNull
     private final LocalLog mLocalLog = new LocalLog(64);
 
+    private final AtomicBoolean mNTNConnected = new AtomicBoolean(false);
+
     public SignalStrengthController(@NonNull Phone phone) {
         mPhone = phone;
         mCi = mPhone.mCi;
@@ -161,6 +165,8 @@ public class SignalStrengthController extends Handler {
         ccm.registerCarrierConfigChangeListener(this::post,
                 (slotIndex, subId, carrierId, specificCarrierId) ->
                         onCarrierConfigurationChanged(slotIndex));
+
+        mPhone.registerForServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
     }
 
     @Override
@@ -270,6 +276,11 @@ public class SignalStrengthController extends Handler {
 
                 ar = (AsyncResult) msg.obj;
                 onSignalStrengthResult(ar);
+                break;
+            }
+
+            case EVENT_SERVICE_STATE_CHANGED: {
+                onServiceStateChanged((ServiceState) ((AsyncResult) msg.obj).result);
                 break;
             }
 
@@ -406,10 +417,13 @@ public class SignalStrengthController extends Handler {
                             true));
         }
 
-        int lteMeasurementEnabled = mCarrierConfig.getInt(CarrierConfigManager
-                .KEY_PARAMETERS_USED_FOR_LTE_SIGNAL_BAR_INT, CellSignalStrengthLte.USE_RSRP);
-        int[] lteRsrpThresholds = mCarrierConfig.getIntArray(
-                CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY);
+        int lteMeasurementEnabled = mCarrierConfig.getInt(isUsingNonTerrestrialNetwork()
+                        ? CarrierConfigManager.KEY_PARAMETERS_USED_FOR_NTN_LTE_SIGNAL_BAR_INT
+                        : CarrierConfigManager.KEY_PARAMETERS_USED_FOR_LTE_SIGNAL_BAR_INT,
+                CellSignalStrengthLte.USE_RSRP);
+        int[] lteRsrpThresholds = mCarrierConfig.getIntArray(isUsingNonTerrestrialNetwork()
+                ? CarrierConfigManager.KEY_NTN_LTE_RSRP_THRESHOLDS_INT_ARRAY
+                : CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY);
         if (lteRsrpThresholds != null) {
             signalThresholdInfos.add(
                     validateAndCreateSignalThresholdInfo(
@@ -421,7 +435,8 @@ public class SignalStrengthController extends Handler {
         }
 
         if (mPhone.getHalVersion(HAL_SERVICE_NETWORK).greaterOrEqual(RIL.RADIO_HAL_VERSION_1_5)) {
-            int[] lteRsrqThresholds = mCarrierConfig.getIntArray(
+            int[] lteRsrqThresholds = mCarrierConfig.getIntArray(isUsingNonTerrestrialNetwork()
+                    ? CarrierConfigManager.KEY_NTN_LTE_RSRQ_THRESHOLDS_INT_ARRAY :
                     CarrierConfigManager.KEY_LTE_RSRQ_THRESHOLDS_INT_ARRAY);
             if (lteRsrqThresholds != null) {
                 signalThresholdInfos.add(
@@ -433,7 +448,8 @@ public class SignalStrengthController extends Handler {
                                 (lteMeasurementEnabled & CellSignalStrengthLte.USE_RSRQ) != 0));
             }
 
-            int[] lteRssnrThresholds = mCarrierConfig.getIntArray(
+            int[] lteRssnrThresholds = mCarrierConfig.getIntArray(isUsingNonTerrestrialNetwork()
+                    ? CarrierConfigManager.KEY_NTN_LTE_RSSNR_THRESHOLDS_INT_ARRAY :
                     CarrierConfigManager.KEY_LTE_RSSNR_THRESHOLDS_INT_ARRAY);
             if (lteRssnrThresholds != null) {
                 signalThresholdInfos.add(
@@ -1320,6 +1336,25 @@ public class SignalStrengthController extends Handler {
                 -6, /* SIGNAL_STRENGTH_GOOD */
                 1  /* SIGNAL_STRENGTH_GREAT */
         };
+    }
+
+    private void onServiceStateChanged(ServiceState state) {
+        if (state.getState() != ServiceState.STATE_IN_SERVICE) {
+            return;
+        }
+
+        if (mNTNConnected.get() != state.isUsingNonTerrestrialNetwork()) {
+            log("onServiceStateChanged: update it to " + state.isUsingNonTerrestrialNetwork());
+            updateReportingCriteria();
+            mNTNConnected.set(state.isUsingNonTerrestrialNetwork());
+        }
+    }
+
+    private boolean isUsingNonTerrestrialNetwork() {
+        if (mPhone.getServiceState() == null) {
+            return false;
+        }
+        return mPhone.getServiceState().isUsingNonTerrestrialNetwork();
     }
 
     private static void log(String msg) {
