@@ -664,6 +664,11 @@ public class DataNetwork extends StateMachine {
      */
     private @NetworkType int mLastKnownDataNetworkType;
 
+    /**
+     * The last known roaming state of this data network.
+     */
+    private boolean mLastKnownRoamingState;
+
     /** The reason that why setting up this data network is allowed. */
     private @NonNull DataAllowedReason mDataAllowedReason;
 
@@ -923,6 +928,7 @@ public class DataNetwork extends StateMachine {
         }
         mTransport = transport;
         mLastKnownDataNetworkType = getDataNetworkType();
+        mLastKnownRoamingState = mPhone.getServiceState().getDataRoamingFromRegistration();
         mDataAllowedReason = dataAllowedReason;
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
         mAttachedNetworkRequestList.addAll(networkRequestList);
@@ -1135,6 +1141,15 @@ public class DataNetwork extends StateMachine {
                     mDataCallSessionStats.onDrsOrRatChanged(networkType);
                     if (networkType != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
                         mLastKnownDataNetworkType = networkType;
+                    }
+                    NetworkRegistrationInfo nri =
+                            mPhone.getServiceState()
+                                    .getNetworkRegistrationInfo(
+                                            NetworkRegistrationInfo.DOMAIN_PS,
+                                            AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+                    if (nri != null && nri.isInService()) {
+                        mLastKnownRoamingState = nri.getNetworkRegistrationState()
+                                == NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING;
                     }
                     updateSuspendState();
                     updateNetworkCapabilities();
@@ -3388,6 +3403,13 @@ public class DataNetwork extends StateMachine {
      */
     public @NetworkType int getLastKnownDataNetworkType() {
         return mLastKnownDataNetworkType;
+    }
+
+    /**
+     * @return The last known roaming state of this data network.
+     */
+    public boolean getLastKnownRoamingState() {
+        return mLastKnownRoamingState;
     }
 
     /**

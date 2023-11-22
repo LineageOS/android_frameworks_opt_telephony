@@ -809,11 +809,12 @@ public class DataServiceManager extends Handler {
      * Set an APN to initial attach network.
      *
      * @param dataProfile Data profile used for data network setup. See {@link DataProfile}.
+     *                  {@code null} to clear any previous data profiles.
      * @param isRoaming True if the device is data roaming.
      * @param onCompleteMessage The result message for this request. Null if the client does not
      * care about the result.
      */
-    public void setInitialAttachApn(DataProfile dataProfile, boolean isRoaming,
+    public void setInitialAttachApn(@Nullable DataProfile dataProfile, boolean isRoaming,
                                     Message onCompleteMessage) {
         if (DBG) log("setInitialAttachApn");
         if (!mBound) {
