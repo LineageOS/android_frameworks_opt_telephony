@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6cff93f7_529e4376",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2023-11-22T17:15:51Z",
+      "side": 1,
+      "message": "100 chars",
+      "revId": "240b775fb261c7873187a731c9b1024cd1356b03",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
