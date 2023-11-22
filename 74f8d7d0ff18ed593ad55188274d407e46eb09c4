@@ -81,6 +81,30 @@
       },
       "revId": "74f8d7d0ff18ed593ad55188274d407e46eb09c4",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1fe1d704_14e76645",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 25732
+      },
+      "writtenOn": "2023-11-22T15:49:42Z",
+      "side": 1,
+      "message": "No idea what \"double checked locking\" is:\n- If you mean using two nested synchronized blocks, that will be a deadlock.\n- If you mean two separate blocks for check and initialization, that gives you a TOCTOU issue.",
+      "parentUuid": "8ebae355_11f4da27",
+      "range": {
+        "startLine": 30,
+        "startChar": 12,
+        "endLine": 30,
+        "endChar": 24
+      },
+      "revId": "74f8d7d0ff18ed593ad55188274d407e46eb09c4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
