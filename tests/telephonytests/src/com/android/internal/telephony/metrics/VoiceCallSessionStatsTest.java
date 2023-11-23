@@ -56,6 +56,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.Call;
@@ -190,12 +191,16 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
 
         doReturn(PhoneConstants.PHONE_TYPE_IMS).when(mImsConnection0).getPhoneType();
         doReturn(false).when(mImsConnection0).isEmergencyCall();
+        doReturn(false).when(mImsConnection0).isCrossSimCall();
         doReturn(PhoneConstants.PHONE_TYPE_IMS).when(mImsConnection1).getPhoneType();
         doReturn(false).when(mImsConnection1).isEmergencyCall();
         doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mGsmConnection0).getPhoneType();
         doReturn(false).when(mGsmConnection0).isEmergencyCall();
         doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mGsmConnection1).getPhoneType();
         doReturn(false).when(mGsmConnection1).isEmergencyCall();
+
+        doReturn(ImsRegistrationImplBase.REGISTRATION_TECH_LTE).when(mImsPhone)
+                .getImsRegistrationTech();
 
         if (Looper.myLooper() == null) {
             Looper.prepare();
@@ -235,7 +240,6 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
                         ImsReasonInfo.CODE_REMOTE_CALL_DECLINE);
         expectedCall.setupDurationMillis = 200;
         expectedCall.setupFailed = true;
-        expectedCall.ratAtConnected = TelephonyManager.NETWORK_TYPE_UNKNOWN;
         expectedCall.codecBitmask = 1L << AudioCodec.AUDIO_CODEC_EVS_SWB;
         expectedCall.mainCodecQuality =
                 VOICE_CALL_SESSION__MAIN_CODEC_QUALITY__CODEC_QUALITY_SUPER_WIDEBAND;
@@ -1513,6 +1517,75 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void singleCrossSimCall_moAccepted() {
+        setServiceStateWithWifiCalling(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
+        doReturn(ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM).when(mImsPhone)
+                .getImsRegistrationTech();
+        doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(false).when(mImsConnection0).isIncoming();
+        doReturn(true).when(mImsConnection0).isCrossSimCall();
+        doReturn(2000L).when(mImsConnection0).getCreateTime();
+        doReturn(1000L).when(mImsConnection0).getDurationMillis();
+        doReturn(mImsCall0).when(mImsConnection0).getCall();
+        doReturn(new ArrayList(List.of(mImsConnection0))).when(mImsCall0).getConnections();
+        VoiceCallSession expectedCall =
+                makeSlot0CallProto(
+                        VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS,
+                        VOICE_CALL_SESSION__DIRECTION__CALL_DIRECTION_MO,
+                        TelephonyManager.NETWORK_TYPE_IWLAN,
+                        ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE);
+        expectedCall.isIwlanCrossSimAtStart = true;
+        expectedCall.isIwlanCrossSimAtEnd = true;
+        expectedCall.isIwlanCrossSimAtConnected = true;
+
+        expectedCall.bandAtEnd = 0; // not configured for IWLAN
+        expectedCall.setupDurationMillis = 200;
+        expectedCall.setupFailed = false;
+        expectedCall.codecBitmask = 1L << AudioCodec.AUDIO_CODEC_EVS_SWB;
+        expectedCall.mainCodecQuality =
+                VOICE_CALL_SESSION__MAIN_CODEC_QUALITY__CODEC_QUALITY_SUPER_WIDEBAND;
+        expectedCall.disconnectExtraMessage = "normal call clearing";
+        expectedCall.callDuration =
+                VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_LESS_THAN_ONE_MINUTE;
+        VoiceCallRatUsage expectedRatUsage =
+                makeRatUsageProto(
+                        CARRIER_ID_SLOT_0, TelephonyManager.NETWORK_TYPE_IWLAN, 2000L, 100000L, 1L);
+        final AtomicReference<VoiceCallRatUsage[]> ratUsage = setupRatUsageCapture();
+
+        mVoiceCallSessionStats0.setTimeMillis(2000L);
+        doReturn(Call.State.DIALING).when(mImsCall0).getState();
+        doReturn(Call.State.DIALING).when(mImsConnection0).getState();
+        mVoiceCallSessionStats0.onImsDial(mImsConnection0);
+        mVoiceCallSessionStats0.setTimeMillis(2100L);
+        mVoiceCallSessionStats0.onAudioCodecChanged(
+                mImsConnection0, ImsStreamMediaProfile.AUDIO_QUALITY_EVS_SWB);
+        mVoiceCallSessionStats0.setTimeMillis(2200L);
+        doReturn(Call.State.ALERTING).when(mImsCall0).getState();
+        doReturn(Call.State.ALERTING).when(mImsConnection0).getState();
+        mVoiceCallSessionStats0.onCallStateChanged(mImsCall0);
+        mVoiceCallSessionStats0.setTimeMillis(12000L);
+        doReturn(Call.State.ACTIVE).when(mImsCall0).getState();
+        doReturn(Call.State.ACTIVE).when(mImsConnection0).getState();
+        mVoiceCallSessionStats0.onCallStateChanged(mImsCall0);
+        mVoiceCallSessionStats0.setTimeMillis(100000L);
+        mVoiceCallSessionStats0.onImsCallTerminated(
+                mImsConnection0,
+                new ImsReasonInfo(
+                        ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, 0, "normal call clearing"));
+
+        ArgumentCaptor<VoiceCallSession> callCaptor =
+                ArgumentCaptor.forClass(VoiceCallSession.class);
+        verify(mPersistAtomsStorage, times(1)).addVoiceCallSession(callCaptor.capture());
+        verify(mPersistAtomsStorage, times(1)).addVoiceCallRatUsage(any());
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+        assertProtoEquals(expectedCall, callCaptor.getValue());
+        assertThat(ratUsage.get()).hasLength(1);
+        assertProtoEquals(expectedRatUsage, ratUsage.get()[0]);
+    }
+
+    @Test
+    @SmallTest
     public void singleCsCall_moRejected() {
         doReturn(false).when(mGsmConnection0).isIncoming();
         doReturn(2000L).when(mGsmConnection0).getCreateTime();
@@ -2512,6 +2585,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     public void singleWifiCall_preferred() {
         setServiceStateWithWifiCalling(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
         doReturn(mImsPhone).when(mPhone).getImsPhone();
+        doReturn(ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN).when(mImsPhone)
+                .getImsRegistrationTech();
         doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mImsStats).getImsVoiceRadioTech();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
@@ -2560,6 +2635,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     public void singleWifiCall_airPlaneMode() {
         setServiceStateWithWifiCalling(mServiceState, TelephonyManager.NETWORK_TYPE_UNKNOWN);
         doReturn(mImsPhone).when(mPhone).getImsPhone();
+        doReturn(ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN).when(mImsPhone)
+                .getImsRegistrationTech();
         doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mImsStats).getImsVoiceRadioTech();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
