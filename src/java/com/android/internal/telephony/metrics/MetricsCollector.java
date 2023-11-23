@@ -1053,7 +1053,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 dataCallSession.bandAtEnd,
                 dataCallSession.handoverFailureCauses,
                 dataCallSession.handoverFailureRat,
-                dataCallSession.isNonDds);
+                dataCallSession.isNonDds,
+                dataCallSession.isIwlanCrossSim);
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationStats stats) {

@@ -365,6 +365,7 @@ message DataCallSession {
     repeated int32 handover_failure_causes = 20;
     repeated int32 handover_failure_rat = 21;
     optional bool is_non_dds = 22;
+    optional bool is_iwlan_cross_sim = 23;
 }
 
 message CellularServiceState {
