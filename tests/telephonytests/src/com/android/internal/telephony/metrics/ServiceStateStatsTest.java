@@ -43,6 +43,7 @@ import android.telephony.Annotation.NetworkType;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.Phone;
@@ -392,6 +393,30 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(true, state.isInternetPdnUp);
         assertEquals(true, state.isDataEnabled);
         verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    @SmallTest
+    public void onImsVoiceRegistrationChanged_crossSimCalling() throws Exception {
+        mServiceStateStats.onServiceStateChanged(mServiceState);
+        mockWwanPsRat(TelephonyManager.NETWORK_TYPE_UNKNOWN);
+        doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM).when(mImsPhone)
+                .getImsRegistrationTech();
+        mServiceStateStats.incTimeMillis(100L);
+        mServiceStateStats.onImsVoiceRegistrationChanged();
+        mServiceStateStats.incTimeMillis(200L);
+        mServiceStateStats.conclude();
+
+        ArgumentCaptor<CellularServiceState> captor =
+                ArgumentCaptor.forClass(CellularServiceState.class);
+        verify(mPersistAtomsStorage, times(2))
+                .addCellularServiceStateAndCellularDataServiceSwitch(captor.capture(), eq(null));
+        CellularServiceState state = captor.getAllValues().get(1);
+
+        assertEquals(200L, state.totalTimeMillis);
+        assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, state.voiceRat);
+        assertTrue(state.isIwlanCrossSim);
     }
 
     @Test
