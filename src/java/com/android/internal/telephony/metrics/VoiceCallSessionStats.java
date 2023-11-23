@@ -53,6 +53,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.util.LongSparseArray;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
@@ -469,6 +470,11 @@ public class VoiceCallSessionStats {
         proto.videoEnabled = videoState != VideoProfile.STATE_AUDIO_ONLY ? true : false;
         proto.handoverInProgress = isHandoverInProgress(bearer, proto.isEmergency);
 
+        boolean isCrossSimCall = isCrossSimCall(conn);
+        proto.isIwlanCrossSimAtStart = isCrossSimCall;
+        proto.isIwlanCrossSimAtEnd = isCrossSimCall;
+        proto.isIwlanCrossSimAtConnected = isCrossSimCall;
+
         // internal fields for tracking
         if (getDirection(conn) == VOICE_CALL_SESSION__DIRECTION__CALL_DIRECTION_MT) {
             // MT call setup hasn't begun hence set to 0
@@ -594,7 +600,9 @@ public class VoiceCallSessionStats {
             proto.setupFailed = false;
             // Track RAT when voice call is connected.
             ServiceState serviceState = getServiceState();
-            proto.ratAtConnected = getVoiceRatWithVoNRFix(mPhone, serviceState, proto.bearerAtEnd);
+            @NetworkType int rat = getVoiceRatWithVoNRFix(mPhone, serviceState, proto.bearerAtEnd);
+            proto.ratAtConnected = rat;
+            proto.isIwlanCrossSimAtConnected = isCrossSimCall(conn);
             // Reset list of codecs with the last codec at the present time. In this way, we
             // track codec quality only after call is connected and not while ringing.
             resetCodecList(conn);
@@ -631,6 +639,7 @@ public class VoiceCallSessionStats {
                 proto.lastKnownRat = rat;
             }
         }
+        proto.isIwlanCrossSimAtEnd = isCrossSimCall(mPhone);
     }
 
     private void finishImsCall(int id, ImsReasonInfo reasonInfo, long durationMillis) {
@@ -876,6 +885,21 @@ public class VoiceCallSessionStats {
      */
     private static int getConnectionId(Connection conn) {
         return conn == null ? 0 : (int) conn.getCreateTime();
+    }
+
+    private boolean isCrossSimCall(Connection conn) {
+        if (conn instanceof ImsPhoneConnection) {
+            return ((ImsPhoneConnection) conn).isCrossSimCall();
+        }
+        return false;
+    }
+
+    private boolean isCrossSimCall(Phone phone) {
+        if (phone.getImsPhone() != null) {
+            return phone.getImsPhone().getImsRegistrationTech()
+                    == ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM;
+        }
+        return false;
     }
 
     @VisibleForTesting
