@@ -63,3 +63,10 @@ flag {
   description: "Enable Telephony Analytics information of Service State , Sms and Call scenarios"
   bug: "309896524"
 }
+
+flag {
+  name: "show_call_id_and_call_waiting_in_additional_settings_menu"
+  namespace: "telephony"
+  description: "Expose carrier config KEY_ADDITIONAL_SETTINGS_CALLER_ID_VISIBILITY_BOOL and KEY_ADDITIONAL_SETTINGS_CALL_WAITING_VISIBILITY_BOOL."
+  bug: "310264981"
+}
