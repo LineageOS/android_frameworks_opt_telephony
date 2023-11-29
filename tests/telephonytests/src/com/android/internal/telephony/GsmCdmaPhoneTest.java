@@ -21,6 +21,7 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDI
 import static com.android.internal.telephony.Phone.EVENT_ICC_CHANGED;
 import static com.android.internal.telephony.Phone.EVENT_IMS_DEREGISTRATION_TRIGGERED;
 import static com.android.internal.telephony.Phone.EVENT_RADIO_AVAILABLE;
+import static com.android.internal.telephony.Phone.EVENT_SET_IDENTIFIER_DISCLOSURE_ENABLED_DONE;
 import static com.android.internal.telephony.Phone.EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE;
 import static com.android.internal.telephony.Phone.EVENT_SRVCC_STATE_CHANGED;
 import static com.android.internal.telephony.Phone.EVENT_UICC_APPS_ENABLEMENT_STATUS_CHANGED;
@@ -2857,5 +2858,83 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         verify(mIdentifierDisclosureNotifier, never())
                 .addDisclosure(any(CellularIdentifierDisclosure.class));
+    }
+
+    @Test
+    public void testCellularIdentifierDisclosure_noModemCallOnRadioAvailable_FlagOff() {
+        when(mFeatureFlags.enableIdentifierDisclosureTransparency()).thenReturn(false);
+        GsmCdmaPhone phoneUT = makeNewPhoneUT();
+        assertFalse(phoneUT.isIdentifierDisclosureTransparencySupported());
+
+        sendRadioAvailableToPhone(phoneUT);
+
+        verify(mMockCi, never()).setCellularIdentifierTransparencyEnabled(anyBoolean(),
+                any(Message.class));
+        assertFalse(phoneUT.isIdentifierDisclosureTransparencySupported());
+    }
+
+    @Test
+    public void testCellularIdentifierDisclosure_unsupportedByModemOnRadioAvailable() {
+        when(mFeatureFlags.enableIdentifierDisclosureTransparency()).thenReturn(true);
+        GsmCdmaPhone phoneUT = makeNewPhoneUT();
+        assertFalse(phoneUT.isIdentifierDisclosureTransparencySupported());
+
+        // The following block emulates incoming messages from the modem in the case that
+        // the modem does not support the new HAL APIs. We expect the phone instance to attempt
+        // to set cipher-identifier-transparency-enabled state when the radio becomes available.
+        sendRadioAvailableToPhone(phoneUT);
+        verify(mMockCi, times(1)).setCellularIdentifierTransparencyEnabled(anyBoolean(),
+                any(Message.class));
+        sendRequestNotSupportedToPhone(phoneUT, EVENT_SET_IDENTIFIER_DISCLOSURE_ENABLED_DONE);
+
+        assertFalse(phoneUT.isIdentifierDisclosureTransparencySupported());
+    }
+
+    @Test
+    public void testCellularIdentifierDisclosure_supportedByModem() {
+        when(mFeatureFlags.enableIdentifierDisclosureTransparency()).thenReturn(true);
+        GsmCdmaPhone phoneUT = makeNewPhoneUT();
+        assertFalse(phoneUT.isIdentifierDisclosureTransparencySupported());
+
+        // The following block emulates incoming messages from the modem in the case that
+        // the modem supports the new HAL APIs. We expect the phone instance to attempt
+        // to set cipher-identifier-transparency-enabled state when the radio becomes available.
+        sendRadioAvailableToPhone(phoneUT);
+        verify(mMockCi, times(1)).setCellularIdentifierTransparencyEnabled(anyBoolean(),
+                any(Message.class));
+        sendIdentifierDisclosureEnabledSuccessToPhone(phoneUT);
+
+        assertTrue(phoneUT.isIdentifierDisclosureTransparencySupported());
+    }
+
+    private void sendRadioAvailableToPhone(GsmCdmaPhone phone) {
+        phone.sendMessage(phone.obtainMessage(EVENT_RADIO_AVAILABLE,
+                new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_GSM}, null)));
+        processAllMessages();
+    }
+
+    private void sendRequestNotSupportedToPhone(GsmCdmaPhone phone, int eventId) {
+        phone.sendMessage(phone.obtainMessage(eventId, new AsyncResult(null, null,
+                new CommandException(CommandException.Error.REQUEST_NOT_SUPPORTED))));
+        processAllMessages();
+    }
+
+    private void sendIdentifierDisclosureEnabledSuccessToPhone(GsmCdmaPhone phone) {
+        phone.sendMessage(phone.obtainMessage(EVENT_SET_IDENTIFIER_DISCLOSURE_ENABLED_DONE,
+                new AsyncResult(null, null, null)));
+        processAllMessages();
+    }
+
+    private GsmCdmaPhone makeNewPhoneUT() {
+        return new GsmCdmaPhone(
+                mContext,
+                mMockCi,
+                mNotifier,
+                true,
+                0,
+                PhoneConstants.PHONE_TYPE_GSM,
+                mTelephonyComponentFactory,
+                (c, p) -> mImsManager,
+                mFeatureFlags);
     }
 }

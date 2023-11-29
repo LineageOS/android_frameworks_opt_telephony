@@ -254,6 +254,7 @@ public class GsmCdmaPhone extends Phone {
             CellBroadcastConfigTracker.make(this, null, true);
 
     private boolean mIsNullCipherAndIntegritySupported = false;
+    private boolean mIsIdentifierDisclosureTransparencySupported = false;
 
     // Create Cfu (Call forward unconditional) so that dialing number &
     // mOnComplete (Message object passed by client) can be packed &
@@ -3144,6 +3145,7 @@ public class GsmCdmaPhone extends Phone {
         mCi.areUiccApplicationsEnabled(obtainMessage(EVENT_GET_UICC_APPS_ENABLEMENT_DONE));
 
         handleNullCipherEnabledChange();
+        handleIdentifierDisclosureNotificationPreferenceChange();
     }
 
     private void handleRadioOn() {
@@ -3610,14 +3612,7 @@ public class GsmCdmaPhone extends Phone {
             case EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE:
                 logd("EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE");
                 ar = (AsyncResult) msg.obj;
-                // Only test for a success here in order to flip the support flag.
-                // Testing for the negative case, e.g. REQUEST_NOT_SUPPORTED, is insufficient
-                // because the modem or the RIL could still return exceptions for temporary
-                // failures even when the feature is unsupported.
-                if (ar == null || ar.exception == null) {
-                    mIsNullCipherAndIntegritySupported = true;
-                    return;
-                }
+                mIsNullCipherAndIntegritySupported = doesResultIndicateModemSupport(ar);
                 break;
 
             case EVENT_IMS_DEREGISTRATION_TRIGGERED:
@@ -3701,9 +3696,23 @@ public class GsmCdmaPhone extends Phone {
                 }
                 break;
 
+            case EVENT_SET_IDENTIFIER_DISCLOSURE_ENABLED_DONE:
+                logd("EVENT_SET_IDENTIFIER_DISCLOSURE_ENABLED_DONE");
+                ar = (AsyncResult) msg.obj;
+                mIsIdentifierDisclosureTransparencySupported = doesResultIndicateModemSupport(ar);
+                break;
+
             default:
                 super.handleMessage(msg);
         }
+    }
+
+    private boolean doesResultIndicateModemSupport(AsyncResult ar) {
+        // We can only say that the modem supports a call without ambiguity if there
+        // is no exception set on the response.  Testing for REQUEST_NOT_SUPPORTED, is
+        // insufficient because the modem or the RIL could still return exceptions for temporary
+        // failures even when the feature is unsupported.
+        return (ar == null || ar.exception == null);
     }
 
     private void parseImeiInfo(Message msg) {
@@ -5298,7 +5307,31 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    public void handleIdentifierDisclosureNotificationPreferenceChange() {
+        if (!mFeatureFlags.enableIdentifierDisclosureTransparency()) {
+            logi("Not handling identifier disclosure preference change. Feature flag "
+                    + "ENABLE_IDENTIFIER_DISCLOSURE_TRANSPARENCY disabled");
+            return;
+        }
+        boolean prefEnabled = getIdentifierDisclosureNotificationsPreferenceEnabled();
+
+        if (prefEnabled) {
+            mIdentifierDisclosureNotifier.enable();
+        } else {
+            mIdentifierDisclosureNotifier.disable();
+        }
+
+        mCi.setCellularIdentifierTransparencyEnabled(prefEnabled,
+                obtainMessage(EVENT_SET_IDENTIFIER_DISCLOSURE_ENABLED_DONE));
+    }
+
+    @Override
     public boolean isNullCipherAndIntegritySupported() {
         return mIsNullCipherAndIntegritySupported;
+    }
+
+    @Override
+    public boolean isIdentifierDisclosureTransparencySupported() {
+        return mIsIdentifierDisclosureTransparencySupported;
     }
 }
