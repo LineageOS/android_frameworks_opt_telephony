@@ -293,6 +293,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
     @Test
     public void testRoaming_same_roaming_condition_uses_rat_signalStrength() {
+        doReturn(true).when(mFeatureFlags).autoDataSwitchRatSs();
         // On primary phone
         // 1. Both roaming, user allow roaming on both phone, uses RAT score to decide switch.
         prepareIdealUsesNonDdsCondition();
@@ -419,6 +420,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
     @Test
     public void testOnNonDdsSwitchBackToPrimary_rat_signalStrength() {
+        doReturn(true).when(mFeatureFlags).autoDataSwitchRatSs();
         doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
 
         prepareIdealUsesNonDdsCondition();

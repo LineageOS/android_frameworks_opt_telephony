@@ -811,7 +811,7 @@ public class AutoDataSwitchController extends Handler {
      * @return {@code true} If the feature of switching base on RAT and signal strength is enabled.
      */
     private boolean isRatSignalStrengthBasedSwitchEnabled() {
-        return mScoreTolerance >= 0;
+        return mFlags.autoDataSwitchRatSs() && mScoreTolerance >= 0;
     }
 
     /**
