@@ -53,6 +53,7 @@ import static com.android.internal.telephony.TelephonyStatsLog.UCE_EVENT_STATS;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_RAT_USAGE;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_UNKNOWN;
+import static com.android.internal.telephony.util.TelephonyUtils.IS_DEBUGGABLE;
 
 import android.app.StatsManager;
 import android.content.Context;
@@ -136,15 +137,32 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             DBG ? 10L * MILLIS_PER_SECOND : 23L * MILLIS_PER_HOUR;
 
     /**
+     * Sets atom pull cool down to 4 minutes for userdebug build.
+     *
+     * <p>Applies to certain atoms: CellularServiceState.
+     */
+    private static final long CELL_SERVICE_MIN_COOLDOWN_MILLIS =
+            DBG ? 10L * MILLIS_PER_SECOND :
+                    IS_DEBUGGABLE ? 4L * MILLIS_PER_MINUTE : 23L * MILLIS_PER_HOUR;
+
+    /**
      * Buckets with less than these many calls will be dropped.
      *
      * <p>Applies to metrics with duration fields. Currently used by voice call RAT usages.
      */
     private static final long MIN_CALLS_PER_BUCKET = DBG ? 0L : 5L;
 
-    /** Bucket size in milliseconds to round call durations into. */
+    /** Bucket size in milliseconds to round call durations info. */
     private static final long DURATION_BUCKET_MILLIS =
             DBG ? 2L * MILLIS_PER_SECOND : 5L * MILLIS_PER_MINUTE;
+
+    /**
+     * Sets smaller bucket size to round call durations for userdebug build.
+     *
+     * <p>Applies to certain atoms: CellularServiceState.
+     */
+    private static final long CELL_SERVICE_DURATION_BUCKET_MILLIS =
+            DBG || IS_DEBUGGABLE ? 2L * MILLIS_PER_SECOND : 5L * MILLIS_PER_MINUTE;
 
     private final PersistAtomsStorage mStorage;
     private final DeviceStateHelper mDeviceStateHelper;
@@ -510,7 +528,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         // Include the latest durations
         concludeServiceStateStats();
         CellularServiceState[] persistAtoms =
-                mStorage.getCellularServiceStates(MIN_COOLDOWN_MILLIS);
+                mStorage.getCellularServiceStates(CELL_SERVICE_MIN_COOLDOWN_MILLIS);
         if (persistAtoms != null) {
             // list is already shuffled when instances were inserted
             Arrays.stream(persistAtoms)
@@ -930,7 +948,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 state.simSlotIndex,
                 state.isMultiSim,
                 state.carrierId,
-                roundAndConvertMillisToSeconds(state.totalTimeMillis),
+                roundAndConvertMillisToSeconds(state.totalTimeMillis,
+                        CELL_SERVICE_DURATION_BUCKET_MILLIS),
                 state.isEmergencyOnly,
                 state.isInternetPdnUp,
                 state.foldState,
@@ -1364,8 +1383,15 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
      * Rounds the duration and converts it from milliseconds to seconds.
      */
     private static int roundAndConvertMillisToSeconds(long valueMillis) {
-        long roundedValueMillis = Math.round((double) valueMillis / DURATION_BUCKET_MILLIS)
-                * DURATION_BUCKET_MILLIS;
+        return roundAndConvertMillisToSeconds(valueMillis, DURATION_BUCKET_MILLIS);
+    }
+
+    /**
+     * Rounds the duration and converts it from milliseconds to seconds.
+     */
+    private static int roundAndConvertMillisToSeconds(long valueMillis, long durationBucketSize) {
+        long roundedValueMillis = Math.round((double) valueMillis / durationBucketSize)
+                * durationBucketSize;
         return (int) (roundedValueMillis / MILLIS_PER_SECOND);
     }
 
