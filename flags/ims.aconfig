@@ -27,3 +27,10 @@ flag {
     description: "This flag is created to prevent unnecessary updates when multiple provisioning items to update ims service are changed."
     bug:"302281114"
 }
+
+flag {
+    name: "add_rat_related_suggested_action_to_ims_registration"
+    namespace: "telephony"
+    description: "This flag is for adding suggested actions related to RAT to ims registration"
+    bug:"290573256"
+}
