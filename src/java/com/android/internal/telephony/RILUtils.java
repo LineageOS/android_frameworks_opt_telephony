@@ -323,6 +323,7 @@ import android.telephony.CellSignalStrengthLte;
 import android.telephony.CellSignalStrengthNr;
 import android.telephony.CellSignalStrengthTdscdma;
 import android.telephony.CellSignalStrengthWcdma;
+import android.telephony.CellularIdentifierDisclosure;
 import android.telephony.ClosedSubscriberGroupInfo;
 import android.telephony.DomainSelectionService;
 import android.telephony.EmergencyRegResult;
@@ -5673,6 +5674,20 @@ public class RILUtils {
             case DISCONNECTING: return android.hardware.radio.ims.ImsCall.CallState.DISCONNECTING;
             default: return android.hardware.radio.ims.ImsCall.CallState.DISCONNECTED;
         }
+    }
+
+    /** Convert an AIDL-based CellularIdentifierDisclosure to its Java wrapper. */
+    public static CellularIdentifierDisclosure convertCellularIdentifierDisclosure(
+            android.hardware.radio.network.CellularIdentifierDisclosure identifierDisclsoure) {
+        if (identifierDisclsoure == null) {
+            return null;
+        }
+
+        return new CellularIdentifierDisclosure(
+                identifierDisclsoure.protocolMessage,
+                identifierDisclsoure.identifier,
+                identifierDisclsoure.plmn,
+                identifierDisclsoure.isEmergency);
     }
 
     private static void logd(String log) {

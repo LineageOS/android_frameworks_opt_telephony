@@ -13,3 +13,10 @@ flag {
   description: "Allow carriers to hide the roaming (R) icon when roaming."
   bug: "301467052"
 }
+
+flag {
+  name: "enable_identifier_disclosure_transparency"
+  namespace: "telephony"
+  description: "Allows the framework to register for CellularIdentifierDisclosure events and emit notifications to the user about them"
+  bug: "276752426"
+}
