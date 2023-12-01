@@ -26,8 +26,10 @@ import static android.telephony.TelephonyManager.SIM_STATE_LOADED;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
+
 import static com.android.internal.telephony.data.AutoDataSwitchController.EVALUATION_REASON_VOICE_CALL_END;
 import static com.android.internal.telephony.data.PhoneSwitcher.ECBM_DEFAULT_DATA_SWITCH_BASE_TIME_MS;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -267,12 +269,14 @@ public class PhoneSwitcherTest extends TelephonyTest {
         assertFalse("data allowed", mDataAllowed[0]);
 
         setSlotIndexToSubId(1, 1);
+        clearInvocations(mAutoDataSwitchController);
         mSubChangedListener.onSubscriptionsChanged();
         processAllMessages();
 
         Message.obtain(mPhoneSwitcherUT, EVENT_MODEM_COMMAND_DONE, res).sendToTarget();
         processAllMessages();
         verify(mActivePhoneSwitchHandler, times(1)).sendMessageAtTime(any(), anyLong());
+        verify(mAutoDataSwitchController).notifySubscriptionsMappingChanged();
         clearInvocations(mActivePhoneSwitchHandler);
         assertFalse("data allowed", mDataAllowed[0]);
         assertTrue("data not allowed", mDataAllowed[1]);
@@ -289,8 +293,10 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
         // 3 lose default via sub->phone change
         setSlotIndexToSubId(0, 2);
+        clearInvocations(mAutoDataSwitchController);
         mSubChangedListener.onSubscriptionsChanged();
         processAllMessages();
+        verify(mAutoDataSwitchController).notifySubscriptionsMappingChanged();
         Message.obtain(mPhoneSwitcherUT, EVENT_MODEM_COMMAND_DONE, res).sendToTarget();
         processAllMessages();
 
@@ -1097,7 +1103,6 @@ public class PhoneSwitcherTest extends TelephonyTest {
     }
 
     @Test
-    @SmallTest
     public void testDataEnabledChangedDuringVoiceCall() throws Exception {
         doReturn(true).when(mMockRadioConfig).isSetPreferredDataCommandSupported();
         initialize();
@@ -1132,6 +1137,18 @@ public class PhoneSwitcherTest extends TelephonyTest {
                 new TelephonyNetworkRequest(internetRequest, mPhone), 0));
         assertFalse(mPhoneSwitcherUT.shouldApplyNetworkRequest(
                 new TelephonyNetworkRequest(internetRequest, mPhone), 1));
+    }
+
+    @Test
+    public void testRoamingToggle() throws Exception {
+        initialize();
+        setSlotIndexToSubId(0, 1);
+
+        mDataSettingsManagerCallbacks.get(0).onDataRoamingEnabledChanged(true);
+        processAllMessages();
+
+        verify(mAutoDataSwitchController).evaluateAutoDataSwitch(AutoDataSwitchController
+                .EVALUATION_REASON_DATA_SETTINGS_CHANGED);
     }
 
     @Test
@@ -1858,7 +1875,8 @@ public class PhoneSwitcherTest extends TelephonyTest {
         initializeConnManagerMock();
         initializeConfigMock();
 
-        mPhoneSwitcherUT = new PhoneSwitcher(mMaxDataAttachModemCount, mContext, Looper.myLooper());
+        mPhoneSwitcherUT = new PhoneSwitcher(mMaxDataAttachModemCount, mContext, Looper.myLooper(),
+                mFeatureFlags);
 
         Field field = PhoneSwitcher.class.getDeclaredField("mDataSettingsManagerCallbacks");
         field.setAccessible(true);
