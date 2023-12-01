@@ -594,9 +594,6 @@ public class NetworkTypeController extends StateMachine {
                             log("Reset timers since physical channel config indications are off.");
                         }
                         resetAllTimers();
-                        mRatchetedNrBands.clear();
-                        mRatchetedNrBandwidths = 0;
-                        mLastAnchorNrCellId = PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN;
                     }
                     transitionToCurrentState();
                     break;
