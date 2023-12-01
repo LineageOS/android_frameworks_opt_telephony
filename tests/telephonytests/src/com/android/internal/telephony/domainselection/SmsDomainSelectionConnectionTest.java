@@ -205,7 +205,7 @@ public class SmsDomainSelectionConnectionTest {
 
         mDsConnection.finishSelection();
 
-        verify(mDomainSelector).cancelSelection();
+        verify(mDomainSelector).finishSelection();
     }
 
     private void setUpTestableLooper() throws Exception {

@@ -33,9 +33,11 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.RemoteException;
+import android.telecom.PhoneAccount;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.DomainSelectionService;
@@ -255,7 +257,7 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
 
         mDsc.cancelSelection();
 
-        verify(domainSelector).cancelSelection();
+        verify(domainSelector).finishSelection();
     }
 
     @Test
@@ -594,7 +596,9 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
                 .setCsDisconnectCause(callFailCause);
 
         if (callId != null) builder.setCallId(callId);
-        if (number != null) builder.setNumber(number);
+        if (number != null) {
+            builder.setAddress(Uri.fromParts(PhoneAccount.SCHEME_TEL, number, null));
+        }
         if (imsReasonInfo != null) builder.setPsDisconnectCause(imsReasonInfo);
         if (regResult != null) builder.setEmergencyRegResult(regResult);
 
