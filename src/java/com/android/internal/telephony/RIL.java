@@ -5087,7 +5087,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void setCellularIdentifierTransparencyEnabled(boolean enable, Message result) {
         RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (!canMakeRequest(
-                "setCellularIdentifierDisclosedEnabled",
+                "setCellularIdentifierTransparencyEnabled",
                 networkProxy,
                 result,
                 RADIO_HAL_VERSION_2_2)) {
@@ -5103,9 +5103,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
 
         radioServiceInvokeHelper(
-            HAL_SERVICE_NETWORK, rr, "setCellularIdentifierDisclosedEnabled", () -> {
-              networkProxy.setCellularIdentifierTransparencyEnabled(rr.mSerial, enable);
-        });
+                HAL_SERVICE_NETWORK,
+                rr,
+                "setCellularIdentifierTransparencyEnabled",
+                () -> {
+                    networkProxy.setCellularIdentifierTransparencyEnabled(rr.mSerial, enable);
+                });
     }
 
     /**
@@ -5115,7 +5118,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void isCellularIdentifierTransparencyEnabled(Message result) {
         RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (!canMakeRequest(
-                "isCellularIdentifierDisclosedEnabled",
+                "isCellularIdentifierTransparencyEnabled",
                 networkProxy,
                 result,
                 RADIO_HAL_VERSION_2_2)) {
@@ -5130,9 +5133,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
 
         radioServiceInvokeHelper(
-            HAL_SERVICE_NETWORK, rr, "isCellularIdentifierDisclosedEnabled", () -> {
-              networkProxy.isCellularIdentifierTransparencyEnabled(rr.mSerial);
-        });
+                HAL_SERVICE_NETWORK,
+                rr,
+                "isCellularIdentifierTransparencyEnabled",
+                () -> {
+                    networkProxy.isCellularIdentifierTransparencyEnabled(rr.mSerial);
+                });
     }
 
    /**

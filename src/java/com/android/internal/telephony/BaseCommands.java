@@ -119,6 +119,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mNotifyAnbrRegistrants = new RegistrantList();
     protected RegistrantList mTriggerImsDeregistrationRegistrants = new RegistrantList();
     protected RegistrantList mImeiInfoRegistrants = new RegistrantList();
+    protected RegistrantList mCellularIdentifierDisclosedRegistrants = new RegistrantList();
 
     @UnsupportedAppUsage
     protected Registrant mGsmSmsRegistrant;
@@ -1182,5 +1183,15 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void registerForImeiMappingChanged(Handler h, int what, Object obj) {
         mImeiInfoRegistrants.add(h, what, obj);
+    }
+
+    @Override
+    public void registerForCellularIdentifierDisclosures(Handler h, int what, Object obj) {
+        mCellularIdentifierDisclosedRegistrants.add(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForCellularIdentifierDisclosures(Handler h) {
+        mCellularIdentifierDisclosedRegistrants.remove(h);
     }
 }

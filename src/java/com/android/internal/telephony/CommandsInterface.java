@@ -2927,4 +2927,17 @@ public interface CommandsInterface {
      * @param result Callback message to receive the result.
      */
     default void isSecurityAlgorithmsUpdatedEnabled(Message result) {}
+
+    /**
+     * Registers for cellular identifier disclosure events.
+     */
+    default void registerForCellularIdentifierDisclosures(
+            @NonNull Handler h, int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for cellular identifier disclosure events.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForCellularIdentifierDisclosures(@NonNull Handler h) {}
 }

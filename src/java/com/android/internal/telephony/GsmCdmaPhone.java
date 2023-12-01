@@ -80,6 +80,7 @@ import android.telephony.BarringInfo;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellBroadcastIdRange;
 import android.telephony.CellIdentity;
+import android.telephony.CellularIdentifierDisclosure;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkScanRequest;
@@ -116,6 +117,7 @@ import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhoneMmiCode;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
+import com.android.internal.telephony.security.CellularIdentifierDisclosureNotifier;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService.SubscriptionManagerServiceCallback;
 import com.android.internal.telephony.test.SimulatedRadioControl;
@@ -297,6 +299,8 @@ public class GsmCdmaPhone extends Phone {
 
     private final SubscriptionManager.OnSubscriptionsChangedListener mSubscriptionsChangedListener;
     private final CallWaitingController mCallWaitingController;
+
+    private CellularIdentifierDisclosureNotifier mIdentifierDisclosureNotifier;
 
     // Set via Carrier Config
     private boolean mIsN1ModeAllowedByCarrier = true;
@@ -515,6 +519,20 @@ public class GsmCdmaPhone extends Phone {
         mCIM = new CarrierInfoManager();
 
         mCi.registerForImeiMappingChanged(this, EVENT_IMEI_MAPPING_CHANGED, null);
+
+        if (mFeatureFlags.enableIdentifierDisclosureTransparency()) {
+            logi(
+                    "enable_identifier_disclosure_transparency is on. Registering for cellular "
+                            + "identifier disclosures from phone "
+                            + getPhoneId());
+            mIdentifierDisclosureNotifier =
+                    mTelephonyComponentFactory
+                            .inject(CellularIdentifierDisclosureNotifier.class.getName())
+                            .makeIdentifierDisclosureNotifier();
+            mCi.registerForCellularIdentifierDisclosures(
+                    this, EVENT_CELL_IDENTIFIER_DISCLOSURE, null);
+        }
+
         initializeCarrierApps();
     }
 
@@ -3661,6 +3679,26 @@ public class GsmCdmaPhone extends Phone {
             case EVENT_IMEI_MAPPING_CHANGED:
                 logd("EVENT_GET_DEVICE_IMEI_CHANGE_DONE phoneId = " + getPhoneId());
                 parseImeiInfo(msg);
+                break;
+
+            case EVENT_CELL_IDENTIFIER_DISCLOSURE:
+                logd("EVENT_CELL_IDENTIFIER_DISCLOSURE phoneId = " + getPhoneId());
+
+                ar = (AsyncResult) msg.obj;
+                if (ar == null || ar.result == null || ar.exception != null) {
+                    Rlog.e(
+                            LOG_TAG,
+                            "Failed to process cellular identifier disclosure",
+                            ar.exception);
+                    break;
+                }
+
+                CellularIdentifierDisclosure disclosure = (CellularIdentifierDisclosure) ar.result;
+                if (mFeatureFlags.enableIdentifierDisclosureTransparency()
+                        && mIdentifierDisclosureNotifier != null
+                        && disclosure != null) {
+                    mIdentifierDisclosureNotifier.addDisclosure(disclosure);
+                }
                 break;
 
             default:
