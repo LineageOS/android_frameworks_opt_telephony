@@ -25,6 +25,7 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.hardware.radio.modem.ImeiInfo;
 import android.net.Uri;
@@ -1078,9 +1079,20 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public void notifySmsSent(String destinationAddress) {
         TelephonyManager m = (TelephonyManager) getContext().getSystemService(
                 Context.TELEPHONY_SERVICE);
-        if (m != null && m.isEmergencyNumber(destinationAddress)) {
-            mLocalLog.log("Emergency SMS detected, recording time.");
-            mTimeLastEmergencySmsSentMs = SystemClock.elapsedRealtime();
+        if (!mFeatureFlags.enforceTelephonyFeatureMappingForPublicApis()) {
+            if (m != null && m.isEmergencyNumber(destinationAddress)) {
+                mLocalLog.log("Emergency SMS detected, recording time.");
+                mTimeLastEmergencySmsSentMs = SystemClock.elapsedRealtime();
+            }
+        } else {
+            if (mContext.getPackageManager() != null
+                    && mContext.getPackageManager().hasSystemFeature(
+                            PackageManager.FEATURE_TELEPHONY_CALLING)) {
+                if (m != null && m.isEmergencyNumber(destinationAddress)) {
+                    mLocalLog.log("Emergency SMS detected, recording time.");
+                    mTimeLastEmergencySmsSentMs = SystemClock.elapsedRealtime();
+                }
+            }
         }
     }
 

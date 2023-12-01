@@ -55,6 +55,7 @@ import static org.mockito.Mockito.when;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.hardware.radio.modem.ImeiInfo;
 import android.os.AsyncResult;
 import android.os.Bundle;
@@ -688,6 +689,32 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mPhoneUT.notifySmsSent(emergencyNumber);
         processAllMessages();
         assertFalse(mPhoneUT.isInEmergencySmsMode());
+    }
+
+    @Test
+    @SmallTest
+    public void testEmergencySmsModeWithTelephonyFeatureMapping() {
+        String emergencyNumber = "111";
+        int timeout = 200;
+        mContextFixture.getCarrierConfigBundle().putInt(
+                CarrierConfigManager.KEY_EMERGENCY_SMS_MODE_TIMER_MS_INT, timeout);
+        doReturn(true).when(mTelephonyManager).isEmergencyNumber(emergencyNumber);
+
+        // Feature flag enabled
+        // Device does not have FEATURE_TELEPHONY_CALLING
+        doReturn(true).when(mFeatureFlags).enforceTelephonyFeatureMappingForPublicApis();
+        doReturn(false).when(mPackageManager).hasSystemFeature(
+                eq(PackageManager.FEATURE_TELEPHONY_CALLING));
+        mPhoneUT.notifySmsSent(emergencyNumber);
+        processAllMessages();
+        assertFalse(mPhoneUT.isInEmergencySmsMode());
+
+        // Device has FEATURE_TELEPHONY_CALLING
+        doReturn(true).when(mPackageManager).hasSystemFeature(
+                eq(PackageManager.FEATURE_TELEPHONY_CALLING));
+        mPhoneUT.notifySmsSent(emergencyNumber);
+        processAllMessages();
+        assertTrue(mPhoneUT.isInEmergencySmsMode());
     }
 
     @Test
