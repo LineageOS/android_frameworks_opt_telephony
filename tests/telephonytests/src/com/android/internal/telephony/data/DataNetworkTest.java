@@ -405,7 +405,7 @@ public class DataNetworkTest extends TelephonyTest {
 
         verify(mConnectivityManager).registerNetworkAgent(any(), any(NetworkInfo.class),
                 linkPropertiesCaptor.capture(), networkCapabilitiesCaptor.capture(), any(), any(),
-                any(), anyInt());
+                anyInt());
         // The very first link properties from telephony is an empty link properties. It will be
         // updated later.
         assertThat(linkPropertiesCaptor.getValue()).isEqualTo(new LinkProperties());
@@ -510,7 +510,7 @@ public class DataNetworkTest extends TelephonyTest {
 
         verify(mConnectivityManager).registerNetworkAgent(any(), any(NetworkInfo.class),
                 any(LinkProperties.class), networkCapabilitiesCaptor.capture(), any(), any(),
-                any(), anyInt());
+                anyInt());
 
         // Make sure the initial network capability has NOT_SUSPENDED
         assertThat(networkCapabilitiesCaptor.getValue().hasCapability(
@@ -574,7 +574,7 @@ public class DataNetworkTest extends TelephonyTest {
         // Agent re-created, so register should be called twice.
         verify(mConnectivityManager, times(2)).registerNetworkAgent(any(), any(NetworkInfo.class),
                 any(LinkProperties.class), networkCapabilitiesCaptor.capture(), any(), any(),
-                any(), anyInt());
+                anyInt());
 
         // Make sure the 2nd network agent was created with NOT_SUSPENDED.
         assertThat(networkCapabilitiesCaptor.getValue().hasCapability(
@@ -634,7 +634,7 @@ public class DataNetworkTest extends TelephonyTest {
 
         verify(mConnectivityManager).registerNetworkAgent(any(), any(NetworkInfo.class),
                 linkPropertiesCaptor.capture(), networkCapabilitiesCaptor.capture(), any(), any(),
-                any(), anyInt());
+                anyInt());
         // The very first link properties from telephony is an empty link properties. It will be
         // updated later.
         assertThat(linkPropertiesCaptor.getValue()).isEqualTo(new LinkProperties());
@@ -1265,8 +1265,8 @@ public class DataNetworkTest extends TelephonyTest {
                 .forClass(NetworkAgentConfig.class);
 
         verify(mConnectivityManager).registerNetworkAgent(any(), any(NetworkInfo.class),
-                any(LinkProperties.class), any(NetworkCapabilities.class), any(), any(),
-                captor.capture(), anyInt());
+                any(LinkProperties.class), any(NetworkCapabilities.class), any(), captor.capture(),
+                anyInt());
 
         NetworkAgentConfig networkAgentConfig = captor.getValue();
 
@@ -1349,7 +1349,7 @@ public class DataNetworkTest extends TelephonyTest {
         // Agent re-created, so register should be called twice.
         verify(mConnectivityManager, times(2)).registerNetworkAgent(any(), any(NetworkInfo.class),
                 any(LinkProperties.class), any(NetworkCapabilities.class), any(), any(),
-                any(), anyInt());
+                anyInt());
 
         assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)).isTrue();
@@ -1371,7 +1371,7 @@ public class DataNetworkTest extends TelephonyTest {
         // Agent not re-created, so register should be called once.
         verify(mConnectivityManager, times(1)).registerNetworkAgent(any(), any(NetworkInfo.class),
                 any(LinkProperties.class), any(NetworkCapabilities.class), any(), any(),
-                any(), anyInt());
+                anyInt());
 
         assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED)).isTrue();
@@ -1540,7 +1540,7 @@ public class DataNetworkTest extends TelephonyTest {
         // Agent re-created, so register should be called twice.
         verify(mConnectivityManager, times(2)).registerNetworkAgent(any(), any(NetworkInfo.class),
                 linkPropertiesCaptor.capture(), any(NetworkCapabilities.class), any(), any(),
-                any(), anyInt());
+                anyInt());
         // The new agent should have the new IP address.
         assertThat(linkPropertiesCaptor.getValue().getAllAddresses()).containsExactly(
                 InetAddresses.parseNumericAddress(IPV4_ADDRESS1),
@@ -1589,7 +1589,7 @@ public class DataNetworkTest extends TelephonyTest {
         // Agent re-created, so register should be called twice.
         verify(mConnectivityManager, times(2)).registerNetworkAgent(any(), any(NetworkInfo.class),
                 linkPropertiesCaptor.capture(), any(NetworkCapabilities.class), any(), any(),
-                any(), anyInt());
+                anyInt());
         // The new agent should have the new IP address.
         assertThat(linkPropertiesCaptor.getValue().getAllAddresses()).containsExactly(
                 InetAddresses.parseNumericAddress(IPV6_ADDRESS1));
@@ -1680,7 +1680,7 @@ public class DataNetworkTest extends TelephonyTest {
         // Agent should not be re-created, so register should be called ony once.
         verify(mConnectivityManager, times(1)).registerNetworkAgent(any(), any(NetworkInfo.class),
                 any(LinkProperties.class), any(NetworkCapabilities.class), any(), any(),
-                any(), anyInt());
+                anyInt());
 
         // The network should have IPv6 address now
         assertThat(mDataNetworkUT.getLinkProperties().getAllAddresses()).containsExactly(
@@ -1724,7 +1724,7 @@ public class DataNetworkTest extends TelephonyTest {
         // Agent should not be re-created, so register should be called ony once.
         verify(mConnectivityManager, times(1)).registerNetworkAgent(any(), any(NetworkInfo.class),
                 any(LinkProperties.class), any(NetworkCapabilities.class), any(), any(),
-                any(), anyInt());
+                anyInt());
 
         // The network should have IPv6 address now
         assertThat(mDataNetworkUT.getLinkProperties().getAllAddresses()).containsExactly(
@@ -1769,7 +1769,7 @@ public class DataNetworkTest extends TelephonyTest {
         // Agent should not be re-created, so register should be called ony once.
         verify(mConnectivityManager, times(1)).registerNetworkAgent(any(), any(NetworkInfo.class),
                 any(LinkProperties.class), any(NetworkCapabilities.class), any(), any(),
-                any(), anyInt());
+                anyInt());
 
         // The network should have IPv6 address now
         assertThat(mDataNetworkUT.getLinkProperties().getAllAddresses()).containsExactly(
