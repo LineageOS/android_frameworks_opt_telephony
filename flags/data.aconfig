@@ -1,6 +1,20 @@
 package: "com.android.internal.telephony.flags"
 
 flag {
+  name: "auto_switch_allow_roaming"
+  namespace: "telephony"
+  description: "Allow using roaming network as target if user allows it from settings."
+  bug: "306488039"
+}
+
+flag {
+  name: "auto_data_switch_rat_ss"
+  namespace: "telephony"
+  description: "Whether switch for better rat and signal strength"
+  bug:"260928808"
+}
+
+flag {
   name: "use_alarm_callback"
   namespace: "telephony"
   description: "Use alarm callback instead of broadcast."
@@ -69,4 +83,3 @@ flag {
   description: "notify data activity changed for slot id"
   bug: "309896936"
 }
-

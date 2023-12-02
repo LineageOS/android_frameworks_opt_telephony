@@ -2879,12 +2879,14 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @return The subscription Id default to use.
      */
     private int getDefaultAsUser(@UserIdInt int userId, int defaultValue) {
-        List<SubscriptionInfoInternal> subInfos =
-                getSubscriptionInfoStreamAsUser(UserHandle.of(userId))
-                        .filter(SubscriptionInfoInternal::isActive)
-                        .toList();
-        if (subInfos.size() == 1) {
-            return subInfos.get(0).getSubscriptionId();
+        if (mFeatureFlags.workProfileApiSplit()) {
+            List<SubscriptionInfoInternal> subInfos =
+                    getSubscriptionInfoStreamAsUser(UserHandle.of(userId))
+                            .filter(SubscriptionInfoInternal::isActive)
+                            .toList();
+            if (subInfos.size() == 1) {
+                return subInfos.get(0).getSubscriptionId();
+            }
         }
         return defaultValue;
     }
