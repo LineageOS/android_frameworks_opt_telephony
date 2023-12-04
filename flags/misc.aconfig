@@ -70,3 +70,10 @@ flag {
   description: "Expose carrier config KEY_ADDITIONAL_SETTINGS_CALLER_ID_VISIBILITY_BOOL and KEY_ADDITIONAL_SETTINGS_CALL_WAITING_VISIBILITY_BOOL."
   bug: "310264981"
 }
+
+flag {
+  name: "radio_info_is_radio_on"
+  namespace: "telephony"
+  description: "change method to show mobile radio power from service state to radio power"
+  bug: "306084899"
+}
