@@ -1700,6 +1700,39 @@ public class SubscriptionManagerService extends ISub.Stub {
                             preferredUsageSetting)
                     + " newSetting=" + SubscriptionManager.usageSettingToString(newUsageSetting));
         }
+
+        if (mFeatureFlags.dataOnlyCellularService()) {
+            final int[] servicesFromCarrierConfig =
+                    config.getIntArray(
+                            CarrierConfigManager.KEY_CELLULAR_SERVICE_CAPABILITIES_INT_ARRAY);
+            int serviceBitmasks = 0;
+            boolean allServicesAreValid = true;
+            // Check if all services from carrier config are valid before setting to db
+            if (servicesFromCarrierConfig == null) {
+                allServicesAreValid = false;
+            } else {
+                for (int service : servicesFromCarrierConfig) {
+                    if (service < SubscriptionManager.SERVICE_CAPABILITY_VOICE
+                            || service > SubscriptionManager.SERVICE_CAPABILITY_MAX) {
+                        allServicesAreValid = false;
+                        break;
+                    } else {
+                        serviceBitmasks |= SubscriptionManager.serviceCapabilityToBitmask(service);
+                    }
+                }
+            }
+            // In case we get invalid service override, fall back to default value.
+            // DO NOT throw exception which will crash phone process.
+            if (!allServicesAreValid) {
+                serviceBitmasks = SubscriptionManager.getAllServiceCapabilityBitmasks();
+            }
+
+            if (serviceBitmasks != subInfo.getServiceCapabilities()) {
+                log("updateSubscriptionByCarrierConfig: serviceCapabilities updated from "
+                        + subInfo.getServiceCapabilities() + " to " + serviceBitmasks);
+                mSubscriptionDatabaseManager.setServiceCapabilities(subId, serviceBitmasks);
+            }
+        }
     }
 
     /**

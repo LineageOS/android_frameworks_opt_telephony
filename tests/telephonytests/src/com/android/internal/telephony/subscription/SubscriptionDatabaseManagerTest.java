@@ -124,6 +124,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
     static final int FAKE_SATELLITE_ATTACH_FOR_CARRIER_DISABLED = 0;
     static final int FAKE_SATELLITE_IS_NTN_ENABLED = 1;
     static final int FAKE_SATELLITE_IS_NTN_DISABLED = 0;
+    static final int FAKE_SERVICE_CAPABILITIES_1 =
+            SubscriptionManager.SERVICE_CAPABILITY_DATA_BITMASK;
+    static final int FAKE_SERVICE_CAPABILITIES_2 =
+            SubscriptionManager.SERVICE_CAPABILITY_SMS_BITMASK;
 
     static final String FAKE_MAC_ADDRESS1 = "DC:E5:5B:38:7D:40";
     static final String FAKE_MAC_ADDRESS2 = "DC:B5:4F:47:F3:4C";
@@ -199,6 +203,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                             FAKE_SATELLITE_ATTACH_FOR_CARRIER_DISABLED)
                     .setOnlyNonTerrestrialNetwork(FAKE_SATELLITE_IS_NTN_DISABLED)
                     .setGroupDisabled(false)
+                    .setServiceCapabilities(FAKE_SERVICE_CAPABILITIES_1)
                     .build();
 
     static final SubscriptionInfoInternal FAKE_SUBSCRIPTION_INFO2 =
@@ -270,6 +275,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                             FAKE_SATELLITE_ATTACH_FOR_CARRIER_ENABLED)
                     .setOnlyNonTerrestrialNetwork(FAKE_SATELLITE_IS_NTN_ENABLED)
                     .setGroupDisabled(false)
+                    .setServiceCapabilities(FAKE_SERVICE_CAPABILITIES_2)
                     .build();
 
     private SubscriptionDatabaseManager mDatabaseManagerUT;
@@ -429,6 +435,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         doReturn(1).when(mUiccController).convertToPublicCardId(eq(FAKE_ICCID1));
         doReturn(2).when(mUiccController).convertToPublicCardId(eq(FAKE_ICCID2));
         when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
+        when(mFeatureFlags.dataOnlyCellularService()).thenReturn(true);
         mDatabaseManagerUT = new SubscriptionDatabaseManager(mContext, Looper.myLooper(),
                 mFeatureFlags, mSubscriptionDatabaseManagerCallback);
         logd("SubscriptionDatabaseManagerTest -Setup!");
@@ -2173,5 +2180,33 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                         .build());
         processAllMessages();
         assertThat(latch.getCount()).isEqualTo(0);
+    }
+
+    @Test
+    public void testUpdateServiceCapabilities() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setServiceCapabilities(1,
+                        FAKE_SERVICE_CAPABILITIES_2));
+
+        SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
+        mDatabaseManagerUT.setServiceCapabilities(subInfo.getSubscriptionId(),
+                FAKE_SERVICE_CAPABILITIES_2);
+        processAllMessages();
+
+        subInfo = new SubscriptionInfoInternal.Builder(subInfo).setServiceCapabilities(
+                FAKE_SERVICE_CAPABILITIES_2).build();
+        verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_SERVICE_CAPABILITIES))
+                .isEqualTo(FAKE_SERVICE_CAPABILITIES_2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_SERVICE_CAPABILITIES,
+                FAKE_SERVICE_CAPABILITIES_1);
+        assertThat(
+                mDatabaseManagerUT.getSubscriptionInfoInternal(1).getServiceCapabilities())
+                .isEqualTo(FAKE_SERVICE_CAPABILITIES_1);
     }
 }
