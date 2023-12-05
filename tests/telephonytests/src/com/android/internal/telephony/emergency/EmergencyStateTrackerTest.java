@@ -886,6 +886,42 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
     }
 
     /**
+     * Test that once endCall() is called and we enter ECM, then we exit ECM when turning on
+     * airplane mode.
+     */
+    @Test
+    @SmallTest
+    public void endCall_entersEcm_thenExitsEcmWhenTurnOnAirplaneMode() {
+        // Setup EmergencyStateTracker
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        // Create test Phone
+        Phone testPhone = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        setUpAsyncResultForSetEmergencyMode(testPhone, E_REG_RESULT);
+        setUpAsyncResultForExitEmergencyMode(testPhone);
+        CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                TEST_CALL_ID, false);
+        // Set call to ACTIVE
+        emergencyStateTracker.onEmergencyCallStateChanged(Call.State.ACTIVE, TEST_CALL_ID);
+        // Set ecm as supported
+        setEcmSupportedConfig(testPhone, /* ecmSupported= */ true);
+
+        processAllMessages();
+
+        emergencyStateTracker.endCall(TEST_CALL_ID);
+
+        assertTrue(emergencyStateTracker.isInEcm());
+
+        emergencyStateTracker.onCellularRadioPowerOffRequested();
+
+        // Verify exitEmergencyMode() is called.
+        verify(testPhone).exitEmergencyMode(any(Message.class));
+        assertFalse(emergencyStateTracker.isInEcm());
+        assertFalse(emergencyStateTracker.isInEmergencyMode());
+    }
+
+    /**
      * Test that after exitEmergencyCallbackMode() is called, the correct intents are sent and
      * emergency mode is exited on the modem.
      */

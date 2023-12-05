@@ -83,6 +83,8 @@ public class DomainSelectionResolverTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testGetInstance() throws IllegalStateException {
+        DomainSelectionResolver.setDomainSelectionResolver(null);
+
         assertThrows(IllegalStateException.class, () -> {
             DomainSelectionResolver.getInstance();
         });
