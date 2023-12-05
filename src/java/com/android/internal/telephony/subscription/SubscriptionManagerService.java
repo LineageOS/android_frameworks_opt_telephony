@@ -2879,6 +2879,7 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @return The subscription Id default to use.
      */
     private int getDefaultAsUser(@UserIdInt int userId, int defaultValue) {
+        // TODO: Not using mFlags.enforceSubscriptionUserFilter because this affects U CTS.
         if (mFeatureFlags.workProfileApiSplit()) {
             List<SubscriptionInfoInternal> subInfos =
                     getSubscriptionInfoStreamAsUser(UserHandle.of(userId))
@@ -3806,7 +3807,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                             + subscriptionId);
         }
 
-        if (mFeatureFlags.workProfileApiSplit()) {
+        if (mFeatureFlags.enforceSubscriptionUserFilter()) {
             return isSubscriptionAssociatedWithUserInternal(
                     subInfoInternal, userHandle.getIdentifier());
         }
@@ -3835,15 +3836,15 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     private boolean isSubscriptionAssociatedWithUserInternal(
             @NonNull SubscriptionInfoInternal subInfo, @UserIdInt int userId) {
-        if (!mFeatureFlags.workProfileApiSplit()
+        if (!mFeatureFlags.enforceSubscriptionUserFilter()
                 || !CompatChanges.isChangeEnabled(FILTER_ACCESSIBLE_SUBS_BY_USER,
                 Binder.getCallingUid())) {
             return true;
         }
-        return subInfo.getUserId() == userId
-                // Can access the unassociated sub if the user doesn't have its own.
-                || (subInfo.getUserId() == UserHandle.USER_NULL
+        // Can access the unassociated sub if the user doesn't have its own.
+        return (subInfo.getUserId() == UserHandle.USER_NULL
                 && mUserIdToAvailableSubs.get(userId) == null)
+                || userId == subInfo.getUserId()
                 || userId == UserHandle.USER_ALL;
     }
 
@@ -3866,7 +3867,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         enforcePermissions("getSubscriptionInfoListAssociatedWithUser",
                 Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
 
-        if (mFeatureFlags.workProfileApiSplit()) {
+        if (mFeatureFlags.enforceSubscriptionUserFilter()) {
             return getSubscriptionInfoStreamAsUser(userHandle)
                     .map(SubscriptionInfoInternal::toSubscriptionInfo)
                     .collect(Collectors.toList());
