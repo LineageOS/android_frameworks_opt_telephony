@@ -23,6 +23,7 @@ import static com.android.internal.telephony.RILConstants.RADIO_NOT_AVAILABLE;
 import static com.android.internal.telephony.RILConstants.REQUEST_NOT_SUPPORTED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_HAL_DEVICE_CAPABILITIES;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_PHONE_CAPABILITY;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SIMULTANEOUS_CALLING_SUPPORT;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SLOT_STATUS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFERRED_DATA_MODEM;
@@ -78,6 +79,8 @@ public class RadioConfig extends Handler {
     private static RadioConfig sRadioConfig;
 
     protected Registrant mSimSlotStatusRegistrant;
+
+    protected Registrant mSimultaneousCallingSupportStatusRegistrant;
 
     private boolean isMobileDataCapable(Context context) {
         final TelephonyManager tm = context.getSystemService(TelephonyManager.class);
@@ -478,6 +481,34 @@ public class RadioConfig extends Handler {
     }
 
     /**
+     * Wrapper function for IRadioConfig.getSimultaneousCallingSupport().
+     */
+    public void updateSimultaneousCallingSupport(Message result) {
+        RadioConfigProxy proxy = getRadioConfigProxy(null);
+        if (proxy.isEmpty()) return;
+
+        if (proxy.getVersion().less(RIL.RADIO_HAL_VERSION_2_2)) {
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+            return;
+        }
+
+        RILRequest rr = obtainRequest(RIL_REQUEST_GET_SIMULTANEOUS_CALLING_SUPPORT, result,
+                mDefaultWorkSource);
+        if (DBG) {
+            logd(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+        }
+        try {
+            proxy.updateSimultaneousCallingSupport(rr.mSerial);
+        } catch (RemoteException | RuntimeException e) {
+            resetProxyAndRequestList("updateSimultaneousCallingSupport", e);
+        }
+    }
+
+    /**
      * Wrapper function for IRadioConfig.getPhoneCapability().
      */
     public void getPhoneCapability(Message result) {
@@ -563,6 +594,14 @@ public class RadioConfig extends Handler {
         } catch (RemoteException | RuntimeException e) {
             resetProxyAndRequestList("setNumOfLiveModems", e);
         }
+    }
+
+    /**
+     * Register a handler to get SIM slots that support simultaneous calling changed notifications.
+     */
+    public void registerForSimultaneousCallingSupportStatusChanged(Handler h, int what,
+            Object obj) {
+        mSimultaneousCallingSupportStatusRegistrant = new Registrant(h, what, obj);
     }
 
     /**
