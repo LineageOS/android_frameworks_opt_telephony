@@ -41,7 +41,6 @@ import android.testing.TestableLooper;
 import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.PhoneInternalInterface.DialArgs;
-import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -67,16 +66,12 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
     // Mocked classes
     private GsmCdmaConnection mConnection;
     private Handler mHandler;
-    private DomainSelectionResolver mDomainSelectionResolver;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mConnection = mock(GsmCdmaConnection.class);
         mHandler = mock(Handler.class);
-        mDomainSelectionResolver = mock(DomainSelectionResolver.class);
-        doReturn(false).when(mDomainSelectionResolver).isDomainSelectionSupported();
-        DomainSelectionResolver.setDomainSelectionResolver(mDomainSelectionResolver);
         mSimulatedCommands.setRadioPower(true, null);
         mPhone.mCi = this.mSimulatedCommands;
 
@@ -91,7 +86,6 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mCTUT = null;
-        DomainSelectionResolver.setDomainSelectionResolver(null);
         super.tearDown();
     }
 
