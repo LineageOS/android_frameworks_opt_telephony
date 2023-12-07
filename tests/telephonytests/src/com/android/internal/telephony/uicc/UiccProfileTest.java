@@ -129,7 +129,7 @@ public class UiccProfileTest extends TelephonyTest {
         ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
                 ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
         mUiccProfile = new UiccProfile(mContext, mSimulatedCommands, mIccCardStatus,
-              0 /* phoneId */, mUiccCard, new Object());
+              0 /* phoneId */, mUiccCard, new Object(), mFeatureFlags);
         verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
                 listenerArgumentCaptor.capture());
         mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(0);

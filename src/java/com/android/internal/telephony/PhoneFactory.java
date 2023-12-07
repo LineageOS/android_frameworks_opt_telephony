@@ -268,7 +268,7 @@ public class PhoneFactory {
                         makePhoneSwitcher(maxActivePhones, sContext, Looper.myLooper(),
                                 featureFlags);
 
-                sProxyController = ProxyController.getInstance(context);
+                sProxyController = ProxyController.getInstance(context, featureFlags);
 
                 sIntentBroadcaster = IntentBroadcaster.getInstance(context);
 
@@ -276,7 +276,7 @@ public class PhoneFactory {
 
                 for (int i = 0; i < numPhones; i++) {
                     sTelephonyNetworkFactories[i] = new TelephonyNetworkFactory(
-                            Looper.myLooper(), sPhones[i]);
+                            Looper.myLooper(), sPhones[i], featureFlags);
                 }
             }
         }
@@ -285,8 +285,9 @@ public class PhoneFactory {
     /**
      * Upon single SIM to dual SIM switch or vice versa, we dynamically allocate or de-allocate
      * Phone and CommandInterface objects.
-     * @param context
-     * @param activeModemCount
+     *
+     * @param context The context
+     * @param activeModemCount The number of active modems
      */
     public static void onMultiSimConfigChanged(Context context, int activeModemCount) {
         synchronized (sLockProxyPhones) {
@@ -313,7 +314,7 @@ public class PhoneFactory {
                     sPhones[i].createImsPhone();
                 }
                 sTelephonyNetworkFactories[i] = new TelephonyNetworkFactory(
-                        Looper.myLooper(), sPhones[i]);
+                        Looper.myLooper(), sPhones[i], sFeatureFlags);
             }
         }
     }

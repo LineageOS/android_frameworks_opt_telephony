@@ -342,8 +342,9 @@ public class TelephonyComponentFactory {
      * Create a new UiccProfile object.
      */
     public UiccProfile makeUiccProfile(Context context, CommandsInterface ci, IccCardStatus ics,
-                                       int phoneId, UiccCard uiccCard, Object lock) {
-        return new UiccProfile(context, ci, ics, phoneId, uiccCard, lock);
+                                       int phoneId, UiccCard uiccCard, Object lock,
+            @NonNull FeatureFlags flags) {
+        return new UiccProfile(context, ci, ics, phoneId, uiccCard, lock, flags);
     }
 
     public EriManager makeEriManager(Phone phone, int eriFileSource) {
