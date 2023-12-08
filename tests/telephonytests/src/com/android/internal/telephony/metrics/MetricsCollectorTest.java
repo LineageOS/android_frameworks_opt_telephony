@@ -23,6 +23,7 @@ import static com.android.internal.telephony.TelephonyStatsLog.SIM_SLOT_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.SUPPORTED_RADIO_ACCESS_FAMILY;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_RAT_USAGE;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION;
+import static com.android.internal.telephony.util.TelephonyUtils.IS_DEBUGGABLE;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -67,6 +68,8 @@ public class MetricsCollectorTest extends TelephonyTest {
                     .setCoolDownMillis(24L * 3600L * 1000L)
                     .build();
     private static final long MIN_COOLDOWN_MILLIS = 23L * 3600L * 1000L;
+    private static final long CELL_SERVICE_MIN_COOLDOWN_MILLIS =
+            IS_DEBUGGABLE ? 4L *  60L * 1000L : MIN_COOLDOWN_MILLIS;
     private static final long MIN_CALLS_PER_BUCKET = 5L;
 
     // NOTE: these fields are currently 32-bit internally and padded to 64-bit by TelephonyManager
@@ -398,7 +401,8 @@ public class MetricsCollectorTest extends TelephonyTest {
 
         assertThat(actualAtoms).hasSize(0);
         assertThat(result).isEqualTo(StatsManager.PULL_SKIP);
-        verify(mPersistAtomsStorage, times(1)).getCellularServiceStates(eq(MIN_COOLDOWN_MILLIS));
+        verify(mPersistAtomsStorage, times(1)).getCellularServiceStates(
+                eq(CELL_SERVICE_MIN_COOLDOWN_MILLIS));
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
