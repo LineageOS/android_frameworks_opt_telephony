@@ -372,7 +372,10 @@ public class LocaleTracker extends Handler {
      */
     public void updateOperatorNumeric(String operatorNumeric) {
         if (TextUtils.isEmpty(operatorNumeric)) {
-            sendMessageDelayed(obtainMessage(EVENT_OPERATOR_LOST), SERVICE_OPERATOR_LOST_DELAY_MS);
+            if (!hasMessages(EVENT_OPERATOR_LOST)) {
+                sendMessageDelayed(obtainMessage(EVENT_OPERATOR_LOST),
+                        SERVICE_OPERATOR_LOST_DELAY_MS);
+            }
         } else {
             removeMessages(EVENT_OPERATOR_LOST);
             updateOperatorNumericImmediate(operatorNumeric);
@@ -528,6 +531,9 @@ public class LocaleTracker extends Handler {
         if (!mPhone.isRadioOn()) {
             countryIso = "";
             countryIsoDebugInfo = "radio off";
+
+            // clear cell infos, we don't know where the next network to camp on.
+            mCellInfoList = null;
         }
 
         log("updateLocale: countryIso = " + countryIso

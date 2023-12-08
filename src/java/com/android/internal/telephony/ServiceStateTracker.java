@@ -97,6 +97,7 @@ import com.android.internal.telephony.data.DataNetworkController.DataNetworkCont
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.metrics.ServiceStateStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.satellite.NtnCapabilityResolver;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -404,6 +405,11 @@ public class ServiceStateTracker extends Handler {
                     // state in case our service state was never broadcasted (we don't notify
                     // service states when the subId is invalid)
                     mPhone.notifyServiceStateChanged(mPhone.getServiceState());
+                    // On SubscriptionId changed from invalid  to valid sub id, create
+                    // ServiceStateProvider with valid sub id entry. Note: PollStateDone can update
+                    // the DB again,for the SubID with any change detected at poll state request
+                    log("Update SS information on moving from invalid to valid sub id");
+                    updateServiceStateToDb(mPhone.getServiceState());
                 }
 
                 boolean restoreSelection = !context.getResources().getBoolean(
@@ -2932,8 +2938,8 @@ public class ServiceStateTracker extends Handler {
 
                 // Force display no service
                 final boolean forceDisplayNoService = shouldForceDisplayNoService() && !mIsSimReady;
-                if (!forceDisplayNoService && Phone.isEmergencyCallOnly()) {
-                    // No service but emergency call allowed
+                if (!forceDisplayNoService && (mEmergencyOnly || Phone.isEmergencyCallOnly())) {
+                    // The slot is emc only or the slot is masked as oos due to device is emc only
                     plmn = Resources.getSystem()
                             .getText(com.android.internal.R.string.emergency_calls_only).toString();
                 } else {
@@ -3419,6 +3425,7 @@ public class ServiceStateTracker extends Handler {
 
         updateNrFrequencyRangeFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
         updateNrStateFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
+        updateNtnCapability();
 
         if (TelephonyUtils.IS_DEBUGGABLE && mPhone.getTelephonyTester() != null) {
             mPhone.getTelephonyTester().overrideServiceState(mNewSS);
@@ -3759,10 +3766,7 @@ public class ServiceStateTracker extends Handler {
                 mPhone.notifyServiceStateChanged(mPhone.getServiceState());
             }
 
-            // insert into ServiceStateProvider. This will trigger apps to wake through JobScheduler
-            mPhone.getContext().getContentResolver()
-                    .insert(getUriForSubscriptionId(mPhone.getSubId()),
-                            getContentValuesForServiceState(mSS));
+            updateServiceStateToDb(mPhone.getServiceState());
 
             TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
             mPhone.getVoiceCallSessionStats().onServiceStateChanged(mSS);
@@ -3890,6 +3894,16 @@ public class ServiceStateTracker extends Handler {
                 mReportedGprsNoReg = false;
             }
         }
+    }
+
+    /**
+     * Insert SS information into ServiceStateProvider DB table for a sub id.
+     * This will trigger apps to wake through JobScheduler
+     */
+    private void updateServiceStateToDb(ServiceState serviceState) {
+        mPhone.getContext().getContentResolver()
+                .insert(getUriForSubscriptionId(mPhone.getSubId()),
+                        getContentValuesForServiceState(serviceState));
     }
 
     private String getOperatorNameFromEri() {
@@ -5535,6 +5549,17 @@ public class ServiceStateTracker extends Handler {
                 log("pollStateDone: mNewSS = " + mNewSS);
             }
             return;
+        }
+    }
+
+    private void updateNtnCapability() {
+        for (NetworkRegistrationInfo nri : mNewSS.getNetworkRegistrationInfoListForTransportType(
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN)) {
+            NtnCapabilityResolver.resolveNtnCapability(nri, mSubId);
+            if (nri.isNonTerrestrialNetwork()) {
+                // Replace the existing NRI with the updated NRI.
+                mNewSS.addNetworkRegistrationInfo(nri);
+            }
         }
     }
 

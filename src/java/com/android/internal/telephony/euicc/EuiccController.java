@@ -191,6 +191,19 @@ public class EuiccController extends IEuiccController.Stub {
             boolean usePortIndex = resolutionIntent.getBooleanExtra(
                     EuiccService.EXTRA_RESOLUTION_USE_PORT_INDEX, false);
             resolutionExtras.putBoolean(EuiccService.EXTRA_RESOLUTION_USE_PORT_INDEX, usePortIndex);
+
+            if (!EuiccService.ACTION_RESOLVE_NO_PRIVILEGES.equals(resolutionIntent.getAction())
+                    || !resolutionExtras.containsKey(EuiccService.EXTRA_RESOLUTION_PORT_INDEX)) {
+                // Port index resolution is requested only through the ACTION_RESOLVE_NO_PRIVILEGES
+                // action. Therefore, if the action is not ACTION_RESOLVE_NO_PRIVILEGES, use the
+                // port index from the resolution intent.
+                // (OR) If the action is ACTION_RESOLVE_NO_PRIVILEGES and resolutionExtras does not
+                // contain the EXTRA_RESOLUTION_PORT_INDEX key, retrieve the port index from
+                // resolutionIntent.
+                resolutionExtras.putInt(EuiccService.EXTRA_RESOLUTION_PORT_INDEX,
+                        resolutionIntent.getIntExtra(EuiccService.EXTRA_RESOLUTION_PORT_INDEX,
+                                TelephonyManager.DEFAULT_PORT_INDEX));
+            }
             Log.i(TAG, " continueOperation portIndex: " + resolutionExtras.getInt(
                     EuiccService.EXTRA_RESOLUTION_PORT_INDEX) + " usePortIndex: " + usePortIndex);
             op.continueOperation(cardId, resolutionExtras, callbackIntent);

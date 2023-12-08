@@ -275,6 +275,8 @@ message VoiceCallSession {
     optional int32 call_duration = 32;
     optional int32 last_known_rat = 33;
     optional int32 fold_state = 34;
+    optional int64 rat_switch_count_after_connected = 35;
+    optional bool handover_in_progress = 36;
 
     // Internal use only
     optional int64 setup_begin_millis = 10001;
@@ -378,6 +380,8 @@ message CellularServiceState {
     optional bool is_emergency_only = 10;
     optional bool is_internet_pdn_up = 11;
     optional int32 fold_state = 12;
+    optional bool override_voice_service = 13;
+    optional bool isDataEnabled = 14;
 
     // Internal use only
     optional int64 last_used_millis = 10001;

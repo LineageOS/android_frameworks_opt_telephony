@@ -32,6 +32,7 @@ import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
+import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
@@ -199,8 +200,6 @@ public class DataConfigManager extends Handler {
             "anomaly_setup_data_call_failure";
     /** DeviceConfig key of anomaly report threshold for frequent network-unwanted call. */
     private static final String KEY_ANOMALY_NETWORK_UNWANTED = "anomaly_network_unwanted";
-    /** DeviceConfig key of anomaly report threshold for frequent change of preferred network. */
-    private static final String KEY_ANOMALY_QNS_CHANGE_NETWORK = "anomaly_qns_change_network";
     /** DeviceConfig key of anomaly report threshold for invalid QNS params. */
     private static final String KEY_ANOMALY_QNS_PARAM = "anomaly_qns_param";
     /** DeviceConfig key of anomaly report threshold for DataNetwork stuck in connecting state. */
@@ -214,13 +213,8 @@ public class DataConfigManager extends Handler {
             "anomaly_network_handover_timeout";
     /** DeviceConfig key of anomaly report: True for enabling APN config invalidity detection */
     private static final String KEY_ANOMALY_APN_CONFIG_ENABLED = "anomaly_apn_config_enabled";
-    /** DeviceConfig key of the time threshold in ms for defining a network status to be stable. **/
-    private static final String KEY_AUTO_DATA_SWITCH_AVAILABILITY_STABILITY_TIME_THRESHOLD =
-            "auto_data_switch_availability_stability_time_threshold";
-    /** DeviceConfig key of the maximum number of retries when a validation for switching failed.**/
-    private static final String KEY_AUTO_DATA_SWITCH_VALIDATION_MAX_RETRY =
-            "auto_data_switch_validation_max_retry";
-
+    /** Invalid auto data switch score. */
+    private static final int INVALID_AUTO_DATA_SWITCH_SCORE = -1;
     /** Anomaly report thresholds for frequent setup data call failure. */
     private EventFrequency mSetupDataCallAnomalyReportThreshold;
 
@@ -301,6 +295,12 @@ public class DataConfigManager extends Handler {
     private @NonNull final List<HandoverRule> mHandoverRuleList = new ArrayList<>();
     /** {@code True} keep IMS network in case of moving to non VOPS area; {@code false} otherwise.*/
     private boolean mShouldKeepNetworkUpInNonVops = false;
+    /**
+     * A map of network types to the estimated downlink values by signal strength 0 - 4 for that
+     * network type
+     */
+    private @NonNull final @DataConfigNetworkType Map<String, int[]>
+            mAutoDataSwitchNetworkTypeSignalMap = new ConcurrentHashMap<>();
 
     /**
      * Constructor
@@ -452,6 +452,7 @@ public class DataConfigManager extends Handler {
         updateBandwidths();
         updateTcpBuffers();
         updateHandoverRules();
+        updateAutoDataSwitchConfig();
 
         log("Carrier config updated. Config is " + (isConfigCarrierSpecific() ? "" : "not ")
                 + "carrier specific.");
@@ -918,6 +919,84 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * Update the network type and signal strength score table for auto data switch decisions.
+     */
+    private void updateAutoDataSwitchConfig() {
+        synchronized (this) {
+            mAutoDataSwitchNetworkTypeSignalMap.clear();
+            final PersistableBundle table = mCarrierConfig.getPersistableBundle(
+                    CarrierConfigManager.KEY_AUTO_DATA_SWITCH_RAT_SIGNAL_SCORE_BUNDLE);
+            String[] networkTypeKeys = {
+                    DATA_CONFIG_NETWORK_TYPE_GPRS,
+                    DATA_CONFIG_NETWORK_TYPE_EDGE,
+                    DATA_CONFIG_NETWORK_TYPE_UMTS,
+                    DATA_CONFIG_NETWORK_TYPE_CDMA,
+                    DATA_CONFIG_NETWORK_TYPE_1xRTT,
+                    DATA_CONFIG_NETWORK_TYPE_EVDO_0,
+                    DATA_CONFIG_NETWORK_TYPE_EVDO_A,
+                    DATA_CONFIG_NETWORK_TYPE_HSDPA,
+                    DATA_CONFIG_NETWORK_TYPE_HSUPA,
+                    DATA_CONFIG_NETWORK_TYPE_HSPA,
+                    DATA_CONFIG_NETWORK_TYPE_EVDO_B,
+                    DATA_CONFIG_NETWORK_TYPE_EHRPD,
+                    DATA_CONFIG_NETWORK_TYPE_IDEN,
+                    DATA_CONFIG_NETWORK_TYPE_LTE,
+                    DATA_CONFIG_NETWORK_TYPE_HSPAP,
+                    DATA_CONFIG_NETWORK_TYPE_GSM,
+                    DATA_CONFIG_NETWORK_TYPE_TD_SCDMA,
+                    DATA_CONFIG_NETWORK_TYPE_NR_NSA,
+                    DATA_CONFIG_NETWORK_TYPE_NR_NSA_MMWAVE,
+                    DATA_CONFIG_NETWORK_TYPE_NR_SA,
+                    DATA_CONFIG_NETWORK_TYPE_NR_SA_MMWAVE
+            };
+            if (table != null) {
+                for (String networkType : networkTypeKeys) {
+                    int[] scores = table.getIntArray(networkType);
+                    if (scores != null
+                            && scores.length == SignalStrength.NUM_SIGNAL_STRENGTH_BINS) {
+                        for (int i = 0; i < scores.length; i++) {
+                            if (scores[i] < 0) {
+                                loge("Auto switch score must not < 0 for network type "
+                                        + networkType);
+                                break;
+                            }
+                            if (i == scores.length - 1) {
+                                mAutoDataSwitchNetworkTypeSignalMap.put(networkType, scores);
+                            }
+                        }
+                    } else {
+                        loge("Auto switch score table should specify "
+                                + SignalStrength.NUM_SIGNAL_STRENGTH_BINS
+                                + " signal strength for network type " + networkType);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * @param displayInfo The displayed network info.
+     * @param signalStrength The signal strength.
+     * @return Score base on network type and signal strength to inform auto data switch decision.
+     */
+    public int getAutoDataSwitchScore(@NonNull TelephonyDisplayInfo displayInfo,
+            @NonNull SignalStrength signalStrength) {
+        int[] scores = mAutoDataSwitchNetworkTypeSignalMap.get(
+                getDataConfigNetworkType(displayInfo));
+        return scores != null ? scores[signalStrength.getLevel()] : INVALID_AUTO_DATA_SWITCH_SCORE;
+    }
+
+    /**
+     * @return The tolerated gap of score for auto data switch decision, larger than which the
+     * device will switch to the SIM with higher score. If 0, the device always switch to the higher
+     * score SIM. If < 0, the network type and signal strength based auto switch is disabled.
+     */
+    public int getAutoDataSwitchScoreTolerance() {
+        return mResources.getInteger(com.android.internal.R.integer
+                .auto_data_switch_score_tolerance);
+    }
+
+    /**
      * @return The maximum number of retries when a validation for switching failed.
      */
     public int getAutoDataSwitchValidationMaxRetry() {
@@ -1264,6 +1343,15 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * @return {@code true} if allow sending null data profile to ask modem to clear the initial
+     * attach data profile.
+     */
+    public boolean allowClearInitialAttachDataProfile() {
+        return mResources.getBoolean(
+                com.android.internal.R.bool.allow_clear_initial_attach_data_profile);
+    }
+
+    /**
      * Log debug messages.
      * @param s debug messages
      */
@@ -1315,9 +1403,15 @@ public class DataConfigManager extends Handler {
         pw.println("mNetworkDisconnectingTimeout=" + mNetworkDisconnectingTimeout);
         pw.println("mNetworkHandoverTimeout=" + mNetworkHandoverTimeout);
         pw.println("mIsApnConfigAnomalyReportEnabled=" + mIsApnConfigAnomalyReportEnabled);
+        pw.println("Auto data switch:");
+        pw.increaseIndent();
+        pw.println("getAutoDataSwitchScoreTolerance=" + getAutoDataSwitchScoreTolerance());
+        mAutoDataSwitchNetworkTypeSignalMap.forEach((key, value) -> pw.println(key + ":"
+                + Arrays.toString(value)));
         pw.println("getAutoDataSwitchAvailabilityStabilityTimeThreshold="
                 + getAutoDataSwitchAvailabilityStabilityTimeThreshold());
         pw.println("getAutoDataSwitchValidationMaxRetry=" + getAutoDataSwitchValidationMaxRetry());
+        pw.decreaseIndent();
         pw.println("Metered APN types=" + mMeteredApnTypes.stream()
                 .map(ApnSetting::getApnTypeString).collect(Collectors.joining(",")));
         pw.println("Roaming metered APN types=" + mRoamingMeteredApnTypes.stream()
@@ -1359,6 +1453,7 @@ public class DataConfigManager extends Handler {
         pw.println("isEnhancedIwlanHandoverCheckEnabled=" + isEnhancedIwlanHandoverCheckEnabled());
         pw.println("isTetheringProfileDisabledForRoaming="
                 + isTetheringProfileDisabledForRoaming());
+        pw.println("allowClearInitialAttachDataProfile=" + allowClearInitialAttachDataProfile());
         pw.decreaseIndent();
     }
 }

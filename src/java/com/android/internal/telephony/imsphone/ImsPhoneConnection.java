@@ -82,7 +82,7 @@ public class ImsPhoneConnection extends Connection implements
     private ImsPhoneCall mParent;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private ImsCall mImsCall;
-    private Bundle mExtras = new Bundle();
+    private final Bundle mExtras = new Bundle();
     private TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
@@ -1491,7 +1491,10 @@ public class ImsPhoneConnection extends Connection implements
      * @return boolean: true if cross sim calling, false otherwise
      */
     public boolean isCrossSimCall() {
-        return mImsCall != null && mImsCall.isCrossSimCall();
+        if (mImsCall == null) {
+            return mExtras.getBoolean(ImsCallProfile.EXTRA_IS_CROSS_SIM_CALL);
+        }
+        return mImsCall.isCrossSimCall();
     }
 
     /**
