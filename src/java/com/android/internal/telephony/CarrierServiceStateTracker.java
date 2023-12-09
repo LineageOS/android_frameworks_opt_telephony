@@ -116,14 +116,15 @@ public class CarrierServiceStateTracker extends Handler {
                                     mPhone.getContext(),
                                     mPhone.getSubId(),
                                     CarrierConfigManager.KEY_EMERGENCY_NOTIFICATION_DELAY_INT,
-                                    CarrierConfigManager
-                                            .KEY_PREF_NETWORK_NOTIFICATION_DELAY_INT);
+                                    CarrierConfigManager.KEY_PREF_NETWORK_NOTIFICATION_DELAY_INT,
+                                    CarrierConfigManager.KEY_HIDE_PREFERRED_NETWORK_TYPE_BOOL);
                     if (b.isEmpty()) return;
 
                     for (Map.Entry<Integer, NotificationType> entry :
                             mNotificationTypeMap.entrySet()) {
                         NotificationType notificationType = entry.getValue();
                         notificationType.setDelay(b);
+                        notificationType.setEnabled(b);
                     }
                     handleConfigChanges();
                 });
@@ -430,6 +431,18 @@ public class CarrierServiceStateTracker extends Handler {
         void setDelay(PersistableBundle bundle);
 
         /**
+         * Checks whether this Notification is enabled.
+         * @return {@code true} if this Notification is enabled, false otherwise
+         */
+        boolean isEnabled();
+
+        /**
+         * Sets whether this Notification is enabled. If disabled, it will not build notification.
+         * @param bundle PersistableBundle
+         */
+        void setEnabled(PersistableBundle bundle);
+
+        /**
          * returns notification type id.
          **/
         int getTypeId();
@@ -458,6 +471,7 @@ public class CarrierServiceStateTracker extends Handler {
 
         private final int mTypeId;
         private int mDelay = UNINITIALIZED_DELAY_VALUE;
+        private boolean mEnabled = false;
 
         PrefNetworkNotification(int typeId) {
             this.mTypeId = typeId;
@@ -480,6 +494,28 @@ public class CarrierServiceStateTracker extends Handler {
             return mDelay;
         }
 
+        /**
+         * Checks whether this Notification is enabled.
+         * @return {@code true} if this Notification is enabled, false otherwise
+         */
+        public boolean isEnabled() {
+            return mEnabled;
+        }
+
+        /**
+         * Sets whether this Notification is enabled. If disabled, it will not build notification.
+         * @param bundle PersistableBundle
+         */
+        public void setEnabled(PersistableBundle bundle) {
+            if (bundle == null) {
+                Rlog.e(LOG_TAG, "bundle is null");
+                return;
+            }
+            mEnabled = !bundle.getBoolean(
+                    CarrierConfigManager.KEY_HIDE_PREFERRED_NETWORK_TYPE_BOOL);
+            Rlog.i(LOG_TAG, "reading enabled notification pref network: " + mEnabled);
+        }
+
         public int getTypeId() {
             return mTypeId;
         }
@@ -497,10 +533,10 @@ public class CarrierServiceStateTracker extends Handler {
          */
         public boolean sendMessage() {
             Rlog.i(LOG_TAG, "PrefNetworkNotification: sendMessage() w/values: "
-                    + "," + isPhoneStillRegistered() + "," + mDelay + "," + isGlobalMode()
-                    + "," + mSST.isRadioOn());
-            if (mDelay == UNINITIALIZED_DELAY_VALUE || isPhoneStillRegistered() || isGlobalMode()
-                    || isRadioOffOrAirplaneMode()) {
+                    + "," + mEnabled + "," + isPhoneStillRegistered() + "," + mDelay
+                    + "," + isGlobalMode() + "," + mSST.isRadioOn());
+            if (!mEnabled || mDelay == UNINITIALIZED_DELAY_VALUE || isPhoneStillRegistered()
+                    || isGlobalMode() || isRadioOffOrAirplaneMode()) {
                 return false;
             }
             return true;
@@ -557,6 +593,22 @@ public class CarrierServiceStateTracker extends Handler {
 
         public int getDelay() {
             return mDelay;
+        }
+
+        /**
+         * Checks whether this Notification is enabled.
+         * @return {@code true} if this Notification is enabled, false otherwise
+         */
+        public boolean isEnabled() {
+            return true;
+        }
+
+        /**
+         * Sets whether this Notification is enabled. If disabled, it will not build notification.
+         * @param bundle PersistableBundle
+         */
+        public void setEnabled(PersistableBundle bundle) {
+            // always allowed. There is no config to hide notifications.
         }
 
         public int getTypeId() {

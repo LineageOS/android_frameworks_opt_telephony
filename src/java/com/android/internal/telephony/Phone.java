@@ -715,6 +715,28 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Determines if the carrier prefers to use an in service sim for a normal routed emergency
+     * call.
+     * @return true when carrier config
+     * {@link CarrierConfigManager#KEY_PREFER_IN_SERVICE_SIM_FOR_NORMAL_ROUTED_EMERGENCY_CALLS_BOOL}
+     * is true.
+     */
+    public boolean shouldPreferInServiceSimForNormalRoutedEmergencyCall() {
+        CarrierConfigManager configManager = (CarrierConfigManager)
+                getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle b = configManager.getConfigForSubId(getSubId(), CarrierConfigManager
+                .KEY_PREFER_IN_SERVICE_SIM_FOR_NORMAL_ROUTED_EMERGENCY_CALLS_BOOL);
+        if (b != null) {
+            return b.getBoolean(CarrierConfigManager
+                            .KEY_PREFER_IN_SERVICE_SIM_FOR_NORMAL_ROUTED_EMERGENCY_CALLS_BOOL,
+                    false);
+        } else {
+            // Default value set in CarrierConfigManager
+            return false;
+        }
+    }
+
+    /**
      * When overridden the derived class needs to call
      * super.handleMessage(msg) so this method has a
      * a chance to process the message.
@@ -2264,7 +2286,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *
      * @return Current signal strength as SignalStrength
      */
-    public SignalStrength getSignalStrength() {
+    public @NonNull SignalStrength getSignalStrength() {
         SignalStrengthController ssc = getSignalStrengthController();
         if (ssc == null) {
             return new SignalStrength();

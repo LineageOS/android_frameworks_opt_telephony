@@ -83,7 +83,8 @@ public class MultiSimSettingController extends Handler {
     private static final int EVENT_SUBSCRIPTION_INFO_CHANGED         = 4;
     private static final int EVENT_SUBSCRIPTION_GROUP_CHANGED        = 5;
     private static final int EVENT_DEFAULT_DATA_SUBSCRIPTION_CHANGED = 6;
-    private static final int EVENT_MULTI_SIM_CONFIG_CHANGED          = 8;
+    @VisibleForTesting
+    public static final int EVENT_MULTI_SIM_CONFIG_CHANGED          = 8;
     @VisibleForTesting
     public static final int EVENT_RADIO_STATE_CHANGED                = 9;
 
@@ -150,6 +151,8 @@ public class MultiSimSettingController extends Handler {
 
     // The number of existing DataSettingsControllerCallback
     private int mCallbacksCount;
+    /** The number of active modem count. */
+    private int mActiveModemCount;
 
     private static final String SETTING_USER_PREF_DATA_SUB = "user_preferred_data_sub";
 
@@ -163,15 +166,13 @@ public class MultiSimSettingController extends Handler {
         }
 
         @Override
-        public void onDataEnabledChanged(boolean enabled,
-                @TelephonyManager.DataEnabledChangedReason int reason, String callingPackage) {
+        public void onUserDataEnabledChanged(boolean enabled, @NonNull String callingPackage) {
             int subId = mPhone.getSubId();
-            // notifyUserDataEnabled if the change is called from external and reason is
-            // DATA_ENABLED_REASON_USER
+            // only notifyUserDataEnabled if the change is called from external to avoid
+            // setUserDataEnabledForGroup infinite loop
             if (SubscriptionManager.isValidSubscriptionId(subId)
-                    && reason == TelephonyManager.DATA_ENABLED_REASON_USER
                     && !getInstance().mContext.getOpPackageName().equals(callingPackage)) {
-                getInstance().notifyUserDataEnabled(mPhone.getSubId(), enabled);
+                getInstance().notifyUserDataEnabled(subId, enabled);
             }
         }
 
@@ -217,10 +218,13 @@ public class MultiSimSettingController extends Handler {
         mSubscriptionManagerService = SubscriptionManagerService.getInstance();
 
         // Initialize mCarrierConfigLoadedSubIds and register to listen to carrier config change.
-        final int phoneCount = ((TelephonyManager) mContext.getSystemService(
-                Context.TELEPHONY_SERVICE)).getSupportedModemCount();
+        TelephonyManager telephonyManager = ((TelephonyManager) mContext.getSystemService(
+                TelephonyManager.class));
+        final int phoneCount = telephonyManager.getSupportedModemCount();
         mCarrierConfigLoadedSubIds = new int[phoneCount];
         Arrays.fill(mCarrierConfigLoadedSubIds, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
+        mActiveModemCount = telephonyManager.getActiveModemCount();
 
         PhoneConfigurationManager.registerForMultiSimConfigChange(
                 this, EVENT_MULTI_SIM_CONFIG_CHANGED, null);
@@ -316,9 +320,14 @@ public class MultiSimSettingController extends Handler {
                 onMultiSimConfigChanged(activeModems);
                 break;
             case EVENT_RADIO_STATE_CHANGED:
-                for (Phone phone : PhoneFactory.getPhones()) {
-                    if (phone.mCi.getRadioState() == TelephonyManager.RADIO_POWER_UNAVAILABLE) {
-                        if (DBG) log("Radio unavailable. Clearing sub info initialized flag.");
+                for (int phoneId = 0; phoneId < mActiveModemCount; phoneId++) {
+                    Phone phone = PhoneFactory.getPhone(phoneId);
+                    if (phone != null && phone.mCi.getRadioState()
+                            == TelephonyManager.RADIO_POWER_UNAVAILABLE) {
+                        if (DBG) {
+                            log("Radio unavailable on phone " + phoneId
+                                    + ", clearing sub info initialized flag");
+                        }
                         mSubInfoInitialized = false;
                         break;
                     }
@@ -453,6 +462,8 @@ public class MultiSimSettingController extends Handler {
     }
 
     private void onMultiSimConfigChanged(int activeModems) {
+        mActiveModemCount = activeModems;
+        log("onMultiSimConfigChanged: current ActiveModemCount=" + mActiveModemCount);
         // Clear mCarrierConfigLoadedSubIds. Other actions will responds to active
         // subscription change.
         for (int phoneId = activeModems; phoneId < mCarrierConfigLoadedSubIds.length; phoneId++) {
@@ -601,8 +612,7 @@ public class MultiSimSettingController extends Handler {
         // opportunistic subscription active (activeSubInfos.size() > 1), we automatically
         // set the primary to be default SIM and return.
         if (mPrimarySubList.size() == 1 && (change != PRIMARY_SUB_REMOVED
-                || ((TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE))
-                .getActiveModemCount() == 1)) {
+                || mActiveModemCount == 1)) {
             int subId = mPrimarySubList.get(0);
             if (DBG) log("updateDefaultValues: to only primary sub " + subId);
             mSubscriptionManagerService.setDefaultDataSubId(subId);
@@ -1058,10 +1068,11 @@ public class MultiSimSettingController extends Handler {
     }
 
     private boolean isRadioAvailableOnAllSubs() {
-        for (Phone phone : PhoneFactory.getPhones()) {
-            if ((phone.mCi != null &&
-                    phone.mCi.getRadioState() == TelephonyManager.RADIO_POWER_UNAVAILABLE) ||
-                    phone.isShuttingDown()) {
+        for (int phoneId = 0; phoneId < mActiveModemCount; phoneId++) {
+            Phone phone = PhoneFactory.getPhone(phoneId);
+            if (phone != null
+                    && (phone.mCi.getRadioState() == TelephonyManager.RADIO_POWER_UNAVAILABLE
+                    || phone.isShuttingDown())) {
                 return false;
             }
         }

@@ -130,6 +130,14 @@ public class DataSettingsManager extends Handler {
         }
 
         /**
+         * Called when user data enabled state changed.
+         *
+         * @param enabled {@code true} indicates user mobile data is enabled.
+         * @param callingPackage The package that changed the data enabled state.
+         */
+        public void onUserDataEnabledChanged(boolean enabled, @NonNull String callingPackage) {}
+
+        /**
          * Called when overall data enabled state changed.
          *
          * @param enabled {@code true} indicates mobile data is enabled.
@@ -289,6 +297,23 @@ public class DataSettingsManager extends Handler {
                         }
                     }
                 }, this::post);
+        // some overall mobile data override policy depend on whether DDS is user data enabled.
+        for (Phone phone : PhoneFactory.getPhones()) {
+            if (phone.getPhoneId() != mPhone.getPhoneId()) {
+                phone.getDataSettingsManager().registerCallback(new DataSettingsManagerCallback(
+                        this::post) {
+                    @Override
+                    public void onUserDataEnabledChanged(boolean enabled,
+                            @NonNull String callingPackage) {
+                        log("phone" + phone.getPhoneId() + " onUserDataEnabledChanged "
+                                + enabled + " by " + callingPackage
+                                + ", reevaluating mobile data policies");
+                        DataSettingsManager.this.updateDataEnabledAndNotify(
+                                TelephonyManager.DATA_ENABLED_REASON_OVERRIDE);
+                    }
+                });
+            }
+        }
         updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_UNKNOWN);
     }
 
@@ -416,6 +441,8 @@ public class DataSettingsManager extends Handler {
         if (changed) {
             logl("UserDataEnabled changed to " + enabled);
             mPhone.notifyUserMobileDataStateChanged(enabled);
+            mDataSettingsManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                    () -> callback.onUserDataEnabledChanged(enabled, callingPackage)));
             updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_USER, callingPackage);
         }
     }

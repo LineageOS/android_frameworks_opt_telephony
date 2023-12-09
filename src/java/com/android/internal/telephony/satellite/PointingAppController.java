@@ -37,6 +37,7 @@ import android.telephony.satellite.SatelliteManager;
 import android.text.TextUtils;
 
 import com.android.internal.R;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 
 import java.util.ArrayList;
@@ -92,7 +93,8 @@ public class PointingAppController {
      *
      * @param context The Context for the PointingUIController.
      */
-    private PointingAppController(@NonNull Context context) {
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public PointingAppController(@NonNull Context context) {
         mContext = context;
         mStartedSatelliteTransmissionUpdates = false;
     }
@@ -102,9 +104,19 @@ public class PointingAppController {
      * transmission updates
      * @param startedSatelliteTransmissionUpdates boolean to set the flag
      */
+    @VisibleForTesting
     public void setStartedSatelliteTransmissionUpdates(
             boolean startedSatelliteTransmissionUpdates) {
         mStartedSatelliteTransmissionUpdates = startedSatelliteTransmissionUpdates;
+    }
+
+    /**
+     * Get the flag mStartedSatelliteTransmissionUpdates
+     * @return returns mStartedSatelliteTransmissionUpdates
+     */
+    @VisibleForTesting
+    public boolean getStartedSatelliteTransmissionUpdates() {
+        return mStartedSatelliteTransmissionUpdates;
     }
 
     private static final class DatagramTransferStateHandlerRequest {
@@ -128,6 +140,7 @@ public class PointingAppController {
         public static final int EVENT_DATAGRAM_TRANSFER_STATE_CHANGED = 4;
 
         private final ConcurrentHashMap<IBinder, ISatelliteTransmissionUpdateCallback> mListeners;
+
         SatelliteTransmissionUpdateHandler(Looper looper) {
             super(looper);
             mListeners = new ConcurrentHashMap<>();
@@ -265,7 +278,6 @@ public class PointingAppController {
                 mSatelliteTransmissionUpdateHandlers.get(subId);
         if (handler != null) {
             handler.removeListener(callback);
-
             if (handler.hasListeners()) {
                 result.accept(SatelliteManager.SATELLITE_ERROR_NONE);
                 return;
@@ -321,9 +333,11 @@ public class PointingAppController {
 
     /**
      * Stop receiving satellite transmission updates.
+     * Reset the flag mStartedSatelliteTransmissionUpdates
      * This can be called by the pointing UI when the user stops pointing to the satellite.
      */
     public void stopSatelliteTransmissionUpdates(@NonNull Message message, @Nullable Phone phone) {
+        setStartedSatelliteTransmissionUpdates(false);
         if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
             SatelliteModemInterface.getInstance().stopSendingSatellitePointingInfo(message);
             return;

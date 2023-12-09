@@ -21,16 +21,22 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.os.Looper;
 import android.os.PersistableBundle;
+import android.telephony.TelephonyManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
@@ -130,5 +136,46 @@ public class DataSettingsManagerTest extends TelephonyTest {
                 .putBoolean(DATA_ROAMING_IS_USER_SETTING, true).commit();
         mDataSettingsManagerUT.setDefaultDataRoamingEnabled();
         assertFalse(mDataSettingsManagerUT.isDataRoamingEnabled());
+    }
+
+    @Test
+    public void testUpdateDataEnabledAndNotifyOverride() throws Exception {
+        // Mock another DDS phone.
+        int ddsPhoneId = 1;
+        int ddsSubId = 2;
+        doReturn(ddsSubId).when(mSubscriptionManagerService).getDefaultDataSubId();
+        Phone phone2 = Mockito.mock(Phone.class);
+        doReturn(ddsPhoneId).when(phone2).getPhoneId();
+        doReturn(ddsSubId).when(phone2).getSubId();
+        doReturn(ddsPhoneId).when(mSubscriptionManagerService).getPhoneId(ddsSubId);
+        DataSettingsManager dataSettingsManager2 = Mockito.mock(DataSettingsManager.class);
+        doReturn(dataSettingsManager2).when(phone2).getDataSettingsManager();
+        mPhones = new Phone[] {mPhone, phone2};
+        replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
+        ArgumentCaptor<DataSettingsManagerCallback> callbackArgumentCaptor = ArgumentCaptor
+                .forClass(DataSettingsManagerCallback.class);
+
+        mDataSettingsManagerUT.sendEmptyMessage(11 /* EVENT_INITIALIZE */);
+        processAllMessages();
+
+        // Verify listening to user enabled status of other phones.
+        verify(dataSettingsManager2).registerCallback(callbackArgumentCaptor.capture());
+        DataSettingsManagerCallback callback = callbackArgumentCaptor.getValue();
+
+        // Mock the phone as nonDDS.
+        mDataSettingsManagerUT.setDataEnabled(TelephonyManager.DATA_ENABLED_REASON_USER, false, "");
+        processAllMessages();
+        clearInvocations(mPhone);
+
+        // Verify the override policy doesn't take effect because the DDS is user disabled.
+        mDataSettingsManagerUT.setMobileDataPolicy(
+                TelephonyManager.MOBILE_DATA_POLICY_AUTO_DATA_SWITCH, true);
+        processAllMessages();
+        verify(mPhone, never()).notifyDataEnabled(anyBoolean(), anyInt());
+
+        // Verify the override takes effect upon DDS user enabled.
+        doReturn(true).when(phone2).isUserDataEnabled();
+        callback.onUserDataEnabledChanged(true, "callingPackage");
+        verify(mPhone).notifyDataEnabled(true, TelephonyManager.DATA_ENABLED_REASON_OVERRIDE);
     }
 }
