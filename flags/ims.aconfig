@@ -34,3 +34,10 @@ flag {
     description: "This flag is for adding suggested actions related to RAT to ims registration"
     bug:"290573256"
 }
+
+flag {
+    name: "terminate_active_video_call_when_accepting_second_video_call_as_audio_only"
+    namespace: "telephony"
+    description: "This flag terminates active video call instead holding when accepting 2nd incoming video call as audio only"
+    bug:"309548300"
+}
