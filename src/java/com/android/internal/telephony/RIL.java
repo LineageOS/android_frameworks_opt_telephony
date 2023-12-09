@@ -1559,7 +1559,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void getSystemSelectionChannels(Message result) {
         RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (!canMakeRequest("getSystemSelectionChannels", networkProxy, result,
-                RADIO_HAL_VERSION_1_4)) {
+                RADIO_HAL_VERSION_1_6)) {
             return;
         }
 
