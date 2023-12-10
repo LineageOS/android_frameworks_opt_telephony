@@ -935,6 +935,23 @@ public class EmergencyNumberTracker extends Handler {
     }
 
     /**
+     * Get a list of the {@link EmergencyNumber}s that have the corresponding emergency number.
+     * Note: {@link #getEmergencyNumber(String)} assumes there is ONLY one record for a phone number
+     * when in reality there CAN be multiple instances if the same number is reported by the radio
+     * for a specific mcc and the emergency number database specifies the number without an mcc
+     * specified.
+     *
+     * @param emergencyNumber the emergency number to find.
+     * @return the list of emergency numbers matching.
+     */
+    public List<EmergencyNumber> getEmergencyNumbers(String emergencyNumber) {
+        final String toFind = PhoneNumberUtils.stripSeparators(emergencyNumber);
+        return getEmergencyNumberList().stream()
+                .filter(num -> num.getNumber().equals(toFind))
+                .toList();
+    }
+
+    /**
      * Get the emergency service categories for the corresponding emergency number. The only
      * trusted sources for the categories are the
      * {@link EmergencyNumber#EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING} and

@@ -795,7 +795,7 @@ public class DataRetryManagerTest extends TelephonyTest {
         // Verify scheduled via Alarm Manager
         ArgumentCaptor<PendingIntent> pendingIntentArgumentCaptor =
                 ArgumentCaptor.forClass(PendingIntent.class);
-        verify(mAlarmManager).setAndAllowWhileIdle(anyInt(), anyLong(),
+        verify(mAlarmManager).setExactAndAllowWhileIdle(anyInt(), anyLong(),
                 pendingIntentArgumentCaptor.capture());
 
         // Verify starts retry attempt after receiving intent

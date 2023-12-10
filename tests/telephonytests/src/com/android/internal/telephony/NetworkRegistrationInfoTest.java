@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import static junit.framework.Assert.assertEquals;
 
 import android.compat.testing.PlatformCompatChangeRule;
@@ -54,6 +56,7 @@ public class NetworkRegistrationInfoTest {
                 .setAvailableServices(Arrays.asList(NetworkRegistrationInfo.SERVICE_TYPE_DATA))
                 .setCellIdentity(new CellIdentityLte())
                 .setRegisteredPlmn("12345")
+                .setIsNonTerrestrialNetwork(true)
                 .build();
 
         Parcel p = Parcel.obtain();
@@ -70,6 +73,7 @@ public class NetworkRegistrationInfoTest {
     public void testDefaultValues() {
         NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder().build();
         assertEquals("", nri.getRegisteredPlmn());
+        assertThat(nri.isNonTerrestrialNetwork()).isEqualTo(false);
     }
 
     @Test
@@ -77,6 +81,8 @@ public class NetworkRegistrationInfoTest {
     public void testBuilder() {
         assertEquals("12345", new NetworkRegistrationInfo.Builder()
                 .setRegisteredPlmn("12345").build().getRegisteredPlmn());
+        assertThat(new NetworkRegistrationInfo.Builder().setIsNonTerrestrialNetwork(true).build()
+                .isNonTerrestrialNetwork()).isEqualTo(true);
     }
 
     @Test
@@ -138,5 +144,12 @@ public class NetworkRegistrationInfoTest {
 
         assertEquals(NetworkRegistrationInfo.REGISTRATION_STATE_EMERGENCY,
                 nri.getRegistrationState());
+    }
+
+    @Test
+    public void testSetIsNonTerrestrialNetwork() {
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder().build();
+        nri.setIsNonTerrestrialNetwork(true);
+        assertThat(nri.isNonTerrestrialNetwork()).isEqualTo(true);
     }
 }

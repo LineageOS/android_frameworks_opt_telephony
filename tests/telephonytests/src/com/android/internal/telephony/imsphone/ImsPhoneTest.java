@@ -47,6 +47,7 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
@@ -1042,6 +1043,67 @@ public class ImsPhoneTest extends TelephonyTest {
 
         // 4. null pointer; do not set
         mImsPhoneUT.setPhoneNumberForSourceIms(null);
+
+        verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
+
+        // Clean up
+        mContextFixture.addCallingOrSelfPermission("");
+    }
+
+    @Test
+    @SmallTest
+    public void testSetPhoneNumberForSourceIgnoreGlobalPhoneNumberFormat() {
+        // In reality the method under test runs in phone process so has MODIFY_PHONE_STATE
+        mContextFixture.addCallingOrSelfPermission(MODIFY_PHONE_STATE);
+        int subId = 1;
+        doReturn(subId).when(mPhone).getSubId();
+        doReturn(new SubscriptionInfoInternal.Builder().setId(subId).setSimSlotIndex(0)
+                .setCountryIso("gb").build()).when(mSubscriptionManagerService)
+                .getSubscriptionInfoInternal(subId);
+        // Set carrier config to ignore global phone number format
+        PersistableBundle bundle = new PersistableBundle();
+        bundle.putBoolean(
+                CarrierConfigManager.Ims.KEY_ALLOW_NON_GLOBAL_PHONE_NUMBER_FORMAT_BOOL, true);
+        doReturn(bundle).when(mCarrierConfigManager).getConfigForSubId(eq(subId),
+                eq(CarrierConfigManager.Ims.KEY_ALLOW_NON_GLOBAL_PHONE_NUMBER_FORMAT_BOOL));
+
+        // 1. Two non-global phone number; 1st is set.
+        Uri[] associatedUris = new Uri[] {
+                Uri.parse("sip:01012345678@lte-uplus.co.kr"),
+                Uri.parse("tel:01012345678")
+        };
+        mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
+
+        verify(mSubscriptionManagerService).setNumberFromIms(subId, "01012345678");
+
+        // 2. 1st non-global phone number and 2nd global number; 2nd is set.
+        associatedUris = new Uri[] {
+                Uri.parse("sip:01012345678@lte-uplus.co.kr"),
+                Uri.parse("tel:+821012345678")
+        };
+        mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
+
+        verify(mSubscriptionManagerService).setNumberFromIms(subId, "+821012345678");
+
+        // 3. 1st sip-uri is not phone number and 2nd valid: 2nd is set.
+        associatedUris = new Uri[] {
+                Uri.parse("sip:john.doe@ims.x.com"),
+                Uri.parse("sip:01022223333@lte-uplus.co.kr"),
+                Uri.parse("tel:01022223333")
+        };
+        mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
+
+        verify(mSubscriptionManagerService).setNumberFromIms(subId, "01022223333");
+
+        clearInvocations(mSubscriptionManagerService);
+
+        // 4. Invalid phone number : not set.
+        associatedUris = new Uri[] {
+                Uri.parse("sip:john.doe@ims.x.com"),
+                Uri.parse("sip:hone3333@lte-uplus.co.kr"),
+                Uri.parse("tel:abcd1234555")
+        };
+        mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
 
         verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
 

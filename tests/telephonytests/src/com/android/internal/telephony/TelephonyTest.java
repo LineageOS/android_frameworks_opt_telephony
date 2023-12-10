@@ -219,6 +219,7 @@ public abstract class TelephonyTest {
     protected UiccCardApplication mUiccCardApplication3gpp2;
     protected UiccCardApplication mUiccCardApplicationIms;
     protected SIMRecords mSimRecords;
+    protected SignalStrengthController mSignalStrengthController;
     protected RuimRecords mRuimRecords;
     protected IsimUiccRecords mIsimUiccRecords;
     protected ProxyController mProxyController;
@@ -455,6 +456,7 @@ public abstract class TelephonyTest {
         mUiccCardApplication3gpp2 = Mockito.mock(UiccCardApplication.class);
         mUiccCardApplicationIms = Mockito.mock(UiccCardApplication.class);
         mSimRecords = Mockito.mock(SIMRecords.class);
+        mSignalStrengthController = Mockito.mock(SignalStrengthController.class);
         mRuimRecords = Mockito.mock(RuimRecords.class);
         mIsimUiccRecords = Mockito.mock(IsimUiccRecords.class);
         mProxyController = Mockito.mock(ProxyController.class);
@@ -636,6 +638,7 @@ public abstract class TelephonyTest {
         doReturn(mSST).when(mPhone).getServiceStateTracker();
         doReturn(mDeviceStateMonitor).when(mPhone).getDeviceStateMonitor();
         doReturn(mDisplayInfoController).when(mPhone).getDisplayInfoController();
+        doReturn(mSignalStrengthController).when(mPhone).getSignalStrengthController();
         doReturn(mEmergencyNumberTracker).when(mPhone).getEmergencyNumberTracker();
         doReturn(mCarrierSignalAgent).when(mPhone).getCarrierSignalAgent();
         doReturn(mCarrierActionAgent).when(mPhone).getCarrierActionAgent();

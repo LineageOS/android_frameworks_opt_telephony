@@ -1068,6 +1068,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                         int subId = insertSubscriptionInfo(embeddedProfile.getIccid(),
                                 SubscriptionManager.INVALID_SIM_SLOT_INDEX,
                                 null, SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+                        mSubscriptionDatabaseManager.setDisplayName(subId, mContext.getResources()
+                                .getString(R.string.default_card_name, subId));
                         subInfo = mSubscriptionDatabaseManager.getSubscriptionInfoInternal(subId);
                     }
 
@@ -1115,6 +1117,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                     // CARD_ID field should not contain the EID
                     if (cardId >= 0 && mUiccController.getCardIdForDefaultEuicc()
                             != TelephonyManager.UNSUPPORTED_CARD_ID) {
+                        builder.setCardId(cardId);
                         builder.setCardString(mUiccController.convertToCardString(cardId));
                     }
 
@@ -1344,6 +1347,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                     // This is a new SIM card. Insert a new record.
                     subId = insertSubscriptionInfo(iccId, phoneId, null,
                             SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+                    mSubscriptionDatabaseManager.setDisplayName(subId,
+                            mContext.getResources().getString(R.string.default_card_name, subId));
                 } else {
                     subId = subInfo.getSubscriptionId();
                     log("updateSubscription: Found existing subscription. subId= " + subId
@@ -1389,7 +1394,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                         loge("updateSubscription: sim country iso is null");
                     }
 
-                    String msisdn = mTelephonyManager.getLine1Number(subId);
+                    String msisdn = PhoneFactory.getPhone(phoneId).getLine1Number();
                     if (!TextUtils.isEmpty(msisdn)) {
                         setDisplayNumber(msisdn, subId);
                     }
@@ -1420,12 +1425,15 @@ public class SubscriptionManagerService extends ISub.Stub {
                     }
 
                     // Attempt to restore SIM specific settings when SIM is loaded.
-                    mContext.getContentResolver().call(
+                    Bundle result = mContext.getContentResolver().call(
                             SubscriptionManager.SIM_INFO_BACKUP_AND_RESTORE_CONTENT_URI,
                             SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_METHOD_NAME,
                             iccId, null);
-                    log("Reload the database.");
-                    mSubscriptionDatabaseManager.reloadDatabase();
+                    if (result != null && result.getBoolean(
+                            SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_DATABASE_UPDATED)) {
+                        logl("Sim specific settings changed the database.");
+                        mSubscriptionDatabaseManager.reloadDatabaseSync();
+                    }
                 }
 
                 log("updateSubscription: " + mSubscriptionDatabaseManager
@@ -3365,7 +3373,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         try {
             switch(source) {
                 case SubscriptionManager.PHONE_NUMBER_SOURCE_UICC:
-                    Phone phone = PhoneFactory.getPhone(getPhoneId(subId));
+                    Phone phone = PhoneFactory.getPhone(getSlotIndex(subId));
                     if (phone != null) {
                         return TextUtils.emptyIfNull(phone.getLine1Number());
                     } else {
@@ -3542,10 +3550,10 @@ public class SubscriptionManagerService extends ISub.Stub {
      *
      * @param subId the unique SubscriptionInfo index in database
      * @return userHandle associated with this subscription
-     * or {@code null} if subscription is not associated with any user.
+     * or {@code null} if subscription is not associated with any user
+     * or {code null} if subscripiton is not available on the device.
      *
      * @throws SecurityException if doesn't have required permission.
-     * @throws IllegalArgumentException if {@code subId} is invalid.
      */
     @Override
     @Nullable
@@ -3558,8 +3566,7 @@ public class SubscriptionManagerService extends ISub.Stub {
             SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
                     .getSubscriptionInfoInternal(subId);
             if (subInfo == null) {
-                throw new IllegalArgumentException("getSubscriptionUserHandle: Invalid subId: "
-                        + subId);
+                return null;
             }
 
             UserHandle userHandle = UserHandle.of(subInfo.getUserId());
@@ -3707,12 +3714,16 @@ public class SubscriptionManagerService extends ISub.Stub {
             Bundle bundle = new Bundle();
             bundle.putByteArray(SubscriptionManager.KEY_SIM_SPECIFIC_SETTINGS_DATA, data);
             logl("restoreAllSimSpecificSettingsFromBackup");
-            mContext.getContentResolver().call(
+            Bundle result = mContext.getContentResolver().call(
                     SubscriptionManager.SIM_INFO_BACKUP_AND_RESTORE_CONTENT_URI,
                     SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_METHOD_NAME,
                     null, bundle);
-            // After restoring, we need to reload the content provider into the cache.
-            mSubscriptionDatabaseManager.reloadDatabase();
+
+            if (result != null && result.getBoolean(
+                    SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_DATABASE_UPDATED)) {
+                logl("Sim specific settings changed the database.");
+                mSubscriptionDatabaseManager.reloadDatabaseSync();
+            }
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -3849,10 +3860,13 @@ public class SubscriptionManagerService extends ISub.Stub {
                 case TelephonyManager.SIM_STATE_PUK_REQUIRED:
                 case TelephonyManager.SIM_STATE_NETWORK_LOCKED:
                 case TelephonyManager.SIM_STATE_PERM_DISABLED:
-                case TelephonyManager.SIM_STATE_READY:
                 case TelephonyManager.SIM_STATE_CARD_IO_ERROR:
                 case TelephonyManager.SIM_STATE_LOADED:
+                    updateSubscription(slotIndex);
+                    break;
                 case TelephonyManager.SIM_STATE_NOT_READY:
+                case TelephonyManager.SIM_STATE_READY:
+                    updateEmbeddedSubscriptions();
                     updateSubscription(slotIndex);
                     break;
                 case TelephonyManager.SIM_STATE_CARD_RESTRICTED:

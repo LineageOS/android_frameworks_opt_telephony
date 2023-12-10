@@ -1581,8 +1581,8 @@ public class DataNetworkController extends Handler {
                 // Check if it's SUPL during emergency call.
                 evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_SUPL);
             } else if (!networkRequest.hasCapability(
-                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED) && !networkRequest
-                    .hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN)) {
+                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                    && isValidRestrictedRequest(networkRequest)) {
                 // Check if request is restricted and not for tethering, which always comes with
                 // a restricted network request.
                 evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
@@ -1849,9 +1849,9 @@ public class DataNetworkController extends Handler {
                 evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_SUPL);
             } else if (!dataNetwork.getNetworkCapabilities().hasCapability(
                     NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
-                    && !dataNetwork.hasNetworkCapabilityInNetworkRequests(
-                            NetworkCapabilities.NET_CAPABILITY_DUN)) {
-                // Check if request is restricted and there are no DUN network requests attached to
+                    && dataNetwork.getAttachedNetworkRequestList().stream()
+                            .allMatch(this::isValidRestrictedRequest)) {
+                // Check if request is restricted and there are no exceptional requests attached to
                 // the network.
                 evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
             } else if (dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
@@ -1878,6 +1878,18 @@ public class DataNetworkController extends Handler {
 
         log("Evaluated " + dataNetwork + ", " + evaluation);
         return evaluation;
+    }
+
+    /**
+     * tethering and enterprise capabilities are not respected as restricted requests. For a request
+     * with these capabilities, any soft disallowed reasons are honored.
+     * @param networkRequest The network request to evaluate.
+     * @return {@code true} if the request doesn't contain any exceptional capabilities, its
+     * restricted capability, if any, is respected.
+     */
+    private boolean isValidRestrictedRequest(@NonNull TelephonyNetworkRequest networkRequest) {
+        return !(networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN)
+                || networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE));
     }
 
     /**
@@ -1964,21 +1976,31 @@ public class DataNetworkController extends Handler {
             }
             int sourceAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
                     sourceNetworkType);
-
+            NetworkRegistrationInfo nri = mServiceState.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            boolean isWwanInService = false;
+            if (nri != null && nri.isInService()) {
+                isWwanInService = true;
+            }
+            // If WWAN is inService, use the real roaming state reported by modem instead of
+            // using the overridden roaming state, otherwise get last known roaming state stored
+            // in data network.
+            boolean isRoaming = isWwanInService ? mServiceState.getDataRoamingFromRegistration()
+                    : dataNetwork.getLastKnownRoamingState();
             int targetAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
                     getDataNetworkType(DataUtils.getTargetTransport(dataNetwork.getTransport())));
             NetworkCapabilities capabilities = dataNetwork.getNetworkCapabilities();
             log("evaluateDataNetworkHandover: "
                     + "source=" + AccessNetworkType.toString(sourceAccessNetwork)
                     + ", target=" + AccessNetworkType.toString(targetAccessNetwork)
+                    + ", roaming=" + isRoaming
                     + ", ServiceState=" + mServiceState
                     + ", capabilities=" + capabilities);
 
             // Matching the rules by the configured order. Bail out if find first matching rule.
             for (HandoverRule rule : handoverRules) {
-                // Check if the rule is only for roaming and we are not roaming. Use the real
-                // roaming state reported by modem instead of using the overridden roaming state.
-                if (rule.isOnlyForRoaming && !mServiceState.getDataRoamingFromRegistration()) {
+                // Check if the rule is only for roaming and we are not roaming.
+                if (rule.isOnlyForRoaming && !isRoaming) {
                     // If the rule is for roaming only, and the device is not roaming, then bypass
                     // this rule.
                     continue;
@@ -3356,7 +3378,8 @@ public class DataNetworkController extends Handler {
 
         if (oldPsNri == null
                 || oldPsNri.getAccessNetworkTechnology() != newPsNri.getAccessNetworkTechnology()
-                || (!oldPsNri.isInService() && newPsNri.isInService())) {
+                || (!oldPsNri.isInService() && newPsNri.isInService())
+                || (oldPsNri.isRoaming() && !newPsNri.isRoaming())) {
             return true;
         }
 

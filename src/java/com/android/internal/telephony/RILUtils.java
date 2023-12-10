@@ -288,6 +288,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_VOICE_RADIO_
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.hardware.radio.data.SliceInfo;
 import android.net.InetAddresses;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
@@ -989,8 +990,9 @@ public class RILUtils {
      * @param dp Data profile
      * @return The converted DataProfileInfo
      */
-    public static android.hardware.radio.data.DataProfileInfo convertToHalDataProfile(
+    public static android.hardware.radio.data.DataProfileInfo convertToHalDataProfile(@Nullable
             DataProfile dp) {
+        if (dp == null) return null;
         android.hardware.radio.data.DataProfileInfo dpi =
                 new android.hardware.radio.data.DataProfileInfo();
 
@@ -3722,7 +3724,8 @@ public class RILUtils {
     private static NetworkSliceInfo convertHalSliceInfo(android.hardware.radio.V1_6.SliceInfo si) {
         NetworkSliceInfo.Builder builder = new NetworkSliceInfo.Builder()
                 .setSliceServiceType(si.sst)
-                .setMappedHplmnSliceServiceType(si.mappedHplmnSst);
+                .setMappedHplmnSliceServiceType(si.mappedHplmnSst)
+                .setStatus(convertHalSliceStatus(si.status));
         if (si.sliceDifferentiator != NetworkSliceInfo.SLICE_DIFFERENTIATOR_NO_SLICE) {
             builder.setSliceDifferentiator(si.sliceDifferentiator)
                     .setMappedHplmnSliceDifferentiator(si.mappedHplmnSD);
@@ -3733,12 +3736,30 @@ public class RILUtils {
     private static NetworkSliceInfo convertHalSliceInfo(android.hardware.radio.data.SliceInfo si) {
         NetworkSliceInfo.Builder builder = new NetworkSliceInfo.Builder()
                 .setSliceServiceType(si.sliceServiceType)
-                .setMappedHplmnSliceServiceType(si.mappedHplmnSst);
+                .setMappedHplmnSliceServiceType(si.mappedHplmnSst)
+                .setStatus(convertHalSliceStatus(si.status));
         if (si.sliceDifferentiator != NetworkSliceInfo.SLICE_DIFFERENTIATOR_NO_SLICE) {
             builder.setSliceDifferentiator(si.sliceDifferentiator)
                     .setMappedHplmnSliceDifferentiator(si.mappedHplmnSd);
         }
         return builder.build();
+    }
+
+    @NetworkSliceInfo.SliceStatus private static int convertHalSliceStatus(byte status) {
+        switch (status) {
+            case SliceInfo.STATUS_CONFIGURED:
+                return NetworkSliceInfo.SLICE_STATUS_CONFIGURED;
+            case SliceInfo.STATUS_ALLOWED:
+                return NetworkSliceInfo.SLICE_STATUS_ALLOWED;
+            case SliceInfo.STATUS_REJECTED_NOT_AVAILABLE_IN_PLMN:
+                return NetworkSliceInfo.SLICE_STATUS_REJECTED_NOT_AVAILABLE_IN_PLMN;
+            case SliceInfo.STATUS_REJECTED_NOT_AVAILABLE_IN_REG_AREA:
+                return NetworkSliceInfo.SLICE_STATUS_REJECTED_NOT_AVAILABLE_IN_REGISTERED_AREA;
+            case SliceInfo.STATUS_DEFAULT_CONFIGURED:
+                return NetworkSliceInfo.SLICE_STATUS_DEFAULT_CONFIGURED;
+            default:
+                return NetworkSliceInfo.SLICE_STATUS_UNKNOWN;
+        }
     }
 
     private static TrafficDescriptor convertHalTrafficDescriptor(

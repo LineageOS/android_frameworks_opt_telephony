@@ -1709,7 +1709,9 @@ public class PersistAtomsStorage {
                     && state.carrierId == key.carrierId
                     && state.isEmergencyOnly == key.isEmergencyOnly
                     && state.isInternetPdnUp == key.isInternetPdnUp
-                    && state.foldState == key.foldState) {
+                    && state.foldState == key.foldState
+                    && state.overrideVoiceService == key.overrideVoiceService
+                    && state.isDataEnabled == key.isDataEnabled) {
                 return state;
             }
         }
