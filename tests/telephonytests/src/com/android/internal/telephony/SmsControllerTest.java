@@ -29,7 +29,9 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import android.compat.testing.PlatformCompatChangeRule;
 import android.content.pm.PackageManager;
+import android.telephony.TelephonyManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -37,9 +39,13 @@ import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.AdnRecordCache;
 import com.android.internal.telephony.uicc.IccConstants;
 
+import libcore.junit.util.compat.CoreCompatChangeRule.EnableCompatChanges;
+
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
@@ -50,6 +56,8 @@ import java.util.NoSuchElementException;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class SmsControllerTest extends TelephonyTest {
+    @Rule
+    public TestRule compatChangeRule = new PlatformCompatChangeRule();
 
     // Mocked classes
     private AdnRecordCache mAdnRecordCache;
@@ -65,6 +73,9 @@ public class SmsControllerTest extends TelephonyTest {
         mAdnRecordCache = Mockito.mock(AdnRecordCache.class);
         mSmsControllerUT = new SmsController(mContext, mFeatureFlags);
         mCallingPackage = mContext.getOpPackageName();
+
+        doReturn(true).when(mPackageManager).hasSystemFeature(
+                PackageManager.FEATURE_TELEPHONY_MESSAGING);
     }
 
     @After
@@ -280,5 +291,30 @@ public class SmsControllerTest extends TelephonyTest {
         assertThrows(NoSuchElementException.class, () ->
                 mSmsControllerUT.getWapMessageSize("content://mms")
         );
+    }
+
+    @Test
+    @EnableCompatChanges({TelephonyManager.ENABLE_FEATURE_MAPPING})
+    public void sendTextForSubscriberTestEnabledTelephonyFeature() {
+        int subId = 1;
+        doReturn(true).when(mSubscriptionManager)
+                .isSubscriptionAssociatedWithUser(eq(subId), any());
+
+        // Feature enabled, device does not have required telephony feature.
+        doReturn(true).when(mFeatureFlags).enforceTelephonyFeatureMappingForPublicApis();
+        doReturn(false).when(mPackageManager).hasSystemFeature(
+                PackageManager.FEATURE_TELEPHONY_MESSAGING);
+
+        assertThrows(UnsupportedOperationException.class,
+                () -> mSmsControllerUT.sendTextForSubscriber(subId, mCallingPackage, null, "1234",
+                        null, "text", null, null, false, 0L, true, true));
+
+        // Device has required telephony feature.
+        doReturn(true).when(mPackageManager).hasSystemFeature(
+                PackageManager.FEATURE_TELEPHONY_MESSAGING);
+        mSmsControllerUT.sendTextForSubscriber(subId, mCallingPackage, null, "1234",
+                null, "text", null, null, false, 0L, true, true);
+        verify(mIccSmsInterfaceManager, Mockito.times(1))
+                .sendText(mCallingPackage, "1234", null, "text", null, null, false, 0L, true);
     }
 }
