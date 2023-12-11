@@ -41,3 +41,10 @@ flag {
     description: "This flag terminates active video call instead holding when accepting 2nd incoming video call as audio only"
     bug:"309548300"
 }
+
+flag {
+    name: "emergency_registration_state"
+    namespace: "telephony"
+    description: "This flag is created to notify emergency registration state changed."
+    bug:"312101946"
+}
