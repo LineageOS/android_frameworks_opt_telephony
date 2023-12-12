@@ -255,7 +255,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         // Capture listener to emulate the carrier config change notification used later
         ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
                 ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
-        mMultiSimSettingControllerUT = new MultiSimSettingController(mContext);
+        mMultiSimSettingControllerUT = new MultiSimSettingController(mContext, mFeatureFlags);
         processAllMessages();
         verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
                 listenerArgumentCaptor.capture());

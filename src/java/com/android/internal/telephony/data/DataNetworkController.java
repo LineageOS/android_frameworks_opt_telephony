@@ -26,6 +26,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
 import android.net.NetworkPolicyManager;
@@ -424,6 +425,12 @@ public class DataNetworkController extends Handler {
             }
         }
     };
+
+    private boolean hasCalling() {
+        if (!mFeatureFlags.minimalTelephonyCdmCheck()) return true;
+        return mPhone.getContext().getPackageManager().hasSystemFeature(
+            PackageManager.FEATURE_TELEPHONY_CALLING);
+    }
 
     /**
      * The sorted network request list by priority. The highest priority network request stays at
@@ -853,7 +860,7 @@ public class DataNetworkController extends Handler {
 
         mDataSettingsManager = TelephonyComponentFactory.getInstance().inject(
                 DataSettingsManager.class.getName())
-                .makeDataSettingsManager(mPhone, this, looper,
+                .makeDataSettingsManager(mPhone, this, mFeatureFlags, looper,
                         new DataSettingsManagerCallback(this::post) {
                             @Override
                             public void onDataEnabledChanged(boolean enabled,
@@ -1034,16 +1041,18 @@ public class DataNetworkController extends Handler {
                     }
                 }, this::post);
 
-        // Register for call ended event for voice/data concurrent not supported case. It is
-        // intended to only listen for events from the same phone as most of the telephony modules
-        // are designed as per-SIM basis. For DSDS call ended on non-DDS sub, the frameworks relies
-        // on service state on DDS sub change from out-of-service to in-service to trigger data
-        // retry.
-        mPhone.getCallTracker().registerForVoiceCallEnded(this, EVENT_VOICE_CALL_ENDED, null);
-        // Check null for devices not supporting FEATURE_TELEPHONY_IMS.
-        if (mPhone.getImsPhone() != null) {
-            mPhone.getImsPhone().getCallTracker().registerForVoiceCallEnded(
-                    this, EVENT_VOICE_CALL_ENDED, null);
+        if (hasCalling()) {
+            // Register for call ended event for voice/data concurrent not supported case. It is
+            // intended to only listen for events from the same phone as most of the telephony
+            // modules are designed as per-SIM basis. For DSDS call ended on non-DDS sub, the
+            // frameworks relies on service state on DDS sub change from out-of-service to
+            // in-service to trigger data retry.
+            mPhone.getCallTracker().registerForVoiceCallEnded(this, EVENT_VOICE_CALL_ENDED, null);
+            // Check null for devices not supporting FEATURE_TELEPHONY_IMS.
+            if (mPhone.getImsPhone() != null) {
+                mPhone.getImsPhone().getCallTracker().registerForVoiceCallEnded(
+                        this, EVENT_VOICE_CALL_ENDED, null);
+            }
         }
         mPhone.mCi.registerForSlicingConfigChanged(this, EVENT_SLICE_CONFIG_CHANGED, null);
         mPhone.mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
@@ -1558,7 +1567,7 @@ public class DataNetworkController extends Handler {
         }
 
         // Check CS call state and see if concurrent voice/data is allowed.
-        if (mPhone.getCallTracker().getState() != PhoneConstants.State.IDLE
+        if (hasCalling() && mPhone.getCallTracker().getState() != PhoneConstants.State.IDLE
                 && !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
             evaluation.addDataDisallowedReason(
                     DataDisallowedReason.CONCURRENT_VOICE_DATA_NOT_ALLOWED);

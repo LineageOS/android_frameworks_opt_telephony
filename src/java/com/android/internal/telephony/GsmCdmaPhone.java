@@ -42,6 +42,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.SQLException;
 import android.hardware.radio.modem.ImeiInfo;
 import android.net.Uri;
@@ -370,9 +371,11 @@ public class GsmCdmaPhone extends Phone {
                 SignalStrengthController.class.getName()).makeSignalStrengthController(this);
         mSST = mTelephonyComponentFactory.inject(ServiceStateTracker.class.getName())
                 .makeServiceStateTracker(this, this.mCi, featureFlags);
-        mEmergencyNumberTracker = mTelephonyComponentFactory
-                .inject(EmergencyNumberTracker.class.getName()).makeEmergencyNumberTracker(
-                        this, this.mCi);
+        if (hasCalling()) {
+            mEmergencyNumberTracker = mTelephonyComponentFactory
+                    .inject(EmergencyNumberTracker.class.getName()).makeEmergencyNumberTracker(
+                            this, this.mCi, mFeatureFlags);
+        }
         mDeviceStateMonitor = mTelephonyComponentFactory.inject(DeviceStateMonitor.class.getName())
                 .makeDeviceStateMonitor(this, mFeatureFlags);
 
@@ -412,9 +415,11 @@ public class GsmCdmaPhone extends Phone {
 
         mCallWaitingController = new CallWaitingController(this);
 
-        loadTtyMode();
+        if (hasCalling()) {
+            loadTtyMode();
 
-        CallManager.getInstance().registerPhone(this);
+            CallManager.getInstance().registerPhone(this);
+        }
 
         mSubscriptionsChangedListener =
                 new SubscriptionManager.OnSubscriptionsChangedListener() {
@@ -464,13 +469,21 @@ public class GsmCdmaPhone extends Phone {
         }
     };
 
+    private boolean hasCalling() {
+        if (!mFeatureFlags.minimalTelephonyCdmCheck()) return true;
+        return mContext.getPackageManager().hasSystemFeature(
+            PackageManager.FEATURE_TELEPHONY_CALLING);
+    }
+
     private void initOnce(CommandsInterface ci) {
         if (ci instanceof SimulatedRadioControl) {
             mSimulatedRadioControl = (SimulatedRadioControl) ci;
         }
 
-        mCT = mTelephonyComponentFactory.inject(GsmCdmaCallTracker.class.getName())
-                .makeGsmCdmaCallTracker(this, mFeatureFlags);
+        if (hasCalling()) {
+            mCT = mTelephonyComponentFactory.inject(GsmCdmaCallTracker.class.getName())
+                    .makeGsmCdmaCallTracker(this, mFeatureFlags);
+        }
         mIccPhoneBookIntManager = mTelephonyComponentFactory
                 .inject(IccPhoneBookInterfaceManager.class.getName())
                 .makeIccPhoneBookInterfaceManager(this);
@@ -693,7 +706,7 @@ public class GsmCdmaPhone extends Phone {
         unregisterForIccRecordEvents();
         registerForIccRecordEvents();
 
-        mCT.updatePhoneType();
+        if (mCT != null) mCT.updatePhoneType();
 
         int radioState = mCi.getRadioState();
         if (radioState != TelephonyManager.RADIO_POWER_UNAVAILABLE) {
@@ -753,6 +766,8 @@ public class GsmCdmaPhone extends Phone {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Override
     public PhoneConstants.State getState() {
+        if (!hasCalling()) return PhoneConstants.State.IDLE;
+
         if (mImsPhone != null) {
             PhoneConstants.State imsState = mImsPhone.getState();
             if (imsState != PhoneConstants.State.IDLE) {
@@ -837,6 +852,7 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public boolean isDataSuspended() {
+        if (mCT == null) return false;
         return mCT.mState != PhoneConstants.State.IDLE && !mSST.isConcurrentVoiceAndDataAllowed();
     }
 
@@ -884,7 +900,7 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public boolean isInEmergencyCall() {
-        if (isPhoneTypeGsm()) {
+        if (!hasCalling() || isPhoneTypeGsm()) {
             return false;
         } else {
             return mCT.isInEmergencyCall();
@@ -893,7 +909,7 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     protected void setIsInEmergencyCall() {
-        if (!isPhoneTypeGsm()) {
+        if (!hasCalling() && !isPhoneTypeGsm()) {
             mCT.setIsInEmergencyCall();
         }
     }
@@ -985,6 +1001,7 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void acceptCall(int videoState) throws CallStateException {
+        if (!hasCalling()) throw new CallStateException();
         Phone imsPhone = mImsPhone;
         if ( imsPhone != null && imsPhone.getRingingCall().isRinging() ) {
             imsPhone.acceptCall(videoState);
@@ -995,6 +1012,7 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void rejectCall() throws CallStateException {
+        if (!hasCalling()) throw new CallStateException();
         mCT.rejectCall();
     }
 
@@ -1025,6 +1043,7 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public boolean canConference() {
+        if (!hasCalling()) return false;
         if (mImsPhone != null && mImsPhone.canConference()) {
             return true;
         }
@@ -1075,12 +1094,13 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void clearDisconnected() {
+        if (!hasCalling()) return;
         mCT.clearDisconnected();
     }
 
     @Override
     public boolean canTransfer() {
-        if (isPhoneTypeGsm()) {
+        if (hasCalling() && isPhoneTypeGsm()) {
             return mCT.canTransfer();
         } else {
             loge("canTransfer: not possible in CDMA");
@@ -1090,7 +1110,7 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void explicitCallTransfer() {
-        if (isPhoneTypeGsm()) {
+        if (hasCalling() && isPhoneTypeGsm()) {
             mCT.explicitCallTransfer();
         } else {
             loge("explicitCallTransfer: not possible in CDMA");
@@ -1104,11 +1124,13 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public GsmCdmaCall getBackgroundCall() {
+        if (!hasCalling()) return null;
         return mCT.mBackgroundCall;
     }
 
     @Override
     public Call getRingingCall() {
+        if (!hasCalling()) return null;
         Phone imsPhone = mImsPhone;
         // It returns the ringing call of ImsPhone if the ringing call of GSMPhone isn't ringing.
         // In CallManager.registerPhone(), it always registers ringing call of ImsPhone, because
@@ -1184,7 +1206,7 @@ public class GsmCdmaPhone extends Phone {
 
     private boolean handleCallDeflectionIncallSupplementaryService(
             String dialString) {
-        if (dialString.length() > 1) {
+        if (!hasCalling() || dialString.length() > 1) {
             return false;
         }
 
@@ -1209,7 +1231,7 @@ public class GsmCdmaPhone extends Phone {
     private boolean handleCallWaitingIncallSupplementaryService(String dialString) {
         int len = dialString.length();
 
-        if (len > 2) {
+        if (!hasCalling() || len > 2) {
             return false;
         }
 
@@ -1429,6 +1451,9 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public Connection dial(String dialString, @NonNull DialArgs dialArgs,
             Consumer<Phone> chosenPhoneConsumer) throws CallStateException {
+        if (!hasCalling()) {
+            throw new CallStateException("Calling feature is not supported!");
+        }
         if (!isPhoneTypeGsm() && dialArgs.uusInfo != null) {
             throw new CallStateException("Sending UUS information NOT supported in CDMA!");
         }
@@ -2148,7 +2173,9 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public int getEmergencyNumberDbVersion() {
-        return getEmergencyNumberTracker().getEmergencyNumberDbVersion();
+        EmergencyNumberTracker tracker = getEmergencyNumberTracker();
+        if (tracker == null) return -1;
+        return tracker.getEmergencyNumberDbVersion();
     }
 
     @Override
@@ -3134,6 +3161,8 @@ public class GsmCdmaPhone extends Phone {
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void syncClirSetting() {
+        if (!hasCalling()) return;
+
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
         migrateClirSettingIfNeeded(sp);
 
@@ -3339,8 +3368,10 @@ public class GsmCdmaPhone extends Phone {
                 if (b != null) {
                     updateBroadcastEmergencyCallStateChangesAfterCarrierConfigChanged(b);
                     updateCdmaRoamingSettingsAfterCarrierConfigChanged(b);
-                    updateNrSettingsAfterCarrierConfigChanged(b);
-                    updateVoNrSettings(b);
+                    if (hasCalling()) {
+                        updateNrSettingsAfterCarrierConfigChanged(b);
+                        updateVoNrSettings(b);
+                    }
                     updateSsOverCdmaSupported(b);
                     updateCarrierN1ModeSupported(b);
                 } else {
@@ -4912,6 +4943,7 @@ public class GsmCdmaPhone extends Phone {
      * Handler of RIL Voice Radio Technology changed event.
      */
     private void onVoiceRegStateOrRatChanged(int vrs, int vrat) {
+        if (!hasCalling()) return;
         logd("onVoiceRegStateOrRatChanged");
         mCT.dispatchCsCallRadioTech(getCsCallRadioTech(vrs, vrat));
     }
@@ -5113,6 +5145,8 @@ public class GsmCdmaPhone extends Phone {
      * Load the current TTY mode in GsmCdmaPhone based on Telecom and UI settings.
      */
     private void loadTtyMode() {
+        if (!hasCalling()) return;
+
         int ttyMode = TelecomManager.TTY_MODE_OFF;
         TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
         if (telecomManager != null) {
