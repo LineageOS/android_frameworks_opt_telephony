@@ -83,3 +83,10 @@ flag {
   description: "notify data activity changed for slot id"
   bug: "309896936"
 }
+
+flag {
+  name: "vonr_enabled_metric"
+  namespace: "telephony"
+  description: "Collect vonr status in voice call metric"
+  bug:"288449751"
+}

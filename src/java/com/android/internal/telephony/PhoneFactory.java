@@ -161,7 +161,7 @@ public class PhoneFactory {
                 }
 
                 // register statsd pullers.
-                sMetricsCollector = new MetricsCollector(context);
+                sMetricsCollector = new MetricsCollector(context, sFeatureFlags);
 
                 sPhoneNotifier = new DefaultPhoneNotifier(context, featureFlags);
 

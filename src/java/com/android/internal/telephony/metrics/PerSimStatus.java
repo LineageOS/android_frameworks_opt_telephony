@@ -303,7 +303,7 @@ public class PerSimStatus {
     }
 
     /** Returns true if VoNR is enabled */
-    private static boolean isVonrEnabled(Phone phone) {
+    static boolean isVonrEnabled(Phone phone) {
         TelephonyManager telephonyManager =
                 phone.getContext()
                         .getSystemService(TelephonyManager.class);
