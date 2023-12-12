@@ -215,8 +215,8 @@ public class PhoneFactory {
 
                 if (context.getPackageManager().hasSystemFeature(
                         PackageManager.FEATURE_TELEPHONY_EUICC)) {
-                    sEuiccController = EuiccController.init(context);
-                    sEuiccCardController = EuiccCardController.init(context);
+                    sEuiccController = EuiccController.init(context, sFeatureFlags);
+                    sEuiccCardController = EuiccCardController.init(context, sFeatureFlags);
                 }
 
                 for (int i = 0; i < numPhones; i++) {

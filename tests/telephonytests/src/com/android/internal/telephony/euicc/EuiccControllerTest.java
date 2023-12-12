@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -70,6 +71,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.euicc.EuiccConnector.GetOtaStatusCommandCallback;
 import com.android.internal.telephony.euicc.EuiccConnector.OtaStatusChangedCallback;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.uicc.UiccSlot;
 
 import libcore.junit.util.compat.CoreCompatChangeRule.DisableCompatChanges;
@@ -156,8 +158,8 @@ public class EuiccControllerTest extends TelephonyTest {
         // Number of OTA status changed.
         private int mNumOtaStatusChanged;
 
-        TestEuiccController(Context context, EuiccConnector connector) {
-            super(context, connector);
+        TestEuiccController(Context context, EuiccConnector connector, FeatureFlags featureFlags) {
+            super(context, connector, featureFlags);
             mNumOtaStatusChanged = 0;
         }
 
@@ -196,7 +198,7 @@ public class EuiccControllerTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         mMockConnector = Mockito.mock(EuiccConnector.class);
         mUiccSlot = Mockito.mock(UiccSlot.class);
-        mController = new TestEuiccController(mContext, mMockConnector);
+        mController = new TestEuiccController(mContext, mMockConnector, mFeatureFlags);
 
         PackageInfo pi = new PackageInfo();
         pi.packageName = PACKAGE_NAME;
@@ -1292,6 +1294,30 @@ public class EuiccControllerTest extends TelephonyTest {
     public void testIsCompactChangeEnabled_enable() {
         assertTrue(mController.isCompatChangeEnabled(TEST_PACKAGE_NAME,
                 SWITCH_WITHOUT_PORT_INDEX_EXCEPTION_ON_DISABLE));
+    }
+
+    @Test
+    @EnableCompatChanges({EuiccManager.INACTIVE_PORT_AVAILABILITY_CHECK,
+            TelephonyManager.ENABLE_FEATURE_MAPPING})
+    public void testIsSimPortAvailable_WithTelephonyFeatureMapping() {
+        // Feature flag enabled, device has required telephony feature.
+        doReturn(true).when(mFeatureFlags).enforceTelephonyFeatureMappingForPublicApis();
+        doReturn(true).when(mPackageManager).hasSystemFeature(
+                eq(PackageManager.FEATURE_TELEPHONY_EUICC));
+
+        setUiccCardInfos(false, true, true);
+
+        // assert non euicc card id
+        assertFalse(mController.isSimPortAvailable(REMOVABLE_CARD_ID, 0, TEST_PACKAGE_NAME));
+
+        // assert invalid port index
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 5 /* portIndex */, TEST_PACKAGE_NAME));
+
+        // Device does not have required telephony feature.
+        doReturn(false).when(mPackageManager).hasSystemFeature(
+                eq(PackageManager.FEATURE_TELEPHONY_EUICC));
+        assertThrows(UnsupportedOperationException.class,
+                () -> mController.isSimPortAvailable(REMOVABLE_CARD_ID, 0, TEST_PACKAGE_NAME));
     }
 
     @Test
