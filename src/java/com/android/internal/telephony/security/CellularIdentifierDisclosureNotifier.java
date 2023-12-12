@@ -34,6 +34,7 @@ public class CellularIdentifierDisclosureNotifier {
 
     private static final String TAG = "CellularIdentifierDisclosureNotifier";
     private static CellularIdentifierDisclosureNotifier sInstance = null;
+    private boolean mEnabled = false;
 
     @VisibleForTesting
     public CellularIdentifierDisclosureNotifier() {}
@@ -58,5 +59,28 @@ public class CellularIdentifierDisclosureNotifier {
         }
 
         return sInstance;
+    }
+
+    /**
+     * Re-enable if previously disabled. This means that {@code addDisclsoure} will start tracking
+     * disclosures again and potentially emitting notifications.
+     */
+    public void enable() {
+        Rlog.d(TAG, "enabled");
+        mEnabled = true;
+    }
+
+    /**
+     * Clear all internal state and prevent further notifications until optionally re-enabled.
+     * This can be used to in response to a user disabling the feature to emit notifications.
+     * If {@code addDisclosure} is called while in a disabled state, disclosures will be dropped.
+     */
+    public void disable() {
+        Rlog.d(TAG, "disabled");
+        mEnabled = false;
+    }
+
+    public boolean isEnabled() {
+        return mEnabled;
     }
 }
