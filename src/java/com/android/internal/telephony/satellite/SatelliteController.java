@@ -56,6 +56,7 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.os.ResultReceiver;
+import android.os.ServiceSpecificException;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.provider.Settings;
@@ -2005,23 +2006,29 @@ public class SatelliteController extends Handler {
     }
 
     /**
-     * Registers for NTN signal strength changed from satellite modem.
+     * Registers for NTN signal strength changed from satellite modem. If the registration operation
+     * is not successful, a {@link ServiceSpecificException} that contains
+     * {@link SatelliteManager.SatelliteResult} will be thrown.
      *
      * @param subId The id of the subscription to request for.
-     * @param callback The callback to handle the non-terrestrial network signal strength changed
-     * event.
+     * @param callback The callback to handle the NTN signal strength changed event. If the
+     * operation is successful, {@link INtnSignalStrengthCallback#onNtnSignalStrengthChanged(
+     * NtnSignalStrength)} will return an instance of {@link NtnSignalStrength} with a value of
+     * {@link NtnSignalStrength.NtnSignalStrengthLevel} when the signal strength of non-terrestrial
+     * network has changed.
      *
-     * @return The {@link SatelliteManager.SatelliteResult} result of the operation.
+     * @throws ServiceSpecificException If the callback registration operation fails.
      */
-    @SatelliteManager.SatelliteResult public int registerForNtnSignalStrengthChanged(
-            int subId, @NonNull INtnSignalStrengthCallback callback) {
+    public void registerForNtnSignalStrengthChanged(int subId,
+            @NonNull INtnSignalStrengthCallback callback) throws RemoteException {
         if (DBG) logd("registerForNtnSignalStrengthChanged()");
 
         int error = evaluateOemSatelliteRequestAllowed(true);
-        if (error != SATELLITE_RESULT_SUCCESS) return error;
-
-        mNtnSignalStrengthChangedListeners.put(callback.asBinder(), callback);
-        return SATELLITE_RESULT_SUCCESS;
+        if (error == SATELLITE_RESULT_SUCCESS) {
+            mNtnSignalStrengthChangedListeners.put(callback.asBinder(), callback);
+        } else {
+            throw new ServiceSpecificException(error);
+        }
     }
 
     /**
