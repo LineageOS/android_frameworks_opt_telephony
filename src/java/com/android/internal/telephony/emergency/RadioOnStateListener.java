@@ -22,7 +22,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
-import android.telephony.satellite.ISatelliteStateCallback;
+import android.telephony.satellite.ISatelliteModemStateCallback;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.os.SomeArgs;
@@ -142,7 +142,8 @@ public class RadioOnStateListener {
         }
     };
 
-    private final ISatelliteStateCallback mSatelliteCallback = new ISatelliteStateCallback.Stub() {
+    private final ISatelliteModemStateCallback mSatelliteCallback =
+            new ISatelliteModemStateCallback.Stub() {
         @Override
         public void onSatelliteModemStateChanged(int state) {
             mHandler.obtainMessage(MSG_SATELLITE_ENABLED_CHANGED).sendToTarget();
