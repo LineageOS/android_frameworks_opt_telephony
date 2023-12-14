@@ -923,6 +923,26 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
+     * Set the group owner on the subscription
+     *
+     * <p> Note: This only sets the group owner field and doesn't update other relevant fields.
+     * Prefer to call {@link #addSubscriptionsIntoGroup}.
+     *
+     * @param subId Subscription id.
+     * @param groupOwner The group owner to assign to the subscription
+     */
+    public void setGroupOwner(int subId, @NonNull String groupOwner) {
+        // This can throw IllegalArgumentException if the subscription does not exist.
+        try {
+            mSubscriptionDatabaseManager.setGroupOwner(
+                    subId,
+                    groupOwner);
+        } catch (IllegalArgumentException e) {
+            loge("setManaged: invalid subId=" + subId);
+        }
+    }
+
+    /**
      * Set last used TP message reference.
      *
      * @param subId Subscription id.
