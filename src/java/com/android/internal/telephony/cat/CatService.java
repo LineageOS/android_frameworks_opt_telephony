@@ -49,6 +49,8 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.ProxyController;
 import com.android.internal.telephony.SmsController;
+import com.android.internal.telephony.flags.FeatureFlags;
+import com.android.internal.telephony.flags.FeatureFlagsImpl;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccFileHandler;
@@ -103,6 +105,8 @@ public class CatService extends Handler implements AppInterface {
     private static final Object sInstanceLock = new Object();
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private static CatService[] sInstance = null;
+    @UnsupportedAppUsage
+    private static final FeatureFlags sFlags = new FeatureFlagsImpl();
     @UnsupportedAppUsage
     private CommandsInterface mCmdIf;
     @UnsupportedAppUsage
@@ -487,7 +491,8 @@ public class CatService extends Handler implements AppInterface {
                         destAddr = ((SendSMSParams) cmdParams).mDestAddress.text;
                     }
                     if (text != null && destAddr != null) {
-                        ProxyController proxyController = ProxyController.getInstance(mContext);
+                        ProxyController proxyController = ProxyController
+                                .getInstance(mContext, sFlags);
                         SubscriptionManager subscriptionManager = (SubscriptionManager)
                                 mContext.getSystemService(
                                         Context.TELEPHONY_SUBSCRIPTION_SERVICE);

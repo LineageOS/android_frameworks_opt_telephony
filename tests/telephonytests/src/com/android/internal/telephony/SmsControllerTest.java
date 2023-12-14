@@ -58,7 +58,7 @@ public class SmsControllerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mAdnRecordCache = Mockito.mock(AdnRecordCache.class);
-        mSmsControllerUT = new SmsController(mContext);
+        mSmsControllerUT = new SmsController(mContext, mFeatureFlags);
         mCallingPackage = mContext.getOpPackageName();
     }
 

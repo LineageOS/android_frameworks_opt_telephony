@@ -29,6 +29,8 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccLogicalChannelRequest;
 import com.android.internal.telephony.TelephonyComponentFactory;
+import com.android.internal.telephony.flags.FeatureFlags;
+import com.android.internal.telephony.flags.FeatureFlagsImpl;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -39,6 +41,7 @@ import java.util.List;
 public class UiccPort {
     protected static final String LOG_TAG = "UiccPort";
     protected static final boolean DBG = true;
+    private static @NonNull FeatureFlags sFlags = new FeatureFlagsImpl();
 
     // The lock object is created by UiccSlot that owns this UiccCard - this is to share the lock
     // between UiccSlot, UiccCard, EuiccCard, UiccPort, EuiccPort and UiccProfile for now.
@@ -80,7 +83,7 @@ public class UiccPort {
             if (mUiccProfile == null) {
                 mUiccProfile = TelephonyComponentFactory.getInstance()
                         .inject(UiccProfile.class.getName()).makeUiccProfile(
-                                mContext, mCi, ics, mPhoneId, uiccCard, mLock);
+                                mContext, mCi, ics, mPhoneId, uiccCard, mLock, sFlags);
             } else {
                 mUiccProfile.update(mContext, mCi, ics);
             }
