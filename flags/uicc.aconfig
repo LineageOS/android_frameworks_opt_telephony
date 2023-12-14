@@ -12,3 +12,9 @@ flag {
     description: "This flag controls to download the IMSI encryption keys after user unlocks the phone."
     bug:"303780982"
 }
+flag {
+    name: "carrier_restriction_status"
+    namespace: "telephony"
+    description: "This flag control the visibility of the getCarrierRestrictionStatus in carrierRestrictionRules class."
+    bug:"313553044"
+}
