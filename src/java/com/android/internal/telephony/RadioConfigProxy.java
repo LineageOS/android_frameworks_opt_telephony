@@ -225,6 +225,16 @@ public class RadioConfigProxy {
     }
 
     /**
+     * Wrapper function for IRadioConfig.getSimultaneousCallingSupport()
+     */
+    public void updateSimultaneousCallingSupport(int serial) throws RemoteException {
+        if (isAidl()) {
+            getAidl().getSimultaneousCallingSupport(serial);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
      * Wrapper function for using IRadioConfig.setNumOfLiveModems(int32_t serial,
      * byte numOfLiveModems) to switch between single-sim and multi-sim.
      */
