@@ -1117,4 +1117,20 @@ public class SmsController extends ISmsImplBase {
         // Check if smscAddr is present in FDN list
         return FdnUtils.isNumberBlockedByFDN(phoneId, smscAddr, defaultCountryIso);
     }
+
+    /**
+     * Gets the message size of WAP from the cache.
+     *
+     * @param locationUrl the location to use as a key for looking up the size in the cache.
+     * The locationUrl may or may not have the transactionId appended to the url.
+     *
+     * @return long representing the message size
+     * @throws java.util.NoSuchElementException if the WAP push doesn't exist in the cache
+     * @throws IllegalArgumentException if the locationUrl is empty
+     */
+    @Override
+    public long getWapMessageSize(@NonNull String locationUrl) {
+        byte[] bytes = locationUrl.getBytes(StandardCharsets.ISO_8859_1);
+        return WapPushCache.getWapMessageSize(bytes);
+    }
 }
