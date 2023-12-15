@@ -1956,6 +1956,168 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertFalse(testEst.isEmergencyCallbackModeSupported());
     }
 
+    /**
+     * Test that new emergency call is dialed while in emergency callback mode and completes.
+     */
+    @Test
+    @SmallTest
+    public void exitEmergencyCallbackMode_NewEmergencyCallDialedAndCompletes() {
+        // Setup EmergencyStateTracker
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        // Create test Phone
+        GsmCdmaPhone testPhone = (GsmCdmaPhone) setupTestPhoneForEmergencyCall(
+                /* isRoaming= */ true, /* isRadioOn= */ true);
+        setUpAsyncResultForSetEmergencyMode(testPhone, E_REG_RESULT);
+        setUpAsyncResultForExitEmergencyMode(testPhone);
+        // Start emergency call then enter ECM
+        CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                TEST_CALL_ID, false);
+        processAllMessages();
+
+        // Set call to ACTIVE
+        emergencyStateTracker.onEmergencyCallStateChanged(Call.State.ACTIVE, TEST_CALL_ID);
+        emergencyStateTracker.onEmergencyCallDomainUpdated(
+                PhoneConstants.PHONE_TYPE_IMS, TEST_CALL_ID);
+        // Set ecm as supported
+        setEcmSupportedConfig(testPhone, /* ecmSupported= */ true);
+        // End call to enter ECM
+        emergencyStateTracker.endCall(TEST_CALL_ID);
+        processAllMessages();
+
+        // verify ecbm states are correct
+        assertTrue(emergencyStateTracker.isInEcm());
+        assertTrue(emergencyStateTracker.isInImsEcm());
+        assertFalse(emergencyStateTracker.isInCdmaEcm());
+
+        // 2nd call while in emergency callback mode
+        unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                TEST_CALL_ID, false);
+        emergencyStateTracker.onEmergencyTransportChanged(
+                EmergencyStateTracker.EMERGENCY_TYPE_CALL, MODE_EMERGENCY_WWAN);
+        processAllMessages();
+        processAllFutureMessages();
+
+        // verify ecbm states are not changed.
+        assertTrue(emergencyStateTracker.isInEcm());
+        assertTrue(emergencyStateTracker.isInImsEcm());
+        assertFalse(emergencyStateTracker.isInCdmaEcm());
+
+        // Verify exitEmergencyMode() is not called.
+        verify(testPhone, never()).exitEmergencyMode(any(Message.class));
+
+        // Verify ECBM timer cancel.
+        verify(testPhone).notifyEcbmTimerReset(eq(Boolean.TRUE));
+
+        // Set call to ACTIVE
+        emergencyStateTracker.onEmergencyCallStateChanged(Call.State.ACTIVE, TEST_CALL_ID);
+        emergencyStateTracker.onEmergencyCallDomainUpdated(
+                PhoneConstants.PHONE_TYPE_IMS, TEST_CALL_ID);
+        // End call to enter ECM
+        emergencyStateTracker.endCall(TEST_CALL_ID);
+        processAllMessages();
+
+        // verify ecbm states are correct
+        assertTrue(emergencyStateTracker.isInEcm());
+        assertTrue(emergencyStateTracker.isInImsEcm());
+        assertFalse(emergencyStateTracker.isInCdmaEcm());
+
+        // Verify ECBM timer reset.
+        verify(testPhone).notifyEcbmTimerReset(eq(Boolean.FALSE));
+
+        // Verify exitEmergencyMode() is not called.
+        verify(testPhone, never()).exitEmergencyMode(any(Message.class));
+
+        processAllFutureMessages();
+
+        // Ensure ECBM states are all correctly false after we exit.
+        assertFalse(emergencyStateTracker.isInEcm());
+        assertFalse(emergencyStateTracker.isInImsEcm());
+        assertFalse(emergencyStateTracker.isInCdmaEcm());
+
+        // Verify exitEmergencyMode() is called.
+        verify(testPhone).exitEmergencyMode(any(Message.class));
+    }
+
+    /**
+     * Test that new emergency call is dialed while in emergency callback mode and it fails.
+     */
+    @Test
+    @SmallTest
+    public void exitEmergencyCallbackMode_NewEmergencyCallDialedAndFails() {
+        // Setup EmergencyStateTracker
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        // Create test Phone
+        GsmCdmaPhone testPhone = (GsmCdmaPhone) setupTestPhoneForEmergencyCall(
+                /* isRoaming= */ true, /* isRadioOn= */ true);
+        setUpAsyncResultForSetEmergencyMode(testPhone, E_REG_RESULT);
+        setUpAsyncResultForExitEmergencyMode(testPhone);
+        // Start emergency call then enter ECM
+        CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                TEST_CALL_ID, false);
+        processAllMessages();
+
+        // Set call to ACTIVE
+        emergencyStateTracker.onEmergencyCallStateChanged(Call.State.ACTIVE, TEST_CALL_ID);
+        emergencyStateTracker.onEmergencyCallDomainUpdated(
+                PhoneConstants.PHONE_TYPE_IMS, TEST_CALL_ID);
+        // Set ecm as supported
+        setEcmSupportedConfig(testPhone, /* ecmSupported= */ true);
+        // End call to enter ECM
+        emergencyStateTracker.endCall(TEST_CALL_ID);
+        processAllMessages();
+
+        // verify ecbm states are correct
+        assertTrue(emergencyStateTracker.isInEcm());
+        assertTrue(emergencyStateTracker.isInImsEcm());
+        assertFalse(emergencyStateTracker.isInCdmaEcm());
+
+        // 2nd call while in emergency callback mode
+        unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                TEST_CALL_ID, false);
+        emergencyStateTracker.onEmergencyTransportChanged(
+                EmergencyStateTracker.EMERGENCY_TYPE_CALL, MODE_EMERGENCY_WWAN);
+        processAllMessages();
+        processAllFutureMessages();
+
+        // verify ecbm states are not changed.
+        assertTrue(emergencyStateTracker.isInEcm());
+        assertTrue(emergencyStateTracker.isInImsEcm());
+        assertFalse(emergencyStateTracker.isInCdmaEcm());
+
+        // Verify exitEmergencyMode() is not called.
+        verify(testPhone, never()).exitEmergencyMode(any(Message.class));
+
+        // Verify ECBM timer cancel.
+        verify(testPhone).notifyEcbmTimerReset(eq(Boolean.TRUE));
+
+        // End call to return to ECM
+        emergencyStateTracker.endCall(TEST_CALL_ID);
+        processAllMessages();
+
+        // verify ecbm states are correct
+        assertTrue(emergencyStateTracker.isInEcm());
+        assertTrue(emergencyStateTracker.isInImsEcm());
+        assertFalse(emergencyStateTracker.isInCdmaEcm());
+
+        // Verify ECBM timer reset.
+        verify(testPhone).notifyEcbmTimerReset(eq(Boolean.FALSE));
+
+        // Verify exitEmergencyMode() is not called.
+        verify(testPhone, never()).exitEmergencyMode(any(Message.class));
+
+        processAllFutureMessages();
+
+        // Ensure ECBM states are all correctly false after we exit.
+        assertFalse(emergencyStateTracker.isInEcm());
+        assertFalse(emergencyStateTracker.isInImsEcm());
+        assertFalse(emergencyStateTracker.isInCdmaEcm());
+
+        // Verify exitEmergencyMode() is called.
+        verify(testPhone).exitEmergencyMode(any(Message.class));
+    }
+
     private EmergencyStateTracker setupEmergencyStateTracker(
             boolean isSuplDdsSwitchRequiredForEmergencyCall) {
         doReturn(mPhoneSwitcher).when(mPhoneSwitcherProxy).getPhoneSwitcher();
