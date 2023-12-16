@@ -126,7 +126,6 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SrvccConnection;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.d2d.RtpTransport;
-import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker.VtDataUsageProvider;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 
@@ -174,7 +173,6 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private INetworkStatsProviderCallback mVtDataUsageProviderCb;
     private ImsPhoneCallTracker.ConnectorFactory mConnectorFactory;
     private CommandsInterface mMockCi;
-    private DomainSelectionResolver mDomainSelectionResolver;
     private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
 
     private final Executor mExecutor = Runnable::run;
@@ -242,7 +240,6 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         doReturn(ImsFeature.STATE_READY).when(mImsManager).getImsServiceState();
         doReturn(mImsCallProfile).when(mImsManager).createCallProfile(anyInt(), anyInt());
         mContextFixture.addSystemFeature(PackageManager.FEATURE_TELEPHONY_IMS);
-        mDomainSelectionResolver = mock(DomainSelectionResolver.class);
 
         doReturn(new SubscriptionInfoInternal.Builder().setSimSlotIndex(0).setId(1).build())
                 .when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
@@ -280,9 +277,6 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                     (FeatureConnector.Listener<ImsManager>) invocation.getArguments()[3];
             return mMockConnector;
         }).when(mConnectorFactory).create(any(), anyInt(), anyString(), any(), any());
-
-        DomainSelectionResolver.setDomainSelectionResolver(mDomainSelectionResolver);
-        doReturn(false).when(mDomainSelectionResolver).isDomainSelectionSupported();
 
         doReturn(false)
                 .when(mFeatureFlags).updateImsServiceByGatheringProvisioningChanges();

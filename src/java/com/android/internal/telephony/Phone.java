@@ -254,7 +254,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_GET_N1_MODE_ENABLED_DONE = 69;
     protected static final int EVENT_SET_N1_MODE_ENABLED_DONE = 70;
     protected static final int EVENT_IMEI_MAPPING_CHANGED = 71;
-    protected static final int EVENT_LAST = EVENT_IMEI_MAPPING_CHANGED;
+    protected static final int EVENT_CELL_IDENTIFIER_DISCLOSURE = 72;
+    protected static final int EVENT_SET_IDENTIFIER_DISCLOSURE_ENABLED_DONE = 73;
+    protected static final int EVENT_LAST = EVENT_SET_IDENTIFIER_DISCLOSURE_ENABLED_DONE;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -284,6 +286,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public static final String PREF_NULL_CIPHER_AND_INTEGRITY_ENABLED =
             "pref_null_cipher_and_integrity_enabled";
     private final TelephonyAdminReceiver m2gAdminUpdater;
+
+    public static final String PREF_IDENTIFIER_DISCLOSURE_NOTIFICATIONS_ENABLED =
+            "pref_identifier_disclosure_notifications_enabled";
 
     protected final FeatureFlags mFeatureFlags;
 
@@ -5145,6 +5150,28 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * {@see #PREF_NULL_CIPHER_AND_INTEGRITY_ENABLED}
      */
     public void handleNullCipherEnabledChange() {
+    }
+
+    /**
+     * @return whether or not this Phone interacts with a modem that supports the cellular
+     * identifier disclosure transparency feature.
+     */
+    public boolean isIdentifierDisclosureTransparencySupported() {
+        return false;
+    }
+
+    /**
+     * @return global cellular identifier disclosure transparency enabled preference
+     */
+    public boolean getIdentifierDisclosureNotificationsPreferenceEnabled() {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        return sp.getBoolean(PREF_IDENTIFIER_DISCLOSURE_NOTIFICATIONS_ENABLED, false);
+    }
+
+    /**
+     * Override to handle an update to the cellular identifier disclosure transparency preference.
+     */
+    public void handleIdentifierDisclosureNotificationPreferenceChange() {
     }
 
     /**

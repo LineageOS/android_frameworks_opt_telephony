@@ -1611,6 +1611,7 @@ public class DataProfileManagerTest extends TelephonyTest {
                                 | TelephonyManager.NETWORK_TYPE_BITMASK_NR))
                         .setMvnoMatchData("")
                         .setApnSetId(DEFAULT_APN_SET_ID)
+                        .setInfrastructureBitmask(1)
                         .build())
                 .build();
 
@@ -1646,6 +1647,7 @@ public class DataProfileManagerTest extends TelephonyTest {
                         .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_NR))
                         .setMvnoMatchData("")
                         .setApnSetId(DEFAULT_APN_SET_ID)
+                        .setInfrastructureBitmask(1)
                         .build())
                 .build();
 
@@ -1674,6 +1676,7 @@ public class DataProfileManagerTest extends TelephonyTest {
                                 | TelephonyManager.NETWORK_TYPE_BITMASK_NR))
                         .setMvnoMatchData("")
                         .setApnSetId(APN_SET_ID_1)
+                        .setInfrastructureBitmask(1)
                         .build())
                 .build();
 
@@ -1702,6 +1705,7 @@ public class DataProfileManagerTest extends TelephonyTest {
                                 | TelephonyManager.NETWORK_TYPE_BITMASK_NR))
                         .setMvnoMatchData("")
                         .setApnSetId(MATCH_ALL_APN_SET_ID)
+                        .setInfrastructureBitmask(1)
                         .build())
                 .build();
 
@@ -1737,6 +1741,7 @@ public class DataProfileManagerTest extends TelephonyTest {
                                 | TelephonyManager.NETWORK_TYPE_BITMASK_NR))
                         .setMvnoMatchData("")
                         .setApnSetId(APN_SET_ID_1)
+                        .setInfrastructureBitmask(1)
                         .build())
                 .build();
 
@@ -1765,6 +1770,7 @@ public class DataProfileManagerTest extends TelephonyTest {
                         .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_NR))
                         .setMvnoMatchData("")
                         .setApnSetId(DEFAULT_APN_SET_ID)
+                        .setInfrastructureBitmask(1)
                         .build())
                 .build();
 
@@ -1793,6 +1799,7 @@ public class DataProfileManagerTest extends TelephonyTest {
                                 | TelephonyManager.NETWORK_TYPE_BITMASK_NR))
                         .setMvnoMatchData("")
                         .setApnSetId(MATCH_ALL_APN_SET_ID)
+                        .setInfrastructureBitmask(1)
                         .build())
                 .build();
 

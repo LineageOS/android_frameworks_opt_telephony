@@ -1499,7 +1499,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
     }
 
     @Test
-    public void testNotifyDataActivityForSubscriber() {
+    public void testNotifyDataActivityForSubscriberWithSlot() {
         final int subId = 1;
         int[] events = {TelephonyCallback.EVENT_DATA_ACTIVITY_CHANGED};
         doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(anyInt());
@@ -1509,14 +1509,14 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.listenWithEventList(false, false, subId, mContext.getOpPackageName(),
                 mContext.getAttributionTag(), mTelephonyCallback.callback, events, true);
 
-        mTelephonyRegistry.notifyDataActivityForSubscriber(0/*phoneId*/, subId,
+        mTelephonyRegistry.notifyDataActivityForSubscriberWithSlot(0/*phoneId*/, subId,
                 TelephonyManager.DATA_ACTIVITY_INOUT);
         processAllMessages();
         assertEquals(TelephonyManager.DATA_ACTIVITY_INOUT, mDataActivity);
     }
 
     @Test
-    public void testNotifyDataActivityForSubscriberForInvalidSubId() {
+    public void testNotifyDataActivityForSubscriberWithSlotForInvalidSubId() {
         final int subId = INVALID_SUBSCRIPTION_ID;
         int[] events = {TelephonyCallback.EVENT_DATA_ACTIVITY_CHANGED};
         doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(anyInt());
@@ -1526,7 +1526,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.listenWithEventList(false, false, subId, mContext.getOpPackageName(),
                 mContext.getAttributionTag(), mTelephonyCallback.callback, events, true);
 
-        mTelephonyRegistry.notifyDataActivityForSubscriber(0/*phoneId*/, subId,
+        mTelephonyRegistry.notifyDataActivityForSubscriberWithSlot(0/*phoneId*/, subId,
                 TelephonyManager.DATA_ACTIVITY_OUT);
         processAllMessages();
         assertEquals(TelephonyManager.DATA_ACTIVITY_OUT, mDataActivity);

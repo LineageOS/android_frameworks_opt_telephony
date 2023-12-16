@@ -17,12 +17,14 @@
 package com.android.internal.telephony;
 
 import android.os.AsyncResult;
+import android.os.RemoteException;
 import android.os.Trace;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
 import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * This class is the AIDL implementation of IRadioConfigIndication interface.
@@ -47,6 +49,19 @@ public class RadioConfigIndicationAidl extends
         logd("UNSOL_SIM_SLOT_STATUS_CHANGED " + ret.toString());
         if (mRadioConfig.mSimSlotStatusRegistrant != null) {
             mRadioConfig.mSimSlotStatusRegistrant.notifyRegistrant(
+                    new AsyncResult(null, ret, null));
+        }
+    }
+
+    /**
+     * Indication that the logical slots that support simultaneous calling has changed.
+     */
+    @Override
+    public void onSimultaneousCallingSupportChanged(int[] enabledLogicalSlots) {
+        ArrayList<Integer> ret = RILUtils.primitiveArrayToArrayList(enabledLogicalSlots);
+        logd("onSimultaneousCallingSupportChanged: enabledLogicalSlots = " + ret);
+        if (mRadioConfig.mSimultaneousCallingSupportStatusRegistrant != null) {
+            mRadioConfig.mSimultaneousCallingSupportStatusRegistrant.notifyRegistrant(
                     new AsyncResult(null, ret, null));
         }
     }

@@ -152,12 +152,16 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         doReturn(PHONE_1).when(mPhoneSwitcher).getPreferredDataPhoneId();
 
         mAutoDataSwitchControllerUT = new AutoDataSwitchController(mContext, Looper.myLooper(),
-                mPhoneSwitcher, mMockedPhoneSwitcherCallback);
+                mPhoneSwitcher, mFeatureFlags, mMockedPhoneSwitcherCallback);
+
+        doReturn(true).when(mFeatureFlags).autoSwitchAllowRoaming();
     }
 
     @After
     public void tearDown() throws Exception {
         mAutoDataSwitchControllerUT = null;
+        mGoodTelephonyDisplayInfo = null;
+        mBadTelephonyDisplayInfo = null;
         super.tearDown();
     }
 
@@ -222,6 +226,97 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testRoaming_prefer_home_over_roam() {
+        // DDS -> nDDS: Prefer Home over Roaming
+        prepareIdealUsesNonDdsCondition();
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        serviceStateChanged(PHONE_2, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        processAllFutureMessages();
+
+        verify(mMockedPhoneSwitcherCallback).onRequireValidation(PHONE_2, true/*needValidation*/);
+
+        // nDDS -> DDS: Prefer Home over Roaming
+        doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        serviceStateChanged(PHONE_2, NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        processAllFutureMessages();
+
+        verify(mMockedPhoneSwitcherCallback).onRequireValidation(DEFAULT_PHONE_INDEX,
+                true/*needValidation*/);
+    }
+
+    @Test
+    public void testRoaming_roaming_but_roam_disabled() {
+        // Disable RAT + signalStrength base switching.
+        doReturn(-1).when(mDataConfigManager).getAutoDataSwitchScoreTolerance();
+        mAutoDataSwitchControllerUT = new AutoDataSwitchController(mContext, Looper.myLooper(),
+                mPhoneSwitcher, mFeatureFlags, mMockedPhoneSwitcherCallback);
+
+        // On primary phone
+        // 1.1 Both roaming, user allow roaming on both phone, no need to switch.
+        prepareIdealUsesNonDdsCondition();
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        serviceStateChanged(PHONE_2, NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        processAllFutureMessages();
+        clearInvocations(mMockedPhoneSwitcherCallback);
+
+        mAutoDataSwitchControllerUT.evaluateAutoDataSwitch(EVALUATION_REASON_DATA_SETTINGS_CHANGED);
+        processAllFutureMessages();
+        verify(mMockedPhoneSwitcherCallback, never()).onRequireValidation(anyInt(),
+                anyBoolean()/*needValidation*/);
+
+        // 1.2 Both roaming, but roaming is only allowed on the backup phone.
+        doReturn(false).when(mPhone).getDataRoamingEnabled();
+        mAutoDataSwitchControllerUT.evaluateAutoDataSwitch(EVALUATION_REASON_DATA_SETTINGS_CHANGED);
+        processAllFutureMessages();
+
+        verify(mMockedPhoneSwitcherCallback).onRequireValidation(PHONE_2, true/*needValidation*/);
+
+        // On backup phone
+        doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
+        // 2.1 Both roaming, user allow roaming on both phone, prefer default.
+        doReturn(true).when(mPhone).getDataRoamingEnabled();
+        mAutoDataSwitchControllerUT.evaluateAutoDataSwitch(EVALUATION_REASON_DATA_SETTINGS_CHANGED);
+        processAllFutureMessages();
+
+        verify(mMockedPhoneSwitcherCallback).onRequireValidation(DEFAULT_PHONE_INDEX,
+                true/*needValidation*/);
+
+        // 2.1 Both roaming, but roaming is only allowed on the default phone.
+        doReturn(false).when(mPhone2).getDataRoamingEnabled();
+        mAutoDataSwitchControllerUT.evaluateAutoDataSwitch(EVALUATION_REASON_DATA_SETTINGS_CHANGED);
+        processAllFutureMessages();
+
+        verify(mMockedPhoneSwitcherCallback).onRequireValidation(DEFAULT_PHONE_INDEX,
+                false/*needValidation*/);
+    }
+
+    @Test
+    public void testRoaming_same_roaming_condition_uses_rat_signalStrength() {
+        doReturn(true).when(mFeatureFlags).autoDataSwitchRatSs();
+        // On primary phone
+        // 1. Both roaming, user allow roaming on both phone, uses RAT score to decide switch.
+        prepareIdealUsesNonDdsCondition();
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        serviceStateChanged(PHONE_2, NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        processAllFutureMessages();
+
+        verify(mMockedPhoneSwitcherCallback).onRequireValidation(PHONE_2, true/*needValidation*/);
+
+        // On backup phone
+        doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
+        // 2. Both roaming, user allow roaming on both phone, uses RAT score to decide switch.
+        signalStrengthChanged(PHONE_1, SignalStrength.SIGNAL_STRENGTH_GREAT);
+        signalStrengthChanged(PHONE_2, SignalStrength.SIGNAL_STRENGTH_POOR);
+        displayInfoChanged(PHONE_1, mGoodTelephonyDisplayInfo);
+        displayInfoChanged(PHONE_2, mBadTelephonyDisplayInfo);
+        processAllFutureMessages();
+
+        verify(mMockedPhoneSwitcherCallback).onRequireValidation(DEFAULT_PHONE_INDEX,
+                true/*needValidation*/);
+    }
+
+    @Test
     public void testCancelSwitch_onPrimary_rat_signalStrength() {
         // 4.1.1 Display info and signal strength on secondary phone became bad,
         // but primary is still OOS, so still switch to the secondary.
@@ -269,13 +364,13 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         // Disable Rat/SignalStrength based switch to test primary OOS based switch
         doReturn(-1).when(mDataConfigManager).getAutoDataSwitchScoreTolerance();
         mAutoDataSwitchControllerUT = new AutoDataSwitchController(mContext, Looper.myLooper(),
-                mPhoneSwitcher, mMockedPhoneSwitcherCallback);
+                mPhoneSwitcher, mFeatureFlags, mMockedPhoneSwitcherCallback);
         doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
 
         prepareIdealUsesNonDdsCondition();
         // 1.1 service state changes - primary becomes available again, require validation
         serviceStateChanged(PHONE_1,
-                NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING/*need validate*/);
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME/*need validate*/);
         processAllFutureMessages();
         verify(mMockedPhoneSwitcherCallback).onRequireValidation(DEFAULT_PHONE_INDEX,
                 true/*needValidation*/);
@@ -285,7 +380,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         // 1.2 service state changes - secondary becomes unavailable, NO need validation
         serviceStateChanged(PHONE_1,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME/*need validate*/);
-        serviceStateChanged(PHONE_2, NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING/*no need*/);
+        serviceStateChanged(PHONE_2, NetworkRegistrationInfo.REGISTRATION_STATE_DENIED/*no need*/);
         processAllFutureMessages();
         // The later validation requirement overrides the previous
         verify(mMockedPhoneSwitcherCallback).onRequireValidation(DEFAULT_PHONE_INDEX,
@@ -325,6 +420,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
     @Test
     public void testOnNonDdsSwitchBackToPrimary_rat_signalStrength() {
+        doReturn(true).when(mFeatureFlags).autoDataSwitchRatSs();
         doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
 
         prepareIdealUsesNonDdsCondition();
@@ -354,8 +450,8 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
         prepareIdealUsesNonDdsCondition();
 
-        // attempts the switch back due to secondary becomes ROAMING
-        serviceStateChanged(PHONE_2, NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        // attempts the switch back due to secondary not usable
+        serviceStateChanged(PHONE_2, NetworkRegistrationInfo.REGISTRATION_STATE_DENIED);
         processAllFutureMessages();
 
         verify(mMockedPhoneSwitcherCallback).onRequireValidation(DEFAULT_PHONE_INDEX,
@@ -413,7 +509,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         doReturn(-1 /*Disable signal based switch for easy mock*/).when(mDataConfigManager)
                 .getAutoDataSwitchScoreTolerance();
         mAutoDataSwitchControllerUT = new AutoDataSwitchController(mContext, Looper.myLooper(),
-                mPhoneSwitcher, mMockedPhoneSwitcherCallback);
+                mPhoneSwitcher, mFeatureFlags, mMockedPhoneSwitcherCallback);
 
         //1. DDS -> nDDS, verify callback doesn't require validation
         prepareIdealUsesNonDdsCondition();
@@ -423,7 +519,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
         //2. nDDS -> DDS, verify callback doesn't require validation
         doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
-        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         processAllFutureMessages();
         verify(mMockedPhoneSwitcherCallback).onRequireValidation(DEFAULT_PHONE_INDEX,
                 false/*needValidation*/);
@@ -478,7 +574,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         int modemCount = 2;
         doReturn(new int[]{SUB_2}).when(mSubscriptionManagerService)
                 .getActiveSubIdList(true);
-        mAutoDataSwitchControllerUT.notifySubscriptionsChanged();
+        mAutoDataSwitchControllerUT.notifySubscriptionsMappingChanged();
         processAllMessages();
 
         // Verify unregister from both slots since only 1 visible SIM is insufficient for switching
@@ -492,7 +588,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         clearInvocations(mDisplayInfoController, mSignalStrengthController, mSST);
         doReturn(new int[]{SUB_1, SUB_2}).when(mSubscriptionManagerService)
                 .getActiveSubIdList(true);
-        mAutoDataSwitchControllerUT.notifySubscriptionsChanged();
+        mAutoDataSwitchControllerUT.notifySubscriptionsMappingChanged();
         processAllMessages();
 
         // Verify register on both slots
@@ -544,8 +640,10 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
         // 4.1 User data enabled on primary SIM
         doReturn(true).when(mPhone).isUserDataEnabled();
+        doReturn(true).when(mPhone).getDataRoamingEnabled();
 
         // 4.2 Auto switch feature is enabled
+        doReturn(true).when(mPhone2).getDataRoamingEnabled();
         doReturn(true).when(mPhone2).isDataAllowed();
 
         // 5. No default network

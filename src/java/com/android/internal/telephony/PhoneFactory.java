@@ -161,9 +161,9 @@ public class PhoneFactory {
                 }
 
                 // register statsd pullers.
-                sMetricsCollector = new MetricsCollector(context);
+                sMetricsCollector = new MetricsCollector(context, sFeatureFlags);
 
-                sPhoneNotifier = new DefaultPhoneNotifier(context);
+                sPhoneNotifier = new DefaultPhoneNotifier(context, featureFlags);
 
                 int cdmaSubscription = CdmaSubscriptionSourceManager.getDefault(context);
                 Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
@@ -256,7 +256,7 @@ public class PhoneFactory {
                     Rlog.i(LOG_TAG, "IMS is not supported on this device, skipping ImsResolver.");
                 }
 
-                sPhoneConfigurationManager = PhoneConfigurationManager.init(sContext);
+                sPhoneConfigurationManager = PhoneConfigurationManager.init(sContext, featureFlags);
 
                 sCellularNetworkValidator = CellularNetworkValidator.make(sContext);
 
@@ -265,9 +265,10 @@ public class PhoneFactory {
 
                 sPhoneSwitcher = TelephonyComponentFactory.getInstance().inject(
                         PhoneSwitcher.class.getName()).
-                        makePhoneSwitcher(maxActivePhones, sContext, Looper.myLooper());
+                        makePhoneSwitcher(maxActivePhones, sContext, Looper.myLooper(),
+                                featureFlags);
 
-                sProxyController = ProxyController.getInstance(context);
+                sProxyController = ProxyController.getInstance(context, featureFlags);
 
                 sIntentBroadcaster = IntentBroadcaster.getInstance(context);
 
@@ -275,7 +276,7 @@ public class PhoneFactory {
 
                 for (int i = 0; i < numPhones; i++) {
                     sTelephonyNetworkFactories[i] = new TelephonyNetworkFactory(
-                            Looper.myLooper(), sPhones[i]);
+                            Looper.myLooper(), sPhones[i], featureFlags);
                 }
             }
         }
@@ -284,8 +285,9 @@ public class PhoneFactory {
     /**
      * Upon single SIM to dual SIM switch or vice versa, we dynamically allocate or de-allocate
      * Phone and CommandInterface objects.
-     * @param context
-     * @param activeModemCount
+     *
+     * @param context The context
+     * @param activeModemCount The number of active modems
      */
     public static void onMultiSimConfigChanged(Context context, int activeModemCount) {
         synchronized (sLockProxyPhones) {
@@ -312,7 +314,7 @@ public class PhoneFactory {
                     sPhones[i].createImsPhone();
                 }
                 sTelephonyNetworkFactories[i] = new TelephonyNetworkFactory(
-                        Looper.myLooper(), sPhones[i]);
+                        Looper.myLooper(), sPhones[i], sFeatureFlags);
             }
         }
     }

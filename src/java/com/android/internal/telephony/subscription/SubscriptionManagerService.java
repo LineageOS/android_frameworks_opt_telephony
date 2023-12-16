@@ -1907,10 +1907,10 @@ public class SubscriptionManagerService extends ISub.Stub {
                     + "permission. Returning empty list here.");
             return Collections.emptyList();
         }
-        if (isForAllProfiles && !hasPermissions(Manifest.permission.INTERACT_ACROSS_PROFILES)) {
+        if (isForAllProfiles && !hasAcrossAllUsersPermission()) {
             //TODO(b/308809058 to determine whether the permission enforcement is needed)
             loge("getActiveSubscriptionInfoList: "
-                    + callingPackage + " has no INTERACT_ACROSS_PROFILES permission.");
+                    + callingPackage + " has no appropriate permission.");
         }
         return getSubscriptionInfoStreamAsUser(isForAllProfiles
                 ? UserHandle.ALL : BINDER_WRAPPER.getCallingUserHandle())
@@ -1951,13 +1951,20 @@ public class SubscriptionManagerService extends ISub.Stub {
             throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
                     + "carrier privilege");
         }
-        if (isForAllProfiles && !hasPermissions(Manifest.permission.INTERACT_ACROSS_PROFILES)) {
+        if (isForAllProfiles && !hasAcrossAllUsersPermission()) {
             //TODO(b/308809058 to determine whether the permission enforcement is needed)
             loge("getActiveSubInfoCount: "
-                    + callingPackage + " has no INTERACT_ACROSS_PROFILES permission.");
+                    + callingPackage + " has no appropriate permission.");
         }
         return getActiveSubIdListAsUser(false, isForAllProfiles
                 ? UserHandle.ALL : BINDER_WRAPPER.getCallingUserHandle()).length;
+    }
+
+    /**@return {@code true} if the caller is permitted to see all subscriptions. */
+    private boolean hasAcrossAllUsersPermission() {
+        return hasPermissions(Manifest.permission.INTERACT_ACROSS_USERS,
+                Manifest.permission.INTERACT_ACROSS_USERS_FULL,
+                Manifest.permission.INTERACT_ACROSS_PROFILES);
     }
 
     /**
@@ -2872,12 +2879,14 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @return The subscription Id default to use.
      */
     private int getDefaultAsUser(@UserIdInt int userId, int defaultValue) {
-        List<SubscriptionInfoInternal> subInfos =
-                getSubscriptionInfoStreamAsUser(UserHandle.of(userId))
-                        .filter(SubscriptionInfoInternal::isActive)
-                        .toList();
-        if (subInfos.size() == 1) {
-            return subInfos.get(0).getSubscriptionId();
+        if (mFeatureFlags.workProfileApiSplit()) {
+            List<SubscriptionInfoInternal> subInfos =
+                    getSubscriptionInfoStreamAsUser(UserHandle.of(userId))
+                            .filter(SubscriptionInfoInternal::isActive)
+                            .toList();
+            if (subInfos.size() == 1) {
+                return subInfos.get(0).getSubscriptionId();
+            }
         }
         return defaultValue;
     }
@@ -3901,16 +3910,6 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
-     * @return All active subscriptions.
-     */
-    @NonNull
-    private List<SubscriptionInfoInternal> getActiveSubscriptionInfoListAllUser() {
-        return mSubscriptionDatabaseManager.getAllSubscriptions().stream()
-                .filter(SubscriptionInfoInternal::isActive)
-                .collect(Collectors.toList());
-    }
-
-    /**
      * Get subscriptions accessible to the caller user.
      *
      * @param user The user to check.
@@ -4152,7 +4151,10 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     @VisibleForTesting
     public void updateGroupDisabled() {
-        List<SubscriptionInfoInternal> activeSubscriptions = getActiveSubscriptionInfoListAllUser();
+        List<SubscriptionInfoInternal> activeSubscriptions = mSubscriptionDatabaseManager
+                .getAllSubscriptions().stream()
+                .filter(SubscriptionInfoInternal::isActive)
+                .collect(Collectors.toList());
         for (SubscriptionInfo oppSubInfo : getOpportunisticSubscriptions(
                 mContext.getOpPackageName(), mContext.getFeatureId())) {
             boolean groupDisabled = activeSubscriptions.stream()

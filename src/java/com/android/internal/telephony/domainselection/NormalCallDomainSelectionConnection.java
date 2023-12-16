@@ -22,9 +22,11 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.telephony.AccessNetworkConstants.RadioAccessNetworkType;
 import android.telephony.Annotation.DisconnectCauses;
+import android.telephony.DisconnectCause;
 import android.telephony.DomainSelectionService;
 import android.telephony.DomainSelectionService.EmergencyScanType;
 import android.telephony.NetworkRegistrationInfo;
+import android.telephony.PreciseDisconnectCause;
 import android.telephony.ims.ImsReasonInfo;
 
 import com.android.internal.telephony.Phone;
@@ -37,6 +39,9 @@ import java.util.concurrent.CompletableFuture;
 public class NormalCallDomainSelectionConnection extends DomainSelectionConnection {
 
     private static final boolean DBG = false;
+    private int mDisconnectCause = DisconnectCause.NOT_VALID;
+    private int mPreciseDisconnectCause = PreciseDisconnectCause.NOT_VALID;
+    private String mReasonMessage = null;
 
     private @Nullable DomainSelectionConnectionCallback mCallback;
 
@@ -122,5 +127,50 @@ public class NormalCallDomainSelectionConnection extends DomainSelectionConnecti
             builder.setPsDisconnectCause(imsReasonInfo);
         }
         return builder.build();
+    }
+
+    /**
+     * Save call disconnect info for error propagation.
+     * @param disconnectCause The code for the reason for the disconnect.
+     * @param preciseDisconnectCause The code for the precise reason for the disconnect.
+     * @param reasonMessage Description of the reason for the disconnect, not intended for the user
+     *                      to see.
+     */
+    public void setDisconnectCause(int disconnectCause, int preciseDisconnectCause,
+                                String reasonMessage) {
+        mDisconnectCause = disconnectCause;
+        mPreciseDisconnectCause = preciseDisconnectCause;
+        mReasonMessage = reasonMessage;
+    }
+
+    public int getDisconnectCause() {
+        return mDisconnectCause;
+    }
+
+    public int getPreciseDisconnectCause() {
+        return mPreciseDisconnectCause;
+    }
+
+    public String getReasonMessage() {
+        return mReasonMessage;
+    }
+
+    /**
+     * @return imsReasonInfo Reason for the IMS call failure.
+     */
+    public @Nullable ImsReasonInfo getImsReasonInfo() {
+        if (getSelectionAttributes() == null) {
+            // Neither selectDomain(...) nor reselectDomain(...) has been called yet.
+            return null;
+        }
+
+        return getSelectionAttributes().getPsDisconnectCause();
+    }
+
+    /**
+     * @return phoneId To support localized message based on phoneId
+     */
+    public int getPhoneId() {
+        return getPhone().getPhoneId();
     }
 }

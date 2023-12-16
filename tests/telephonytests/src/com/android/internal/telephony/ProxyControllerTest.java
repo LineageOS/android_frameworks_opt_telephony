@@ -55,7 +55,7 @@ public class ProxyControllerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         replaceInstance(ProxyController.class, "sProxyController", null, null);
-        mProxyController = ProxyController.getInstance(mContext);
+        mProxyController = new ProxyController(mContext, mFeatureFlags);
     }
 
     @After

@@ -44,6 +44,7 @@ import android.telephony.AnomalyReporter;
 import android.telephony.BarringInfo;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
+import android.telephony.CellularIdentifierDisclosure;
 import android.telephony.EmergencyRegResult;
 import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkRegistrationInfo;
@@ -436,7 +437,11 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
             mRil.unsljLogRet(RIL_UNSOL_CELLULAR_IDENTIFIER_DISCLOSED, identifierDisclsoure);
         }
 
-        // TODO (b/276752426) notify registrants of identifier disclosure
+        CellularIdentifierDisclosure disclosure =
+                RILUtils.convertCellularIdentifierDisclosure(identifierDisclsoure);
+
+        mRil.mCellularIdentifierDisclosedRegistrants.notifyRegistrants(
+                new AsyncResult(null, disclosure, null));
     }
 
     /**

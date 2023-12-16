@@ -1,0 +1,29 @@
+package: "com.android.internal.telephony.flags"
+
+flag {
+    name: "ap_domain_selection_enabled"
+    namespace: "telephony"
+    description: "This flag controls AP domain selection feature."
+    bug:"258112541"
+}
+
+flag {
+    name: "use_aosp_domain_selection_service"
+    namespace: "telephony"
+    description: "This flag controls AOSP's domain selection service supported."
+    bug:"258112541"
+}
+
+flag {
+    name: "use_oem_domain_selection_service"
+    namespace: "telephony"
+    description: "This flag controls OEMs' domain selection service supported."
+    bug:"258112541"
+}
+
+flag {
+    name: "domain_selection_metrics_enabled"
+    namespace: "telephony"
+    description: "This flag controls domain selection metrics."
+    bug:"258112541"
+}

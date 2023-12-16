@@ -428,7 +428,7 @@ public class UiccSlotTest extends TelephonyTest {
         mUiccSlot.update(mSimulatedCommands, mIccCardStatus, phoneId, slotIndex);
         verify(mTelephonyComponentFactory).makeUiccProfile(
                 anyObject(), eq(mSimulatedCommands), eq(mIccCardStatus), anyInt(), anyObject(),
-                anyObject());
+                anyObject(), anyObject());
         assertEquals(IccCardStatus.CardState.CARDSTATE_PRESENT, mUiccSlot.getCardState());
         assertNotNull(mUiccSlot.getUiccCard());
 
@@ -451,7 +451,7 @@ public class UiccSlotTest extends TelephonyTest {
         mUiccSlot.update(mSimulatedCommands, mIccCardStatus, phoneId, slotIndex);
         verify(mTelephonyComponentFactory).makeUiccProfile(
                 anyObject(), eq(mSimulatedCommands), eq(mIccCardStatus), anyInt(), anyObject(),
-                anyObject());
+                anyObject(), anyObject());
         assertEquals(IccCardStatus.CardState.CARDSTATE_PRESENT, mUiccSlot.getCardState());
         assertNotNull(mUiccSlot.getUiccCard());
 

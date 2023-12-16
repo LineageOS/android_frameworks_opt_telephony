@@ -98,6 +98,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_NEIGHB
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_PHONE_CAPABILITY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_PREFERRED_NETWORK_TYPE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_RADIO_CAPABILITY;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SIMULTANEOUS_CALLING_SUPPORT;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SIM_PHONEBOOK_CAPACITY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SIM_PHONEBOOK_RECORDS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SIM_STATUS;
@@ -273,6 +274,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESTRICTED_S
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RIL_CONNECTED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RINGBACK_TONE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIGNAL_STRENGTH;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIMULTANEOUS_CALLING_SUPPORT_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_REFRESH;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_SMS_STORAGE_FULL;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SLICING_CONFIG_CHANGED;
@@ -323,6 +325,7 @@ import android.telephony.CellSignalStrengthLte;
 import android.telephony.CellSignalStrengthNr;
 import android.telephony.CellSignalStrengthTdscdma;
 import android.telephony.CellSignalStrengthWcdma;
+import android.telephony.CellularIdentifierDisclosure;
 import android.telephony.ClosedSubscriberGroupInfo;
 import android.telephony.DomainSelectionService;
 import android.telephony.EmergencyRegResult;
@@ -4380,14 +4383,20 @@ public class RILUtils {
     public static PhoneCapability convertHalPhoneCapability(int[] deviceNrCapabilities, Object o) {
         int maxActiveVoiceCalls = 0;
         int maxActiveData = 0;
-        int maxActiveInternetData = 0;
         boolean validationBeforeSwitchSupported = false;
         List<ModemInfo> logicalModemList = new ArrayList<>();
         if (o instanceof android.hardware.radio.config.PhoneCapability) {
             final android.hardware.radio.config.PhoneCapability phoneCapability =
                     (android.hardware.radio.config.PhoneCapability) o;
             maxActiveData = phoneCapability.maxActiveData;
-            maxActiveInternetData = phoneCapability.maxActiveInternetData;
+            // If the maxActiveVoice field has been set, use that value. Otherwise, default to the
+            // legacy behavior and rely on the maxActiveInternetData field:
+            if (phoneCapability.maxActiveVoice ==
+                    android.hardware.radio.config.PhoneCapability.UNKNOWN) {
+                maxActiveVoiceCalls = phoneCapability.maxActiveInternetData;
+            } else {
+                maxActiveVoiceCalls = phoneCapability.maxActiveVoice;
+            }
             validationBeforeSwitchSupported = phoneCapability.isInternetLingeringSupported;
             for (int modemId : phoneCapability.logicalModemIds) {
                 logicalModemList.add(new ModemInfo(modemId));
@@ -4396,16 +4405,15 @@ public class RILUtils {
             final android.hardware.radio.config.V1_1.PhoneCapability phoneCapability =
                     (android.hardware.radio.config.V1_1.PhoneCapability) o;
             maxActiveData = phoneCapability.maxActiveData;
-            maxActiveInternetData = phoneCapability.maxActiveInternetData;
+            // maxActiveInternetData defines how many logical modems can have internet PDN
+            // connections simultaneously. For L+L DSDS modem it’s 1, and for DSDA modem it’s 2.
+            maxActiveVoiceCalls = phoneCapability.maxActiveInternetData;
             validationBeforeSwitchSupported = phoneCapability.isInternetLingeringSupported;
             for (android.hardware.radio.config.V1_1.ModemInfo modemInfo :
                     phoneCapability.logicalModemList) {
                 logicalModemList.add(new ModemInfo(modemInfo.modemId));
             }
         }
-        // maxActiveInternetData defines how many logical modems can have internet PDN connections
-        // simultaneously. For L+L DSDS modem it’s 1, and for DSDA modem it’s 2.
-        maxActiveVoiceCalls = maxActiveInternetData;
         return new PhoneCapability(maxActiveVoiceCalls, maxActiveData, logicalModemList,
                 validationBeforeSwitchSupported, deviceNrCapabilities);
     }
@@ -5127,6 +5135,8 @@ public class RILUtils {
                 return "SET_LOCATION_PRIVACY_SETTING";
             case RIL_REQUEST_GET_LOCATION_PRIVACY_SETTING:
                 return "GET_LOCATION_PRIVACY_SETTING";
+            case RIL_REQUEST_GET_SIMULTANEOUS_CALLING_SUPPORT:
+                return "GET_SIMULTANEOUS_CALLING_SUPPORT";
             default:
                 return "<unknown request " + request + ">";
         }
@@ -5272,6 +5282,8 @@ public class RILUtils {
                 return "UNSOL_TRIGGER_IMS_DEREGISTRATION";
             case RIL_UNSOL_IMEI_MAPPING_CHANGED:
                 return "UNSOL_IMEI_MAPPING_CHANGED";
+            case RIL_UNSOL_SIMULTANEOUS_CALLING_SUPPORT_CHANGED:
+                return "UNSOL_SIMULTANEOUS_CALLING_SUPPORT_CHANGED";
             default:
                 return "<unknown response " + response + ">";
         }
@@ -5673,6 +5685,20 @@ public class RILUtils {
             case DISCONNECTING: return android.hardware.radio.ims.ImsCall.CallState.DISCONNECTING;
             default: return android.hardware.radio.ims.ImsCall.CallState.DISCONNECTED;
         }
+    }
+
+    /** Convert an AIDL-based CellularIdentifierDisclosure to its Java wrapper. */
+    public static CellularIdentifierDisclosure convertCellularIdentifierDisclosure(
+            android.hardware.radio.network.CellularIdentifierDisclosure identifierDisclsoure) {
+        if (identifierDisclsoure == null) {
+            return null;
+        }
+
+        return new CellularIdentifierDisclosure(
+                identifierDisclsoure.protocolMessage,
+                identifierDisclsoure.identifier,
+                identifierDisclsoure.plmn,
+                identifierDisclsoure.isEmergency);
     }
 
     private static void logd(String log) {

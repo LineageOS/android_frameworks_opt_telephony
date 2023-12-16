@@ -61,6 +61,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -91,7 +92,9 @@ import android.os.ICancellationSignal;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.os.RemoteException;
 import android.os.ResultReceiver;
+import android.os.ServiceSpecificException;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -491,7 +494,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         doReturn(mMockProvisionMetricsStats).when(mMockProvisionMetricsStats)
                 .setResultCode(anyInt());
         doReturn(mMockProvisionMetricsStats).when(mMockProvisionMetricsStats)
-                    .setIsProvisionRequest(eq(false));
+                .setIsProvisionRequest(eq(false));
         doNothing().when(mMockProvisionMetricsStats).reportProvisionMetrics();
         doNothing().when(mMockControllerMetricsStats).reportDeprovisionCount(anyInt());
         when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
@@ -1036,7 +1039,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         assertEquals(SATELLITE_RESULT_INVALID_TELEPHONY_STATE,
                 (long) mIIntegerConsumerResults.get(0));
         verify(mMockPointingAppController).unregisterForSatelliteTransmissionUpdates(anyInt(),
-                any(),  eq(mStartTransmissionUpdateCallback));
+                any(), eq(mStartTransmissionUpdateCallback));
         verify(mMockPointingAppController).setStartedSatelliteTransmissionUpdates(eq(false));
     }
 
@@ -1095,7 +1098,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         mSatelliteControllerUT.stopSatelliteTransmissionUpdates(SUB_ID, mIIntegerConsumer,
                 mStopTransmissionUpdateCallback);
         verify(mMockPointingAppController).unregisterForSatelliteTransmissionUpdates(anyInt(),
-                any(),  eq(mStopTransmissionUpdateCallback));
+                any(), eq(mStopTransmissionUpdateCallback));
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
         assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
@@ -1519,7 +1522,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         resetSatelliteControllerUT();
         mIIntegerConsumerResults.clear();
         mSatelliteControllerUT.deprovisionSatelliteService(SUB_ID,
-                 TEST_SATELLITE_TOKEN, mIIntegerConsumer);
+                TEST_SATELLITE_TOKEN, mIIntegerConsumer);
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
         assertEquals(SATELLITE_RESULT_INVALID_TELEPHONY_STATE,
@@ -2156,16 +2159,16 @@ public class SatelliteControllerTest extends TelephonyTest {
                     }
                 };
 
-        int errorCode = mSatelliteControllerUT.registerForNtnSignalStrengthChanged(SUB_ID,
-                callback);
-        assertEquals(SATELLITE_RESULT_INVALID_TELEPHONY_STATE, errorCode);
-        @NtnSignalStrength.NtnSignalStrengthLevel int expectedLevel = NTN_SIGNAL_STRENGTH_NONE;
+        verifyRegisterForNtnSignalStrengthChanged(SUB_ID, callback,
+                SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
 
         setUpResponseForRequestIsSatelliteSupported(false,
                 SATELLITE_RESULT_SUCCESS);
         verifySatelliteSupported(false, SATELLITE_RESULT_SUCCESS);
-        errorCode = mSatelliteControllerUT.registerForNtnSignalStrengthChanged(SUB_ID, callback);
-        assertEquals(SATELLITE_RESULT_NOT_SUPPORTED, errorCode);
+        verifyRegisterForNtnSignalStrengthChanged(SUB_ID, callback,
+                SATELLITE_RESULT_NOT_SUPPORTED);
+
+        @NtnSignalStrength.NtnSignalStrengthLevel int expectedLevel = NTN_SIGNAL_STRENGTH_NONE;
         verifyRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_NOT_SUPPORTED);
 
         resetSatelliteControllerUT();
@@ -2173,8 +2176,8 @@ public class SatelliteControllerTest extends TelephonyTest {
         setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
         setUpResponseForRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_SUCCESS);
         verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
-        errorCode = mSatelliteControllerUT.registerForNtnSignalStrengthChanged(SUB_ID, callback);
-        assertEquals(SATELLITE_RESULT_SUCCESS, errorCode);
+        verifyRegisterForNtnSignalStrengthChanged(SUB_ID, callback,
+                SATELLITE_RESULT_SUCCESS);
         verifyRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_SUCCESS);
 
         expectedLevel = NTN_SIGNAL_STRENGTH_GOOD;
@@ -2225,15 +2228,14 @@ public class SatelliteControllerTest extends TelephonyTest {
                     }
                 };
 
-        int errorCode = mSatelliteControllerUT.registerForNtnSignalStrengthChanged(SUB_ID,
-                callback);
-        assertEquals(SATELLITE_RESULT_REQUEST_NOT_SUPPORTED, errorCode);
+        verifyRegisterForNtnSignalStrengthChanged(SUB_ID, callback,
+                SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
 
         setUpResponseForRequestIsSatelliteSupported(false,
                 SATELLITE_RESULT_SUCCESS);
         verifySatelliteSupported(false, SATELLITE_RESULT_NOT_SUPPORTED);
-        errorCode = mSatelliteControllerUT.registerForNtnSignalStrengthChanged(SUB_ID, callback);
-        assertEquals(SATELLITE_RESULT_REQUEST_NOT_SUPPORTED, errorCode);
+        verifyRegisterForNtnSignalStrengthChanged(SUB_ID, callback,
+                SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
         setUpResponseForRequestNtnSignalStrength(NTN_SIGNAL_STRENGTH_NONE,
                 SATELLITE_RESULT_SUCCESS);
         verifyRequestNtnSignalStrength(NTN_SIGNAL_STRENGTH_NONE,
@@ -2242,8 +2244,8 @@ public class SatelliteControllerTest extends TelephonyTest {
         resetSatelliteControllerUT();
         setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
         verifySatelliteSupported(false, SATELLITE_RESULT_NOT_SUPPORTED);
-        errorCode = mSatelliteControllerUT.registerForNtnSignalStrengthChanged(SUB_ID, callback);
-        assertEquals(SATELLITE_RESULT_REQUEST_NOT_SUPPORTED, errorCode);
+        verifyRegisterForNtnSignalStrengthChanged(SUB_ID, callback,
+                SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
         verifyRequestNtnSignalStrength(NTN_SIGNAL_STRENGTH_NONE,
                 SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
 
@@ -2660,7 +2662,7 @@ public class SatelliteControllerTest extends TelephonyTest {
             int satelliteVisibilityTime, @SatelliteManager.SatelliteResult int error) {
         SatelliteException exception = (error == SATELLITE_RESULT_SUCCESS)
                 ? null : new SatelliteException(error);
-        int[] visibilityTime = new int[] {satelliteVisibilityTime};
+        int[] visibilityTime = new int[]{satelliteVisibilityTime};
         doAnswer(invocation -> {
             Message message = (Message) invocation.getArguments()[0];
             AsyncResult.forMessage(message, visibilityTime, exception);
@@ -2687,7 +2689,7 @@ public class SatelliteControllerTest extends TelephonyTest {
             boolean isSatelliteProvisioned, @SatelliteManager.SatelliteResult int error) {
         SatelliteException exception = (error == SATELLITE_RESULT_SUCCESS)
                 ? null : new SatelliteException(error);
-        int[] provisioned = new int[] {isSatelliteProvisioned ? 1 : 0};
+        int[] provisioned = new int[]{isSatelliteProvisioned ? 1 : 0};
         doAnswer(invocation -> {
             Message message = (Message) invocation.getArguments()[0];
             AsyncResult.forMessage(message, provisioned, exception);
@@ -3099,6 +3101,22 @@ public class SatelliteControllerTest extends TelephonyTest {
 
     private void setRadioPower(boolean on) {
         mSimulatedCommands.setRadioPower(on, false, false, null);
+    }
+
+    private void verifyRegisterForNtnSignalStrengthChanged(int subId,
+            INtnSignalStrengthCallback callback, int expectedError) {
+        if (expectedError == SATELLITE_RESULT_SUCCESS) {
+            try {
+                mSatelliteControllerUT.registerForNtnSignalStrengthChanged(subId, callback);
+            } catch (RemoteException ex) {
+                throw new AssertionError();
+            }
+        } else {
+            ServiceSpecificException ex = assertThrows(ServiceSpecificException.class,
+                    () -> mSatelliteControllerUT.registerForNtnSignalStrengthChanged(subId,
+                            callback));
+            assertEquals(expectedError, ex.errorCode);
+        }
     }
 
     private static void loge(String message) {

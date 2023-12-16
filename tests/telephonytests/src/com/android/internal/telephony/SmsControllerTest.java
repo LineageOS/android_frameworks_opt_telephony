@@ -16,7 +16,10 @@
 
 package com.android.internal.telephony;
 
+import static junit.framework.Assert.assertEquals;
+
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.anyInt;
@@ -40,7 +43,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.NoSuchElementException;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -58,13 +63,14 @@ public class SmsControllerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mAdnRecordCache = Mockito.mock(AdnRecordCache.class);
-        mSmsControllerUT = new SmsController(mContext);
+        mSmsControllerUT = new SmsController(mContext, mFeatureFlags);
         mCallingPackage = mContext.getOpPackageName();
     }
 
     @After
     public void tearDown() throws Exception {
         mAdnRecordCache = null;
+        WapPushCache.clear();
         super.tearDown();
     }
 
@@ -238,5 +244,41 @@ public class SmsControllerTest extends TelephonyTest {
                 null, "text", null, null, false, 0L, true, true);
         verify(mIccSmsInterfaceManager, Mockito.times(0))
                 .sendText(mCallingPackage, "1234", null, "text", null, null, false, 0L, true);
+    }
+
+    @Test
+    public void testGetWapMessageSize() {
+        long expectedSize = 100L;
+        String location = "content://mms";
+        byte[] locationBytes = location.getBytes(StandardCharsets.ISO_8859_1);
+        byte[] transactionId = "123".getBytes(StandardCharsets.ISO_8859_1);
+
+        WapPushCache.putWapMessageSize(locationBytes, transactionId, expectedSize);
+        long size = mSmsControllerUT.getWapMessageSize(location);
+
+        assertEquals(expectedSize, size);
+    }
+
+    @Test
+    public void testGetWapMessageSize_withTransactionIdAppended() {
+        long expectedSize = 100L;
+        byte[] location = "content://mms".getBytes(StandardCharsets.ISO_8859_1);
+        byte[] transactionId = "123".getBytes(StandardCharsets.ISO_8859_1);
+        byte[] joinedKey = new byte[location.length + transactionId.length];
+        System.arraycopy(location, 0, joinedKey, 0, location.length);
+        System.arraycopy(transactionId, 0, joinedKey, location.length, transactionId.length);
+        String joinedKeyString = new String(joinedKey, StandardCharsets.ISO_8859_1);
+
+        WapPushCache.putWapMessageSize(location, transactionId, expectedSize);
+        long size = mSmsControllerUT.getWapMessageSize(joinedKeyString);
+
+        assertEquals(expectedSize, size);
+    }
+
+    @Test
+    public void testGetWapMessageSize_nonexistentThrows() {
+        assertThrows(NoSuchElementException.class, () ->
+                mSmsControllerUT.getWapMessageSize("content://mms")
+        );
     }
 }
