@@ -1408,22 +1408,26 @@ public class DataNetworkController extends Handler {
     /**
      * Evaluate if telephony frameworks would allow data setup for internet in current environment.
      *
+     * @param ignoreExistingNetworks {@code true} to skip the existing network check.
      * @return {@code true} if the environment is allowed for internet data. {@code false} if not
      * allowed. For example, if SIM is absent, or airplane mode is on, then data is NOT allowed.
      * This API does not reflect the currently internet data network status. It's possible there is
      * no internet data due to weak cellular signal or network side issue, but internet data is
      * still allowed in this case.
      */
-    public boolean isInternetDataAllowed() {
+    public boolean isInternetDataAllowed(boolean ignoreExistingNetworks) {
         TelephonyNetworkRequest internetRequest = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                         .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
                         .build(), mPhone);
-        // If one of the existing networks can satisfy the internet request, then internet is
-        // allowed.
-        if (mDataNetworkList.stream().anyMatch(dataNetwork -> internetRequest.canBeSatisfiedBy(
-                dataNetwork.getNetworkCapabilities()))) {
+        // If we don't skip checking existing network, then we should check If one of the
+        // existing networks can satisfy the internet request, then internet is allowed.
+        if ((!mFeatureFlags.ignoreExistingNetworksForInternetAllowedChecking()
+                || !ignoreExistingNetworks)
+                && mDataNetworkList.stream().anyMatch(
+                        dataNetwork -> internetRequest.canBeSatisfiedBy(
+                                dataNetwork.getNetworkCapabilities()))) {
             return true;
         }
 
