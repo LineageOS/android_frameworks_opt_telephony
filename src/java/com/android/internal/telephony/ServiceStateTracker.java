@@ -681,7 +681,7 @@ public class ServiceStateTracker extends Handler {
         }
         mLocaleTracker = TelephonyComponentFactory.getInstance()
                 .inject(LocaleTracker.class.getName())
-                .makeLocaleTracker(mPhone, mNitzState, getLooper());
+                .makeLocaleTracker(mPhone, mNitzState, getLooper(), featureFlags);
 
         mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
         mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
