@@ -90,3 +90,10 @@ flag {
   description: "Collect vonr status in voice call metric"
   bug:"288449751"
 }
+
+flag {
+  name: "ignore_existing_networks_for_internet_allowed_checking"
+  namespace: "telephony"
+  description: "Ignore existing networks when checking if internet is allowed"
+  bug: "284420611"
+}
