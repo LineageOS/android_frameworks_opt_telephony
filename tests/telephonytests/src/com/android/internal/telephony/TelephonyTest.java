@@ -115,6 +115,7 @@ import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsNrSaModeHandler;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
+import com.android.internal.telephony.metrics.DefaultNetworkMonitor;
 import com.android.internal.telephony.metrics.DeviceStateHelper;
 import com.android.internal.telephony.metrics.ImsStats;
 import com.android.internal.telephony.metrics.MetricsCollector;
@@ -265,6 +266,7 @@ public abstract class TelephonyTest {
     protected CarrierPrivilegesTracker mCarrierPrivilegesTracker;
     protected VoiceCallSessionStats mVoiceCallSessionStats;
     protected PersistAtomsStorage mPersistAtomsStorage;
+    protected DefaultNetworkMonitor mDefaultNetworkMonitor;
     protected MetricsCollector mMetricsCollector;
     protected SmsStats mSmsStats;
     protected TelephonyAnalytics mTelephonyAnalytics;
@@ -538,6 +540,7 @@ public abstract class TelephonyTest {
         mCarrierPrivilegesTracker = Mockito.mock(CarrierPrivilegesTracker.class);
         mVoiceCallSessionStats = Mockito.mock(VoiceCallSessionStats.class);
         mPersistAtomsStorage = Mockito.mock(PersistAtomsStorage.class);
+        mDefaultNetworkMonitor = Mockito.mock(DefaultNetworkMonitor.class);
         mMetricsCollector = Mockito.mock(MetricsCollector.class);
         mSmsStats = Mockito.mock(SmsStats.class);
         mTelephonyAnalytics = Mockito.mock(TelephonyAnalytics.class);
@@ -887,6 +890,7 @@ public abstract class TelephonyTest {
         // Metrics
         doReturn(null).when(mContext).getFileStreamPath(anyString());
         doReturn(mPersistAtomsStorage).when(mMetricsCollector).getAtomsStorage();
+        doReturn(mDefaultNetworkMonitor).when(mMetricsCollector).getDefaultNetworkMonitor();
         doReturn(mWifiManager).when(mContext).getSystemService(eq(Context.WIFI_SERVICE));
         doReturn(mDeviceStateHelper).when(mMetricsCollector).getDeviceStateHelper();
         doReturn(CELLULAR_SERVICE_STATE__FOLD_STATE__STATE_UNKNOWN)
