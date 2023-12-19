@@ -2940,4 +2940,16 @@ public interface CommandsInterface {
      * @param h Handler to be removed from the registrant list.
      */
     default void unregisterForCellularIdentifierDisclosures(@NonNull Handler h) {}
+
+    /**
+     * Registers for security algorithm update events.
+     */
+    default void registerForSecurityAlgorithmUpdates(Handler h, int what, Object obj) {}
+
+    /**
+     * Unregisters for security algorithm update events.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForSecurityAlgorithmUpdates(Handler h) {}
 }
