@@ -22,7 +22,8 @@ import static org.junit.Assert.assertTrue;
 
 import android.database.Cursor;
 import android.database.MatrixCursor;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.util.HexDump;
 

@@ -15,11 +15,15 @@
  */
 package com.android.internal.telephony;
 
-import android.media.ToneGenerator;
-import android.test.suitebuilder.annotation.SmallTest;
-import com.android.internal.telephony.cdma.SignalToneUtil;
-import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+
+import android.media.ToneGenerator;
+
+import androidx.test.filters.SmallTest;
+
+import com.android.internal.telephony.cdma.SignalToneUtil;
+
+import org.junit.Test;
 
 public class SignalToneUtilTest {
     /* no need to initialization, everything is static */

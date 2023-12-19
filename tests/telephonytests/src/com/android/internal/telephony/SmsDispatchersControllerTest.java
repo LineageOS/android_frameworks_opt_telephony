@@ -52,10 +52,11 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsManager;
 import android.test.FlakyTest;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.util.Singleton;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.domainselection.DomainSelectionConnection;

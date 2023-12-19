@@ -25,9 +25,9 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 
 import android.telecom.Connection;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.util.ArraySet;
 
+import androidx.test.filters.SmallTest;
 import androidx.test.runner.AndroidJUnit4;
 
 import org.junit.After;

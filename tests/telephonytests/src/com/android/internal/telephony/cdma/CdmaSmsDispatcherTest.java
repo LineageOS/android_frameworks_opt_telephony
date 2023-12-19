@@ -16,15 +16,16 @@
 
 package com.android.internal.telephony.cdma;
 
+import static org.mockito.Mockito.*;
+
 import android.os.HandlerThread;
 import android.os.Message;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsDispatchersController;
 import com.android.internal.telephony.TelephonyTest;
-
-import static org.mockito.Mockito.*;
 
 import org.junit.After;
 import org.junit.Before;

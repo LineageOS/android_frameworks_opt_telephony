@@ -21,7 +21,8 @@ import static org.mockito.Mockito.verify;
 
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;

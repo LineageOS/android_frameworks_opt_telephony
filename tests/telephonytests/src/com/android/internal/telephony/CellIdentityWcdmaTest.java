@@ -19,7 +19,8 @@ package com.android.internal.telephony;
 import android.os.Parcel;
 import android.telephony.CellIdentityWcdma;
 import android.test.AndroidTestCase;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import java.util.Collections;
 

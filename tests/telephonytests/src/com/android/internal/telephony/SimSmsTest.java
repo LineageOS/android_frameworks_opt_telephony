@@ -18,8 +18,9 @@ package com.android.internal.telephony;
 
 import android.app.ActivityThread;
 import android.telephony.TelephonyFrameworkInitializer;
-import android.test.suitebuilder.annotation.MediumTest;
-import android.test.suitebuilder.annotation.Suppress;
+
+import androidx.test.filters.MediumTest;
+import androidx.test.filters.Suppress;
 
 import junit.framework.TestCase;
 

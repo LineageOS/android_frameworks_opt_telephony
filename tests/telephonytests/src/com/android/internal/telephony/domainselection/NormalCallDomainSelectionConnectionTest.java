@@ -34,15 +34,13 @@ import android.telephony.DomainSelectionService;
 import android.telephony.TransportSelectorCallback;
 import android.telephony.WwanSelectorCallback;
 import android.telephony.ims.ImsReasonInfo;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
+import androidx.test.filters.SmallTest;
+
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.AccessNetworksManager;
-import com.android.internal.telephony.domainselection.DomainSelectionConnection;
-import com.android.internal.telephony.domainselection.DomainSelectionController;
-import com.android.internal.telephony.domainselection.NormalCallDomainSelectionConnection;
 
 import org.junit.After;
 import org.junit.Before;

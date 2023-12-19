@@ -31,9 +31,9 @@ import static org.mockito.Mockito.when;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsStreamMediaProfile;
-import android.test.suitebuilder.annotation.SmallTest;
 
 import androidx.test.filters.FlakyTest;
+import androidx.test.filters.SmallTest;
 
 import com.android.ims.ImsCall;
 import com.android.ims.ImsException;

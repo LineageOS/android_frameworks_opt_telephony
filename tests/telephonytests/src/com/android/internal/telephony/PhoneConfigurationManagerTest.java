@@ -40,10 +40,10 @@ import android.os.Handler;
 import android.os.Message;
 import android.telephony.PhoneCapability;
 import android.telephony.SubscriptionManager;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
-import android.util.Log;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.flags.FeatureFlags;
 
@@ -54,7 +54,6 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 
 @RunWith(AndroidTestingRunner.class)

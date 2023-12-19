@@ -21,13 +21,12 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import android.test.suitebuilder.annotation.SmallTest;
+import androidx.test.filters.SmallTest;
 
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-
 
 public class AnswerToResetTest {
 

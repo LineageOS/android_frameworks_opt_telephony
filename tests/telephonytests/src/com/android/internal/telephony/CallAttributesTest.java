@@ -23,7 +23,8 @@ import android.telephony.CallAttributes;
 import android.telephony.CallQuality;
 import android.telephony.PreciseCallState;
 import android.test.AndroidTestCase;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 /**
  * Simple GTS test verifying the parceling and unparceling of CallAttributes.

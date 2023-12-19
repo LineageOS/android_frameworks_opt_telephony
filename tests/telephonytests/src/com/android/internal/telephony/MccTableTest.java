@@ -19,9 +19,9 @@ package com.android.internal.telephony;
 import static org.junit.Assert.assertEquals;
 
 import android.content.Context;
-import android.test.suitebuilder.annotation.SmallTest;
 
 import androidx.test.InstrumentationRegistry;
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.MccTable.MccMnc;
 import com.android.internal.telephony.util.LocaleUtils;
