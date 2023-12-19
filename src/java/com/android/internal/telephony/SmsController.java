@@ -36,6 +36,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
+import android.os.UserHandle;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SmsManager;
@@ -54,6 +55,7 @@ import com.android.telephony.Rlog;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -64,7 +66,7 @@ public class SmsController extends ISmsImplBase {
     static final String LOG_TAG = "SmsController";
 
     private final Context mContext;
-    private final FeatureFlags mFlags;
+    @NonNull private final FeatureFlags mFlags;
     @VisibleForTesting
     public SmsController(Context context, @NonNull FeatureFlags flags) {
         mContext = context;
@@ -558,32 +560,55 @@ public class SmsController extends ISmsImplBase {
         }
         TelephonyManager telephonyManager =
                 (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-        List<SubscriptionInfo> subInfoList;
-        final long identity = Binder.clearCallingIdentity();
-        try {
-            subInfoList = SubscriptionManager.from(context).getActiveSubscriptionInfoList();
-        } finally {
-            Binder.restoreCallingIdentity(identity);
-        }
+        if (mFlags.enforceSubscriptionUserFilter()) {
+            int[] activeSubIds;
+            final UserHandle user = Binder.getCallingUserHandle();
+            final long identity = Binder.clearCallingIdentity();
+            try {
+                activeSubIds = Arrays.stream(SubscriptionManagerService.getInstance()
+                        .getActiveSubIdList(true /*visibleOnly*/))
+                        .filter(sub -> SubscriptionManagerService.getInstance()
+                                .isSubscriptionAssociatedWithUser(sub, user))
+                        .toArray();
+                for (int activeSubId : activeSubIds) {
+                    // Check if the subId is associated with the caller user profile.
+                    if (activeSubId == subId) {
+                        return false;
+                    }
+                }
 
-        if (subInfoList != null) {
-            final int subInfoLength = subInfoList.size();
+                // If reached here and multiple SIMs and subs present, need sms sim pick activity.
+                return activeSubIds.length > 1 && telephonyManager.getSimCount() > 1;
+            } finally {
+                Binder.restoreCallingIdentity(identity);
+            }
+        } else {
+            List<SubscriptionInfo> subInfoList;
+            final long identity = Binder.clearCallingIdentity();
+            try {
+                subInfoList = SubscriptionManager.from(context).getActiveSubscriptionInfoList();
+            } finally {
+                Binder.restoreCallingIdentity(identity);
+            }
 
-            for (int i = 0; i < subInfoLength; ++i) {
-                final SubscriptionInfo sir = subInfoList.get(i);
-                if (sir != null && sir.getSubscriptionId() == subId) {
-                    // The subscription id is valid, sms sim pick activity not needed
-                    return false;
+            if (subInfoList != null) {
+                final int subInfoLength = subInfoList.size();
+
+                for (int i = 0; i < subInfoLength; ++i) {
+                    final SubscriptionInfo sir = subInfoList.get(i);
+                    if (sir != null && sir.getSubscriptionId() == subId) {
+                        // The subscription id is valid, sms sim pick activity not needed
+                        return false;
+                    }
+                }
+
+                // If reached here and multiple SIMs and subs present, need sms sim pick activity
+                if (subInfoLength > 1 && telephonyManager.getSimCount() > 1) {
+                    return true;
                 }
             }
-
-            // If reached here and multiple SIMs and subs present, sms sim pick activity is needed
-            if (subInfoLength > 1 && telephonyManager.getSimCount() > 1) {
-                return true;
-            }
+            return false;
         }
-
-        return false;
     }
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
