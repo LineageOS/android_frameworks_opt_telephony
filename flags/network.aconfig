@@ -20,3 +20,10 @@ flag {
   description: "Allows the framework to register for CellularIdentifierDisclosure events and emit notifications to the user about them"
   bug: "276752426"
 }
+
+flag {
+  name: "hide_prefer_3g_item"
+  namespace: "telephony"
+  description: "Used in the Preferred Network Types menu to determine if the 3G option is displayed."
+  bug: "310639009"
+}
