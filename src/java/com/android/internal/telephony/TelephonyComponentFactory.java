@@ -589,7 +589,8 @@ public class TelephonyComponentFactory {
     }
 
     /** Create NullCipherNotifier. */
-    public NullCipherNotifier makeNullCipherNotifier() {
-        return NullCipherNotifier.getInstance();
+    public NullCipherNotifier makeNullCipherNotifier(
+            CellularNetworkSecuritySafetySource safetySource) {
+        return NullCipherNotifier.getInstance(safetySource);
     }
 }
