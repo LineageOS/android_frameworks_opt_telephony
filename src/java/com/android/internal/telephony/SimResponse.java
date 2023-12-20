@@ -20,7 +20,6 @@ import static android.telephony.TelephonyManager.HAL_SERVICE_SIM;
 
 import android.hardware.radio.RadioError;
 import android.hardware.radio.RadioResponseInfo;
-import android.hardware.radio.sim.CarrierRestrictions;
 import android.hardware.radio.sim.IRadioSimResponse;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.TelephonyManager;
@@ -116,28 +115,24 @@ public class SimResponse extends IRadioSimResponse.Stub {
         if (rr == null) {
             return;
         }
-        CarrierRestrictionRules ret;
-        int policy = CarrierRestrictionRules.MULTISIM_POLICY_NONE;
-        if (multiSimPolicy
-                == android.hardware.radio.sim.SimLockMultiSimPolicy.ONE_VALID_SIM_MUST_BE_PRESENT) {
-            policy = CarrierRestrictionRules.MULTISIM_POLICY_ONE_VALID_SIM_MUST_BE_PRESENT;
-        }
-
+        int policy = RILUtils.convertAidlSimLockMultiSimPolicy(multiSimPolicy);
         int carrierRestrictionDefault =
                 CarrierRestrictionRules.CARRIER_RESTRICTION_DEFAULT_NOT_ALLOWED;
         if (!carrierRestrictions.allowedCarriersPrioritized) {
             carrierRestrictionDefault = CarrierRestrictionRules.CARRIER_RESTRICTION_DEFAULT_ALLOWED;
         }
-        ret = CarrierRestrictionRules.newBuilder()
-                .setAllowedCarriers(RILUtils.convertHalCarrierList(
-                        carrierRestrictions.allowedCarriers))
-                .setExcludedCarriers(RILUtils.convertHalCarrierList(
-                        carrierRestrictions.excludedCarriers))
-                .setDefaultCarrierRestriction(carrierRestrictionDefault)
-                .setMultiSimPolicy(policy)
-                .setCarrierRestrictionStatus(carrierRestrictions.status)
-                .build();
 
+        CarrierRestrictionRules ret = CarrierRestrictionRules.newBuilder().setAllowedCarriers(
+                RILUtils.convertHalCarrierList(
+                        carrierRestrictions.allowedCarriers)).setExcludedCarriers(
+                RILUtils.convertHalCarrierList(
+                        carrierRestrictions.excludedCarriers)).setDefaultCarrierRestriction(
+                carrierRestrictionDefault).setMultiSimPolicy(policy).setCarrierRestrictionStatus(
+                carrierRestrictions.status).setAllowedCarrierInfo(
+                RILUtils.convertAidlCarrierInfoList(
+                        carrierRestrictions.allowedCarrierInfoList)).setExcludedCarrierInfo(
+                RILUtils.convertAidlCarrierInfoList(
+                        carrierRestrictions.excludedCarrierInfoList)).build();
         if (responseInfo.error == RadioError.NONE) {
             RadioResponse.sendMessageResponse(rr.mResult, ret);
         }
