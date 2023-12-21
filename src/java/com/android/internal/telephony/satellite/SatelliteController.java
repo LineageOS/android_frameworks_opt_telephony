@@ -1714,7 +1714,7 @@ public class SatelliteController extends Handler {
         if (mSatelliteSessionController != null) {
             mSatelliteSessionController.unregisterForSatelliteModemStateChanged(callback);
         } else {
-            loge("registerForSatelliteModemStateChanged: mSatelliteSessionController"
+            loge("unregisterForSatelliteModemStateChanged: mSatelliteSessionController"
                     + " is not initialized yet");
         }
     }
