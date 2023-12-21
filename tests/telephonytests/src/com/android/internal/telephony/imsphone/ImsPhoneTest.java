@@ -63,6 +63,7 @@ import static org.mockito.Mockito.verify;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.net.Uri;
@@ -816,6 +817,37 @@ public class ImsPhoneTest extends TelephonyTest {
         // setWfcMode should not be called again, out_of_service should not trigger move out of
         // roaming.
         verify(mImsManager, times(1)).setWfcMode(anyInt(), anyBoolean());
+    }
+
+    @Test
+    @SmallTest
+    public void testSetWfcModeInRoaming() throws Exception {
+        doReturn(true).when(mFeatureFlags).updateRoamingStateToSetWfcMode();
+        doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
+        doReturn(true).when(mPhone).isRadioOn();
+
+        // Set CarrierConfigManager to be invalid
+        doReturn(null).when(mContext).getSystemService(Context.CARRIER_CONFIG_SERVICE);
+
+        //Roaming - data registration only on LTE
+        Message m = getServiceStateChangedMessage(getServiceStateDataOnly(
+                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.STATE_IN_SERVICE, true));
+        // Inject the message synchronously instead of waiting for the thread to do it.
+        mImsPhoneUT.handleMessage(m);
+        m.recycle();
+
+        verify(mImsManager, never()).setWfcMode(anyInt(), eq(true));
+
+        // Set CarrierConfigManager to be valid
+        doReturn(mCarrierConfigManager).when(mContext)
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+
+        m = getServiceStateChangedMessage(getServiceStateDataOnly(
+                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.STATE_IN_SERVICE, true));
+        mImsPhoneUT.handleMessage(m);
+        m.recycle();
+
+        verify(mImsManager, times(1)).setWfcMode(anyInt(), eq(true));
     }
 
     @Test

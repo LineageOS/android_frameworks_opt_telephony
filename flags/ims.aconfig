@@ -55,3 +55,10 @@ flag {
     description: "For DSDA devices, controls whether the existing call will be dropped when an incoming call on a different sub is answered, when either sub does not support hold capability."
     bug:"315993953"
 }
+
+flag {
+    name: "update_roaming_state_to_set_wfc_mode"
+    namespace: "telephony"
+    description: "This flag updates roaming state to set wfc mode"
+    bug:"317298331"
+}
