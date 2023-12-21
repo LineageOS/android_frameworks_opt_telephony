@@ -264,7 +264,11 @@ public class TelephonyAnalytics {
                 callType = CallType.NORMAL_CALL.value;
             }
             if (isOverIms) {
-                disconnectCauseString = sImsCodeMap.get(disconnectCause);
+                disconnectCauseString =
+                        sImsCodeMap.getOrDefault(disconnectCause, "UNKNOWN_REJECT_CAUSE");
+                if (disconnectCauseString.equals("UNKNOWN_REJECT_CAUSE")) {
+                    Rlog.d(TAG, "UNKNOWN_REJECT_CAUSE: " + disconnectCause);
+                }
                 status =
                         disconnectCause == ImsReasonInfo.CODE_USER_TERMINATED
                                 || disconnectCause
