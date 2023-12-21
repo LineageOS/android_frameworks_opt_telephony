@@ -131,7 +131,8 @@ public class FakeTelephonyProvider extends MockContentProvider {
                     + Telephony.SimInfo.COLUMN_SATELLITE_ENABLED + " INTEGER DEFAULT 0,"
                     + Telephony.SimInfo.COLUMN_SATELLITE_ATTACH_ENABLED_FOR_CARRIER
                     + " INTEGER DEFAULT 0, "
-                    + Telephony.SimInfo.COLUMN_IS_NTN + " INTEGER DEFAULT 0"
+                    + Telephony.SimInfo.COLUMN_IS_NTN + " INTEGER DEFAULT 0,"
+                    + Telephony.SimInfo.COLUMN_SERVICE_CAPABILITIES + " INTEGER DEFAULT 7"
                     + ");";
         }
 

@@ -40,9 +40,6 @@ import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.AccessNetworksManager;
-import com.android.internal.telephony.domainselection.DomainSelectionConnection;
-import com.android.internal.telephony.domainselection.DomainSelectionController;
-import com.android.internal.telephony.domainselection.NormalCallDomainSelectionConnection;
 
 import org.junit.After;
 import org.junit.Before;
@@ -58,6 +55,7 @@ import java.util.concurrent.CompletableFuture;
 public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
 
     private static final String TELECOM_CALL_ID1 = "TC1";
+    private static final int TEST_PHONE_ID = 111;
 
     @Mock
     private DomainSelectionController mMockDomainSelectionController;
@@ -74,6 +72,7 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
         super.setUp(this.getClass().getSimpleName());
         MockitoAnnotations.initMocks(this);
         doReturn(mMockAccessNetworksManager).when(mPhone).getAccessNetworksManager();
+        doReturn(TEST_PHONE_ID).when(mPhone).getPhoneId();
         mNormalCallDomainSelectionConnection =
                 new NormalCallDomainSelectionConnection(mPhone, mMockDomainSelectionController);
         mTransportCallback = mNormalCallDomainSelectionConnection.getTransportSelectorCallback();
@@ -188,5 +187,25 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
         assertEquals(SELECTOR_TYPE_CALLING, attributes.getSelectorType());
         assertEquals(10, attributes.getCsDisconnectCause());
         assertEquals(imsReasonInfo, attributes.getPsDisconnectCause());
+    }
+
+    @Test
+    public void testGetSetMethods() throws Exception {
+        ImsReasonInfo imsReasonInfo = new ImsReasonInfo();
+        DomainSelectionService.SelectionAttributes attributes =
+                NormalCallDomainSelectionConnection.getSelectionAttributes(1, 2,
+                        TELECOM_CALL_ID1, "123", false, 0, imsReasonInfo);
+
+        mNormalCallDomainSelectionConnection
+                .createNormalConnection(attributes, mMockConnectionCallback);
+
+        mNormalCallDomainSelectionConnection.setDisconnectCause(100, 101,
+                "Test disconnect cause");
+        assertEquals(100, mNormalCallDomainSelectionConnection.getDisconnectCause());
+        assertEquals(101, mNormalCallDomainSelectionConnection.getPreciseDisconnectCause());
+        assertEquals("Test disconnect cause",
+                mNormalCallDomainSelectionConnection.getReasonMessage());
+        assertEquals(imsReasonInfo, mNormalCallDomainSelectionConnection.getImsReasonInfo());
+        assertEquals(TEST_PHONE_ID, mNormalCallDomainSelectionConnection.getPhoneId());
     }
 }

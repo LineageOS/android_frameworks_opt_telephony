@@ -6,3 +6,17 @@ flag {
   description: "To support separation between personal and work from TelephonyManager and SubscriptionManager API perspective."
   bug: "296076674"
 }
+
+flag {
+  name: "enforce_subscription_user_filter"
+  namespace: "telephony"
+  description: "Enabled flag means subscriptions enforce filtering result base on calling user handle. It marks the telephony completion of user filtering."
+  bug: "296076674"
+}
+
+flag {
+  name: "data_only_cellular_service"
+  namespace: "telephony"
+  description: "Supports customized cellular service capabilities per subscription."
+  bug: "296097429"
+}

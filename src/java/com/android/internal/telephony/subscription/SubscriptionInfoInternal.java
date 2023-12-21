@@ -469,6 +469,11 @@ public class SubscriptionInfoInternal {
     private final boolean mIsGroupDisabled;
 
     /**
+     * Service capabilities (in the form of bitmask combination) the subscription supports.
+     */
+    private final int mServiceCapabilities;
+
+    /**
      * Constructor from builder.
      *
      * @param builder Builder of {@link SubscriptionInfoInternal}.
@@ -543,6 +548,7 @@ public class SubscriptionInfoInternal {
         // Below are the fields that do not exist in the SimInfo table.
         this.mCardId = builder.mCardId;
         this.mIsGroupDisabled = builder.mIsGroupDisabled;
+        this.mServiceCapabilities = builder.mServiceCapabilities;
     }
 
     /**
@@ -1193,6 +1199,13 @@ public class SubscriptionInfoInternal {
         return !isOpportunistic() || TextUtils.isEmpty(mGroupUuid);
     }
 
+    /**
+     * Return the service capabilities bitmasks the subscription supports.
+     */
+    public int getServiceCapabilities() {
+        return mServiceCapabilities;
+    }
+
     /** @return converted {@link SubscriptionInfo}. */
     @NonNull
     public SubscriptionInfo toSubscriptionInfo() {
@@ -1229,6 +1242,8 @@ public class SubscriptionInfoInternal {
                 .setPortIndex(mPortIndex)
                 .setUsageSetting(mUsageSetting)
                 .setOnlyNonTerrestrialNetwork(mIsOnlyNonTerrestrialNetwork == 1)
+                .setServiceCapabilities(
+                        SubscriptionManager.getServiceCapabilitiesSet(mServiceCapabilities))
                 .build();
     }
 
@@ -1288,6 +1303,7 @@ public class SubscriptionInfoInternal {
                 + " satellite_attach_enabled_for_carrier=" + mIsSatelliteAttachEnabledForCarrier
                 + " getOnlyNonTerrestrialNetwork=" + mIsOnlyNonTerrestrialNetwork
                 + " isGroupDisabled=" + mIsGroupDisabled
+                + " serviceCapabilities=" + mServiceCapabilities
                 + "]";
     }
 
@@ -1344,7 +1360,8 @@ public class SubscriptionInfoInternal {
                 that.mDeviceToDeviceStatusSharingContacts) && mNumberFromCarrier.equals(
                 that.mNumberFromCarrier) && mNumberFromIms.equals(that.mNumberFromIms)
                 && mIsSatelliteAttachEnabledForCarrier == that.mIsSatelliteAttachEnabledForCarrier
-                && mIsOnlyNonTerrestrialNetwork == that.mIsOnlyNonTerrestrialNetwork;
+                && mIsOnlyNonTerrestrialNetwork == that.mIsOnlyNonTerrestrialNetwork
+                && mServiceCapabilities == that.mServiceCapabilities;
     }
 
     @Override
@@ -1366,7 +1383,8 @@ public class SubscriptionInfoInternal {
                 mNumberFromCarrier,
                 mNumberFromIms, mPortIndex, mUsageSetting, mLastUsedTPMessageReference, mUserId,
                 mIsSatelliteEnabled, mCardId, mIsGroupDisabled,
-                mIsSatelliteAttachEnabledForCarrier, mIsOnlyNonTerrestrialNetwork);
+                mIsSatelliteAttachEnabledForCarrier, mIsOnlyNonTerrestrialNetwork,
+                mServiceCapabilities);
         result = 31 * result + Arrays.hashCode(mNativeAccessRules);
         result = 31 * result + Arrays.hashCode(mCarrierConfigAccessRules);
         result = 31 * result + Arrays.hashCode(mRcsConfig);
@@ -1754,6 +1772,11 @@ public class SubscriptionInfoInternal {
         private boolean mIsGroupDisabled;
 
         /**
+         * Service capabilities the subscription supports
+         */
+        private int mServiceCapabilities;
+
+        /**
          * Default constructor.
          */
         public Builder() {
@@ -1831,6 +1854,7 @@ public class SubscriptionInfoInternal {
             // Below are the fields that do not exist in the SimInfo table.
             mCardId = info.mCardId;
             mIsGroupDisabled = info.mIsGroupDisabled;
+            mServiceCapabilities = info.mServiceCapabilities;
         }
 
         /**
@@ -2749,6 +2773,16 @@ public class SubscriptionInfoInternal {
         @NonNull
         public Builder setGroupDisabled(boolean isGroupDisabled) {
             mIsGroupDisabled = isGroupDisabled;
+            return this;
+        }
+
+        /**
+         * Set the service capabilities the subscription supports.
+         * @param capabilities Cellular service capabilities bitmasks
+         * @return The builder
+         */
+        public Builder setServiceCapabilities(int capabilities) {
+            mServiceCapabilities = capabilities;
             return this;
         }
 

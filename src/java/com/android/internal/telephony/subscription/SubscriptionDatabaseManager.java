@@ -281,7 +281,10 @@ public class SubscriptionDatabaseManager extends Handler {
                     SubscriptionInfoInternal::getSatelliteAttachEnabledForCarrier),
             new AbstractMap.SimpleImmutableEntry<>(
                     SimInfo.COLUMN_IS_NTN,
-                    SubscriptionInfoInternal::getOnlyNonTerrestrialNetwork)
+                    SubscriptionInfoInternal::getOnlyNonTerrestrialNetwork),
+            new AbstractMap.SimpleImmutableEntry<>(
+                    SimInfo.COLUMN_SERVICE_CAPABILITIES,
+                    SubscriptionInfoInternal::getServiceCapabilities)
     );
 
     /**
@@ -412,7 +415,10 @@ public class SubscriptionDatabaseManager extends Handler {
                     SubscriptionDatabaseManager::setSatelliteAttachEnabledForCarrier),
             new AbstractMap.SimpleImmutableEntry<>(
                     SimInfo.COLUMN_IS_NTN,
-                    SubscriptionDatabaseManager::setNtn)
+                    SubscriptionDatabaseManager::setNtn),
+            new AbstractMap.SimpleImmutableEntry<>(
+                    SimInfo.COLUMN_SERVICE_CAPABILITIES,
+                    SubscriptionDatabaseManager::setServiceCapabilities)
     );
 
     /**
@@ -2074,6 +2080,19 @@ public class SubscriptionDatabaseManager extends Handler {
     }
 
     /**
+     * Set service capabilities the subscription support.
+     * @param subId Subscription id.
+     * @param capabilities Service capabilities bitmasks
+     */
+    public void setServiceCapabilities(int subId, int capabilities) {
+        if (!mFeatureFlags.dataOnlyCellularService()) {
+            return;
+        }
+        writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_SERVICE_CAPABILITIES,
+                capabilities, SubscriptionInfoInternal.Builder::setServiceCapabilities);
+    }
+
+    /**
      * Reload the database from content provider to the cache. This must be a synchronous operation
      * to prevent cache/database out-of-sync. Callers should be cautious to call this method because
      * it might take longer time to complete.
@@ -2302,7 +2321,10 @@ public class SubscriptionDatabaseManager extends Handler {
                         SimInfo.COLUMN_SATELLITE_ENABLED)))
                 .setSatelliteAttachEnabledForCarrier(cursor.getInt(
                         cursor.getColumnIndexOrThrow(
-                                SimInfo.COLUMN_SATELLITE_ATTACH_ENABLED_FOR_CARRIER)));
+                                SimInfo.COLUMN_SATELLITE_ATTACH_ENABLED_FOR_CARRIER)))
+                .setServiceCapabilities(cursor.getInt(
+                        cursor.getColumnIndexOrThrow(
+                                SimInfo.COLUMN_SERVICE_CAPABILITIES)));
         if (mFeatureFlags.oemEnabledSatelliteFlag()) {
             builder.setOnlyNonTerrestrialNetwork(cursor.getInt(cursor.getColumnIndexOrThrow(
                     SimInfo.COLUMN_IS_NTN)));

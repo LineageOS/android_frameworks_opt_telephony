@@ -1161,6 +1161,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
             SubscriptionManagerService.FILTER_ACCESSIBLE_SUBS_BY_USER})
     public void testIsSubscriptionAssociatedWithUserMultiSubs() {
         doReturn(true).when(mFlags).workProfileApiSplit();
+        doReturn(true).when(mFlags).enforceSubscriptionUserFilter();
         mContextFixture.addCallingOrSelfPermission(
                 Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
@@ -1222,6 +1223,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     public void testSubscriptionAssociationWorkProfileCallerVisibility() {
         // Split mode is defined as when a profile owns a dedicated sub, it loses the visibility to
         // the unassociated sub.
+        doReturn(true).when(mFlags).enforceSubscriptionUserFilter();
         doReturn(true).when(mFlags).workProfileApiSplit();
         mContextFixture.addCallingOrSelfPermission(
                 Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
@@ -1339,6 +1341,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     public void testSubscriptionAssociationPersonalCallerVisibility() {
         // Split mode is defined as when a profile owns a dedicated sub, it loses the visibility to
         // the unassociated sub.
+        doReturn(true).when(mFlags).enforceSubscriptionUserFilter();
         doReturn(true).when(mFlags).workProfileApiSplit();
         mContextFixture.addCallingOrSelfPermission(
                 Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
