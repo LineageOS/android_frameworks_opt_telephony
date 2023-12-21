@@ -21,9 +21,10 @@ import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.mock;
 
 import android.telephony.TelephonyManager;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.TelephonyTest;
 

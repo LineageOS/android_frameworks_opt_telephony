@@ -47,9 +47,10 @@ import android.telephony.DataFailCause;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+
+import androidx.test.filters.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;

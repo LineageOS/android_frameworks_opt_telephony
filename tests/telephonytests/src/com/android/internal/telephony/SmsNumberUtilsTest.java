@@ -26,7 +26,8 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.TelephonyManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;

@@ -29,9 +29,10 @@ import android.os.AsyncResult;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.TelephonyTest;

@@ -25,10 +25,11 @@ import android.os.Handler;
 import android.os.Looper;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
-import android.test.suitebuilder.annotation.MediumTest;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+
+import androidx.test.filters.MediumTest;
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.PhoneInternalInterface.DialArgs;
 

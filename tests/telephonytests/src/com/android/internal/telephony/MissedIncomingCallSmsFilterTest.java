@@ -27,7 +27,8 @@ import android.os.Bundle;
 import android.os.PersistableBundle;
 import android.telecom.TelecomManager;
 import android.telephony.CarrierConfigManager;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.uicc.IccUtils;
 

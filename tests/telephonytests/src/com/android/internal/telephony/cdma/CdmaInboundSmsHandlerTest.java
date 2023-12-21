@@ -42,11 +42,11 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Telephony;
 import android.test.mock.MockContentResolver;
-import android.test.suitebuilder.annotation.MediumTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
+import androidx.test.filters.MediumTest;
 
 import com.android.internal.telephony.FakeSmsContentProvider;
 import com.android.internal.telephony.InboundSmsHandler;

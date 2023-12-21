@@ -45,7 +45,8 @@ import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.ProvisioningManager;
 import android.telephony.ims.feature.MmTelFeature.MmTelCapabilities;
 import android.telephony.ims.feature.MmTelFeature.MmTelCapabilities.MmTelCapability;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.TelephonyTest;

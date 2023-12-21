@@ -28,7 +28,8 @@ import android.telephony.data.EpsQos;
 import android.telephony.data.Qos;
 import android.telephony.data.TrafficDescriptor;
 import android.test.AndroidTestCase;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import java.util.ArrayList;
 import java.util.Arrays;

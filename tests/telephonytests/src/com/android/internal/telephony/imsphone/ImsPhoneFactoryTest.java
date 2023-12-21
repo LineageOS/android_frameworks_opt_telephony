@@ -24,7 +24,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.os.HandlerThread;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.TelephonyTest;

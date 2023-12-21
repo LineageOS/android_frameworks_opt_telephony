@@ -34,9 +34,10 @@ import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+
+import androidx.test.filters.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;

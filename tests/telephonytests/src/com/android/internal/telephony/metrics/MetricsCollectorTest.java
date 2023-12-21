@@ -37,8 +37,9 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import android.app.StatsManager;
 import android.telephony.TelephonyManager;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.util.StatsEvent;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;

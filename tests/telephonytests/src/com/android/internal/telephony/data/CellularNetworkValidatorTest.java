@@ -43,9 +43,10 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhoneCapability;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;

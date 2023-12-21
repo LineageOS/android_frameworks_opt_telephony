@@ -20,7 +20,8 @@ import android.os.Parcel;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.CarrierRestrictionRules;
 import android.test.AndroidTestCase;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import java.util.ArrayList;
 import java.util.Arrays;

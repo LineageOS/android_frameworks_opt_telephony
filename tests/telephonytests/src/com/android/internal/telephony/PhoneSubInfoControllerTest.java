@@ -39,7 +39,8 @@ import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
 import android.os.RemoteException;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.uicc.IsimUiccRecords;
 import com.android.internal.telephony.uicc.SIMRecords;

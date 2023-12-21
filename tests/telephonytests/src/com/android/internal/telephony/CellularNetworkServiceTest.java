@@ -43,8 +43,9 @@ import android.telephony.SmsManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.VopsSupportInfo;
-import android.test.suitebuilder.annotation.MediumTest;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.MediumTest;
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.R;
 

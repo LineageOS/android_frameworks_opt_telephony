@@ -26,7 +26,8 @@ import android.content.Context;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.TelephonyTest;
 

@@ -59,9 +59,10 @@ import android.telephony.SignalStrength;
 import android.telephony.SignalStrengthUpdateRequest;
 import android.telephony.SignalThresholdInfo;
 import android.telephony.TelephonyManager;
-import android.test.suitebuilder.annotation.MediumTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+
+import androidx.test.filters.MediumTest;
 
 import com.android.internal.util.ArrayUtils;
 

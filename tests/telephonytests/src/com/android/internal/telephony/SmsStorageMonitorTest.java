@@ -27,10 +27,11 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Message;
 import android.provider.Telephony;
-import android.test.suitebuilder.annotation.MediumTest;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+
+import androidx.test.filters.MediumTest;
+import androidx.test.filters.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;
@@ -38,7 +39,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper

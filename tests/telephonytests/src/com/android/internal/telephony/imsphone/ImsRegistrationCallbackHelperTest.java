@@ -37,7 +37,8 @@ import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.RegistrationManager.RegistrationCallback;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.imsphone.ImsRegistrationCallbackHelper.ImsRegistrationUpdate;

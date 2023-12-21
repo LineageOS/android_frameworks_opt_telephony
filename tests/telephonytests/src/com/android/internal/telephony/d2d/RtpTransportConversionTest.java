@@ -27,8 +27,9 @@ import static org.mockito.Mockito.when;
 
 import android.os.Handler;
 import android.telephony.ims.RtpHeaderExtension;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.util.ArraySet;
+
+import androidx.test.filters.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;

@@ -20,8 +20,9 @@ import static org.junit.Assert.assertEquals;
 import android.os.Parcel;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.TelephonyManager;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Base64;
+
+import androidx.test.filters.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;

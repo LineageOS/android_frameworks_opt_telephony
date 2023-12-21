@@ -33,12 +33,12 @@ import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.emergency.EmergencyNumber;
-import android.test.suitebuilder.annotation.MediumTest;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
+import androidx.test.filters.MediumTest;
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.PhoneInternalInterface.DialArgs;
 
