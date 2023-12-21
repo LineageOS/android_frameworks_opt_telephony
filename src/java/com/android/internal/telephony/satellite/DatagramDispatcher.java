@@ -209,7 +209,7 @@ public class DatagramDispatcher extends Handler {
             case EVENT_SEND_SATELLITE_DATAGRAM_DONE: {
                 ar = (AsyncResult) msg.obj;
                 request = (DatagramDispatcherHandlerRequest) ar.userObj;
-                int error = SatelliteServiceUtils.getSatelliteError(ar, "sendSatelliteDatagram");
+                int error = SatelliteServiceUtils.getSatelliteError(ar, "sendDatagram");
                 SendSatelliteDatagramArgument argument =
                         (SendSatelliteDatagramArgument) request.argument;
 
@@ -330,7 +330,7 @@ public class DatagramDispatcher extends Handler {
             }
 
             if (mDatagramController.needsWaitingForSatelliteConnected()) {
-                logd("sendSatelliteDatagram: wait for satellite connected");
+                logd("sendDatagram: wait for satellite connected");
                 mDatagramController.updateSendStatus(subId,
                         SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_WAITING_TO_CONNECT,
                         getPendingDatagramCount(), SatelliteManager.SATELLITE_RESULT_SUCCESS);
@@ -345,7 +345,7 @@ public class DatagramDispatcher extends Handler {
                         getPendingDatagramCount(), SatelliteManager.SATELLITE_RESULT_SUCCESS);
                 sendRequestAsync(CMD_SEND_SATELLITE_DATAGRAM, datagramArgs, phone);
             } else {
-                logd("sendSatelliteDatagram: mSendingDatagramInProgress="
+                logd("sendDatagram: mSendingDatagramInProgress="
                         + mSendingDatagramInProgress + ", isPollingInIdleState="
                         + mDatagramController.isPollingInIdleState());
             }

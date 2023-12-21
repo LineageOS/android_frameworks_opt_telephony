@@ -1263,13 +1263,13 @@ public class SatelliteControllerTest extends TelephonyTest {
                 logd("onSatelliteModemStateChanged: state=" + state);
             }
         };
-        mSatelliteControllerUT.unregisterForSatelliteModemStateChanged(SUB_ID, callback);
+        mSatelliteControllerUT.unregisterForModemStateChanged(SUB_ID, callback);
         verify(mMockSatelliteSessionController, never())
                 .unregisterForSatelliteModemStateChanged(callback);
 
         resetSatelliteControllerUTToSupportedAndProvisionedState();
 
-        mSatelliteControllerUT.unregisterForSatelliteModemStateChanged(SUB_ID, callback);
+        mSatelliteControllerUT.unregisterForModemStateChanged(SUB_ID, callback);
         verify(mMockSatelliteSessionController).unregisterForSatelliteModemStateChanged(callback);
     }
 
@@ -1331,7 +1331,7 @@ public class SatelliteControllerTest extends TelephonyTest {
                 };
         when(mMockDatagramController.registerForSatelliteDatagram(eq(SUB_ID), eq(callback)))
                 .thenReturn(SATELLITE_RESULT_SUCCESS);
-        int errorCode = mSatelliteControllerUT.registerForSatelliteDatagram(SUB_ID, callback);
+        int errorCode = mSatelliteControllerUT.registerForIncomingDatagram(SUB_ID, callback);
         assertEquals(SATELLITE_RESULT_SUCCESS, errorCode);
         verify(mMockDatagramController).registerForSatelliteDatagram(eq(SUB_ID), eq(callback));
     }
@@ -1349,7 +1349,7 @@ public class SatelliteControllerTest extends TelephonyTest {
                 };
         doNothing().when(mMockDatagramController)
                 .unregisterForSatelliteDatagram(eq(SUB_ID), eq(callback));
-        mSatelliteControllerUT.unregisterForSatelliteDatagram(SUB_ID, callback);
+        mSatelliteControllerUT.unregisterForIncomingDatagram(SUB_ID, callback);
         verify(mMockDatagramController).unregisterForSatelliteDatagram(eq(SUB_ID), eq(callback));
     }
 
@@ -1359,7 +1359,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         SatelliteDatagram datagram = new SatelliteDatagram(mText.getBytes());
 
         mIIntegerConsumerResults.clear();
-        mSatelliteControllerUT.sendSatelliteDatagram(SUB_ID,
+        mSatelliteControllerUT.sendDatagram(SUB_ID,
                 SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE, datagram, true, mIIntegerConsumer);
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
@@ -1375,7 +1375,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         sendProvisionedStateChangedEvent(false, null);
         processAllMessages();
         verifySatelliteProvisioned(false, SATELLITE_RESULT_SUCCESS);
-        mSatelliteControllerUT.sendSatelliteDatagram(SUB_ID,
+        mSatelliteControllerUT.sendDatagram(SUB_ID,
                 SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE, datagram, true, mIIntegerConsumer);
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
@@ -1389,7 +1389,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         sendProvisionedStateChangedEvent(true, null);
         processAllMessages();
         verifySatelliteProvisioned(true, SATELLITE_RESULT_SUCCESS);
-        mSatelliteControllerUT.sendSatelliteDatagram(SUB_ID,
+        mSatelliteControllerUT.sendDatagram(SUB_ID,
                 SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE, datagram, true, mIIntegerConsumer);
         processAllMessages();
         assertFalse(waitForIIntegerConsumerResult(1));
@@ -1402,7 +1402,7 @@ public class SatelliteControllerTest extends TelephonyTest {
     @Test
     public void testPollPendingSatelliteDatagrams() {
         mIIntegerConsumerResults.clear();
-        mSatelliteControllerUT.pollPendingSatelliteDatagrams(SUB_ID, mIIntegerConsumer);
+        mSatelliteControllerUT.pollPendingDatagrams(SUB_ID, mIIntegerConsumer);
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
         assertEquals(SATELLITE_RESULT_INVALID_TELEPHONY_STATE,
@@ -1415,7 +1415,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         sendProvisionedStateChangedEvent(false, null);
         processAllMessages();
         verifySatelliteProvisioned(false, SATELLITE_RESULT_SUCCESS);
-        mSatelliteControllerUT.pollPendingSatelliteDatagrams(SUB_ID, mIIntegerConsumer);
+        mSatelliteControllerUT.pollPendingDatagrams(SUB_ID, mIIntegerConsumer);
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
         assertEquals(SATELLITE_RESULT_SERVICE_NOT_PROVISIONED,
@@ -1426,7 +1426,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         sendProvisionedStateChangedEvent(true, null);
         processAllMessages();
         verifySatelliteProvisioned(true, SATELLITE_RESULT_SUCCESS);
-        mSatelliteControllerUT.pollPendingSatelliteDatagrams(SUB_ID, mIIntegerConsumer);
+        mSatelliteControllerUT.pollPendingDatagrams(SUB_ID, mIIntegerConsumer);
         processAllMessages();
         assertFalse(waitForIIntegerConsumerResult(1));
         verify(mMockDatagramController, times(1)).pollPendingSatelliteDatagrams(anyInt(), any());
@@ -1925,9 +1925,9 @@ public class SatelliteControllerTest extends TelephonyTest {
         setUpResponseForRequestSetSatelliteEnabledForCarrier(true, SATELLITE_RESULT_SUCCESS);
         setUpResponseForRequestSetSatelliteEnabledForCarrier(false, SATELLITE_RESULT_SUCCESS);
         doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
-        mSatelliteControllerUT.removeSatelliteAttachRestrictionForCarrier(SUB_ID,
+        mSatelliteControllerUT.removeAttachRestrictionForCarrier(SUB_ID,
                 SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER, mIIntegerConsumer);
-        mSatelliteControllerUT.removeSatelliteAttachRestrictionForCarrier(SUB_ID,
+        mSatelliteControllerUT.removeAttachRestrictionForCarrier(SUB_ID,
                 SATELLITE_COMMUNICATION_RESTRICTION_REASON_GEOLOCATION, mIIntegerConsumer);
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(2));
@@ -1936,7 +1936,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(1));
 
         Set<Integer> restrictionSet =
-                mSatelliteControllerUT.getSatelliteAttachRestrictionReasonsForCarrier(SUB_ID);
+                mSatelliteControllerUT.getAttachRestrictionReasonsForCarrier(SUB_ID);
         assertTrue(!restrictionSet.contains(SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER));
         assertTrue(!restrictionSet.contains(
                 SATELLITE_COMMUNICATION_RESTRICTION_REASON_GEOLOCATION));
@@ -1946,7 +1946,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         reset(mMockSatelliteModemInterface);
         setUpResponseForRequestSetSatelliteEnabledForCarrier(false, SATELLITE_RESULT_SUCCESS);
         doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
-        mSatelliteControllerUT.addSatelliteAttachRestrictionForCarrier(SUB_ID,
+        mSatelliteControllerUT.addAttachRestrictionForCarrier(SUB_ID,
                 SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER, mIIntegerConsumer);
         processAllMessages();
         assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
@@ -1954,7 +1954,7 @@ public class SatelliteControllerTest extends TelephonyTest {
                 .requestSetSatelliteEnabledForCarrier(anyInt(), anyBoolean(), any(Message.class));
         assertTrue(waitForIIntegerConsumerResult(1));
         restrictionSet =
-                mSatelliteControllerUT.getSatelliteAttachRestrictionReasonsForCarrier(SUB_ID);
+                mSatelliteControllerUT.getAttachRestrictionReasonsForCarrier(SUB_ID);
         assertTrue(restrictionSet.contains(SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER));
 
         // remove satellite restriction reason by user
@@ -1962,13 +1962,13 @@ public class SatelliteControllerTest extends TelephonyTest {
         reset(mMockSatelliteModemInterface);
         setUpResponseForRequestSetSatelliteEnabledForCarrier(true, SATELLITE_RESULT_SUCCESS);
         doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
-        mSatelliteControllerUT.removeSatelliteAttachRestrictionForCarrier(SUB_ID,
+        mSatelliteControllerUT.removeAttachRestrictionForCarrier(SUB_ID,
                 SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER, mIIntegerConsumer);
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
         assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
         restrictionSet =
-                mSatelliteControllerUT.getSatelliteAttachRestrictionReasonsForCarrier(SUB_ID);
+                mSatelliteControllerUT.getAttachRestrictionReasonsForCarrier(SUB_ID);
         assertTrue(!restrictionSet.contains(SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER));
         verify(mMockSatelliteModemInterface, times(1))
                 .requestSetSatelliteEnabledForCarrier(anyInt(), anyBoolean(), any(Message.class));
@@ -1978,13 +1978,13 @@ public class SatelliteControllerTest extends TelephonyTest {
         reset(mMockSatelliteModemInterface);
         setUpResponseForRequestSetSatelliteEnabledForCarrier(false, SATELLITE_RESULT_SUCCESS);
         doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
-        mSatelliteControllerUT.addSatelliteAttachRestrictionForCarrier(SUB_ID,
+        mSatelliteControllerUT.addAttachRestrictionForCarrier(SUB_ID,
                 SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER, mIIntegerConsumer);
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
         assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
         restrictionSet =
-                mSatelliteControllerUT.getSatelliteAttachRestrictionReasonsForCarrier(SUB_ID);
+                mSatelliteControllerUT.getAttachRestrictionReasonsForCarrier(SUB_ID);
         assertTrue(restrictionSet.contains(SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER));
         verify(mMockSatelliteModemInterface, times(1))
                 .requestSetSatelliteEnabledForCarrier(anyInt(), eq(false), any(Message.class));
@@ -1993,14 +1993,14 @@ public class SatelliteControllerTest extends TelephonyTest {
         mIIntegerConsumerResults.clear();
         reset(mMockSatelliteModemInterface);
         setUpResponseForRequestSetSatelliteEnabledForCarrier(false, SATELLITE_RESULT_SUCCESS);
-        mSatelliteControllerUT.addSatelliteAttachRestrictionForCarrier(SUB_ID,
+        mSatelliteControllerUT.addAttachRestrictionForCarrier(SUB_ID,
                 SATELLITE_COMMUNICATION_RESTRICTION_REASON_GEOLOCATION, mIIntegerConsumer);
         doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
         assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
         restrictionSet =
-                mSatelliteControllerUT.getSatelliteAttachRestrictionReasonsForCarrier(SUB_ID);
+                mSatelliteControllerUT.getAttachRestrictionReasonsForCarrier(SUB_ID);
         assertTrue(restrictionSet.contains(SATELLITE_COMMUNICATION_RESTRICTION_REASON_GEOLOCATION));
         verify(mMockSatelliteModemInterface, never())
                 .requestSetSatelliteEnabledForCarrier(anyInt(), anyBoolean(), any(Message.class));
@@ -2009,14 +2009,14 @@ public class SatelliteControllerTest extends TelephonyTest {
         mIIntegerConsumerResults.clear();
         reset(mMockSatelliteModemInterface);
         setUpResponseForRequestSetSatelliteEnabledForCarrier(true, SATELLITE_RESULT_SUCCESS);
-        mSatelliteControllerUT.removeSatelliteAttachRestrictionForCarrier(SUB_ID,
+        mSatelliteControllerUT.removeAttachRestrictionForCarrier(SUB_ID,
                 SATELLITE_COMMUNICATION_RESTRICTION_REASON_GEOLOCATION, mIIntegerConsumer);
         doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
         assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
         restrictionSet =
-                mSatelliteControllerUT.getSatelliteAttachRestrictionReasonsForCarrier(SUB_ID);
+                mSatelliteControllerUT.getAttachRestrictionReasonsForCarrier(SUB_ID);
         assertTrue(!restrictionSet.contains(
                 SATELLITE_COMMUNICATION_RESTRICTION_REASON_GEOLOCATION));
         verify(mMockSatelliteModemInterface, never())
@@ -2026,14 +2026,14 @@ public class SatelliteControllerTest extends TelephonyTest {
         mIIntegerConsumerResults.clear();
         reset(mMockSatelliteModemInterface);
         setUpResponseForRequestSetSatelliteEnabledForCarrier(true, SATELLITE_RESULT_SUCCESS);
-        mSatelliteControllerUT.removeSatelliteAttachRestrictionForCarrier(SUB_ID,
+        mSatelliteControllerUT.removeAttachRestrictionForCarrier(SUB_ID,
                 SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER, mIIntegerConsumer);
         doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
         assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
         restrictionSet =
-                mSatelliteControllerUT.getSatelliteAttachRestrictionReasonsForCarrier(SUB_ID);
+                mSatelliteControllerUT.getAttachRestrictionReasonsForCarrier(SUB_ID);
         assertTrue(!restrictionSet.contains(SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER));
         verify(mMockSatelliteModemInterface, times(1))
                 .requestSetSatelliteEnabledForCarrier(anyInt(), eq(true), any(Message.class));
@@ -2042,7 +2042,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(false);
 
         mIIntegerConsumerResults.clear();
-        mSatelliteControllerUT.removeSatelliteAttachRestrictionForCarrier(SUB_ID,
+        mSatelliteControllerUT.removeAttachRestrictionForCarrier(SUB_ID,
                 SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER, mIIntegerConsumer);
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
@@ -2051,7 +2051,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         verifyZeroInteractions(mMockSatelliteModemInterface);
 
         mIIntegerConsumerResults.clear();
-        mSatelliteControllerUT.addSatelliteAttachRestrictionForCarrier(SUB_ID,
+        mSatelliteControllerUT.addAttachRestrictionForCarrier(SUB_ID,
                 SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER, mIIntegerConsumer);
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
@@ -2060,7 +2060,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         verifyZeroInteractions(mMockSatelliteModemInterface);
 
         Set<Integer> satelliteRestrictionReasons =
-                mSatelliteControllerUT.getSatelliteAttachRestrictionReasonsForCarrier(SUB_ID);
+                mSatelliteControllerUT.getAttachRestrictionReasonsForCarrier(SUB_ID);
         assertTrue(satelliteRestrictionReasons.isEmpty());
     }
 
@@ -2528,20 +2528,20 @@ public class SatelliteControllerTest extends TelephonyTest {
                     }
                 };
 
-        int errorCode = mSatelliteControllerUT.registerForSatelliteCapabilitiesChanged(SUB_ID,
+        int errorCode = mSatelliteControllerUT.registerForCapabilitiesChanged(SUB_ID,
                 callback);
         assertEquals(SATELLITE_RESULT_INVALID_TELEPHONY_STATE, errorCode);
 
         setUpResponseForRequestIsSatelliteSupported(false,
                 SATELLITE_RESULT_SUCCESS);
         verifySatelliteSupported(false, SATELLITE_RESULT_SUCCESS);
-        errorCode = mSatelliteControllerUT.registerForSatelliteCapabilitiesChanged(SUB_ID,
+        errorCode = mSatelliteControllerUT.registerForCapabilitiesChanged(SUB_ID,
                 callback);
         assertEquals(SATELLITE_RESULT_NOT_SUPPORTED, errorCode);
 
         resetSatelliteControllerUT();
         provisionSatelliteService();
-        errorCode = mSatelliteControllerUT.registerForSatelliteCapabilitiesChanged(SUB_ID,
+        errorCode = mSatelliteControllerUT.registerForCapabilitiesChanged(SUB_ID,
                 callback);
         assertEquals(SATELLITE_RESULT_SUCCESS, errorCode);
         SatelliteCapabilities expectedCapabilities = mSatelliteCapabilities;
@@ -2558,7 +2558,7 @@ public class SatelliteControllerTest extends TelephonyTest {
                 semaphore, 1, "testRegisterForSatelliteCapabilitiesChanged"));
         assertTrue(expectedCapabilities.equals(satelliteCapabilities[0]));
 
-        mSatelliteControllerUT.unregisterForSatelliteCapabilitiesChanged(SUB_ID, callback);
+        mSatelliteControllerUT.unregisterForCapabilitiesChanged(SUB_ID, callback);
         expectedCapabilities = mSatelliteCapabilities;
         sendSatelliteCapabilitiesChangedEvent(expectedCapabilities, null);
         processAllMessages();
@@ -2587,21 +2587,21 @@ public class SatelliteControllerTest extends TelephonyTest {
                     }
                 };
 
-        int errorCode = mSatelliteControllerUT.registerForSatelliteCapabilitiesChanged(SUB_ID,
+        int errorCode = mSatelliteControllerUT.registerForCapabilitiesChanged(SUB_ID,
                 callback);
         assertEquals(SATELLITE_RESULT_REQUEST_NOT_SUPPORTED, errorCode);
 
         setUpResponseForRequestIsSatelliteSupported(false,
                 SATELLITE_RESULT_SUCCESS);
         verifySatelliteSupported(false, SATELLITE_RESULT_NOT_SUPPORTED);
-        errorCode = mSatelliteControllerUT.registerForSatelliteCapabilitiesChanged(SUB_ID,
+        errorCode = mSatelliteControllerUT.registerForCapabilitiesChanged(SUB_ID,
                 callback);
         assertEquals(SATELLITE_RESULT_REQUEST_NOT_SUPPORTED, errorCode);
 
         resetSatelliteControllerUT();
         setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
         verifySatelliteSupported(false, SATELLITE_RESULT_NOT_SUPPORTED);
-        errorCode = mSatelliteControllerUT.registerForSatelliteCapabilitiesChanged(SUB_ID,
+        errorCode = mSatelliteControllerUT.registerForCapabilitiesChanged(SUB_ID,
                 callback);
         assertEquals(SATELLITE_RESULT_REQUEST_NOT_SUPPORTED, errorCode);
 
@@ -3208,7 +3208,7 @@ public class SatelliteControllerTest extends TelephonyTest {
             try {
                 if (!mSatelliteAllowedSemaphore.tryAcquire(TIMEOUT, TimeUnit.MILLISECONDS)) {
                     loge("Timeout to receive "
-                            + "requestIsSatelliteCommunicationAllowedForCurrentLocation()"
+                            + "requestIsCommunicationAllowedForCurrentLocation()"
                             + " callback");
                     return false;
                 }

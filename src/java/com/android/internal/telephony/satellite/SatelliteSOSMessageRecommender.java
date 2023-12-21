@@ -696,7 +696,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
     protected void requestIsSatelliteCommunicationAllowedForCurrentLocation(
             @NonNull OutcomeReceiver<Boolean, SatelliteManager.SatelliteException> callback) {
         SatelliteManager satelliteManager = mContext.getSystemService(SatelliteManager.class);
-        satelliteManager.requestIsSatelliteCommunicationAllowedForCurrentLocation(
+        satelliteManager.requestIsCommunicationAllowedForCurrentLocation(
                 this::post, callback);
     }
 

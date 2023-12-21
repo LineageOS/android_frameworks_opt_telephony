@@ -1077,7 +1077,7 @@ public class SatelliteController extends Handler {
                         logd("pollPendingSatelliteDatagram result: " + result);
                     }
                 };
-                pollPendingSatelliteDatagrams(
+                pollPendingDatagrams(
                         SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, internalCallback);
                 break;
 
@@ -1701,16 +1701,16 @@ public class SatelliteController extends Handler {
      * @param callback The callback that was passed to
      * {@link #registerForSatelliteModemStateChanged(int, ISatelliteModemStateCallback)}.
      */
-    public void unregisterForSatelliteModemStateChanged(int subId,
+    public void unregisterForModemStateChanged(int subId,
             @NonNull ISatelliteModemStateCallback callback) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
-            logd("unregisterForSatelliteModemStateChanged: oemEnabledSatelliteFlag is disabled");
+            logd("unregisterForModemStateChanged: oemEnabledSatelliteFlag is disabled");
             return;
         }
         if (mSatelliteSessionController != null) {
             mSatelliteSessionController.unregisterForSatelliteModemStateChanged(callback);
         } else {
-            loge("unregisterForSatelliteModemStateChanged: mSatelliteSessionController"
+            loge("unregisterForModemStateChanged: mSatelliteSessionController"
                     + " is not initialized yet");
         }
     }
@@ -1723,16 +1723,16 @@ public class SatelliteController extends Handler {
      *
      * @return The {@link SatelliteManager.SatelliteResult} result of the operation.
      */
-    @SatelliteManager.SatelliteResult public int registerForSatelliteDatagram(int subId,
+    @SatelliteManager.SatelliteResult public int registerForIncomingDatagram(int subId,
             @NonNull ISatelliteDatagramCallback callback) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
-            logd("registerForSatelliteDatagram: oemEnabledSatelliteFlag is disabled");
+            logd("registerForIncomingDatagram: oemEnabledSatelliteFlag is disabled");
             return SatelliteManager.SATELLITE_RESULT_NOT_SUPPORTED;
         }
         if (!mSatelliteModemInterface.isSatelliteServiceSupported()) {
             return SatelliteManager.SATELLITE_RESULT_NOT_SUPPORTED;
         }
-        logd("registerForSatelliteDatagram: callback=" + callback);
+        logd("registerForIncomingDatagram: callback=" + callback);
         return mDatagramController.registerForSatelliteDatagram(subId, callback);
     }
 
@@ -1742,18 +1742,18 @@ public class SatelliteController extends Handler {
      *
      * @param subId The subId of the subscription to unregister for incoming satellite datagrams.
      * @param callback The callback that was passed to
-     *                 {@link #registerForSatelliteDatagram(int, ISatelliteDatagramCallback)}.
+     *                 {@link #registerForIncomingDatagram(int, ISatelliteDatagramCallback)}.
      */
-    public void unregisterForSatelliteDatagram(int subId,
+    public void unregisterForIncomingDatagram(int subId,
             @NonNull ISatelliteDatagramCallback callback) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
-            logd("unregisterForSatelliteDatagram: oemEnabledSatelliteFlag is disabled");
+            logd("unregisterForIncomingDatagram: oemEnabledSatelliteFlag is disabled");
             return;
         }
         if (!mSatelliteModemInterface.isSatelliteServiceSupported()) {
             return;
         }
-        logd("unregisterForSatelliteDatagram: callback=" + callback);
+        logd("unregisterForIncomingDatagram: callback=" + callback);
         mDatagramController.unregisterForSatelliteDatagram(subId, callback);
     }
 
@@ -1768,7 +1768,7 @@ public class SatelliteController extends Handler {
      * @param subId The subId of the subscription used for receiving datagrams.
      * @param callback The callback to get {@link SatelliteManager.SatelliteResult} of the request.
      */
-    public void pollPendingSatelliteDatagrams(int subId, @NonNull IIntegerConsumer callback) {
+    public void pollPendingDatagrams(int subId, @NonNull IIntegerConsumer callback) {
         Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(callback::accept);
         int error = evaluateOemSatelliteRequestAllowed(true);
         if (error != SATELLITE_RESULT_SUCCESS) {
@@ -1796,7 +1796,7 @@ public class SatelliteController extends Handler {
      *                                 full screen mode.
      * @param callback The callback to get {@link SatelliteManager.SatelliteResult} of the request.
      */
-    public void sendSatelliteDatagram(int subId, @SatelliteManager.DatagramType int datagramType,
+    public void sendDatagram(int subId, @SatelliteManager.DatagramType int datagramType,
             SatelliteDatagram datagram, boolean needFullScreenPointingUI,
             @NonNull IIntegerConsumer callback) {
         logd("sendSatelliteDatagram: subId: " + subId + " datagramType: " + datagramType
@@ -1882,14 +1882,14 @@ public class SatelliteController extends Handler {
      * @param reason Reason for disallowing satellite communication for carrier.
      * @param callback The callback to get the result of the request.
      */
-    public void addSatelliteAttachRestrictionForCarrier(int subId,
+    public void addAttachRestrictionForCarrier(int subId,
             @SatelliteManager.SatelliteCommunicationRestrictionReason int reason,
             @NonNull IIntegerConsumer callback) {
-        if (DBG) logd("addSatelliteAttachRestrictionForCarrier(" + subId + ", " + reason + ")");
+        if (DBG) logd("addAttachRestrictionForCarrier(" + subId + ", " + reason + ")");
         Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(callback::accept);
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
             result.accept(SatelliteManager.SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
-            logd("addSatelliteAttachRestrictionForCarrier: carrierEnabledSatelliteFlag is "
+            logd("addAttachRestrictionForCarrier: carrierEnabledSatelliteFlag is "
                     + "disabled");
             return;
         }
@@ -1921,14 +1921,14 @@ public class SatelliteController extends Handler {
      * @param reason Reason for disallowing satellite communication.
      * @param callback The callback to get the result of the request.
      */
-    public void removeSatelliteAttachRestrictionForCarrier(int subId,
+    public void removeAttachRestrictionForCarrier(int subId,
             @SatelliteManager.SatelliteCommunicationRestrictionReason int reason,
             @NonNull IIntegerConsumer callback) {
-        if (DBG) logd("removeSatelliteAttachRestrictionForCarrier(" + subId + ", " + reason + ")");
+        if (DBG) logd("removeAttachRestrictionForCarrier(" + subId + ", " + reason + ")");
         Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(callback::accept);
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
             result.accept(SatelliteManager.SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
-            logd("removeSatelliteAttachRestrictionForCarrier: carrierEnabledSatelliteFlag is "
+            logd("removeAttachRestrictionForCarrier: carrierEnabledSatelliteFlag is "
                     + "disabled");
             return;
         }
@@ -1951,15 +1951,15 @@ public class SatelliteController extends Handler {
 
     /**
      * Get reasons for disallowing satellite communication, as requested by
-     * {@link #addSatelliteAttachRestrictionForCarrier(int, int, IIntegerConsumer)}.
+     * {@link #addAttachRestrictionForCarrier(int, int, IIntegerConsumer)}.
      *
      * @param subId The subId of the subscription to request for.
      *
      * @return Set of reasons for disallowing satellite attach for carrier.
      */
-    @NonNull public Set<Integer> getSatelliteAttachRestrictionReasonsForCarrier(int subId) {
+    @NonNull public Set<Integer> getAttachRestrictionReasonsForCarrier(int subId) {
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
-            logd("getSatelliteAttachRestrictionReasonsForCarrier: carrierEnabledSatelliteFlag is "
+            logd("getAttachRestrictionReasonsForCarrier: carrierEnabledSatelliteFlag is "
                     + "disabled");
             return new HashSet<>();
         }
@@ -2057,9 +2057,9 @@ public class SatelliteController extends Handler {
      *
      * @return The {@link SatelliteManager.SatelliteResult} result of the operation.
      */
-    @SatelliteManager.SatelliteResult public int registerForSatelliteCapabilitiesChanged(
+    @SatelliteManager.SatelliteResult public int registerForCapabilitiesChanged(
             int subId, @NonNull ISatelliteCapabilitiesCallback callback) {
-        if (DBG) logd("registerForSatelliteCapabilitiesChanged()");
+        if (DBG) logd("registerForCapabilitiesChanged()");
 
         int error = evaluateOemSatelliteRequestAllowed(true);
         if (error != SATELLITE_RESULT_SUCCESS) return error;
@@ -2075,11 +2075,11 @@ public class SatelliteController extends Handler {
      * @param subId The id of the subscription to unregister for listening satellite capabilities
      * changed event.
      * @param callback The callback that was passed to
-     * {@link #registerForSatelliteCapabilitiesChanged(int, ISatelliteCapabilitiesCallback)}
+     * {@link #registerForCapabilitiesChanged(int, ISatelliteCapabilitiesCallback)}
      */
-    public void unregisterForSatelliteCapabilitiesChanged(
+    public void unregisterForCapabilitiesChanged(
             int subId, @NonNull ISatelliteCapabilitiesCallback callback) {
-        if (DBG) logd("unregisterForSatelliteCapabilitiesChanged()");
+        if (DBG) logd("unregisterForCapabilitiesChanged()");
 
         int error = evaluateOemSatelliteRequestAllowed(true);
         if (error == SATELLITE_RESULT_SUCCESS) {
@@ -2527,10 +2527,10 @@ public class SatelliteController extends Handler {
 
             // TODO b/322143408 store entitlement status in telephony db.
             if (mSatelliteEntitlementStatusPerCarrier.get(subId, false)) {
-                removeSatelliteAttachRestrictionForCarrier(subId,
+                removeAttachRestrictionForCarrier(subId,
                         SATELLITE_COMMUNICATION_RESTRICTION_REASON_ENTITLEMENT, callback);
             } else {
-                addSatelliteAttachRestrictionForCarrier(subId,
+                addAttachRestrictionForCarrier(subId,
                         SATELLITE_COMMUNICATION_RESTRICTION_REASON_ENTITLEMENT, callback);
             }
         }
@@ -2754,7 +2754,7 @@ public class SatelliteController extends Handler {
             registerForPendingDatagramCount();
             registerForSatelliteModemStateChanged();
             registerForNtnSignalStrengthChanged();
-            registerForSatelliteCapabilitiesChanged();
+            registerForCapabilitiesChanged();
 
             requestIsSatelliteProvisioned(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                     new ResultReceiver(this) {
@@ -2840,9 +2840,9 @@ public class SatelliteController extends Handler {
         }
     }
 
-    private void registerForSatelliteCapabilitiesChanged() {
+    private void registerForCapabilitiesChanged() {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
-            logd("registerForSatelliteCapabilitiesChanged: oemEnabledSatelliteFlag is disabled");
+            logd("registerForCapabilitiesChanged: oemEnabledSatelliteFlag is disabled");
             return;
         }
 
@@ -3347,7 +3347,7 @@ public class SatelliteController extends Handler {
      * <ul>
      * <li>Users want to enable it.</li>
      * <li>There is no satellite communication restriction, which is added by
-     * {@link #addSatelliteAttachRestrictionForCarrier(int, int, IIntegerConsumer)}</li>
+     * {@link #addAttachRestrictionForCarrier(int, int, IIntegerConsumer)}</li>
      * <li>The carrier config {@link
      * android.telephony.CarrierConfigManager#KEY_SATELLITE_ATTACH_SUPPORTED_BOOL} is set to
      * {@code true}.</li>
