@@ -257,6 +257,7 @@ public class GsmCdmaPhone extends Phone {
 
     private boolean mIsNullCipherAndIntegritySupported = false;
     private boolean mIsIdentifierDisclosureTransparencySupported = false;
+    private boolean mIsNullCipherNotificationSupported = false;
 
     // Create Cfu (Call forward unconditional) so that dialing number &
     // mOnComplete (Message object passed by client) can be packed &
@@ -3160,6 +3161,7 @@ public class GsmCdmaPhone extends Phone {
 
         handleNullCipherEnabledChange();
         handleIdentifierDisclosureNotificationPreferenceChange();
+        handleNullCipherNotificationPreferenceChanged();
     }
 
     private void handleRadioOn() {
@@ -3723,6 +3725,12 @@ public class GsmCdmaPhone extends Phone {
                     SecurityAlgorithmUpdate update = (SecurityAlgorithmUpdate) ar.result;
                     mNullCipherNotifier.onSecurityAlgorithmUpdate(getPhoneId(), update);
                 }
+                break;
+
+            case EVENT_SET_SECURITY_ALGORITHMS_UPDATED_ENABLED_DONE:
+                logd("EVENT_SET_SECURITY_ALGORITHMS_UPDATED_ENABLED_DONE");
+                ar = (AsyncResult) msg.obj;
+                mIsNullCipherNotificationSupported = doesResultIndicateModemSupport(ar);
                 break;
 
             default:
@@ -5357,6 +5365,21 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    public void handleNullCipherNotificationPreferenceChanged() {
+        if (!mFeatureFlags.enableModemCipherTransparency()) {
+            logi("Not handling null cipher notification preference change. Feature flag "
+                    + "enable_modem_cipher_transparency disabled");
+            return;
+        }
+        boolean prefEnabled = getNullCipherNotificationsPreferenceEnabled();
+
+        // TODO(b/316592273): Enable / disable in NullCipherNotifier once the class is available.
+
+        mCi.setSecurityAlgorithmsUpdatedEnabled(prefEnabled,
+                obtainMessage(EVENT_SET_SECURITY_ALGORITHMS_UPDATED_ENABLED_DONE));
+    }
+
+    @Override
     public boolean isNullCipherAndIntegritySupported() {
         return mIsNullCipherAndIntegritySupported;
     }
@@ -5364,5 +5387,10 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public boolean isIdentifierDisclosureTransparencySupported() {
         return mIsIdentifierDisclosureTransparencySupported;
+    }
+
+    @Override
+    public boolean isNullCipherNotificationSupported() {
+        return mIsNullCipherNotificationSupported;
     }
 }
