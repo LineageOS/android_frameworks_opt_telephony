@@ -44,6 +44,7 @@ import androidx.test.filters.SmallTest;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingShortCodeSms;
@@ -97,6 +98,7 @@ public class MetricsCollectorTest extends TelephonyTest {
     private UiccPort mActivePort;
     private ServiceStateStats mServiceStateStats;
     private VonrHelper mVonrHelper;
+    private FeatureFlags mFeatureFlags;
 
     private MetricsCollector mMetricsCollector;
 
@@ -110,9 +112,10 @@ public class MetricsCollectorTest extends TelephonyTest {
         mActivePort = mock(UiccPort.class);
         mServiceStateStats = mock(ServiceStateStats.class);
         mVonrHelper = mock(VonrHelper.class);
+        mFeatureFlags = mock(FeatureFlags.class);
         mMetricsCollector =
                 new MetricsCollector(mContext, mPersistAtomsStorage,
-                        mDeviceStateHelper, mVonrHelper);
+                        mDeviceStateHelper, mVonrHelper, mFeatureFlags);
         doReturn(mSST).when(mSecondPhone).getServiceStateTracker();
         doReturn(mServiceStateStats).when(mSST).getServiceStateStats();
     }
