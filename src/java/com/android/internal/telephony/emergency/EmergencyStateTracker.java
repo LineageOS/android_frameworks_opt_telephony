@@ -512,6 +512,17 @@ public class EmergencyStateTracker {
             if (isSamePhone(mPhone, phone) && (!mActiveEmergencyCalls.isEmpty() || isInEcm())) {
                 mOngoingCallId = callId;
                 mIsTestEmergencyNumber = isTestEmergencyNumber;
+                // Ensure that domain selector requests scan.
+                mLastEmergencyRegResult = new EmergencyRegResult(
+                        AccessNetworkConstants.AccessNetworkType.UNKNOWN,
+                        NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN,
+                        NetworkRegistrationInfo.DOMAIN_UNKNOWN, false, false, 0, 0, "", "", "");
+                if (isInEcm()) {
+                    // Remove pending exit ECM runnable.
+                    mHandler.removeCallbacks(mExitEcmRunnable);
+                    releaseWakeLock();
+                    ((GsmCdmaPhone) mPhone).notifyEcbmTimerReset(Boolean.TRUE);
+                }
                 return CompletableFuture.completedFuture(DisconnectCause.NOT_DISCONNECTED);
             }
 
@@ -578,8 +589,7 @@ public class EmergencyStateTracker {
                 // If the emergency call was initiated during the emergency callback mode,
                 // the emergency callback mode should be restored when the emergency call is ended.
                 if (mActiveEmergencyCalls.isEmpty()) {
-                    setEmergencyMode(mPhone, EMERGENCY_TYPE_CALL, MODE_EMERGENCY_CALLBACK,
-                            MSG_SET_EMERGENCY_CALLBACK_MODE_DONE);
+                    enterEmergencyCallbackMode();
                 }
             } else {
                 exitEmergencyMode(mPhone, EMERGENCY_TYPE_CALL, false);
@@ -960,20 +970,23 @@ public class EmergencyStateTracker {
                 // ECBM (see ImsPhone#handleEnterEmergencyCallbackMode)
                 ((GsmCdmaPhone) mPhone).notifyEmergencyCallRegistrants(true);
             }
-
-            // Set emergency mode on modem.
-            setEmergencyMode(mPhone, EMERGENCY_TYPE_CALL, MODE_EMERGENCY_CALLBACK,
-                    MSG_SET_EMERGENCY_CALLBACK_MODE_DONE);
-
-            // Post this runnable so we will automatically exit if no one invokes
-            // exitEmergencyCallbackMode() directly.
-            long delayInMillis = TelephonyProperties.ecm_exit_timer()
-                    .orElse(mEcmExitTimeoutMs);
-            mHandler.postDelayed(mExitEcmRunnable, delayInMillis);
-
-            // We don't want to go to sleep while in ECM.
-            if (mWakeLock != null) mWakeLock.acquire(delayInMillis);
+        } else {
+            // Inform to reset the ECBM timer.
+            ((GsmCdmaPhone) mPhone).notifyEcbmTimerReset(Boolean.FALSE);
         }
+
+        // Set emergency mode on modem.
+        setEmergencyMode(mPhone, EMERGENCY_TYPE_CALL, MODE_EMERGENCY_CALLBACK,
+                MSG_SET_EMERGENCY_CALLBACK_MODE_DONE);
+
+        // Post this runnable so we will automatically exit if no one invokes
+        // exitEmergencyCallbackMode() directly.
+        long delayInMillis = TelephonyProperties.ecm_exit_timer()
+                .orElse(mEcmExitTimeoutMs);
+        mHandler.postDelayed(mExitEcmRunnable, delayInMillis);
+
+        // We don't want to go to sleep while in ECM.
+        if (mWakeLock != null) mWakeLock.acquire(delayInMillis);
     }
 
     /**
@@ -991,14 +1004,7 @@ public class EmergencyStateTracker {
             }
 
             // Release wakeLock.
-            if (mWakeLock != null && mWakeLock.isHeld()) {
-                try {
-                    mWakeLock.release();
-                } catch (Exception e) {
-                    // Ignore the exception if the system has already released this WakeLock.
-                    Rlog.d(TAG, "WakeLock already released: " + e.toString());
-                }
-            }
+            releaseWakeLock();
 
             GsmCdmaPhone gsmCdmaPhone = (GsmCdmaPhone) mPhone;
             // Send intents that ECM has changed.
@@ -1014,6 +1020,18 @@ public class EmergencyStateTracker {
         mEmergencyCallDomain = NetworkRegistrationInfo.DOMAIN_UNKNOWN;
         mIsTestEmergencyNumber = false;
         mPhone = null;
+    }
+
+    private void releaseWakeLock() {
+        // Release wakeLock.
+        if (mWakeLock != null && mWakeLock.isHeld()) {
+            try {
+                mWakeLock.release();
+            } catch (Exception e) {
+                // Ignore the exception if the system has already released this WakeLock.
+                Rlog.d(TAG, "WakeLock already released: " + e.toString());
+            }
+        }
     }
 
     /**
