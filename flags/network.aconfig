@@ -22,6 +22,13 @@ flag {
 }
 
 flag {
+  name: "enable_modem_cipher_transparency"
+  namespace: "telephony"
+  description: "Allows the framework to register for SecurityAlgorithmChanged events and emit notifications to the user when a device is using null ciphers."
+  bug: "283336425"
+}
+
+flag {
   name: "hide_prefer_3g_item"
   namespace: "telephony"
   description: "Used in the Preferred Network Types menu to determine if the 3G option is displayed."
