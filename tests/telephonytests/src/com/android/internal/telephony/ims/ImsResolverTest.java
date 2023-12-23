@@ -52,12 +52,13 @@ import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsService;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.stub.ImsFeatureConfiguration;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.SparseIntArray;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.ims.ImsFeatureBinderRepository;
 import com.android.internal.telephony.PhoneConfigurationManager;

@@ -21,7 +21,8 @@ import static org.junit.Assert.assertEquals;
 import android.os.Parcel;
 import android.telephony.CellIdentityCdma;
 import android.test.AndroidTestCase;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 /** Unit tests for {@link CellIdentityCdma}. */
 

@@ -15,15 +15,16 @@
  */
 package com.android.internal.telephony;
 
+import static org.junit.Assert.*;
+
 import android.telephony.TelephonyHistogram;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.Assert;
-
-import static org.junit.Assert.*;
 
 public class TelephonyHistogramTest {
     private TelephonyHistogram mHistogram = null;

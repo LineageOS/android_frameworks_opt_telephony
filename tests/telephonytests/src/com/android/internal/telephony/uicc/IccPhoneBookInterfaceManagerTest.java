@@ -29,7 +29,8 @@ import android.content.ContentValues;
 import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.Message;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
 import com.android.internal.telephony.IccProvider;

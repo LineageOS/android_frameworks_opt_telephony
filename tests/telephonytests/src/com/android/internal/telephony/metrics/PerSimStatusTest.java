@@ -38,7 +38,8 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsManager;
 import android.telephony.ims.ImsMmTelManager;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.Phone;

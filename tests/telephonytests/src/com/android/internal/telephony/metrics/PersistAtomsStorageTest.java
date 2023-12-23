@@ -55,7 +55,8 @@ import android.telephony.TelephonyManager;
 import android.telephony.TelephonyProtoEnums;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.SipDelegateManager;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.TelephonyTest;

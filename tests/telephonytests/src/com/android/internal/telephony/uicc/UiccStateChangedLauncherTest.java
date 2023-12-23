@@ -33,7 +33,8 @@ import android.content.res.Resources;
 import android.os.Looper;
 import android.os.Message;
 import android.telephony.TelephonyManager;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.R;
 import com.android.internal.telephony.TelephonyIntents;

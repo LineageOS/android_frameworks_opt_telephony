@@ -16,12 +16,11 @@
 
 package com.android.internal.telephony;
 
-import com.android.internal.telephony.gsm.SimTlv;
+import androidx.test.filters.SmallTest;
+
 import com.android.internal.telephony.uicc.IccUtils;
 
 import junit.framework.TestCase;
-import android.test.suitebuilder.annotation.SmallTest;
-
 
 public class SimUtilsTest extends TestCase {
 

@@ -46,8 +46,9 @@ import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Base64;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CarrierResolver;

@@ -28,8 +28,9 @@ import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Pair;
+
+import androidx.test.filters.SmallTest;
 
 import junit.framework.TestCase;
 

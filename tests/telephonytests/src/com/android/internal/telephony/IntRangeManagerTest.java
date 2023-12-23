@@ -17,7 +17,8 @@
 package com.android.internal.telephony;
 
 import android.test.AndroidTestCase;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 

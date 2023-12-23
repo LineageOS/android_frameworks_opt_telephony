@@ -19,9 +19,9 @@ package com.android.internal.telephony;
 import android.content.ContentValues;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyFrameworkInitializer;
-import android.test.suitebuilder.annotation.Suppress;
 
-import com.android.internal.telephony.IccProvider;
+import androidx.test.filters.Suppress;
+
 import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.IccConstants;
 

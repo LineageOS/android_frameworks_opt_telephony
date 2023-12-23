@@ -66,13 +66,13 @@ import android.telephony.TelephonyCallback;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.text.TextUtils;
 import android.util.SparseArray;
 
 import androidx.annotation.NonNull;
+import androidx.test.filters.SmallTest;
 
 import com.android.server.TelephonyRegistry;
 

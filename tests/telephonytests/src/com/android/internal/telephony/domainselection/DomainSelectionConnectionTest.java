@@ -42,9 +42,10 @@ import android.telephony.TransportSelectorCallback;
 import android.telephony.WwanSelectorCallback;
 import android.telephony.data.ApnSetting;
 import android.telephony.ims.ImsReasonInfo;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.CallFailCause;
 import com.android.internal.telephony.TelephonyTest;

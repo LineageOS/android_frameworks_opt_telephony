@@ -16,11 +16,11 @@
 
 package android.telephony;
 
-import android.test.suitebuilder.annotation.SmallTest;
+import static org.junit.Assert.assertEquals;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.SmsConstants;
-
-import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
