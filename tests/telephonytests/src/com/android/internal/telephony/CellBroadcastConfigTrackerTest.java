@@ -416,6 +416,26 @@ public final class CellBroadcastConfigTrackerTest extends TelephonyTest {
     }
 
     @Test
+    public void testClearCellBroadcastConfigOnModemReset() {
+        List<CellBroadcastIdRange> ranges = new ArrayList<>();
+        ranges.add(new CellBroadcastIdRange(0, 999, SmsCbMessage.MESSAGE_FORMAT_3GPP, true));
+
+        mPhone.setCellBroadcastIdRanges(ranges, r -> assertTrue(
+                TelephonyManager.CELL_BROADCAST_RESULT_SUCCESS == r));
+        processAllMessages();
+
+        assertEquals(mPhone.getCellBroadcastIdRanges(), ranges);
+
+        Message m = mTracker.obtainMessage(CellBroadcastConfigTracker.EVENT_RADIO_RESET);
+        AsyncResult.forMessage(m);
+        m.sendToTarget();
+        processAllMessages();
+
+        // Verify the config is reset
+        assertTrue(mPhone.getCellBroadcastIdRanges().isEmpty());
+    }
+
+    @Test
     public void testClearCellBroadcastConfigOnSubscriptionChanged() {
         List<CellBroadcastIdRange> ranges = new ArrayList<>();
         ranges.add(new CellBroadcastIdRange(0, 999, SmsCbMessage.MESSAGE_FORMAT_3GPP, true));
