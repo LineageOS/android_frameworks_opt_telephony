@@ -34,6 +34,8 @@ import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_MODE
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_REQUEST_NOT_SUPPORTED;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
+import static com.android.internal.telephony.configupdate.ConfigProviderAdaptor.DOMAIN_SATELLITE;
+
 import android.annotation.ArrayRes;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -66,6 +68,8 @@ import android.os.ICancellationSignal;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.os.Registrant;
+import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.ResultReceiver;
 import android.os.ServiceSpecificException;
@@ -101,6 +105,9 @@ import com.android.internal.telephony.DeviceStateMonitor;
 import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.configupdate.ConfigParser;
+import com.android.internal.telephony.configupdate.ConfigProviderAdaptor;
+import com.android.internal.telephony.configupdate.TelephonyConfigUpdateInstallReceiver;
 import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 import com.android.internal.telephony.satellite.metrics.ProvisionMetricsStats;
@@ -118,6 +125,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -187,6 +195,7 @@ public class SatelliteController extends Handler {
     private static final int EVENT_SERVICE_STATE_CHANGED = 37;
     private static final int EVENT_SATELLITE_CAPABILITIES_CHANGED = 38;
     private static final int EVENT_WAIT_FOR_SATELLITE_ENABLING_RESPONSE_TIMED_OUT = 39;
+    private static final int EVENT_SATELLITE_CONFIG_DATA_UPDATED = 40;
 
     @NonNull private static SatelliteController sInstance;
     @NonNull private final Context mContext;
@@ -298,6 +307,7 @@ public class SatelliteController extends Handler {
     @NonNull private final CarrierConfigManager mCarrierConfigManager;
     @NonNull private final CarrierConfigManager.CarrierConfigChangeListener
             mCarrierConfigChangeListener;
+    @NonNull private final ConfigProviderAdaptor.Callback mConfigDataUpdatedCallback;
     @NonNull private final Object mCarrierConfigArrayLock = new Object();
     @GuardedBy("mCarrierConfigArrayLock")
     @NonNull private final SparseArray<PersistableBundle> mCarrierConfigArray = new SparseArray<>();
@@ -364,6 +374,8 @@ public class SatelliteController extends Handler {
     private static final int NOTIFICATION_ID = 1;
     private static final String NOTIFICATION_CHANNEL = "satelliteChannel";
     private static final String NOTIFICATION_CHANNEL_ID = "satellite";
+
+    private final RegistrantList mSatelliteConfigUpdateChangedRegistrants = new RegistrantList();
 
     /**
      * @return The singleton instance of SatelliteController.
@@ -454,10 +466,62 @@ public class SatelliteController extends Handler {
                         handleCarrierConfigChanged(slotIndex, subId, carrierId, specificCarrierId);
         mCarrierConfigManager.registerCarrierConfigChangeListener(
                         new HandlerExecutor(new Handler(looper)), mCarrierConfigChangeListener);
+
+        mConfigDataUpdatedCallback = new ConfigProviderAdaptor.Callback() {
+            @Override
+            public void onChanged(@Nullable ConfigParser config) {
+                SatelliteControllerHandlerRequest request =
+                        new SatelliteControllerHandlerRequest(true,
+                                SatelliteServiceUtils.getPhone());
+                sendRequestAsync(EVENT_SATELLITE_CONFIG_DATA_UPDATED, request, null);
+            }
+        };
+        TelephonyConfigUpdateInstallReceiver.getInstance()
+                .registerCallback(Executors.newSingleThreadExecutor(), mConfigDataUpdatedCallback);
+
         mDSM.registerForSignalStrengthReportDecision(this, CMD_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING,
                 null);
         loadSatelliteSharedPreferences();
         mWaitTimeForSatelliteEnablingResponse = getWaitForSatelliteEnablingResponseTimeoutMillis();
+    }
+
+    /**
+     * Register a callback to get a updated satellite config data.
+     * @param h Handler to notify
+     * @param what msg.what when the message is delivered
+     * @param obj AsyncResult.userObj when the message is delivered
+     */
+    public void registerForConfigUpdateChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mSatelliteConfigUpdateChangedRegistrants.add(r);
+    }
+
+    /**
+     * Unregister a callback to get a updated satellite config data.
+     * @param h Handler to notify
+     */
+    public void unregisterForConfigUpdateChanged(Handler h) {
+        mSatelliteConfigUpdateChangedRegistrants.remove(h);
+    }
+
+    /**
+     * Get satelliteConfig from SatelliteConfigParser
+     */
+    public SatelliteConfig getSatelliteConfig() {
+        if (getSatelliteConfigParser() == null) {
+            Log.d(TAG, "getSatelliteConfigParser() is not ready");
+            return null;
+        }
+        return (SatelliteConfig) getSatelliteConfigParser().getConfig();
+    }
+
+    /**
+     * Get SatelliteConfigParser from TelephonyConfigUpdateInstallReceiver
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public SatelliteConfigParser getSatelliteConfigParser() {
+        return (SatelliteConfigParser) TelephonyConfigUpdateInstallReceiver
+                .getInstance().getConfigParser(DOMAIN_SATELLITE);
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
@@ -1287,10 +1351,29 @@ public class SatelliteController extends Handler {
                 break;
             }
 
+            case EVENT_SATELLITE_CONFIG_DATA_UPDATED: {
+                handleEventConfigDataUpdated();
+                mSatelliteConfigUpdateChangedRegistrants.notifyRegistrants();
+                break;
+            }
+
             default:
                 Log.w(TAG, "SatelliteControllerHandler: unexpected message code: " +
                         msg.what);
                 break;
+        }
+    }
+
+    private void handleEventConfigDataUpdated() {
+        updateSupportedSatelliteServicesForActiveSubscriptions();
+        int[] activeSubIds = mSubscriptionManagerService.getActiveSubIdList(true);
+        if (activeSubIds != null) {
+            for (int subId : activeSubIds) {
+                processNewCarrierConfigData(subId);
+            }
+        } else {
+            loge("updateSupportedSatelliteServicesForActiveSubscriptions: "
+                    + "activeSubIds is null");
         }
     }
 
@@ -3193,9 +3276,22 @@ public class SatelliteController extends Handler {
                 return;
             }
 
+            SatelliteConfig satelliteConfig = getSatelliteConfig();
+            if (satelliteConfig != null) {
+                TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
+                int carrierId = tm.createForSubscriptionId(subId).getSimCarrierId();
+                List<String> plmnList = satelliteConfig.getAllSatellitePlmnsForCarrier(carrierId);
+                if (!plmnList.isEmpty()) {
+                    logd("mMergedPlmnListPerCarrier is updated by ConfigUpdater : " + plmnList);
+                    mMergedPlmnListPerCarrier.put(subId, plmnList);
+                    return;
+                }
+            }
+
             if (mSatelliteServicesSupportedByCarriers.containsKey(subId)) {
                 carrierPlmnList =
                         mSatelliteServicesSupportedByCarriers.get(subId).keySet().stream().toList();
+                logd("mMergedPlmnListPerCarrier is updated by carrier config");
             } else {
                 carrierPlmnList = new ArrayList<>();
             }
@@ -3205,10 +3301,31 @@ public class SatelliteController extends Handler {
     }
 
     private void updateSupportedSatelliteServices(int subId) {
+        logd("updateSupportedSatelliteServices with subId " + subId);
         synchronized (mSupportedSatelliteServicesLock) {
+            SatelliteConfig satelliteConfig = getSatelliteConfig();
+
+            TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
+            int carrierId = tm.createForSubscriptionId(subId).getSimCarrierId();
+
+            if (satelliteConfig != null) {
+                Map<String, Set<Integer>> supportedServicesPerPlmn =
+                        satelliteConfig.getSupportedSatelliteServices(carrierId);
+                if (!supportedServicesPerPlmn.isEmpty()) {
+                    mSatelliteServicesSupportedByCarriers.put(subId, supportedServicesPerPlmn);
+                    logd("updateSupportedSatelliteServices using ConfigUpdater, "
+                            + "supportedServicesPerPlmn = " + supportedServicesPerPlmn);
+                    updatePlmnListPerCarrier(subId);
+                    return;
+                } else {
+                    logd("supportedServicesPerPlmn is empty");
+                }
+            }
+
             mSatelliteServicesSupportedByCarriers.put(
                     subId, readSupportedSatelliteServicesFromCarrierConfig(subId));
             updatePlmnListPerCarrier(subId);
+            logd("updateSupportedSatelliteServices using carrier config");
         }
     }
 
@@ -3262,8 +3379,11 @@ public class SatelliteController extends Handler {
         updateCarrierConfig(subId);
         updateEntitlementPlmnListPerCarrier(subId);
         updateSupportedSatelliteServicesForActiveSubscriptions();
-        configureSatellitePlmnForCarrier(subId);
+        processNewCarrierConfigData(subId);
+    }
 
+    private void processNewCarrierConfigData(int subId) {
+        configureSatellitePlmnForCarrier(subId);
         synchronized (mIsSatelliteEnabledLock) {
             mSatelliteAttachRestrictionForCarrierArray.clear();
             mIsSatelliteAttachEnabledForCarrierArrayPerSub.clear();
