@@ -117,9 +117,11 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP_WAI
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_REGISTRATION_STATE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ISIM_AUTHENTICATION;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_CELLULAR_IDENTIFIER_DISCLOSED_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_N1_MODE_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_NULL_CIPHER_AND_INTEGRITY_ENABLED;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_SECURITY_ALGORITHMS_UPDATED_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_VONR_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_LAST_CALL_FAIL_CAUSE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_LAST_DATA_CALL_FAIL_CAUSE;
@@ -158,6 +160,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_BAND_M
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_CALL_FORWARD;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_CALL_WAITING;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_CARRIER_INFO_IMSI_ENCRYPTION;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_CELLULAR_IDENTIFIER_DISCLOSED_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_CLIR;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_DATA_PROFILE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_DATA_THROTTLING;
@@ -177,6 +180,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_NULL_C
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFERRED_DATA_MODEM;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_RADIO_CAPABILITY;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SECURITY_ALGORITHMS_UPDATED_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SIGNAL_STRENGTH_REPORTING_CRITERIA;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SIM_CARD_POWER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SMSC_ADDRESS;
@@ -232,6 +236,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_OTA_PRO
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_PRL_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CELLULAR_IDENTIFIER_DISCLOSED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CELL_INFO_LIST;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CONNECTION_SETUP_FAILURE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_DATA_CALL_LIST_CHANGED;
@@ -273,6 +278,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_SIM
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESTRICTED_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RIL_CONNECTED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RINGBACK_TONE;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SECURITY_ALGORITHMS_UPDATED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIGNAL_STRENGTH;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIMULTANEOUS_CALLING_SUPPORT_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_REFRESH;
@@ -5135,6 +5141,14 @@ public class RILUtils {
                 return "SET_LOCATION_PRIVACY_SETTING";
             case RIL_REQUEST_GET_LOCATION_PRIVACY_SETTING:
                 return "GET_LOCATION_PRIVACY_SETTING";
+            case RIL_REQUEST_IS_CELLULAR_IDENTIFIER_DISCLOSED_ENABLED:
+                return "IS_CELLULAR_IDENTIFIER_DISCLOSED_ENABLED";
+            case RIL_REQUEST_SET_CELLULAR_IDENTIFIER_DISCLOSED_ENABLED:
+                return "SET_CELLULAR_IDENTIFIER_DISCLOSED_ENABLED";
+            case RIL_REQUEST_SET_SECURITY_ALGORITHMS_UPDATED_ENABLED:
+                return "SET_SECURITY_ALGORITHMS_UPDATED_ENABLED";
+            case RIL_REQUEST_IS_SECURITY_ALGORITHMS_UPDATED_ENABLED:
+                return "IS_SECURITY_ALGORITHMS_UPDATED_ENABLED";
             case RIL_REQUEST_GET_SIMULTANEOUS_CALLING_SUPPORT:
                 return "GET_SIMULTANEOUS_CALLING_SUPPORT";
             default:
@@ -5259,6 +5273,10 @@ public class RILUtils {
                 return "UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED";
             case RIL_UNSOL_SLICING_CONFIG_CHANGED:
                 return "UNSOL_SLICING_CONFIG_CHANGED";
+            case RIL_UNSOL_CELLULAR_IDENTIFIER_DISCLOSED:
+                return "UNSOL_CELLULAR_IDENTIFIER_DISCLOSED";
+            case RIL_UNSOL_SECURITY_ALGORITHMS_UPDATED:
+                return "UNSOL_SECURITY_ALGORITHMS_UPDATED";
             /* The follow unsols are not defined in RIL.h */
             case RIL_UNSOL_ICC_SLOT_STATUS:
                 return "UNSOL_ICC_SLOT_STATUS";
