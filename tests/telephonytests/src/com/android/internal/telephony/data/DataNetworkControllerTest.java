@@ -4835,6 +4835,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @Test
     public void testNetworkOnProvisioningProfileClass_WithFlagEnabled() throws Exception {
         when(mFeatureFlags.esimBootstrapProvisioningFlag()).thenReturn(true);
+        // Allowed data limit Unlimited
+        mContextFixture.putIntResource(com.android.internal.R.integer
+                .config_esim_bootstrap_data_limit_bytes, -1);
         doReturn(new SubscriptionInfoInternal.Builder().setId(1)
                 .setProfileClass(SubscriptionManager.PROFILE_CLASS_PROVISIONING).build())
                 .when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
@@ -4859,6 +4862,65 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_RCS));
         processAllMessages();
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_RCS);
+    }
+
+    @Test
+    public void testSetUpPdn_WithBootStrapDataLimit_Zero() throws Exception {
+        when(mFeatureFlags.esimBootstrapProvisioningFlag()).thenReturn(true);
+        // Allowed data limit set as zero
+        doReturn(new SubscriptionInfoInternal.Builder().setId(1)
+                .setProfileClass(SubscriptionManager.PROFILE_CLASS_PROVISIONING).build())
+                .when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllMessages();
+        // With current consumed bytes is zero, same as allowed limit, data_limit_reached
+        // disallowed reason is met
+        verifyConnectedNetworkHasNoDataProfile(mEsimBootstrapDataProfile);
+
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS,
+                        NetworkCapabilities.NET_CAPABILITY_MMTEL));
+        processAllMessages();
+        // New network request also meets with data limit reached disallowed reason
+        verifyConnectedNetworkHasNoDataProfile(mEsimBootstrapImsProfile);
+    }
+
+    @Test
+    public void testSetUpPdn_WithBootStrapDataLimit_Unlimited() throws Exception {
+        when(mFeatureFlags.esimBootstrapProvisioningFlag()).thenReturn(true);
+        // Allowed data limit
+        mContextFixture.putIntResource(com.android.internal.R.integer
+                 .config_esim_bootstrap_data_limit_bytes, -1/*unlimited*/);
+        doReturn(new SubscriptionInfoInternal.Builder().setId(1)
+                .setProfileClass(SubscriptionManager.PROFILE_CLASS_PROVISIONING).build())
+                .when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllMessages();
+        // With allowed data limit unlimited, connection is allowed
+        verifyConnectedNetworkHasDataProfile(mEsimBootstrapDataProfile);
+
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS,
+                        NetworkCapabilities.NET_CAPABILITY_MMTEL));
+        setSuccessfulSetupDataResponse(mMockedDataServiceManagers
+                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), 2);
+        processAllMessages();
+        // With allowed data limit unlimited, connection is allowed
+        verifyConnectedNetworkHasDataProfile(mEsimBootstrapImsProfile);
+
+        // Both internet and IMS should be retained after network re-evaluation
+        mDataNetworkControllerUT.obtainMessage(16 /*EVENT_REEVALUATE_EXISTING_DATA_NETWORKS*/,
+                DataEvaluation.DataEvaluationReason.CHECK_DATA_USAGE).sendToTarget();
+        processAllMessages();
+        // With allowed data limit unlimited, connection is allowed
+        verifyConnectedNetworkHasDataProfile(mEsimBootstrapDataProfile);
+        verifyConnectedNetworkHasDataProfile(mEsimBootstrapImsProfile);
     }
 
     @Test
@@ -4887,6 +4949,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
     public void testNtnNetworkOnProvisioningProfileClass_WithFlagEnabled() throws Exception {
         when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(true);
         when(mFeatureFlags.esimBootstrapProvisioningFlag()).thenReturn(true);
+        // Allowed data limit Unlimited
+        mContextFixture.putIntResource(com.android.internal.R.integer
+                .config_esim_bootstrap_data_limit_bytes, -1);
         doReturn(new SubscriptionInfoInternal.Builder().setId(1)
                 .setProfileClass(SubscriptionManager.PROFILE_CLASS_PROVISIONING).build())
                 .when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
