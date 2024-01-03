@@ -469,8 +469,8 @@ public class TelephonyComponentFactory {
     }
 
     public LocaleTracker makeLocaleTracker(Phone phone, NitzStateMachine nitzStateMachine,
-                                           Looper looper) {
-        return new LocaleTracker(phone, nitzStateMachine, looper);
+                                           Looper looper, @NonNull FeatureFlags featureFlags) {
+        return new LocaleTracker(phone, nitzStateMachine, looper, featureFlags);
     }
 
     public Phone makePhone(Context context, CommandsInterface ci, PhoneNotifier notifier,
