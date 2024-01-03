@@ -4212,7 +4212,7 @@ public class SubscriptionManagerService extends ISub.Stub {
     /**
      * @param mccMnc MccMnc value to check whether it supports non-terrestrial network or not.
      * @return {@code true} if MCC/MNC is matched with in the device overlay key
-     * "config_satellite_esim_identifier", {@code false} otherwise.
+     * "config_satellite_sim_identifier", {@code false} otherwise.
      */
     private boolean isSatellitePlmn(@NonNull String mccMnc) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
