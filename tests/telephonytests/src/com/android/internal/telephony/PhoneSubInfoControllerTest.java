@@ -23,8 +23,10 @@ import static android.telephony.TelephonyManager.APPTYPE_USIM;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doReturn;
@@ -33,14 +35,15 @@ import static org.mockito.Mockito.mock;
 
 import android.app.AppOpsManager;
 import android.app.PropertyInvalidatedCache;
+import android.compat.testing.PlatformCompatChangeRule;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
 import android.os.RemoteException;
-
-import androidx.test.filters.SmallTest;
+import android.telephony.TelephonyManager;
+import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.uicc.IsimUiccRecords;
 import com.android.internal.telephony.uicc.SIMRecords;
@@ -48,10 +51,14 @@ import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.UiccProfile;
 
+import libcore.junit.util.compat.CoreCompatChangeRule.EnableCompatChanges;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 import org.mockito.Mockito;
 
 import java.util.List;
@@ -62,6 +69,9 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
     private static final String PSI_SMSC_SIP1 = "sip:+1234567890@abc.pc.operetor1.com;user=phone";
     private static final String PSI_SMSC_TEL2 = "tel:+91987654321";
     private static final String PSI_SMSC_SIP2 = "sip:+19876543210@dcf.pc.operetor2.com;user=phone";
+
+    @Rule
+    public TestRule compatChangeRule = new PlatformCompatChangeRule();
 
     private PhoneSubInfoController mPhoneSubInfoControllerUT;
     private AppOpsManager mAppOsMgr;
@@ -92,7 +102,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         mPm = mContext.getPackageManager();
 
         replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[]{mPhone, mSecondPhone});
-        mPhoneSubInfoControllerUT = new PhoneSubInfoController(mContext);
+        mPhoneSubInfoControllerUT = new PhoneSubInfoController(mContext, mFeatureFlags);
 
         setupMocksForTelephonyPermissions();
         // TelephonyPermissions will query the READ_DEVICE_IDENTIFIERS op from AppOpManager to
@@ -105,6 +115,12 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         // Bypass calling package check.
         doReturn(Binder.getCallingUid()).when(mPm).getPackageUid(eq(TAG), anyInt());
+
+        // In order not to affect the existing implementation, define a telephony features
+        // and disabled enforce_telephony_feature_mapping_for_public_apis feature flag
+        doReturn(false).when(mFeatureFlags).enforceTelephonyFeatureMappingForPublicApis();
+        doReturn(true).when(mPm).hasSystemFeature(anyString());
+        doReturn(new String[] {TAG}).when(mPm).getPackagesForUid(anyInt());
     }
 
     @After
@@ -209,6 +225,31 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         doReturn("bbb@example.com").when(mSecondPhone).getNai();
         assertEquals("bbb@example.com",
                 mPhoneSubInfoControllerUT.getNaiForSubscriber(1, TAG, FEATURE_ID));
+    }
+
+    @Test
+    @SmallTest
+    @EnableCompatChanges({TelephonyManager.ENABLE_FEATURE_MAPPING})
+    public void testGetNai_EnabledEnforceTelephonyFeatureMappingForPublicApis() {
+        // FeatureFlags enabled, System has required feature
+        doReturn(true).when(mFeatureFlags).enforceTelephonyFeatureMappingForPublicApis();
+        doReturn(true).when(mPm).hasSystemFeature(
+                eq(PackageManager.FEATURE_TELEPHONY_SUBSCRIPTION));
+        doReturn("bbb@example.com").when(mSecondPhone).getNai();
+
+        // Enabled FeatureFlags and ENABLE_FEATURE_MAPPING, telephony features are defined
+        try {
+            assertEquals("bbb@example.com",
+                    mPhoneSubInfoControllerUT.getNaiForSubscriber(1, TAG, FEATURE_ID));
+        } catch (UnsupportedOperationException e) {
+            fail("Not expect exception " + e.getMessage());
+        }
+
+        // Telephony features is not defined, expect UnsupportedOperationException.
+        doReturn(false).when(mPm).hasSystemFeature(
+                eq(PackageManager.FEATURE_TELEPHONY_SUBSCRIPTION));
+        assertThrows(UnsupportedOperationException.class,
+                () -> mPhoneSubInfoControllerUT.getNaiForSubscriber(1, TAG, FEATURE_ID));
     }
 
     @Test
@@ -1087,7 +1128,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         doReturn(refSst).when(mSimRecords).getSimServiceTable();
 
-        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(0, 0);
         assertEquals(refSst, resultSst);
     }
 
@@ -1101,22 +1142,22 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         doReturn(refSst).when(mSimRecords).getSimServiceTable();
 
-        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(0, 0);
         assertEquals(refSst, resultSst);
     }
 
     @Test
     public void testGetSstWhenNoUiccPort() throws RemoteException {
-            String refSst = "1234567";
-            doReturn(null).when(mPhone).getUiccPort();
-            doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
-            doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
-            doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+        String refSst = "1234567";
+        doReturn(null).when(mPhone).getUiccPort();
+        doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
+        doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
+        doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
 
-            doReturn(refSst).when(mSimRecords).getSimServiceTable();
+        doReturn(refSst).when(mSimRecords).getSimServiceTable();
 
-            String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
-            assertEquals(null, resultSst);
+        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(0, 0);
+        assertEquals(null, resultSst);
     }
 
     @Test
@@ -1129,7 +1170,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         doReturn(refSst).when(mSimRecords).getSimServiceTable();
 
-        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(0, 0);
         assertEquals(null, resultSst);
     }
 
@@ -1143,7 +1184,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         doReturn(refSst).when(mSimRecords).getSimServiceTable();
 
-        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(0, 0);
         assertEquals(null, resultSst);
     }
 
@@ -1159,7 +1200,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
         try {
-            mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+            mPhoneSubInfoControllerUT.getSimServiceTable(0, 0);
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
@@ -1167,7 +1208,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         }
 
         mContextFixture.addCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE);
-        assertEquals(refSst, mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt()));
+        assertEquals(refSst, mPhoneSubInfoControllerUT.getSimServiceTable(0, 0));
     }
 
     @Test
