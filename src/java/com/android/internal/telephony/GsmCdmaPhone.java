@@ -5018,15 +5018,8 @@ public class GsmCdmaPhone extends Phone {
         mIsCarrierNrSupported = !ArrayUtils.isEmpty(nrAvailabilities);
     }
 
-    private void updateVoNrSettings(PersistableBundle config) {
-        UiccSlot slot = mUiccController.getUiccSlotForPhone(mPhoneId);
-
-        // If no card is present, do nothing.
-        if (slot == null || slot.getCardState() != IccCardStatus.CardState.CARDSTATE_PRESENT) {
-            return;
-        }
-
-        if (mSimState != TelephonyManager.SIM_STATE_LOADED) {
+    private void updateVoNrSettings(@NonNull PersistableBundle config) {
+        if (getIccCard().getState() != IccCardConstants.State.LOADED) {
             return;
         }
 
