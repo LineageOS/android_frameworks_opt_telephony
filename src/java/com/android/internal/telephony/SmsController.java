@@ -18,7 +18,9 @@
 
 package com.android.internal.telephony;
 
+import static android.content.pm.PackageManager.FEATURE_TELEPHONY_MESSAGING;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+import static android.telephony.TelephonyManager.ENABLE_FEATURE_MAPPING;
 
 import static com.android.internal.telephony.util.TelephonyUtils.checkDumpPermission;
 
@@ -27,6 +29,7 @@ import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
+import android.app.compat.CompatChanges;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -66,11 +69,14 @@ public class SmsController extends ISmsImplBase {
     static final String LOG_TAG = "SmsController";
 
     private final Context mContext;
+    private final PackageManager mPackageManager;
     @NonNull private final FeatureFlags mFlags;
+
     @VisibleForTesting
     public SmsController(Context context, @NonNull FeatureFlags flags) {
         mContext = context;
         mFlags = flags;
+        mPackageManager = context.getPackageManager();
         ServiceRegisterer smsServiceRegisterer = TelephonyFrameworkInitializer
                 .getTelephonyServiceManager()
                 .getSmsServiceRegisterer();
@@ -284,6 +290,8 @@ public class SmsController extends ISmsImplBase {
             return;
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "sendTextForSubscriber");
+
         long token = Binder.clearCallingIdentity();
         SubscriptionInfo info;
         try {
@@ -401,6 +409,8 @@ public class SmsController extends ISmsImplBase {
             return;
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "sendMultipartTextForSubscriber");
+
         // Perform FDN check
         if (isNumberBlockedByFDN(subId, destAddr, callingPackage)) {
             sendErrorInPendingIntents(sentIntents, SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE);
@@ -467,6 +477,9 @@ public class SmsController extends ISmsImplBase {
     @Override
     public boolean enableCellBroadcastRangeForSubscriber(int subId, int startMessageId,
             int endMessageId, int ranType) {
+        enforceTelephonyFeatureWithException(getCallingPackage(),
+                "enableCellBroadcastRangeForSubscriber");
+
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             return iccSmsIntMgr.enableCellBroadcastRange(startMessageId, endMessageId, ranType);
@@ -489,6 +502,9 @@ public class SmsController extends ISmsImplBase {
     @Override
     public boolean disableCellBroadcastRangeForSubscriber(int subId, int startMessageId,
             int endMessageId, int ranType) {
+        enforceTelephonyFeatureWithException(getCallingPackage(),
+                "disableCellBroadcastRangeForSubscriber");
+
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             return iccSmsIntMgr.disableCellBroadcastRange(startMessageId, endMessageId, ranType);
@@ -501,6 +517,8 @@ public class SmsController extends ISmsImplBase {
 
     @Override
     public int getPremiumSmsPermission(String packageName) {
+        enforceTelephonyFeatureWithException(packageName, "getPremiumSmsPermission");
+
         return getPremiumSmsPermissionForSubscriber(getPreferredSmsSubscription(), packageName);
     }
 
@@ -518,6 +536,8 @@ public class SmsController extends ISmsImplBase {
 
     @Override
     public void setPremiumSmsPermission(String packageName, int permission) {
+        enforceTelephonyFeatureWithException(packageName, "setPremiumSmsPermission");
+
         setPremiumSmsPermissionForSubscriber(getPreferredSmsSubscription(), packageName,
                 permission);
     }
@@ -558,6 +578,9 @@ public class SmsController extends ISmsImplBase {
                     + "Suppressing activity.");
             return false;
         }
+
+        enforceTelephonyFeatureWithException(getCallingPackage(), "isSmsSimPickActivityNeeded");
+
         TelephonyManager telephonyManager =
                 (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
         if (mFlags.enforceSubscriptionUserFilter()) {
@@ -626,6 +649,8 @@ public class SmsController extends ISmsImplBase {
     @Override
     public void injectSmsPduForSubscriber(
             int subId, byte[] pdu, String format, PendingIntent receivedIntent) {
+        enforceTelephonyFeatureWithException(getCallingPackage(), "injectSmsPduForSubscriber");
+
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.injectSmsPdu(pdu, format, receivedIntent);
@@ -652,6 +677,9 @@ public class SmsController extends ISmsImplBase {
         if (SubscriptionManager.isValidSubscriptionId(defaultSubId)) {
             return defaultSubId;
         }
+
+        enforceTelephonyFeatureWithException(getCallingPackage(), "getPreferredSmsSubscription");
+
         // No default, if there is only one sub active, choose that as the "preferred" sub id.
         long token = Binder.clearCallingIdentity();
         try {
@@ -720,6 +748,9 @@ public class SmsController extends ISmsImplBase {
 
     @Override
     public Bundle getCarrierConfigValuesForSubscriber(int subId) {
+        enforceTelephonyFeatureWithException(getCallingPackage(),
+                "getCarrierConfigValuesForSubscriber");
+
         final long identity = Binder.clearCallingIdentity();
         try {
             final CarrierConfigManager configManager =
@@ -848,6 +879,10 @@ public class SmsController extends ISmsImplBase {
         if (callingPkg == null) {
             callingPkg = getCallingPackage();
         }
+
+        enforceTelephonyFeatureWithException(callingPkg,
+                "createAppSpecificSmsTokenWithPackageInfo");
+
         return getPhone(subId).getAppSmsManager().createAppSpecificSmsTokenWithPackageInfo(
                 subId, callingPkg, prefixes, intent);
     }
@@ -857,6 +892,9 @@ public class SmsController extends ISmsImplBase {
         if (callingPkg == null) {
             callingPkg = getCallingPackage();
         }
+
+        enforceTelephonyFeatureWithException(callingPkg, "createAppSpecificSmsToken");
+
         return getPhone(subId).getAppSmsManager().createAppSpecificSmsToken(callingPkg, intent);
     }
 
@@ -972,6 +1010,10 @@ public class SmsController extends ISmsImplBase {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
+
+        enforceTelephonyFeatureWithException(callingPackage,
+                "getSmscAddressFromIccEfForSubscriber");
+
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             return iccSmsIntMgr.getSmscAddressFromIccEf(callingPackage);
@@ -988,6 +1030,10 @@ public class SmsController extends ISmsImplBase {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
+
+        enforceTelephonyFeatureWithException(callingPackage,
+                "setSmscAddressOnIccEfForSubscriber");
+
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             return iccSmsIntMgr.setSmscAddressOnIccEf(callingPackage, smsc);
@@ -1063,6 +1109,9 @@ public class SmsController extends ISmsImplBase {
      */
     @Override
     public int getSmsCapacityOnIccForSubscriber(int subId) {
+        enforceTelephonyFeatureWithException(getCallingPackage(),
+                "getSmsCapacityOnIccForSubscriber");
+
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
 
         if (iccSmsIntMgr != null ) {
@@ -1081,6 +1130,9 @@ public class SmsController extends ISmsImplBase {
      */
     @Override
     public boolean resetAllCellBroadcastRanges(int subId) {
+        enforceTelephonyFeatureWithException(getCallingPackage(),
+                "resetAllCellBroadcastRanges");
+
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.resetAllCellBroadcastRanges();
@@ -1157,5 +1209,28 @@ public class SmsController extends ISmsImplBase {
     public long getWapMessageSize(@NonNull String locationUrl) {
         byte[] bytes = locationUrl.getBytes(StandardCharsets.ISO_8859_1);
         return WapPushCache.getWapMessageSize(bytes);
+    }
+
+    /**
+     * Make sure the device has required telephony feature
+     *
+     * @throws UnsupportedOperationException if the device does not have required telephony feature
+     */
+    private void enforceTelephonyFeatureWithException(@Nullable String callingPackage,
+            @NonNull String methodName) {
+        if (callingPackage == null || mPackageManager == null) {
+            return;
+        }
+
+        if (!mFlags.enforceTelephonyFeatureMappingForPublicApis()
+                || !CompatChanges.isChangeEnabled(ENABLE_FEATURE_MAPPING, callingPackage,
+                Binder.getCallingUserHandle())) {
+            return;
+        }
+
+        if (!mPackageManager.hasSystemFeature(FEATURE_TELEPHONY_MESSAGING)) {
+            throw new UnsupportedOperationException(
+                    methodName + " is unsupported without " + FEATURE_TELEPHONY_MESSAGING);
+        }
     }
 }

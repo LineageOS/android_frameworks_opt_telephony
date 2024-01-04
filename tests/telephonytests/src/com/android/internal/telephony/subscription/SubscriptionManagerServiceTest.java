@@ -113,6 +113,7 @@ import com.android.internal.telephony.subscription.SubscriptionManagerService.Su
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccSlot;
 
+import libcore.junit.util.compat.CoreCompatChangeRule.DisableCompatChanges;
 import libcore.junit.util.compat.CoreCompatChangeRule.EnableCompatChanges;
 
 import org.junit.After;
@@ -231,6 +232,11 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         doReturn(true).when(mUserManager)
                 .isManagedProfile(eq(FAKE_MANAGED_PROFILE_USER_HANDLE.getIdentifier()));
+
+        // Due to affect exist implementation, bypass feature flag.
+        doReturn(false).when(mFlags).enforceTelephonyFeatureMappingForPublicApis();
+        doReturn(true).when(mPackageManager).hasSystemFeature(
+                eq(PackageManager.FEATURE_TELEPHONY_SUBSCRIPTION));
 
         logd("SubscriptionManagerServiceTest -Setup!");
     }
@@ -407,7 +413,12 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({TelephonyManager.ENABLE_FEATURE_MAPPING})
     public void testSetPhoneNumber() {
+        doReturn(false).when(mFlags).enforceTelephonyFeatureMapping();
+        doReturn(true).when(mPackageManager).hasSystemFeature(
+                eq(PackageManager.FEATURE_TELEPHONY_SUBSCRIPTION));
+
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
         mSubscriptionManagerServiceUT.addSubInfo(FAKE_ICCID1, FAKE_CARRIER_NAME1,
                 0, SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
@@ -441,6 +452,41 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(subInfo).isNotNull();
         assertThat(subInfo.getNumberFromCarrier()).isEqualTo(FAKE_PHONE_NUMBER2);
         verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
+    }
+
+    @Test
+    @EnableCompatChanges({TelephonyManager.ENABLE_FEATURE_MAPPING})
+    public void testSetPhoneNumber_EnabledEnforceTelephonyFeatureMappingForPublicApis() {
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        mSubscriptionManagerServiceUT.addSubInfo(FAKE_ICCID1, FAKE_CARRIER_NAME1,
+                0, SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+        processAllMessages();
+
+        verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
+        Mockito.clearInvocations(mMockedSubscriptionManagerServiceCallback);
+
+        // Grant carrier privilege
+        setCarrierPrivilegesForSubId(true, 1);
+
+        // Enabled FeatureFlags and ENABLE_FEATURE_MAPPING, telephony features are defined
+        doReturn(true).when(mFlags).enforceTelephonyFeatureMappingForPublicApis();
+        doReturn(true).when(mPackageManager).hasSystemFeature(
+                eq(PackageManager.FEATURE_TELEPHONY_SUBSCRIPTION));
+        try {
+            mSubscriptionManagerServiceUT.setPhoneNumber(1,
+                    SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER, FAKE_PHONE_NUMBER2,
+                    CALLING_PACKAGE, CALLING_FEATURE);
+        } catch (UnsupportedOperationException e) {
+            fail("Not expect exception " + e.getMessage());
+        }
+
+        // Telephony features is not defined, expect UnsupportedOperationException.
+        doReturn(false).when(mPackageManager).hasSystemFeature(
+                eq(PackageManager.FEATURE_TELEPHONY_SUBSCRIPTION));
+        assertThrows(UnsupportedOperationException.class,
+                () -> mSubscriptionManagerServiceUT.setPhoneNumber(1,
+                        SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER, FAKE_PHONE_NUMBER2,
+                        CALLING_PACKAGE, CALLING_FEATURE));
     }
 
     @Test
@@ -2274,6 +2320,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({TelephonyManager.ENABLE_FEATURE_MAPPING})
     public void testGetPhoneNumber() {
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
         testSetPhoneNumber();
