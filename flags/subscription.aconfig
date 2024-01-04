@@ -20,3 +20,10 @@ flag {
   description: "Supports customized cellular service capabilities per subscription."
   bug: "296097429"
 }
+
+flag {
+  name: "data_only_service_allow_emergency_call_only"
+  namespace: "telephony"
+  description: "Support emergency call only for data only cellular service."
+  bug: "296097429"
+}
