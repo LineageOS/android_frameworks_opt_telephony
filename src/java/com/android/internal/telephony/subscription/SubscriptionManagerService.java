@@ -2139,6 +2139,8 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     @Override
     public void requestEmbeddedSubscriptionInfoListRefresh(int cardId) {
+        enforcePermissions("requestEmbeddedSubscriptionInfoListRefresh",
+                Manifest.permission.WRITE_EMBEDDED_SUBSCRIPTIONS);
         updateEmbeddedSubscriptions(List.of(cardId), null);
     }
 
