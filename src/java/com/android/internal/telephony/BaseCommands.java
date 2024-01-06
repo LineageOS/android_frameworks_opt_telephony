@@ -120,6 +120,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mTriggerImsDeregistrationRegistrants = new RegistrantList();
     protected RegistrantList mImeiInfoRegistrants = new RegistrantList();
     protected RegistrantList mCellularIdentifierDisclosedRegistrants = new RegistrantList();
+    protected RegistrantList mSecurityAlgorithmUpdatedRegistrants = new RegistrantList();
 
     @UnsupportedAppUsage
     protected Registrant mGsmSmsRegistrant;
@@ -1193,5 +1194,15 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void unregisterForCellularIdentifierDisclosures(Handler h) {
         mCellularIdentifierDisclosedRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForSecurityAlgorithmUpdates(Handler h, int what, Object obj) {
+        mSecurityAlgorithmUpdatedRegistrants.add(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForSecurityAlgorithmUpdates(Handler h) {
+        mSecurityAlgorithmUpdatedRegistrants.remove(h);
     }
 }

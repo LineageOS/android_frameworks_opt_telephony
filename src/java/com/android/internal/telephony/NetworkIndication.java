@@ -49,6 +49,7 @@ import android.telephony.EmergencyRegResult;
 import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhysicalChannelConfig;
+import android.telephony.SecurityAlgorithmUpdate;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.text.TextUtils;
@@ -456,6 +457,12 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
         if (mRil.isLogOrTrace()) {
             mRil.unsljLogRet(RIL_UNSOL_SECURITY_ALGORITHMS_UPDATED, securityAlgorithmUpdate);
         }
+
+        SecurityAlgorithmUpdate update =
+                RILUtils.convertSecurityAlgorithmUpdate(securityAlgorithmUpdate);
+
+        mRil.mSecurityAlgorithmUpdatedRegistrants.notifyRegistrants(
+                new AsyncResult(null, update, null));
     }
 
     @Override

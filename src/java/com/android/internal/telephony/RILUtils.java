@@ -342,6 +342,7 @@ import android.telephony.PhoneCapability;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.RadioAccessSpecifier;
+import android.telephony.SecurityAlgorithmUpdate;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SignalThresholdInfo;
@@ -5717,6 +5718,20 @@ public class RILUtils {
                 identifierDisclsoure.identifier,
                 identifierDisclsoure.plmn,
                 identifierDisclsoure.isEmergency);
+    }
+
+    /** Convert an AIDL-based SecurityAlgorithmUpdate to its Java wrapper. */
+    public static SecurityAlgorithmUpdate convertSecurityAlgorithmUpdate(
+            android.hardware.radio.network.SecurityAlgorithmUpdate securityAlgorithmUpdate) {
+        if (securityAlgorithmUpdate == null) {
+            return null;
+        }
+
+        return new SecurityAlgorithmUpdate(
+                securityAlgorithmUpdate.connectionEvent,
+                securityAlgorithmUpdate.encryption,
+                securityAlgorithmUpdate.integrity,
+                securityAlgorithmUpdate.isUnprotectedEmergency);
     }
 
     private static void logd(String log) {

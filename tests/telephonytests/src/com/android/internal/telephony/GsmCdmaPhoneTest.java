@@ -78,6 +78,7 @@ import android.telephony.CellularIdentifierDisclosure;
 import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.RadioAccessFamily;
+import android.telephony.SecurityAlgorithmUpdate;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -2932,6 +2933,48 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         sendIdentifierDisclosureEnabledSuccessToPhone(phoneUT);
 
         assertTrue(phoneUT.isIdentifierDisclosureTransparencySupported());
+    }
+
+    @Test
+    public void testSecurityAlgorithmUpdateFlagOff() {
+        when(mFeatureFlags.enableModemCipherTransparency()).thenReturn(false);
+
+        makeNewPhoneUT();
+
+        verify(mMockCi, never()).registerForSecurityAlgorithmUpdates(any(), anyInt(), any());
+    }
+
+    @Test
+    public void testSecurityAlgorithmUpdateFlagOn() {
+        when(mFeatureFlags.enableModemCipherTransparency()).thenReturn(true);
+
+        Phone phoneUT = makeNewPhoneUT();
+
+        verify(mMockCi, times(1))
+                .registerForSecurityAlgorithmUpdates(
+                        eq(phoneUT),
+                        eq(Phone.EVENT_SECURITY_ALGORITHM_UPDATE),
+                        any());
+    }
+
+    @Test
+    public void testSecurityAlgorithm_updateAddedToNotifier() {
+        when(mFeatureFlags.enableModemCipherTransparency()).thenReturn(true);
+        Phone phoneUT = makeNewPhoneUT();
+        SecurityAlgorithmUpdate update =
+                new SecurityAlgorithmUpdate(
+                        SecurityAlgorithmUpdate.CONNECTION_EVENT_PS_SIGNALLING_3G,
+                        SecurityAlgorithmUpdate.SECURITY_ALGORITHM_UEA1,
+                        SecurityAlgorithmUpdate.SECURITY_ALGORITHM_AUTH_HMAC_SHA2_256_128,
+                        true);
+
+        phoneUT.sendMessage(
+                mPhoneUT.obtainMessage(
+                        Phone.EVENT_SECURITY_ALGORITHM_UPDATE,
+                        new AsyncResult(null, update, null)));
+        processAllMessages();
+
+        verify(mNullCipherNotifier, times(1)).onSecurityAlgorithmUpdate(eq(0), eq(update));
     }
 
     private void sendRadioAvailableToPhone(GsmCdmaPhone phone) {
