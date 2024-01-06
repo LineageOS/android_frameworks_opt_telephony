@@ -48,6 +48,7 @@ import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.nitz.NitzStateMachineImpl;
 import com.android.internal.telephony.security.CellularIdentifierDisclosureNotifier;
+import com.android.internal.telephony.security.NullCipherNotifier;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccProfile;
@@ -571,5 +572,10 @@ public class TelephonyComponentFactory {
     /** Create CellularIdentifierDisclosureNotifier. */
     public CellularIdentifierDisclosureNotifier makeIdentifierDisclosureNotifier() {
         return CellularIdentifierDisclosureNotifier.getInstance();
+    }
+
+    /** Create NullCipherNotifier. */
+    public NullCipherNotifier makeNullCipherNotifier() {
+        return NullCipherNotifier.getInstance();
     }
 }

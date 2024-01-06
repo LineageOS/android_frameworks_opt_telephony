@@ -16,14 +16,21 @@
 
 package com.android.internal.telephony.security;
 
+import static android.telephony.SecurityAlgorithmUpdate.CONNECTION_EVENT_PS_SIGNALLING_3G;
 import static android.telephony.SecurityAlgorithmUpdate.CONNECTION_EVENT_VOLTE_SIP;
+import static android.telephony.SecurityAlgorithmUpdate.SECURITY_ALGORITHM_AUTH_HMAC_SHA2_256_128;
 import static android.telephony.SecurityAlgorithmUpdate.SECURITY_ALGORITHM_EEA2;
 import static android.telephony.SecurityAlgorithmUpdate.SECURITY_ALGORITHM_HMAC_SHA1_96;
+import static android.telephony.SecurityAlgorithmUpdate.SECURITY_ALGORITHM_UEA1;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import android.hardware.radio.network.ConnectionEvent;
+import android.hardware.radio.network.SecurityAlgorithm;
 import android.os.Parcel;
 import android.telephony.SecurityAlgorithmUpdate;
+
+import com.android.internal.telephony.RILUtils;
 
 import org.junit.Test;
 
@@ -79,5 +86,23 @@ public final class SecurityAlgorithmUpdateTest {
 
         SecurityAlgorithmUpdate fromParcel = SecurityAlgorithmUpdate.CREATOR.createFromParcel(p);
         assertThat(fromParcel).isEqualTo(update);
+    }
+
+    @Test
+    public void testConvertSecurityAlgorithmUpdate() {
+        android.hardware.radio.network.SecurityAlgorithmUpdate aidlUpdate =
+                new android.hardware.radio.network.SecurityAlgorithmUpdate();
+        aidlUpdate.connectionEvent = ConnectionEvent.PS_SIGNALLING_3G;
+        aidlUpdate.encryption = SecurityAlgorithm.UEA1;
+        aidlUpdate.integrity = SecurityAlgorithm.AUTH_HMAC_SHA2_256_128;
+        aidlUpdate.isUnprotectedEmergency = true;
+
+        assertThat(RILUtils.convertSecurityAlgorithmUpdate(aidlUpdate))
+                .isEqualTo(
+                        new SecurityAlgorithmUpdate(
+                                CONNECTION_EVENT_PS_SIGNALLING_3G,
+                                SECURITY_ALGORITHM_UEA1,
+                                SECURITY_ALGORITHM_AUTH_HMAC_SHA2_256_128,
+                                true));
     }
 }

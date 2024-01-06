@@ -86,6 +86,7 @@ import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkScanRequest;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.RadioAccessFamily;
+import android.telephony.SecurityAlgorithmUpdate;
 import android.telephony.ServiceState;
 import android.telephony.ServiceState.RilRadioTechnology;
 import android.telephony.SubscriptionInfo;
@@ -118,6 +119,7 @@ import com.android.internal.telephony.imsphone.ImsPhoneMmiCode;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
 import com.android.internal.telephony.security.CellularIdentifierDisclosureNotifier;
+import com.android.internal.telephony.security.NullCipherNotifier;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService.SubscriptionManagerServiceCallback;
 import com.android.internal.telephony.test.SimulatedRadioControl;
@@ -302,6 +304,7 @@ public class GsmCdmaPhone extends Phone {
     private final CallWaitingController mCallWaitingController;
 
     private CellularIdentifierDisclosureNotifier mIdentifierDisclosureNotifier;
+    private NullCipherNotifier mNullCipherNotifier;
 
     // Set via Carrier Config
     private boolean mIsN1ModeAllowedByCarrier = true;
@@ -532,6 +535,17 @@ public class GsmCdmaPhone extends Phone {
                             .makeIdentifierDisclosureNotifier();
             mCi.registerForCellularIdentifierDisclosures(
                     this, EVENT_CELL_IDENTIFIER_DISCLOSURE, null);
+        }
+
+        if (mFeatureFlags.enableModemCipherTransparency()) {
+            logi("enable_modem_cipher_transparency is on. Registering for security algorithm "
+                    + "updates from phone " + getPhoneId());
+            mNullCipherNotifier =
+                    mTelephonyComponentFactory
+                            .inject(NullCipherNotifier.class.getName())
+                            .makeNullCipherNotifier();
+            mCi.registerForSecurityAlgorithmUpdates(
+                    this, EVENT_SECURITY_ALGORITHM_UPDATE, null);
         }
 
         initializeCarrierApps();
@@ -3700,6 +3714,15 @@ public class GsmCdmaPhone extends Phone {
                 logd("EVENT_SET_IDENTIFIER_DISCLOSURE_ENABLED_DONE");
                 ar = (AsyncResult) msg.obj;
                 mIsIdentifierDisclosureTransparencySupported = doesResultIndicateModemSupport(ar);
+                break;
+
+            case EVENT_SECURITY_ALGORITHM_UPDATE:
+                logd("EVENT_SECURITY_ALGORITHM_UPDATE phoneId = " + getPhoneId());
+                if (mFeatureFlags.enableModemCipherTransparency() && mNullCipherNotifier != null) {
+                    ar = (AsyncResult) msg.obj;
+                    SecurityAlgorithmUpdate update = (SecurityAlgorithmUpdate) ar.result;
+                    mNullCipherNotifier.onSecurityAlgorithmUpdate(getPhoneId(), update);
+                }
                 break;
 
             default:
