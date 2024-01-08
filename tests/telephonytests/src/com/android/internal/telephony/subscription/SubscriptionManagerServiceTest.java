@@ -527,6 +527,10 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         // Grant READ_PHONE_STATE permission
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+        // Allow the application to perform.
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOpsManager)
+                .noteOpNoThrow(eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(),
+                        nullable(String.class), nullable(String.class), nullable(String.class));
         // Grant identifier access
         setIdentifierAccess(true);
         // Revoke carrier privileges.
@@ -584,6 +588,11 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         // Grant READ_PHONE_STATE permission
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+        // Allow the application to perform.
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOpsManager)
+                .noteOpNoThrow(eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(),
+                        nullable(String.class), nullable(String.class), nullable(String.class));
+
         setIdentifierAccess(false);
         setCarrierPrivilegesForSubId(false, 1);
         setCarrierPrivilegesForSubId(false, 2);
@@ -816,6 +825,10 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         // Grant READ_PHONE_STATE permission for insertion.
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+        // Allow the application to perform.
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOpsManager)
+                .noteOpNoThrow(eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(),
+                        nullable(String.class), nullable(String.class), nullable(String.class));
 
         List<SubscriptionInfo> subInfos = mSubscriptionManagerServiceUT
                 .getActiveSubscriptionInfoList(CALLING_PACKAGE, CALLING_FEATURE, true);
@@ -845,6 +858,11 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         // Grant READ_PHONE_STATE permission for insertion.
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+        // Allow the application to perform.
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOpsManager)
+                .noteOpNoThrow(eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(),
+                        nullable(String.class), nullable(String.class), nullable(String.class));
+
         SubscriptionInfo subInfo = mSubscriptionManagerServiceUT
                 .getActiveSubscriptionInfoForSimSlotIndex(0, CALLING_PACKAGE,
                         CALLING_FEATURE);
@@ -939,6 +957,10 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     public void testUpdateEmbeddedSubscriptionsNullResult() {
         // Grant READ_PHONE_STATE permission.
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+        // Allow the application to perform.
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOpsManager)
+                .noteOpNoThrow(eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(),
+                        nullable(String.class), nullable(String.class), nullable(String.class));
 
         doReturn(null).when(mEuiccController).blockingGetEuiccProfileInfoList(anyInt());
 
@@ -960,6 +982,11 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         // Grant READ_PHONE_STATE permission for insertion.
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+        // Allow the application to perform.
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOpsManager)
+                .noteOpNoThrow(eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(),
+                        nullable(String.class), nullable(String.class), nullable(String.class));
+
         SubscriptionInfo subInfo = mSubscriptionManagerServiceUT
                 .getActiveSubscriptionInfoForSimSlotIndex(0, CALLING_PACKAGE,
                         CALLING_FEATURE);
@@ -1571,7 +1598,12 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(mSubscriptionManagerServiceUT.getOpportunisticSubscriptions(
                 CALLING_PACKAGE, CALLING_FEATURE)).isEmpty();
 
+        // Grant READ_PHONE_STATE permission
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+        // Allow the application to perform.
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOpsManager)
+                .noteOpNoThrow(eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(),
+                        nullable(String.class), nullable(String.class), nullable(String.class));
 
         setIdentifierAccess(true);
         setPhoneNumberAccess(PackageManager.PERMISSION_GRANTED);
@@ -2923,5 +2955,32 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(subInfo.isEmbedded()).isTrue();
         assertThat(subInfo.isRemovableEmbedded()).isFalse();
         assertThat(subInfo.getNativeAccessRules()).isEqualTo(new byte[]{});
+    }
+
+
+    @Test
+    public void testGetActiveSubscriptionInfoListNoSecurityException() {
+        // Grant MODIFY_PHONE_STATE permission for insertion.
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscription(new SubscriptionInfoInternal.Builder(FAKE_SUBSCRIPTION_INFO2)
+                .setSimSlotIndex(SubscriptionManager.INVALID_SIM_SLOT_INDEX).build());
+        // Remove MODIFY_PHONE_STATE
+        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // Should get an empty list without READ_PHONE_STATE.
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
+                CALLING_PACKAGE, CALLING_FEATURE, true)).isEmpty();
+
+        // Grant READ_PHONE_STATE permission for insertion.
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+        // Disallow the application to perform.
+        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOpsManager)
+                .noteOpNoThrow(eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(),
+                        nullable(String.class), nullable(String.class), nullable(String.class));
+
+        // Should get an empty list if the application is not allowed to perform it.
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
+                CALLING_PACKAGE, CALLING_FEATURE, true)).isEmpty();
     }
 }
