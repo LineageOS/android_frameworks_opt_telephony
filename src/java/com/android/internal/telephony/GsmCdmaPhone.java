@@ -119,6 +119,7 @@ import com.android.internal.telephony.imsphone.ImsPhoneMmiCode;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
 import com.android.internal.telephony.security.CellularIdentifierDisclosureNotifier;
+import com.android.internal.telephony.security.CellularNetworkSecuritySafetySource;
 import com.android.internal.telephony.security.NullCipherNotifier;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService.SubscriptionManagerServiceCallback;
@@ -304,6 +305,7 @@ public class GsmCdmaPhone extends Phone {
     private final SubscriptionManager.OnSubscriptionsChangedListener mSubscriptionsChangedListener;
     private final CallWaitingController mCallWaitingController;
 
+    private CellularNetworkSecuritySafetySource mSafetySource;
     private CellularIdentifierDisclosureNotifier mIdentifierDisclosureNotifier;
     private NullCipherNotifier mNullCipherNotifier;
 
@@ -524,6 +526,12 @@ public class GsmCdmaPhone extends Phone {
         mCIM = new CarrierInfoManager();
 
         mCi.registerForImeiMappingChanged(this, EVENT_IMEI_MAPPING_CHANGED, null);
+
+        if (mFeatureFlags.enableIdentifierDisclosureTransparencyUnsolEvents()
+                || mFeatureFlags.enableModemCipherTransparencyUnsolEvents()) {
+            mSafetySource =
+                    mTelephonyComponentFactory.makeCellularNetworkSecuritySafetySource(mContext);
+        }
 
         if (mFeatureFlags.enableIdentifierDisclosureTransparencyUnsolEvents()) {
             logi(
@@ -5414,5 +5422,13 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public boolean isNullCipherNotificationSupported() {
         return mIsNullCipherNotificationSupported;
+    }
+
+    @Override
+    public void refreshSafetySources(String refreshBroadcastId) {
+        if (mFeatureFlags.enableIdentifierDisclosureTransparencyUnsolEvents()
+                || mFeatureFlags.enableModemCipherTransparencyUnsolEvents()) {
+            mSafetySource.refresh(mContext, refreshBroadcastId);
+        }
     }
 }

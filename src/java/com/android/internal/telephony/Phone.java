@@ -5214,6 +5214,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Refresh the safety sources in response to the identified broadcast.
+     */
+    public void refreshSafetySources(String refreshBroadcastId) {
+    }
+
+    /**
      * Notifies the IMS call status to the modem.
      *
      * @param imsCallInfo The list of {@link ImsCallInfo}.
