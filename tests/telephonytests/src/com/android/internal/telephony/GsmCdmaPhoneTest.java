@@ -2788,7 +2788,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     public void testCellularIdentifierDisclosureFlagOff() {
-        when(mFeatureFlags.enableIdentifierDisclosureTransparency()).thenReturn(false);
+        when(mFeatureFlags.enableIdentifierDisclosureTransparencyUnsolEvents()).thenReturn(false);
 
         GsmCdmaPhone phoneUT =
                 new GsmCdmaPhone(
@@ -2810,7 +2810,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     public void testCellularIdentifierDisclosureFlagOn() {
-        when(mFeatureFlags.enableIdentifierDisclosureTransparency()).thenReturn(true);
+        when(mFeatureFlags.enableIdentifierDisclosureTransparencyUnsolEvents()).thenReturn(true);
 
         Phone phoneUT =
                 new GsmCdmaPhone(
@@ -2833,7 +2833,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     public void testCellularIdentifierDisclosure_disclosureEventAddedToNotifier() {
-        when(mFeatureFlags.enableIdentifierDisclosureTransparency()).thenReturn(true);
+        when(mFeatureFlags.enableIdentifierDisclosureTransparencyUnsolEvents()).thenReturn(true);
 
         Phone phoneUT =
                 new GsmCdmaPhone(
@@ -2864,7 +2864,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     public void testCellularIdentifierDisclosure_disclosureEventNull() {
-        when(mFeatureFlags.enableIdentifierDisclosureTransparency()).thenReturn(true);
+        when(mFeatureFlags.enableIdentifierDisclosureTransparencyUnsolEvents()).thenReturn(true);
 
         Phone phoneUT =
                 new GsmCdmaPhone(
