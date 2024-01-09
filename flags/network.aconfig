@@ -17,6 +17,13 @@ flag {
 flag {
   name: "enable_identifier_disclosure_transparency"
   namespace: "telephony"
+  description: "Guards APIs for enabling and disabling identifier disclosure transparency"
+  bug: "276752426"
+}
+
+flag {
+  name: "enable_identifier_disclosure_transparency_unsol_events"
+  namespace: "telephony"
   description: "Allows the framework to register for CellularIdentifierDisclosure events and emit notifications to the user about them"
   bug: "276752426"
 }
