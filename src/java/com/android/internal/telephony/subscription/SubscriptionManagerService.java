@@ -1170,6 +1170,17 @@ public class SubscriptionManagerService extends ISub.Stub {
                         builder.setDisplayNameSource(SubscriptionManager.NAME_SOURCE_CARRIER);
                     }
 
+                    boolean isSatelliteSpn = false;
+                    if (mFeatureFlags.oemEnabledSatelliteFlag() ) {
+                        if (isSatelliteSpn(embeddedProfile.getServiceProviderName())) {
+                            isSatelliteSpn = true;
+                            builder.setOnlyNonTerrestrialNetwork(1);
+                        }
+                    } else {
+                        log("updateEmupdateEmbeddedSubscriptions: oemEnabledSatelliteFlag is "
+                                + "disabled");
+                    }
+
                     if (android.os.Build.isDebuggable() &&
                             SystemProperties.getInt("telephony.test.bootstrap_cid", -2)
                                 == carrierId) {
@@ -1194,11 +1205,9 @@ public class SubscriptionManagerService extends ISub.Stub {
                         String mnc = cid.getMnc();
                         builder.setMcc(mcc);
                         builder.setMnc(mnc);
-                        if (mFeatureFlags.oemEnabledSatelliteFlag()) {
+                        if (mFeatureFlags.oemEnabledSatelliteFlag() && !isSatelliteSpn) {
                             builder.setOnlyNonTerrestrialNetwork(
                                     isSatellitePlmn(mcc + mnc) ? 1 : 0);
-                        } else {
-                            log("updateEmbeddedSubscriptions: oemEnabledSatelliteFlag is disabled");
                         }
                     }
                     // If cardId = unsupported or un-initialized, we have no reason to update DB.
@@ -1471,7 +1480,6 @@ public class SubscriptionManagerService extends ISub.Stub {
                             MccTable.updateMccMncConfiguration(mContext, mccMnc);
                         }
                         setMccMnc(subId, mccMnc);
-                        setNtn(subId, isSatellitePlmn(mccMnc));
                     } else {
                         loge("updateSubscription: mcc/mnc is empty");
                     }
@@ -4340,7 +4348,7 @@ public class SubscriptionManagerService extends ISub.Stub {
     /**
      * @param mccMnc MccMnc value to check whether it supports non-terrestrial network or not.
      * @return {@code true} if MCC/MNC is matched with in the device overlay key
-     * "config_satellite_sim_identifier", {@code false} otherwise.
+     * "config_satellite_sim_plmn_identifier", {@code false} otherwise.
      */
     private boolean isSatellitePlmn(@NonNull String mccMnc) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
@@ -4348,7 +4356,7 @@ public class SubscriptionManagerService extends ISub.Stub {
             return false;
         }
 
-        final int id = R.string.config_satellite_sim_identifier;
+        final int id = R.string.config_satellite_sim_plmn_identifier;
         String overlayMccMnc = null;
         try {
             overlayMccMnc = mContext.getResources().getString(id);
@@ -4356,12 +4364,41 @@ public class SubscriptionManagerService extends ISub.Stub {
             loge("isSatellitePlmn: id= " + id + ", ex=" + ex);
         }
         if (TextUtils.isEmpty(overlayMccMnc) && isMockModemAllowed()) {
-            log("isSatellitePlmn: Read config_satellite_sim_identifier from device config");
+            log("isSatellitePlmn: Read config_satellite_sim_plmn_identifier from device config");
             overlayMccMnc = DeviceConfig.getString(DeviceConfig.NAMESPACE_TELEPHONY,
-                    "config_satellite_sim_identifier", "");
+                    "config_satellite_sim_plmn_identifier", "");
         }
         log("isSatellitePlmn: overlayMccMnc=" + overlayMccMnc + ", mccMnc=" + mccMnc);
         return TextUtils.equals(mccMnc, overlayMccMnc);
+    }
+
+    /**
+     * Checks and matches the service provider name (spn) with the device overlay config to
+     * determine whether non-terrestrial networks are supported.
+     * @param spn service provider name of the profile.
+     * @return {@code true} if the given spn is matched with the overlay key.
+     * "config_satellite_sim_spn_identifier", {@code false} otherwise.
+     */
+    private boolean isSatelliteSpn(@NonNull String spn) {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            log("isSatelliteSpn: oemEnabledSatelliteFlag is disabled");
+            return false;
+        }
+
+        final int id = R.string.config_satellite_sim_spn_identifier;
+        String overlaySpn = null;
+        try {
+            overlaySpn = mContext.getResources().getString(id);
+        } catch (Resources.NotFoundException ex) {
+            loge("isSatelliteSpn: id= " + id + ", ex=" + ex);
+        }
+        if (TextUtils.isEmpty(overlaySpn) && isMockModemAllowed()) {
+            log("isSatelliteSpn: Read config_satellite_sim_spn_identifier from device config");
+            overlaySpn = DeviceConfig.getString(DeviceConfig.NAMESPACE_TELEPHONY,
+                    "config_satellite_sim_spn_identifier", "");
+        }
+        log("isSatelliteSpn: overlaySpn=" + overlaySpn + ", spn=" + spn);
+        return TextUtils.equals(spn, overlaySpn);
     }
 
     private boolean isMockModemAllowed() {
