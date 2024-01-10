@@ -15,6 +15,9 @@
  */
 package com.android.internal.telephony.euicc;
 
+import static android.content.pm.PackageManager.FEATURE_TELEPHONY_EUICC;
+import static android.telephony.TelephonyManager.ENABLE_FEATURE_MAPPING;
+
 import android.Manifest;
 import android.Manifest.permission;
 import android.annotation.NonNull;
@@ -60,6 +63,7 @@ import com.android.internal.telephony.CarrierPrivilegesTracker;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.euicc.EuiccConnector.OtaStatusChangedCallback;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccController;
@@ -111,6 +115,7 @@ public class EuiccController extends IEuiccController.Stub {
     private final TelephonyManager mTelephonyManager;
     private final AppOpsManager mAppOpsManager;
     private final PackageManager mPackageManager;
+    private final FeatureFlags mFeatureFlags;
 
     // These values should be set or updated upon 1) system boot, 2) EuiccService/LPA is bound to
     // the phone process, 3) values are updated remotely by server flags.
@@ -118,10 +123,10 @@ public class EuiccController extends IEuiccController.Stub {
     private List<String> mUnsupportedCountries;
 
     /** Initialize the instance. Should only be called once. */
-    public static EuiccController init(Context context) {
+    public static EuiccController init(Context context, FeatureFlags featureFlags) {
         synchronized (EuiccController.class) {
             if (sInstance == null) {
-                sInstance = new EuiccController(context);
+                sInstance = new EuiccController(context, featureFlags);
             } else {
                 Log.wtf(TAG, "init() called multiple times! sInstance = " + sInstance);
             }
@@ -141,14 +146,14 @@ public class EuiccController extends IEuiccController.Stub {
         return sInstance;
     }
 
-    private EuiccController(Context context) {
-        this(context, new EuiccConnector(context));
+    private EuiccController(Context context, FeatureFlags featureFlags) {
+        this(context, new EuiccConnector(context), featureFlags);
         TelephonyFrameworkInitializer
                 .getTelephonyServiceManager().getEuiccControllerService().register(this);
     }
 
     @VisibleForTesting
-    public EuiccController(Context context, EuiccConnector connector) {
+    public EuiccController(Context context, EuiccConnector connector, FeatureFlags featureFlags) {
         mContext = context;
         mConnector = connector;
         mSubscriptionManager = (SubscriptionManager)
@@ -157,6 +162,7 @@ public class EuiccController extends IEuiccController.Stub {
                 context.getSystemService(Context.TELEPHONY_SERVICE);
         mAppOpsManager = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
         mPackageManager = context.getPackageManager();
+        mFeatureFlags = featureFlags;
     }
 
     /**
@@ -1957,6 +1963,9 @@ public class EuiccController extends IEuiccController.Stub {
     @Override
     public boolean isSimPortAvailable(int cardId, int portIndex, String callingPackage) {
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
+
+        enforceTelephonyFeatureWithException(callingPackage, "isSimPortAvailable");
+
         // If calling app is targeted for Android U and beyond, check for other conditions
         // to decide the port availability.
         boolean shouldCheckConditionsForInactivePort = isCompatChangeEnabled(callingPackage,
@@ -2062,5 +2071,28 @@ public class EuiccController extends IEuiccController.Stub {
         Log.i(TAG, "isCompatChangeEnabled changeId: " + changeId
                 + " changeEnabled: " + changeEnabled);
         return changeEnabled;
+    }
+
+    /**
+     * Make sure the device has required telephony feature
+     *
+     * @throws UnsupportedOperationException if the device does not have required telephony feature
+     */
+    private void enforceTelephonyFeatureWithException(@Nullable String callingPackage,
+            @NonNull String methodName) {
+        if (callingPackage == null || mPackageManager == null) {
+            return;
+        }
+
+        if (!mFeatureFlags.enforceTelephonyFeatureMappingForPublicApis()
+                || !CompatChanges.isChangeEnabled(ENABLE_FEATURE_MAPPING, callingPackage,
+                Binder.getCallingUserHandle())) {
+            return;
+        }
+
+        if (!mPackageManager.hasSystemFeature(FEATURE_TELEPHONY_EUICC)) {
+            throw new UnsupportedOperationException(
+                    methodName + " is unsupported without " + FEATURE_TELEPHONY_EUICC);
+        }
     }
 }
