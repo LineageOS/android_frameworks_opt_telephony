@@ -22,7 +22,7 @@ import static android.telephony.CarrierConfigManager.USSD_OVER_CS_PREFERRED;
 import static android.telephony.CarrierConfigManager.USSD_OVER_IMS_ONLY;
 import static android.telephony.CarrierConfigManager.USSD_OVER_IMS_PREFERRED;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_NONE;
-import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCK;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCKS;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_RAT_BLOCK;
@@ -1563,13 +1563,13 @@ public class ImsPhoneTest extends TelephonyTest {
 
         // unregistered with rat block clear
         registrationCallback.onUnregistered(reasonInfo,
-                SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCK,
+                SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCKS,
                 REGISTRATION_TECH_LTE);
         regInfo = mSimulatedCommands.getImsRegistrationInfo();
 
         assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
                 && regInfo[1] == REGISTRATION_TECH_LTE
-                && regInfo[2] == SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCK);
+                && regInfo[2] == SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCKS);
 
         // reset the registration info saved in the SimulatedCommands
         mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
@@ -1579,13 +1579,13 @@ public class ImsPhoneTest extends TelephonyTest {
 
         // verfies that duplicated notification with the same suggested action is invoked
         registrationCallback.onUnregistered(reasonInfo,
-                SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCK,
+                SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCKS,
                 REGISTRATION_TECH_LTE);
         regInfo = mSimulatedCommands.getImsRegistrationInfo();
 
         assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
                 && regInfo[1] == REGISTRATION_TECH_LTE
-                && regInfo[2] == SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCK);
+                && regInfo[2] == SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCKS);
     }
 
     @Test
