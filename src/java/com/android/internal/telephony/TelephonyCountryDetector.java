@@ -29,6 +29,7 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -62,6 +63,7 @@ public class TelephonyCountryDetector extends Handler {
     private static final String TAG = "TelephonyCountryDetector";
     private static final String ALLOW_MOCK_MODEM_PROPERTY = "persist.radio.allow_mock_modem";
     private static final String BOOT_ALLOW_MOCK_MODEM_PROPERTY = "ro.boot.radio.allow_mock_modem";
+    private static final boolean DEBUG = !"user".equals(Build.TYPE);
     private static final int EVENT_LOCATION_CHANGED = 1;
     private static final int EVENT_LOCATION_COUNTRY_CODE_CHANGED = 2;
     private static final int EVENT_NETWORK_COUNTRY_CODE_CHANGED = 3;
@@ -552,7 +554,7 @@ public class TelephonyCountryDetector extends Handler {
     }
 
     private static boolean isMockModemAllowed() {
-        return (SystemProperties.getBoolean(ALLOW_MOCK_MODEM_PROPERTY, false)
+        return (DEBUG || SystemProperties.getBoolean(ALLOW_MOCK_MODEM_PROPERTY, false)
                 || SystemProperties.getBoolean(BOOT_ALLOW_MOCK_MODEM_PROPERTY, false));
     }
 
