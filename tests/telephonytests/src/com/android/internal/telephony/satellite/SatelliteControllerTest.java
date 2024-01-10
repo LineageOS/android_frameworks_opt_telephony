@@ -212,6 +212,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         @Override
         protected void onReceiveResult(int resultCode, Bundle resultData) {
             mQueriedSatelliteCapabilitiesResultCode = resultCode;
+            logd("mSatelliteCapabilitiesReceiver: resultCode=" + resultCode);
             if (resultCode == SATELLITE_RESULT_SUCCESS) {
                 if (resultData.containsKey(KEY_SATELLITE_CAPABILITIES)) {
                     mQueriedSatelliteCapabilities = resultData.getParcelable(
@@ -221,13 +222,13 @@ public class SatelliteControllerTest extends TelephonyTest {
                     mQueriedSatelliteCapabilities = null;
                 }
             } else {
-                logd("mSatelliteSupportReceiver: resultCode=" + resultCode);
                 mQueriedSatelliteCapabilities = null;
             }
             try {
                 mSatelliteCapabilitiesSemaphore.release();
             } catch (Exception ex) {
-                loge("mSatelliteSupportReceiver: Got exception in releasing semaphore, ex=" + ex);
+                loge("mSatelliteCapabilitiesReceiver: Got exception in releasing semaphore, ex="
+                        + ex);
             }
         }
     };
@@ -239,6 +240,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         @Override
         protected void onReceiveResult(int resultCode, Bundle resultData) {
             mQueriedSatelliteSupportedResultCode = resultCode;
+            logd("mSatelliteSupportReceiver: resultCode=" + resultCode);
             if (resultCode == SATELLITE_RESULT_SUCCESS) {
                 if (resultData.containsKey(KEY_SATELLITE_SUPPORTED)) {
                     mQueriedSatelliteSupported = resultData.getBoolean(KEY_SATELLITE_SUPPORTED);
@@ -247,7 +249,6 @@ public class SatelliteControllerTest extends TelephonyTest {
                     mQueriedSatelliteSupported = false;
                 }
             } else {
-                logd("mSatelliteSupportReceiver: resultCode=" + resultCode);
                 mQueriedSatelliteSupported = false;
             }
             try {
@@ -279,7 +280,7 @@ public class SatelliteControllerTest extends TelephonyTest {
             try {
                 mIsSatelliteEnabledSemaphore.release();
             } catch (Exception ex) {
-                loge("mIsSatelliteEnableReceiver: Got exception in releasing semaphore, ex=" + ex);
+                loge("mIsSatelliteEnabledReceiver: Got exception in releasing semaphore, ex=" + ex);
             }
         }
     };
@@ -291,6 +292,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         @Override
         protected void onReceiveResult(int resultCode, Bundle resultData) {
             mQueriedIsDemoModeEnabledResultCode = resultCode;
+            logd("mIsDemoModeEnabledReceiver: resultCode=" + resultCode);
             if (resultCode == SATELLITE_RESULT_SUCCESS) {
                 if (resultData.containsKey(KEY_DEMO_MODE_ENABLED)) {
                     mQueriedIsDemoModeEnabled = resultData.getBoolean(KEY_DEMO_MODE_ENABLED);
@@ -299,7 +301,6 @@ public class SatelliteControllerTest extends TelephonyTest {
                     mQueriedIsDemoModeEnabled = false;
                 }
             } else {
-                logd("mIsSatelliteEnableReceiver: resultCode=" + resultCode);
                 mQueriedIsDemoModeEnabled = false;
             }
             try {
@@ -317,6 +318,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         @Override
         protected void onReceiveResult(int resultCode, Bundle resultData) {
             mQueriedIsSatelliteProvisionedResultCode = resultCode;
+            logd("mIsSatelliteProvisionedReceiver: resultCode=" + resultCode);
             if (resultCode == SATELLITE_RESULT_SUCCESS) {
                 if (resultData.containsKey(KEY_SATELLITE_PROVISIONED)) {
                     mQueriedIsSatelliteProvisioned =
@@ -344,6 +346,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         @Override
         protected void onReceiveResult(int resultCode, Bundle resultData) {
             mQueriedSatelliteAllowedResultCode = resultCode;
+            logd("mSatelliteAllowedReceiver: resultCode=" + resultCode);
             if (resultCode == SATELLITE_RESULT_SUCCESS) {
                 if (resultData.containsKey(KEY_SATELLITE_COMMUNICATION_ALLOWED)) {
                     mQueriedSatelliteAllowed = resultData.getBoolean(
@@ -353,7 +356,6 @@ public class SatelliteControllerTest extends TelephonyTest {
                     mQueriedSatelliteAllowed = false;
                 }
             } else {
-                logd("mSatelliteAllowedReceiver: resultCode=" + resultCode);
                 mQueriedSatelliteAllowed = false;
             }
             try {
@@ -372,6 +374,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         @Override
         protected void onReceiveResult(int resultCode, Bundle resultData) {
             mQueriedSatelliteVisibilityTimeResultCode = resultCode;
+            logd("mSatelliteVisibilityTimeReceiver: resultCode=" + resultCode);
             if (resultCode == SATELLITE_RESULT_SUCCESS) {
                 if (resultData.containsKey(KEY_SATELLITE_NEXT_VISIBILITY)) {
                     mQueriedSatelliteVisibilityTime = resultData.getInt(
@@ -381,13 +384,13 @@ public class SatelliteControllerTest extends TelephonyTest {
                     mQueriedSatelliteVisibilityTime = -1;
                 }
             } else {
-                logd("mSatelliteSupportReceiver: resultCode=" + resultCode);
                 mQueriedSatelliteVisibilityTime = -1;
             }
             try {
                 mSatelliteVisibilityTimeSemaphore.release();
             } catch (Exception ex) {
-                loge("mSatelliteAllowedReceiver: Got exception in releasing semaphore, ex=" + ex);
+                loge("mSatelliteVisibilityTimeReceiver: Got exception in releasing semaphore, ex="
+                        + ex);
             }
         }
     };
@@ -400,6 +403,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         @Override
         protected void onReceiveResult(int resultCode, Bundle resultData) {
             mQueriedNtnSignalStrengthResultCode = resultCode;
+            logd("KEY_NTN_SIGNAL_STRENGTH: resultCode=" + resultCode);
             if (resultCode == SATELLITE_RESULT_SUCCESS) {
                 if (resultData.containsKey(KEY_NTN_SIGNAL_STRENGTH)) {
                     NtnSignalStrength result = resultData.getParcelable(KEY_NTN_SIGNAL_STRENGTH);
@@ -410,7 +414,6 @@ public class SatelliteControllerTest extends TelephonyTest {
                     mQueriedNtnSignalStrengthLevel = NTN_SIGNAL_STRENGTH_NONE;
                 }
             } else {
-                logd("KEY_NTN_SIGNAL_STRENGTH: resultCode=" + resultCode);
                 mQueriedNtnSignalStrengthLevel = NTN_SIGNAL_STRENGTH_NONE;
             }
             try {
@@ -1990,9 +1993,9 @@ public class SatelliteControllerTest extends TelephonyTest {
 
     @Test
     public void testIsSatelliteAttachRequired() {
-        mSatelliteCapabilitiesSemaphore.drainPermits();
         TestSatelliteController satelliteController =
                 new TestSatelliteController(mContext, Looper.myLooper(), mFeatureFlags);
+        mSatelliteCapabilitiesSemaphore.drainPermits();
         satelliteController.requestSatelliteCapabilities(SUB_ID, mSatelliteCapabilitiesReceiver);
         processAllMessages();
         assertTrue(waitForRequestSatelliteCapabilitiesResult(1));
@@ -2002,12 +2005,11 @@ public class SatelliteControllerTest extends TelephonyTest {
 
         setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
         setUpResponseForRequestSatelliteCapabilities(
-                mSatelliteCapabilities, SATELLITE_RESULT_MODEM_ERROR);
+                mEmptySatelliteCapabilities, SATELLITE_RESULT_SUCCESS);
         satelliteController =
                 new TestSatelliteController(mContext, Looper.myLooper(), mFeatureFlags);
-        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
-        setUpResponseForRequestSatelliteCapabilities(
-                mEmptySatelliteCapabilities, SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(satelliteController, true, SATELLITE_RESULT_SUCCESS);
+        mSatelliteCapabilitiesSemaphore.drainPermits();
         satelliteController.requestSatelliteCapabilities(SUB_ID, mSatelliteCapabilitiesReceiver);
         processAllMessages();
         assertTrue(waitForRequestSatelliteCapabilitiesResult(1));
@@ -2020,12 +2022,11 @@ public class SatelliteControllerTest extends TelephonyTest {
 
         setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
         setUpResponseForRequestSatelliteCapabilities(
-                mSatelliteCapabilities, SATELLITE_RESULT_MODEM_ERROR);
+                mSatelliteCapabilities, SATELLITE_RESULT_SUCCESS);
         satelliteController =
                 new TestSatelliteController(mContext, Looper.myLooper(), mFeatureFlags);
-        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
-        setUpResponseForRequestSatelliteCapabilities(
-                mSatelliteCapabilities, SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(satelliteController, true, SATELLITE_RESULT_SUCCESS);
+        mSatelliteCapabilitiesSemaphore.drainPermits();
         satelliteController.requestSatelliteCapabilities(SUB_ID, mSatelliteCapabilitiesReceiver);
         processAllMessages();
         assertTrue(waitForRequestSatelliteCapabilitiesResult(1));
@@ -3010,6 +3011,16 @@ public class SatelliteControllerTest extends TelephonyTest {
     private void verifySatelliteSupported(boolean supported, int expectedErrorCode) {
         mSatelliteSupportSemaphore.drainPermits();
         mSatelliteControllerUT.requestIsSatelliteSupported(SUB_ID, mSatelliteSupportReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestIsSatelliteSupportedResult(1));
+        assertEquals(expectedErrorCode, mQueriedSatelliteSupportedResultCode);
+        assertEquals(supported, mQueriedSatelliteSupported);
+    }
+
+    private void verifySatelliteSupported(TestSatelliteController satelliteController,
+            boolean supported, int expectedErrorCode) {
+        mSatelliteSupportSemaphore.drainPermits();
+        satelliteController.requestIsSatelliteSupported(SUB_ID, mSatelliteSupportReceiver);
         processAllMessages();
         assertTrue(waitForRequestIsSatelliteSupportedResult(1));
         assertEquals(expectedErrorCode, mQueriedSatelliteSupportedResultCode);
