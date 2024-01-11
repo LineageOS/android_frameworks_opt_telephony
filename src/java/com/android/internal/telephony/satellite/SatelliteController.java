@@ -68,8 +68,8 @@ import android.telephony.TelephonyManager;
 import android.telephony.satellite.INtnSignalStrengthCallback;
 import android.telephony.satellite.ISatelliteCapabilitiesCallback;
 import android.telephony.satellite.ISatelliteDatagramCallback;
+import android.telephony.satellite.ISatelliteModemStateCallback;
 import android.telephony.satellite.ISatelliteProvisionStateCallback;
-import android.telephony.satellite.ISatelliteStateCallback;
 import android.telephony.satellite.ISatelliteTransmissionUpdateCallback;
 import android.telephony.satellite.NtnSignalStrength;
 import android.telephony.satellite.SatelliteCapabilities;
@@ -1659,7 +1659,7 @@ public class SatelliteController extends Handler {
      * @return The {@link SatelliteManager.SatelliteResult} result of the operation.
      */
     @SatelliteManager.SatelliteResult public int registerForSatelliteModemStateChanged(int subId,
-            @NonNull ISatelliteStateCallback callback) {
+            @NonNull ISatelliteModemStateCallback callback) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
             logd("registerForSatelliteModemStateChanged: oemEnabledSatelliteFlag is disabled");
             return SatelliteManager.SATELLITE_RESULT_NOT_SUPPORTED;
@@ -1680,10 +1680,10 @@ public class SatelliteController extends Handler {
      *
      * @param subId The subId of the subscription to unregister for satellite modem state changed.
      * @param callback The callback that was passed to
-     *                 {@link #registerForSatelliteModemStateChanged(int, ISatelliteStateCallback)}.
+     * {@link #registerForSatelliteModemStateChanged(int, ISatelliteModemStateCallback)}.
      */
     public void unregisterForSatelliteModemStateChanged(int subId,
-            @NonNull ISatelliteStateCallback callback) {
+            @NonNull ISatelliteModemStateCallback callback) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
             logd("unregisterForSatelliteModemStateChanged: oemEnabledSatelliteFlag is disabled");
             return;

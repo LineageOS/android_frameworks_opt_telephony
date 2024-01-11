@@ -101,8 +101,8 @@ import android.telephony.ServiceState;
 import android.telephony.satellite.INtnSignalStrengthCallback;
 import android.telephony.satellite.ISatelliteCapabilitiesCallback;
 import android.telephony.satellite.ISatelliteDatagramCallback;
+import android.telephony.satellite.ISatelliteModemStateCallback;
 import android.telephony.satellite.ISatelliteProvisionStateCallback;
-import android.telephony.satellite.ISatelliteStateCallback;
 import android.telephony.satellite.ISatelliteTransmissionUpdateCallback;
 import android.telephony.satellite.NtnSignalStrength;
 import android.telephony.satellite.SatelliteCapabilities;
@@ -1200,7 +1200,7 @@ public class SatelliteControllerTest extends TelephonyTest {
 
     @Test
     public void testRegisterForSatelliteModemStateChanged() {
-        ISatelliteStateCallback callback = new ISatelliteStateCallback.Stub() {
+        ISatelliteModemStateCallback callback = new ISatelliteModemStateCallback.Stub() {
             @Override
             public void onSatelliteModemStateChanged(int state) {
                 logd("onSatelliteModemStateChanged: state=" + state);
@@ -1222,7 +1222,7 @@ public class SatelliteControllerTest extends TelephonyTest {
 
     @Test
     public void testUnregisterForSatelliteModemStateChanged() {
-        ISatelliteStateCallback callback = new ISatelliteStateCallback.Stub() {
+        ISatelliteModemStateCallback callback = new ISatelliteModemStateCallback.Stub() {
             @Override
             public void onSatelliteModemStateChanged(int state) {
                 logd("onSatelliteModemStateChanged: state=" + state);
