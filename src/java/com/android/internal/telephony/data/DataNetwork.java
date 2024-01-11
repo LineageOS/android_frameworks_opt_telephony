@@ -3578,7 +3578,7 @@ public class DataNetwork extends StateMachine {
         mNetworkValidationResultCodeCallback = resultCodeCallback;
 
         // Request validation directly from the data service.
-        mDataServiceManagers.get(mTransport).requestValidation(
+        mDataServiceManagers.get(mTransport).requestNetworkValidation(
                 mCid.get(mTransport), obtainMessage(EVENT_DATA_NETWORK_VALIDATION_RESPONSE));
         log("handleDataNetworkValidationRequest, network validation requested");
     }
