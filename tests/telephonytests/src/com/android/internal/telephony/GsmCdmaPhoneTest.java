@@ -2861,7 +2861,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                         new AsyncResult(null, disclosure, null)));
         processAllMessages();
 
-        verify(mIdentifierDisclosureNotifier, times(1)).addDisclosure(eq(disclosure));
+        verify(mIdentifierDisclosureNotifier, times(1))
+                .addDisclosure(eq(mPhoneUT.getSubId()), eq(disclosure));
     }
 
     @Test
@@ -2886,7 +2887,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         processAllMessages();
 
         verify(mIdentifierDisclosureNotifier, never())
-                .addDisclosure(any(CellularIdentifierDisclosure.class));
+                .addDisclosure(eq(mPhoneUT.getSubId()), any(CellularIdentifierDisclosure.class));
     }
 
     @Test

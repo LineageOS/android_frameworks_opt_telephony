@@ -1840,8 +1840,11 @@ public class GsmCdmaPhone extends Phone {
             boolean check = true;
             for (int itr = 0;itr < dtmfString.length(); itr++) {
                 if (!PhoneNumberUtils.is12Key(dtmfString.charAt(itr))) {
-                    Rlog.e(LOG_TAG,
-                            "sendDtmf called with invalid character '" + dtmfString.charAt(itr)+ "'");
+                    Rlog.e(
+                            LOG_TAG,
+                            "sendDtmf called with invalid character '"
+                                    + dtmfString.charAt(itr)
+                                    + "'");
                     check = false;
                     break;
                 }
@@ -2848,7 +2851,9 @@ public class GsmCdmaPhone extends Phone {
             mCi.setCallWaiting(enable, serviceClass, onComplete);
         } else if (mSsOverCdmaSupported) {
             String cwPrefix = CdmaMmiCode.getCallWaitingPrefix(enable);
-            Rlog.i(LOG_TAG, "setCallWaiting in CDMA : dial for set call waiting" + " prefix= " + cwPrefix);
+            Rlog.i(
+                    LOG_TAG,
+                    "setCallWaiting in CDMA : dial for set call waiting" + " prefix= " + cwPrefix);
 
             PhoneAccountHandle phoneAccountHandle = subscriptionIdToPhoneAccountHandle(getSubId());
             Bundle extras = new Bundle();
@@ -3708,7 +3713,7 @@ public class GsmCdmaPhone extends Phone {
                 if (mFeatureFlags.enableIdentifierDisclosureTransparencyUnsolEvents()
                         && mIdentifierDisclosureNotifier != null
                         && disclosure != null) {
-                    mIdentifierDisclosureNotifier.addDisclosure(disclosure);
+                    mIdentifierDisclosureNotifier.addDisclosure(getSubId(), disclosure);
                 }
                 break;
 
