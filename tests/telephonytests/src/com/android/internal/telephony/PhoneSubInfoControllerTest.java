@@ -173,7 +173,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
         try {
@@ -195,7 +195,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         //case 3: no READ_PRIVILEGED_PHONE_STATE
         // The READ_PRIVILEGED_PHONE_STATE permission is now required to get device identifiers.
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
         try {
@@ -282,7 +282,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
         try {
@@ -303,7 +303,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 3: no READ_PRIVILEGED_PHONE_STATE
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
         try {
@@ -365,7 +365,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
         try {
@@ -386,7 +386,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 3: no READ_PRIVILEGED_PHONE_STATE
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
         try {
@@ -442,7 +442,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
 
@@ -451,7 +451,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 3: no READ_PRIVILEGED_PHONE_STATE
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
         assertEquals("00", mPhoneSubInfoControllerUT.getDeviceSvnUsingSubId(0, TAG, FEATURE_ID));
@@ -508,7 +508,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
         try {
@@ -530,7 +530,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         //case 3: no READ_PRIVILEGED_PHONE_STATE
         // The READ_PRIVILEGED_PHONE_STATE permission is now required to get device identifiers.
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
         try {
@@ -593,7 +593,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
         try {
@@ -614,7 +614,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 3: no READ_PRIVILEGED_PHONE_STATE
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
         try {
@@ -760,7 +760,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
 
@@ -769,7 +769,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 3: no READ_PRIVILEGED_PHONE_STATE
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
         assertEquals("LINE1_SIM_0", mPhoneSubInfoControllerUT
@@ -907,7 +907,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
 
@@ -916,7 +916,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 3: no READ_PRIVILEGED_PHONE_STATE
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
         assertEquals("+18051234567", mPhoneSubInfoControllerUT
@@ -963,7 +963,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
 
@@ -972,7 +972,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 3: no READ_PRIVILEGED_PHONE_STATE
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
         assertEquals("VM_SIM_0", mPhoneSubInfoControllerUT
@@ -1100,7 +1100,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE
         mContextFixture.addCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE);
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
 
