@@ -68,8 +68,8 @@ import android.telephony.TelephonyManager;
 import android.telephony.satellite.INtnSignalStrengthCallback;
 import android.telephony.satellite.ISatelliteCapabilitiesCallback;
 import android.telephony.satellite.ISatelliteDatagramCallback;
+import android.telephony.satellite.ISatelliteModemStateCallback;
 import android.telephony.satellite.ISatelliteProvisionStateCallback;
-import android.telephony.satellite.ISatelliteStateCallback;
 import android.telephony.satellite.ISatelliteTransmissionUpdateCallback;
 import android.telephony.satellite.NtnSignalStrength;
 import android.telephony.satellite.SatelliteCapabilities;
@@ -369,13 +369,6 @@ public class SatelliteController extends Handler {
         // which is used to send and receive satellite datagrams.
         mDatagramController = DatagramController.make(mContext, looper, mPointingAppController);
 
-        requestIsSatelliteSupported(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
-                new ResultReceiver(this) {
-                    @Override
-                    protected void onReceiveResult(int resultCode, Bundle resultData) {
-                        logd("requestIsSatelliteSupported: resultCode=" + resultCode);
-                    }
-                });
         mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
         mIsRadioOn = phone.isRadioOn();
         registerForSatelliteProvisionStateChanged();
@@ -1014,22 +1007,6 @@ public class SatelliteController extends Handler {
             case EVENT_RADIO_STATE_CHANGED: {
                 if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON) {
                     mIsRadioOn = true;
-                    if (!mSatelliteModemInterface.isSatelliteServiceSupported()) {
-                        synchronized (mIsSatelliteSupportedLock) {
-                            if (mIsSatelliteSupported == null) {
-                                ResultReceiver receiver = new ResultReceiver(this) {
-                                    @Override
-                                    protected void onReceiveResult(
-                                            int resultCode, Bundle resultData) {
-                                        logd("requestIsSatelliteSupported: resultCode="
-                                                + resultCode);
-                                    }
-                                };
-                                requestIsSatelliteSupported(
-                                        SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, receiver);
-                            }
-                        }
-                    }
                 }
                 break;
             }
@@ -1682,7 +1659,7 @@ public class SatelliteController extends Handler {
      * @return The {@link SatelliteManager.SatelliteResult} result of the operation.
      */
     @SatelliteManager.SatelliteResult public int registerForSatelliteModemStateChanged(int subId,
-            @NonNull ISatelliteStateCallback callback) {
+            @NonNull ISatelliteModemStateCallback callback) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
             logd("registerForSatelliteModemStateChanged: oemEnabledSatelliteFlag is disabled");
             return SatelliteManager.SATELLITE_RESULT_NOT_SUPPORTED;
@@ -1703,10 +1680,10 @@ public class SatelliteController extends Handler {
      *
      * @param subId The subId of the subscription to unregister for satellite modem state changed.
      * @param callback The callback that was passed to
-     *                 {@link #registerForSatelliteModemStateChanged(int, ISatelliteStateCallback)}.
+     * {@link #registerForSatelliteModemStateChanged(int, ISatelliteModemStateCallback)}.
      */
     public void unregisterForSatelliteModemStateChanged(int subId,
-            @NonNull ISatelliteStateCallback callback) {
+            @NonNull ISatelliteModemStateCallback callback) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
             logd("unregisterForSatelliteModemStateChanged: oemEnabledSatelliteFlag is disabled");
             return;
@@ -2266,8 +2243,8 @@ public class SatelliteController extends Handler {
                         @Override
                         protected void onReceiveResult(
                                 int resultCode, Bundle resultData) {
-                            logd("requestIsSatelliteSupported: resultCode="
-                                    + resultCode);
+                            logd("onSatelliteServiceConnected.requestIsSatelliteSupported:"
+                                    + " resultCode=" + resultCode);
                         }
                     };
                     requestIsSatelliteSupported(
@@ -2490,7 +2467,8 @@ public class SatelliteController extends Handler {
                 new ResultReceiver(this) {
                     @Override
                     protected void onReceiveResult(int resultCode, Bundle resultData) {
-                        logd("requestIsSatelliteSupported: resultCode=" + resultCode);
+                        logd("isSatelliteSupportedViaOemInternal.requestIsSatelliteSupported:"
+                                + " resultCode=" + resultCode);
                     }
                 });
         return null;
@@ -3282,11 +3260,13 @@ public class SatelliteController extends Handler {
             return SatelliteManager.SATELLITE_RESULT_REQUEST_NOT_SUPPORTED;
         }
         if (!mSatelliteModemInterface.isSatelliteServiceSupported()) {
+            logd("evaluateOemSatelliteRequestAllowed: satellite service is not supported");
             return SatelliteManager.SATELLITE_RESULT_REQUEST_NOT_SUPPORTED;
         }
 
         Boolean satelliteSupported = isSatelliteSupportedViaOemInternal();
         if (satelliteSupported == null) {
+            logd("evaluateOemSatelliteRequestAllowed: satelliteSupported is null");
             return SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE;
         }
         if (!satelliteSupported) {
@@ -3296,6 +3276,7 @@ public class SatelliteController extends Handler {
         if (isProvisionRequired) {
             Boolean satelliteProvisioned = isSatelliteViaOemProvisioned();
             if (satelliteProvisioned == null) {
+                logd("evaluateOemSatelliteRequestAllowed: satelliteProvisioned is null");
                 return SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE;
             }
             if (!satelliteProvisioned) {

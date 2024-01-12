@@ -2028,13 +2028,13 @@ public class DataNetworkTest extends TelephonyTest {
         // First Request
         mDataNetworkUT.requestNetworkValidation(mIntegerConsumer);
         processAllMessages();
-        verify(mMockedWlanDataServiceManager).requestValidation(eq(123 /*cid*/),
+        verify(mMockedWlanDataServiceManager).requestNetworkValidation(eq(123 /*cid*/),
                 any(Message.class));
 
         // Duplicate Request
         mDataNetworkUT.requestNetworkValidation(mIntegerConsumer);
         processAllMessages();
-        verify(mMockedWlanDataServiceManager).requestValidation(eq(123 /*cid*/),
+        verify(mMockedWlanDataServiceManager).requestNetworkValidation(eq(123 /*cid*/),
                 any(Message.class));
         assertThat(waitForIntegerConsumerResponse(1 /*numOfEvents*/)).isTrue();
         assertThat(mIntegerConsumerResult).isEqualTo(DataServiceCallback.RESULT_ERROR_BUSY);
@@ -2107,7 +2107,7 @@ public class DataNetworkTest extends TelephonyTest {
         // Request Network Validation
         mDataNetworkUT.requestNetworkValidation(mIntegerConsumer);
         processAllMessages();
-        verify(mMockedWlanDataServiceManager).requestValidation(eq(123 /*cid*/),
+        verify(mMockedWlanDataServiceManager).requestNetworkValidation(eq(123 /*cid*/),
                 any(Message.class));
 
         // data state updated with network validation status

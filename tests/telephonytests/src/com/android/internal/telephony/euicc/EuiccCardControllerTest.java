@@ -146,8 +146,8 @@ public class EuiccCardControllerTest extends TelephonyTest {
 
     @Test
     public void testIsEmbeddedSlotActivated() {
-        mEuiccCardController =
-                new EuiccCardController(mContext, null, mEuiccController, mUiccController);
+        mEuiccCardController = new EuiccCardController(mContext, null, mEuiccController,
+                mUiccController, mFeatureFlags);
         when(mUiccController.getUiccSlots())
                 .thenReturn(new UiccSlot[] {mActivatedRemovableSlot});
         assertFalse(mEuiccCardController.isEmbeddedSlotActivated());
@@ -173,8 +173,8 @@ public class EuiccCardControllerTest extends TelephonyTest {
 
     @Test
     public void testIsEmbeddedCardPresent() {
-        mEuiccCardController =
-                new EuiccCardController(mContext, null, mEuiccController, mUiccController);
+        mEuiccCardController = new EuiccCardController(mContext, null, mEuiccController,
+                mUiccController, mFeatureFlags);
         when(mUiccController.getUiccSlots())
                 .thenReturn(new UiccSlot[] {mActivatedRemovableSlot});
         assertFalse(mEuiccCardController.isEmbeddedCardPresent());
@@ -204,8 +204,8 @@ public class EuiccCardControllerTest extends TelephonyTest {
         mSp.edit().remove(KEY_LAST_BOOT_COUNT);
         Settings.Global.putInt(mContext.getContentResolver(), Settings.Global.BOOT_COUNT, 0);
         when(mUiccController.getUiccSlots()).thenReturn(new UiccSlot[] {mActivatedEsimSlot});
-        mEuiccCardController =
-                new EuiccCardController(mContext, null, mEuiccController, mUiccController);
+        mEuiccCardController = new EuiccCardController(mContext, null, mEuiccController,
+                mUiccController, mFeatureFlags);
 
         mContext.sendBroadcast(new Intent(TelephonyManager.ACTION_SIM_SLOT_STATUS_CHANGED));
         processAllMessages();
@@ -218,8 +218,8 @@ public class EuiccCardControllerTest extends TelephonyTest {
         mSp.edit().remove(KEY_LAST_BOOT_COUNT);
         Settings.Global.putInt(mContext.getContentResolver(), Settings.Global.BOOT_COUNT, 0);
         when(mUiccController.getUiccSlots()).thenReturn(new UiccSlot[] {mNotPresentEsimSlot});
-        mEuiccCardController =
-            new EuiccCardController(mContext, null, mEuiccController, mUiccController);
+        mEuiccCardController = new EuiccCardController(mContext, null, mEuiccController,
+                mUiccController, mFeatureFlags);
 
         mContext.sendBroadcast(new Intent(TelephonyManager.ACTION_SIM_SLOT_STATUS_CHANGED));
         processAllMessages();
@@ -232,8 +232,8 @@ public class EuiccCardControllerTest extends TelephonyTest {
         mSp.edit().putInt(KEY_LAST_BOOT_COUNT, 1).apply();
         Settings.Global.putInt(mContext.getContentResolver(), Settings.Global.BOOT_COUNT, 1);
         when(mUiccController.getUiccSlots()).thenReturn(new UiccSlot[] {mActivatedEsimSlot});
-        mEuiccCardController =
-                new EuiccCardController(mContext, null, mEuiccController, mUiccController);
+        mEuiccCardController = new EuiccCardController(mContext, null, mEuiccController,
+                mUiccController, mFeatureFlags);
 
         mContext.sendBroadcast(new Intent(TelephonyManager.ACTION_SIM_SLOT_STATUS_CHANGED));
         processAllMessages();
@@ -247,8 +247,8 @@ public class EuiccCardControllerTest extends TelephonyTest {
         Settings.Global.putInt(mContext.getContentResolver(), Settings.Global.BOOT_COUNT, 0);
         when(mUiccController.getUiccSlots())
                 .thenReturn(new UiccSlot[] {mActivatedRemovableSlot, mInactivatedEsimSlot});
-        mEuiccCardController =
-                new EuiccCardController(mContext, null, mEuiccController, mUiccController);
+        mEuiccCardController = new EuiccCardController(mContext, null, mEuiccController,
+                mUiccController, mFeatureFlags);
 
         mContext.sendBroadcast(new Intent(TelephonyManager.ACTION_SIM_SLOT_STATUS_CHANGED));
         processAllMessages();
