@@ -4276,9 +4276,10 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     @VisibleForTesting
     public void updateGroupDisabled() {
-        List<SubscriptionInfoInternal> activeSubscriptions = mSubscriptionDatabaseManager
+        List<SubscriptionInfo> activeSubscriptions = mSubscriptionDatabaseManager
                 .getAllSubscriptions().stream()
                 .filter(SubscriptionInfoInternal::isActive)
+                .map(SubscriptionInfoInternal::toSubscriptionInfo)
                 .collect(Collectors.toList());
         for (SubscriptionInfo oppSubInfo : getOpportunisticSubscriptions(
                 mContext.getOpPackageName(), mContext.getFeatureId())) {
