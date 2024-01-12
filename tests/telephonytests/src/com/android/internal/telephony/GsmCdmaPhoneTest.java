@@ -2868,7 +2868,10 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     public void testCellularIdentifierDisclosure_disclosureEventAddedToNotifier() {
+        int phoneId = 0;
+        int subId = 10;
         when(mFeatureFlags.enableIdentifierDisclosureTransparencyUnsolEvents()).thenReturn(true);
+        when(mSubscriptionManagerService.getSubId(phoneId)).thenReturn(subId);
 
         Phone phoneUT =
                 new GsmCdmaPhone(
@@ -2876,7 +2879,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                         mMockCi,
                         mNotifier,
                         true,
-                        0,
+                        phoneId,
                         PhoneConstants.PHONE_TYPE_GSM,
                         mTelephonyComponentFactory,
                         (c, p) -> mImsManager,
@@ -2895,20 +2898,22 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         processAllMessages();
 
         verify(mIdentifierDisclosureNotifier, times(1))
-                .addDisclosure(eq(mPhoneUT.getSubId()), eq(disclosure));
+                .addDisclosure(eq(mContext), eq(subId), eq(disclosure));
     }
 
     @Test
     public void testCellularIdentifierDisclosure_disclosureEventNull() {
+        int phoneId = 4;
+        int subId = 6;
         when(mFeatureFlags.enableIdentifierDisclosureTransparencyUnsolEvents()).thenReturn(true);
-
+        when(mSubscriptionManagerService.getSubId(phoneId)).thenReturn(subId);
         Phone phoneUT =
                 new GsmCdmaPhone(
                         mContext,
                         mMockCi,
                         mNotifier,
                         true,
-                        0,
+                        phoneId,
                         PhoneConstants.PHONE_TYPE_GSM,
                         mTelephonyComponentFactory,
                         (c, p) -> mImsManager,
@@ -2920,7 +2925,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         processAllMessages();
 
         verify(mIdentifierDisclosureNotifier, never())
-                .addDisclosure(eq(mPhoneUT.getSubId()), any(CellularIdentifierDisclosure.class));
+                .addDisclosure(eq(mContext), eq(subId), any(CellularIdentifierDisclosure.class));
     }
 
     @Test
