@@ -134,6 +134,9 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     private FeatureFlags mFeatureFlags;
 
+    static final int FAKE_TRANSFER_STATUS_TRANSFERRED_OUT = 1;
+    static final int FAKE_TRANSFER_STATUS_CONVERTED = 2;
+
     static final SubscriptionInfoInternal FAKE_SUBSCRIPTION_INFO1 =
             new SubscriptionInfoInternal.Builder()
                     .setId(1)
@@ -204,6 +207,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                     .setOnlyNonTerrestrialNetwork(FAKE_SATELLITE_IS_NTN_DISABLED)
                     .setGroupDisabled(false)
                     .setServiceCapabilities(FAKE_SERVICE_CAPABILITIES_1)
+                    .setTransferStatus(FAKE_TRANSFER_STATUS_TRANSFERRED_OUT)
                     .build();
 
     static final SubscriptionInfoInternal FAKE_SUBSCRIPTION_INFO2 =
@@ -276,6 +280,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                     .setOnlyNonTerrestrialNetwork(FAKE_SATELLITE_IS_NTN_ENABLED)
                     .setGroupDisabled(false)
                     .setServiceCapabilities(FAKE_SERVICE_CAPABILITIES_2)
+                    .setTransferStatus(FAKE_TRANSFER_STATUS_CONVERTED)
                     .build();
 
     private SubscriptionDatabaseManager mDatabaseManagerUT;
@@ -436,6 +441,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         doReturn(2).when(mUiccController).convertToPublicCardId(eq(FAKE_ICCID2));
         when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
         when(mFeatureFlags.dataOnlyCellularService()).thenReturn(true);
+        when(mFeatureFlags.supportPsimToEsimConversion()).thenReturn(true);
         mDatabaseManagerUT = new SubscriptionDatabaseManager(mContext, Looper.myLooper(),
                 mFeatureFlags, mSubscriptionDatabaseManagerCallback);
         logd("SubscriptionDatabaseManagerTest -Setup!");
@@ -2238,5 +2244,38 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         assertThat(
                 mDatabaseManagerUT.getSubscriptionInfoInternal(1).getServiceCapabilities())
                 .isEqualTo(FAKE_SERVICE_CAPABILITIES_1);
+    }
+
+    @Test
+    public void testSetTransferStatus() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setTransferStatus(
+                        FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                        FAKE_TRANSFER_STATUS_TRANSFERRED_OUT));
+
+        SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
+        mDatabaseManagerUT.setTransferStatus(FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                FAKE_TRANSFER_STATUS_TRANSFERRED_OUT);
+        processAllMessages();
+
+        subInfo = new SubscriptionInfoInternal.Builder(subInfo)
+                .setTransferStatus(FAKE_TRANSFER_STATUS_TRANSFERRED_OUT)
+                .build();
+        verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(1)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                SimInfo.COLUMN_TRANSFER_STATUS)).isEqualTo(FAKE_TRANSFER_STATUS_TRANSFERRED_OUT);
+
+        mDatabaseManagerUT.setSubscriptionProperty(FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                SimInfo.COLUMN_TRANSFER_STATUS, FAKE_TRANSFER_STATUS_CONVERTED);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(
+                FAKE_SUBSCRIPTION_INFO1.getSubscriptionId()).getTransferStatus())
+                .isEqualTo(FAKE_TRANSFER_STATUS_CONVERTED);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(
+                FAKE_SUBSCRIPTION_INFO1.getSubscriptionId()).getTransferStatus())
+                .isNotEqualTo(FAKE_TRANSFER_STATUS_TRANSFERRED_OUT);
     }
 }
