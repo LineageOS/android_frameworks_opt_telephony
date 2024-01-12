@@ -1,0 +1,8 @@
+package: "com.android.internal.telephony.flags"
+
+flag {
+  name: "simultaneous_calling_indications"
+  namespace: "telephony"
+  description: "APIs that are used to notify simultaneous calling changes to other applications."
+  bug: "297446980"
+}

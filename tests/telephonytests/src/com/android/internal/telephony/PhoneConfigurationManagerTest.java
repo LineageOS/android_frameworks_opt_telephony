@@ -40,6 +40,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.telephony.PhoneCapability;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyRegistryManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -54,6 +55,7 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import java.util.Collections;
 import java.util.HashSet;
 
 @RunWith(AndroidTestingRunner.class)
@@ -69,6 +71,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
     private static final int EVENT_MULTI_SIM_CONFIG_CHANGED = 1;
     PhoneConfigurationManager mPcm;
     private FeatureFlags mFeatureFlags;
+    private TelephonyRegistryManager mMockRegistryManager;
 
     @Before
     public void setUp() throws Exception {
@@ -83,6 +86,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         mCT.mCi = mMockCi0;
         mPhone1.mCi = mMockCi1;
         doReturn(RIL.RADIO_HAL_VERSION_2_1).when(mMockRadioConfigProxy).getVersion();
+        mMockRegistryManager = mContext.getSystemService(TelephonyRegistryManager.class);
     }
 
     @After
@@ -169,6 +173,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testUpdateSimultaneousCallingSupport() throws Exception {
+        doReturn(false).when(mFeatureFlags).simultaneousCallingIndications();
         init(2);
         mPcm.updateSimultaneousCallingSupport();
 
@@ -188,6 +193,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testUpdateSimultaneousCallingSupport_invalidResponse_shouldFail() throws Exception {
+        doReturn(false).when(mFeatureFlags).simultaneousCallingIndications();
         init(2);
         mPcm.updateSimultaneousCallingSupport();
 
@@ -203,6 +209,46 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         // We would expect to DSDA to be disabled and mSlotsSupportingSimultaneousCellularCalls to
         // have been cleared:
         assertTrue(mPcm.getSlotsSupportingSimultaneousCellularCalls().isEmpty());
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateSimultaneousCallingSupportNotifications() throws Exception {
+        // retry simultaneous calling tests, but with notifications enabled this time
+        doReturn(true).when(mFeatureFlags).simultaneousCallingIndications();
+        init(2);
+
+        // Simultaneous calling enabled
+        mPcm.updateSimultaneousCallingSupport();
+        int[] enabledLogicalSlots = {0, 1};
+        ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockRadioConfig).updateSimultaneousCallingSupport(captor.capture());
+        Message msg = captor.getValue();
+        AsyncResult.forMessage(msg, enabledLogicalSlots, null);
+        msg.sendToTarget();
+        processAllMessages();
+
+        HashSet<Integer> expectedSlots = new HashSet<>();
+        for (int i : enabledLogicalSlots) {
+            expectedSlots.add(i);
+        }
+        assertEquals(expectedSlots, mPcm.getSlotsSupportingSimultaneousCellularCalls());
+        verify(mMockRegistryManager).notifySimultaneousCellularCallingSubscriptionsChanged(
+                eq(expectedSlots));
+
+        // Simultaneous Calling Disabled
+        mPcm.updateSimultaneousCallingSupport();
+        int[] disabled = {};
+        captor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockRadioConfig, times(2)).updateSimultaneousCallingSupport(captor.capture());
+        msg = captor.getAllValues().get(1);
+        AsyncResult.forMessage(msg, disabled, null);
+        msg.sendToTarget();
+        processAllMessages();
+
+        assertEquals(Collections.emptySet(), mPcm.getSlotsSupportingSimultaneousCellularCalls());
+        verify(mMockRegistryManager, times(2))
+                .notifySimultaneousCellularCallingSubscriptionsChanged(eq(Collections.emptySet()));
     }
 
     @Test
