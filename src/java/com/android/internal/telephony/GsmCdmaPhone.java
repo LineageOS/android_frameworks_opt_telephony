@@ -5373,7 +5373,11 @@ public class GsmCdmaPhone extends Phone {
         }
         boolean prefEnabled = getNullCipherNotificationsPreferenceEnabled();
 
-        // TODO(b/316592273): Enable / disable in NullCipherNotifier once the class is available.
+        if (prefEnabled) {
+            mNullCipherNotifier.enable();
+        } else {
+            mNullCipherNotifier.disable();
+        }
 
         mCi.setSecurityAlgorithmsUpdatedEnabled(prefEnabled,
                 obtainMessage(EVENT_SET_SECURITY_ALGORITHMS_UPDATED_ENABLED_DONE));
