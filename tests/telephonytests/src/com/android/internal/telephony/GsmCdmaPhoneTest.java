@@ -3019,6 +3019,31 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertTrue(phoneUT.isNullCipherNotificationSupported());
     }
 
+    @Test
+    public void testNullCipherNotification_preferenceEnabled() {
+        when(mFeatureFlags.enableModemCipherTransparency()).thenReturn(true);
+        GsmCdmaPhone phoneUT = makeNewPhoneUT();
+
+        setNullCipherNotificationPreferenceEnabled(true);
+        phoneUT.handleNullCipherNotificationPreferenceChanged();
+
+        verify(mNullCipherNotifier, times(1)).enable();
+        verify(mMockCi, times(1)).setSecurityAlgorithmsUpdatedEnabled(eq(true),
+                any(Message.class));
+    }
+
+    @Test
+    public void testNullCipherNotification_preferenceDisabled() {
+        when(mFeatureFlags.enableModemCipherTransparency()).thenReturn(true);
+        GsmCdmaPhone phoneUT = makeNewPhoneUT();
+
+        setNullCipherNotificationPreferenceEnabled(false);
+        phoneUT.handleNullCipherNotificationPreferenceChanged();
+
+        verify(mNullCipherNotifier, times(1)).disable();
+        verify(mMockCi, times(1)).setSecurityAlgorithmsUpdatedEnabled(eq(false),
+                any(Message.class));
+    }
 
     private void sendRadioAvailableToPhone(GsmCdmaPhone phone) {
         phone.sendMessage(phone.obtainMessage(EVENT_RADIO_AVAILABLE,
@@ -3035,6 +3060,14 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     private void sendRequestSuccessToPhone(GsmCdmaPhone phone, int eventId) {
         phone.sendMessage(phone.obtainMessage(eventId, new AsyncResult(null, null, null)));
         processAllMessages();
+    }
+
+    private void setNullCipherNotificationPreferenceEnabled(boolean enabled) {
+        SharedPreferences sharedPreferences =
+                PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(Phone.PREF_NULL_CIPHER_NOTIFICATIONS_ENABLED, enabled);
+        editor.apply();
     }
 
     private GsmCdmaPhone makeNewPhoneUT() {
