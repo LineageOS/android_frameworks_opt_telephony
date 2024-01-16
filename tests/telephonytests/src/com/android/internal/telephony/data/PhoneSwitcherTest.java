@@ -26,8 +26,10 @@ import static android.telephony.TelephonyManager.SIM_STATE_LOADED;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
+
 import static com.android.internal.telephony.data.AutoDataSwitchController.EVALUATION_REASON_VOICE_CALL_END;
 import static com.android.internal.telephony.data.PhoneSwitcher.ECBM_DEFAULT_DATA_SWITCH_BASE_TIME_MS;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -1390,12 +1392,21 @@ public class PhoneSwitcherTest extends TelephonyTest {
         // Switch to primary before a primary is selected/inactive.
         setDefaultDataSubId(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         mPhoneSwitcherUT.trySetOpportunisticDataSubscription(
-                SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, false, mSetOpptDataCallback1);
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID, false, mSetOpptDataCallback1);
         processAllMessages();
 
         assertEquals(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                 mPhoneSwitcherUT.getAutoSelectedDataSubId());
         verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_INACTIVE_SUBSCRIPTION);
+
+        // Verify that the switch to default sub is successful
+        mPhoneSwitcherUT.trySetOpportunisticDataSubscription(
+                SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, false, mSetOpptDataCallback1);
+        processAllMessages();
+
+        assertEquals(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                mPhoneSwitcherUT.getAutoSelectedDataSubId());
+        verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_SUCCESS);
 
         // once the primary is selected, it becomes the active sub.
         setDefaultDataSubId(2);
