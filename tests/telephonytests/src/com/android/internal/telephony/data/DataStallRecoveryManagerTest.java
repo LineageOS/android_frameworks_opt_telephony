@@ -43,6 +43,7 @@ import android.testing.TestableLooper;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
+import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.data.DataStallRecoveryManager.DataStallRecoveryManagerCallback;
 
 import org.junit.After;
@@ -143,6 +144,17 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         DataNetworkControllerCallback dataNetworkControllerCallback =
                 dataNetworkControllerCallbackCaptor.getAllValues().get(0);
         dataNetworkControllerCallback.onInternetDataNetworkValidationStatusChanged(status);
+    }
+
+    private void sendDataEabledCallback(boolean isEnabled) {
+        ArgumentCaptor<DataSettingsManagerCallback> dataSettingsManagerCallbackCaptor =
+                ArgumentCaptor.forClass(DataSettingsManagerCallback.class);
+        verify(mDataSettingsManager).registerCallback(dataSettingsManagerCallbackCaptor.capture());
+
+        // Data enabled
+        doReturn(isEnabled).when(mDataSettingsManager).isDataEnabled();
+        dataSettingsManagerCallbackCaptor.getValue().onDataEnabledChanged(isEnabled,
+                TelephonyManager.DATA_ENABLED_REASON_USER, "");
     }
 
     private void sendOnInternetDataNetworkCallback(boolean isConnected) {
@@ -257,7 +269,8 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         moveTimeForward(15000);
         processAllMessages();
 
-        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(3);
+        // should not change the recovery action due to there is an active call.
+        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(1);
     }
 
     @Test
@@ -509,5 +522,60 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         processAllFutureMessages();
         // Check if predict waiting millis is 0
         assertThat(field.get(mDataStallRecoveryManager)).isEqualTo(0L);
+    }
+
+    @Test
+    public void testRecoveryActionAfterDataEnabled() throws Exception {
+        sendDataEabledCallback(true);
+        sendOnInternetDataNetworkCallback(true);
+        sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_VALID);
+        mDataStallRecoveryManager.setRecoveryAction(0);
+        doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
+        doReturn(3).when(mSignalStrength).getLevel();
+        doReturn(mSignalStrength).when(mPhone).getSignalStrength();
+        logd("Sending validation failed callback");
+
+        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(0);
+        sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_NOT_VALID);
+        processAllMessages();
+        moveTimeForward(101);
+        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(1);
+
+        // test mobile data off/on
+        sendDataEabledCallback(false);
+        sendDataEabledCallback(true);
+
+        // recovery action will jump to next action if user doing the mobile data off/on.
+        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(3);
+    }
+
+    @Test
+    public void testJumpToRecoveryActionRadioRestart() throws Exception {
+        sendDataEabledCallback(true);
+        sendOnInternetDataNetworkCallback(true);
+        sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_VALID);
+        mDataStallRecoveryManager.setRecoveryAction(0);
+
+        doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
+        doReturn(3).when(mSignalStrength).getLevel();
+        doReturn(mSignalStrength).when(mPhone).getSignalStrength();
+        doReturn(TelephonyManager.RADIO_POWER_ON).when(mPhone).getRadioPowerState();
+        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(0);
+
+        sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_NOT_VALID);
+        moveTimeForward(200);
+        processAllMessages();
+        moveTimeForward(200);
+        mDataStallRecoveryManager.sendMessageDelayed(
+                mDataStallRecoveryManager.obtainMessage(3), 1000);
+        processAllMessages();
+        sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_NOT_VALID);
+        moveTimeForward(200);
+        sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_NOT_VALID);
+        processAllMessages();
+        moveTimeForward(200);
+
+        // recovery action will jump to modem reset action if user doing the radio restart.
+        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(4);
     }
 }
