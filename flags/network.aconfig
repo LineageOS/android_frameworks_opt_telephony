@@ -31,6 +31,13 @@ flag {
 flag {
   name: "enable_modem_cipher_transparency"
   namespace: "telephony"
+  description: "Guards APIs for enabling and disabling modem cipher transparency."
+  bug: "283336425"
+}
+
+flag {
+  name: "enable_modem_cipher_transparency_unsol_events"
+  namespace: "telephony"
   description: "Allows the framework to register for SecurityAlgorithmChanged events and emit notifications to the user when a device is using null ciphers."
   bug: "283336425"
 }
