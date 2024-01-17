@@ -138,14 +138,6 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     private static final long MIN_COOLDOWN_MILLIS =
             DBG ? 10L * MILLIS_PER_SECOND : 23L * MILLIS_PER_HOUR;
 
-    /**
-     * Sets atom pull cool down to 4 minutes for userdebug build.
-     *
-     * <p>Applies to certain atoms: CellularServiceState.
-     */
-    private static final long CELL_SERVICE_MIN_COOLDOWN_MILLIS =
-            DBG ? 10L * MILLIS_PER_SECOND :
-                    IS_DEBUGGABLE ? 4L * MILLIS_PER_MINUTE : 23L * MILLIS_PER_HOUR;
 
     /**
      * Buckets with less than these many calls will be dropped.
@@ -166,6 +158,13 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     private static final long CELL_SERVICE_DURATION_BUCKET_MILLIS =
             DBG || IS_DEBUGGABLE ? 2L * MILLIS_PER_SECOND : 5L * MILLIS_PER_MINUTE;
 
+    /**
+     * Sets atom pull cool down to 4 minutes for userdebug build, 5 hours for user build.
+     *
+     * <p>Applies to certain atoms: CellularServiceState, DataCallSession,
+     * ImsRegistrationTermination.
+     */
+    private final long mPowerCorrelatedMinCooldownMillis;
     private final PersistAtomsStorage mStorage;
     private final DeviceStateHelper mDeviceStateHelper;
     private final StatsManager mStatsManager;
@@ -234,6 +233,9 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
 
         mAirplaneModeStats = new AirplaneModeStats(context);
         mDefaultNetworkMonitor = new DefaultNetworkMonitor(context, featureFlags);
+        mPowerCorrelatedMinCooldownMillis = DBG ? 10L * MILLIS_PER_SECOND :
+                IS_DEBUGGABLE ? 4L * MILLIS_PER_MINUTE : (long) context.getResources().getInteger(
+                com.android.internal.R.integer.config_metrics_pull_cooldown_millis);
     }
 
     /**
@@ -516,7 +518,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     private int pullDataCallSession(List<StatsEvent> data) {
         // Include ongoing data call segments
         concludeDataCallSessionStats();
-        DataCallSession[] dataCallSessions = mStorage.getDataCallSessions(MIN_COOLDOWN_MILLIS);
+        DataCallSession[] dataCallSessions = mStorage.getDataCallSessions(
+                mPowerCorrelatedMinCooldownMillis);
         if (dataCallSessions != null) {
             Arrays.stream(dataCallSessions)
                     .forEach(dataCall -> data.add(buildStatsEvent(dataCall)));
@@ -544,8 +547,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     private int pullCellularServiceState(List<StatsEvent> data) {
         // Include the latest durations
         concludeServiceStateStats();
-        CellularServiceState[] persistAtoms =
-                mStorage.getCellularServiceStates(CELL_SERVICE_MIN_COOLDOWN_MILLIS);
+        CellularServiceState[] persistAtoms = mStorage.getCellularServiceStates(
+                mPowerCorrelatedMinCooldownMillis);
         if (persistAtoms != null) {
             // list is already shuffled when instances were inserted
             Arrays.stream(persistAtoms)
@@ -573,8 +576,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     }
 
     private int pullImsRegistrationTermination(List<StatsEvent> data) {
-        ImsRegistrationTermination[] persistAtoms =
-                mStorage.getImsRegistrationTerminations(MIN_COOLDOWN_MILLIS);
+        ImsRegistrationTermination[] persistAtoms = mStorage.getImsRegistrationTerminations(
+                mPowerCorrelatedMinCooldownMillis);
         if (persistAtoms != null) {
             // list is already shuffled when instances were inserted
             Arrays.stream(persistAtoms)
