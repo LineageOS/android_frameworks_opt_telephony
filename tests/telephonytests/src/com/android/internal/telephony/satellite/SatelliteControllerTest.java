@@ -34,6 +34,7 @@ import static android.telephony.satellite.SatelliteManager.NT_RADIO_TECHNOLOGY_E
 import static android.telephony.satellite.SatelliteManager.NT_RADIO_TECHNOLOGY_NB_IOT_NTN;
 import static android.telephony.satellite.SatelliteManager.NT_RADIO_TECHNOLOGY_NR_NTN;
 import static android.telephony.satellite.SatelliteManager.NT_RADIO_TECHNOLOGY_PROPRIETARY;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_COMMUNICATION_RESTRICTION_REASON_ENTITLEMENT;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_COMMUNICATION_RESTRICTION_REASON_GEOLOCATION;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED;
@@ -2550,6 +2551,58 @@ public class SatelliteControllerTest extends TelephonyTest {
         processAllMessages();
         assertTrue(waitForForEvents(
                 semaphore, 0, "testRegisterForSatelliteCapabilitiesChanged"));
+    }
+
+    @Test
+    public void testSatelliteCommunicationRestrictionForEntitlement() throws Exception {
+        when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(true);
+
+        mCarrierConfigBundle.putBoolean(CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL,
+                true);
+        replaceInstance(SatelliteController.class, "mCarrierSatelliteEnabled",
+                mSatelliteControllerUT, false);
+
+        mIIntegerConsumerResults.clear();
+        reset(mMockSatelliteModemInterface);
+        setUpResponseForRequestSetSatelliteEnabledForCarrier(true, SATELLITE_RESULT_SUCCESS);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        Map<Integer, Set<Integer>> satelliteAttachRestrictionForCarrierArray = new HashMap<>();
+        satelliteAttachRestrictionForCarrierArray.put(SUB_ID, new HashSet<>());
+        satelliteAttachRestrictionForCarrierArray.get(SUB_ID).add(
+                SATELLITE_COMMUNICATION_RESTRICTION_REASON_ENTITLEMENT);
+        replaceInstance(SatelliteController.class, "mSatelliteAttachRestrictionForCarrierArray",
+                mSatelliteControllerUT, satelliteAttachRestrictionForCarrierArray);
+
+        // Verify call the requestSetSatelliteEnabledForCarrier to enable the satellite when
+        // satellite service is enabled by entitlement server.
+        mSatelliteControllerUT.updateSatelliteEntitlementStatus(SUB_ID, true, new ArrayList<>(),
+                mIIntegerConsumer);
+        processAllMessages();
+
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verify(mMockSatelliteModemInterface, times(1))
+                .requestSetSatelliteEnabledForCarrier(anyInt(), eq(true), any(Message.class));
+
+        // Verify call the requestSetSatelliteEnabledForCarrier to disable the satellite when
+        // satellite service is disabled by entitlement server.
+        mIIntegerConsumerResults.clear();
+        reset(mMockSatelliteModemInterface);
+        Map<Integer, Boolean> enabledForCarrierArrayPerSub = new HashMap<>();
+        enabledForCarrierArrayPerSub.put(SUB_ID, true);
+        replaceInstance(SatelliteController.class, "mIsSatelliteAttachEnabledForCarrierArrayPerSub",
+                mSatelliteControllerUT, enabledForCarrierArrayPerSub);
+        doReturn(mIsSatelliteServiceSupported)
+                .when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForRequestSetSatelliteEnabledForCarrier(false, SATELLITE_RESULT_SUCCESS);
+        mSatelliteControllerUT.updateSatelliteEntitlementStatus(SUB_ID, false, new ArrayList<>(),
+                mIIntegerConsumer);
+        processAllMessages();
+
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verify(mMockSatelliteModemInterface, times(1))
+                .requestSetSatelliteEnabledForCarrier(anyInt(), eq(false), any(Message.class));
     }
 
     private void resetSatelliteControllerUTEnabledState() {
