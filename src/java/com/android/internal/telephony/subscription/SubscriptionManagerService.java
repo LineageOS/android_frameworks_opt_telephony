@@ -1969,10 +1969,8 @@ public class SubscriptionManagerService extends ISub.Stub {
 
         enforceTelephonyFeatureWithException(callingPackage, "getActiveSubscriptionInfoList");
 
-        if (isForAllProfiles && !hasAcrossAllUsersPermission()) {
-            //TODO(b/308809058 to determine whether the permission enforcement is needed)
-            loge("getActiveSubscriptionInfoList: "
-                    + callingPackage + " has no appropriate permission.");
+        if (isForAllProfiles) {
+            enforcePermissionAccessAllUserProfiles();
         }
         return getSubscriptionInfoStreamAsUser(isForAllProfiles
                 ? UserHandle.ALL : BINDER_WRAPPER.getCallingUserHandle())
@@ -2013,10 +2011,8 @@ public class SubscriptionManagerService extends ISub.Stub {
             throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
                     + "carrier privilege");
         }
-        if (isForAllProfiles && !hasAcrossAllUsersPermission()) {
-            //TODO(b/308809058 to determine whether the permission enforcement is needed)
-            loge("getActiveSubInfoCount: "
-                    + callingPackage + " has no appropriate permission.");
+        if (isForAllProfiles) {
+            enforcePermissionAccessAllUserProfiles();
         }
 
         enforceTelephonyFeatureWithException(callingPackage, "getActiveSubInfoCount");
@@ -2025,9 +2021,11 @@ public class SubscriptionManagerService extends ISub.Stub {
                 ? UserHandle.ALL : BINDER_WRAPPER.getCallingUserHandle()).length;
     }
 
-    /**@return {@code true} if the caller is permitted to see all subscriptions. */
-    private boolean hasAcrossAllUsersPermission() {
-        return hasPermissions(Manifest.permission.INTERACT_ACROSS_USERS,
+    /** @throws SecurityException if caller doesn't have one of the requested permissions. */
+    private void enforcePermissionAccessAllUserProfiles() {
+        if (!mFeatureFlags.enforceSubscriptionUserFilter()) return;
+        enforcePermissions("To access across profiles",
+                Manifest.permission.INTERACT_ACROSS_USERS,
                 Manifest.permission.INTERACT_ACROSS_USERS_FULL,
                 Manifest.permission.INTERACT_ACROSS_PROFILES);
     }
