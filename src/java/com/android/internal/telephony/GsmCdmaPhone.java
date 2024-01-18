@@ -538,9 +538,11 @@ public class GsmCdmaPhone extends Phone {
                     this, EVENT_CELL_IDENTIFIER_DISCLOSURE, null);
         }
 
-        if (mFeatureFlags.enableModemCipherTransparency()) {
-            logi("enable_modem_cipher_transparency is on. Registering for security algorithm "
-                    + "updates from phone " + getPhoneId());
+        if (mFeatureFlags.enableModemCipherTransparencyUnsolEvents()) {
+            logi(
+                    "enable_modem_cipher_transparency_unsol_events is on. Registering for security "
+                            + "algorithm updates from phone "
+                            + getPhoneId());
             mNullCipherNotifier =
                     mTelephonyComponentFactory
                             .inject(NullCipherNotifier.class.getName())
@@ -3720,7 +3722,8 @@ public class GsmCdmaPhone extends Phone {
 
             case EVENT_SECURITY_ALGORITHM_UPDATE:
                 logd("EVENT_SECURITY_ALGORITHM_UPDATE phoneId = " + getPhoneId());
-                if (mFeatureFlags.enableModemCipherTransparency() && mNullCipherNotifier != null) {
+                if (mFeatureFlags.enableModemCipherTransparencyUnsolEvents()
+                        && mNullCipherNotifier != null) {
                     ar = (AsyncResult) msg.obj;
                     SecurityAlgorithmUpdate update = (SecurityAlgorithmUpdate) ar.result;
                     mNullCipherNotifier.onSecurityAlgorithmUpdate(getPhoneId(), update);
@@ -5373,10 +5376,18 @@ public class GsmCdmaPhone extends Phone {
         }
         boolean prefEnabled = getNullCipherNotificationsPreferenceEnabled();
 
-        if (prefEnabled) {
-            mNullCipherNotifier.enable();
+        // The notifier is tied to handling unsolicited updates from the modem, not the
+        // enable/disable API.
+        if (mFeatureFlags.enableModemCipherTransparencyUnsolEvents()) {
+            if (prefEnabled) {
+                mNullCipherNotifier.enable();
+            } else {
+                mNullCipherNotifier.disable();
+            }
         } else {
-            mNullCipherNotifier.disable();
+            logi(
+                    "Not toggling enable state for cipher notifier. Feature flag "
+                            + "enable_modem_cipher_transparency_unsol_events is disabled.");
         }
 
         mCi.setSecurityAlgorithmsUpdatedEnabled(prefEnabled,
