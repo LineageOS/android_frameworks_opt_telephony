@@ -2456,6 +2456,8 @@ public class GsmCdmaPhone extends Phone {
     private void updateCarrierN1ModeSupported(@NonNull PersistableBundle b) {
         if (!mFeatureFlags.enableCarrierConfigN1Control()) return;
 
+        if (!CarrierConfigManager.isConfigForIdentifiedCarrier(b)) return;
+
         final int[] supportedNrModes = b.getIntArray(
                 CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY);
 
