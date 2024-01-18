@@ -2957,7 +2957,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(subInfo.getNativeAccessRules()).isEqualTo(new byte[]{});
     }
 
-
     @Test
     public void testGetActiveSubscriptionInfoListNoSecurityException() {
         // Grant MODIFY_PHONE_STATE permission for insertion.
@@ -2982,5 +2981,18 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         // Should get an empty list if the application is not allowed to perform it.
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
                 CALLING_PACKAGE, CALLING_FEATURE, true)).isEmpty();
+    }
+
+    @Test
+    public void testUpdateGroupDisabled() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscription(new SubscriptionInfoInternal
+                .Builder(FAKE_SUBSCRIPTION_INFO2).setGroupUuid(FAKE_UUID1).build());
+
+        mSubscriptionManagerServiceUT.updateGroupDisabled();
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(2);
+        assertThat(subInfo.isGroupDisabled()).isFalse();
     }
 }

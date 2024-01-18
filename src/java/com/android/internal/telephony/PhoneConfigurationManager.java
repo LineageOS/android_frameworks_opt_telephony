@@ -87,6 +87,7 @@ public class PhoneConfigurationManager {
     /** Feature flags */
     @NonNull
     private final FeatureFlags mFeatureFlags;
+    private final DefaultPhoneNotifier mNotifier;
     /**
      * True if 'Virtual DSDA' i.e., in-call IMS connectivity on both subs with only single logical
      * modem, is enabled.
@@ -128,6 +129,7 @@ public class PhoneConfigurationManager {
         mPhoneStatusMap = new HashMap<>();
         mVirtualDsdaEnabled = DeviceConfig.getBoolean(
                 DeviceConfig.NAMESPACE_TELEPHONY, KEY_ENABLE_VIRTUAL_DSDA, false);
+        mNotifier = new DefaultPhoneNotifier(mContext, mFeatureFlags);
         DeviceConfig.addOnPropertiesChangedListener(
                 DeviceConfig.NAMESPACE_TELEPHONY, Runnable::run,
                 properties -> {
@@ -294,6 +296,11 @@ public class PhoneConfigurationManager {
                     } else {
                         log(msg.what + " failure. Not getting logical slots that support "
                                 + "simultaneous calling." + ar.exception);
+                        mSlotsSupportingSimultaneousCellularCalls.clear();
+                    }
+                    if (mFeatureFlags.simultaneousCallingIndications()) {
+                        mNotifier.notifySimultaneousCellularCallingSubscriptionsChanged(
+                                mSlotsSupportingSimultaneousCellularCalls);
                     }
                     break;
                 default:
@@ -449,9 +456,7 @@ public class PhoneConfigurationManager {
     }
 
     private void notifyCapabilityChanged() {
-        PhoneNotifier notifier = new DefaultPhoneNotifier(mContext, mFeatureFlags);
-
-        notifier.notifyPhoneCapabilityChanged(mStaticCapability);
+        mNotifier.notifyPhoneCapabilityChanged(mStaticCapability);
     }
 
     /**

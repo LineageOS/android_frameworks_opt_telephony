@@ -2139,6 +2139,8 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     @Override
     public void requestEmbeddedSubscriptionInfoListRefresh(int cardId) {
+        enforcePermissions("requestEmbeddedSubscriptionInfoListRefresh",
+                Manifest.permission.WRITE_EMBEDDED_SUBSCRIPTIONS);
         updateEmbeddedSubscriptions(List.of(cardId), null);
     }
 
@@ -4276,9 +4278,10 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     @VisibleForTesting
     public void updateGroupDisabled() {
-        List<SubscriptionInfoInternal> activeSubscriptions = mSubscriptionDatabaseManager
+        List<SubscriptionInfo> activeSubscriptions = mSubscriptionDatabaseManager
                 .getAllSubscriptions().stream()
                 .filter(SubscriptionInfoInternal::isActive)
+                .map(SubscriptionInfoInternal::toSubscriptionInfo)
                 .collect(Collectors.toList());
         for (SubscriptionInfo oppSubInfo : getOpportunisticSubscriptions(
                 mContext.getOpPackageName(), mContext.getFeatureId())) {

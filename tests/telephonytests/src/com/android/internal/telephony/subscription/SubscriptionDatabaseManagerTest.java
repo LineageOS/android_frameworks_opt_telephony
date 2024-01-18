@@ -2018,6 +2018,36 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
     }
 
     @Test
+    public void testSetGroupDisabled() throws Exception {
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setGroupDisabled(
+                        FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(), true));
+
+        insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
+        mDatabaseManagerUT.setGroupDisabled(FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(), true);
+        processAllMessages();
+
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(
+            FAKE_SUBSCRIPTION_INFO1.getSubscriptionId()).isGroupDisabled()).isTrue();
+
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+        Mockito.clearInvocations(mSubscriptionDatabaseManagerCallback);
+
+        mDatabaseManagerUT.setGroupDisabled(FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(), true);
+        processAllMessages();
+        verify(mSubscriptionDatabaseManagerCallback, never()).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(
+            FAKE_SUBSCRIPTION_INFO1.getSubscriptionId()).isGroupDisabled()).isTrue();
+
+        mDatabaseManagerUT.setGroupDisabled(FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(), false);
+        processAllMessages();
+        verify(mSubscriptionDatabaseManagerCallback, times(1)).onSubscriptionChanged(eq(1));
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(
+                FAKE_SUBSCRIPTION_INFO1.getSubscriptionId()).isGroupDisabled()).isFalse();
+    }
+
+    @Test
     public void testUpdateSatelliteNtnWithFeatureDisabled() throws Exception {
         assertThrows(IllegalArgumentException.class,
                 () -> mDatabaseManagerUT.setSatelliteAttachEnabledForCarrier(

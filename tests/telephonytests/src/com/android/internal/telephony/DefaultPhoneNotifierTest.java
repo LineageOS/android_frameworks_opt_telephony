@@ -33,6 +33,7 @@ import android.telephony.PreciseDisconnectCause;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
+import android.util.ArraySet;
 
 import androidx.test.filters.SmallTest;
 
@@ -379,5 +380,16 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
         assertEquals(2, cellLocationCapture.getValue().asCellLocation().getLac());
         assertEquals(3, cellLocationCapture.getValue().asCellLocation().getCid());
         assertEquals(-1, cellLocationCapture.getValue().asCellLocation().getPsc());
+    }
+
+    @Test
+    @SmallTest
+    public void testSimultaneousCellularCallingSubscriptionsChanged() {
+        ArraySet<Integer> subs = new ArraySet<>(2);
+        subs.add(0);
+        subs.add(1);
+        mDefaultPhoneNotifierUT.notifySimultaneousCellularCallingSubscriptionsChanged(subs);
+        verify(mTelephonyRegistryManager).notifySimultaneousCellularCallingSubscriptionsChanged(
+                eq(subs));
     }
 }

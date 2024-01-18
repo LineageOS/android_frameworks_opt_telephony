@@ -34,6 +34,8 @@ public class NullCipherNotifier {
     private static final String TAG = "NullCipherNotifier";
     private static NullCipherNotifier sInstance;
 
+    private boolean mEnabled = false;
+
     /**
      * Gets a singleton NullCipherNotifier.
      */
@@ -54,5 +56,29 @@ public class NullCipherNotifier {
         // for tracking disclosures and emitting notifications will flow
         // from here.
         Rlog.d(TAG, "Security algorithm update: phoneId = " + phoneId + " " + update);
+    }
+
+    /**
+     * Enables null cipher notification; {@code onSecurityAlgorithmUpdate} will start handling
+     * security algorithm updates and send notifications to the user when required.
+     */
+    public void enable() {
+        Rlog.d(TAG, "enabled");
+        mEnabled = true;
+    }
+
+    /**
+     * Clear all internal state and prevent further notifications until re-enabled. This can be
+     * used in response to a user disabling the feature for null cipher notifications. If
+     * {@code onSecurityAlgorithmUpdate} is called while in a disabled state, security algorithm
+     * updates will be dropped.
+     */
+    public void disable() {
+        Rlog.d(TAG, "disabled");
+        mEnabled = false;
+    }
+
+    public boolean isEnabled() {
+        return mEnabled;
     }
 }
