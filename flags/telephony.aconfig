@@ -13,3 +13,10 @@ flag {
     description: "This flag controls telephony feature flags mapping for public APIs and CTS."
     bug:"297989574"
 }
+
+flag {
+    name: "prevent_system_server_and_phone_deadlock"
+    namespace: "telephony"
+    description: "This flag controls the order of the binder to prevent deadlock in system_server"
+    bug: "315973270"
+}
