@@ -318,8 +318,22 @@ public class SatelliteController extends Handler {
     private int mEnforcedEmergencyCallToSatelliteHandoverType =
             INVALID_EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE;
     private int mDelayInSendingEventDisplayEmergencyMessage = 0;
-    private boolean mCarrierSatelliteEnabled;
     @NonNull private SharedPreferences mSharedPreferences = null;
+
+    /**
+     * Key : Subscription ID, Value: {@code true} if the EntitlementStatus is enabled,
+     * {@code false} otherwise.
+     */
+    @GuardedBy("mSupportedSatelliteServicesLock")
+    private SparseBooleanArray mSatelliteEntitlementStatusPerCarrier = new SparseBooleanArray();
+    /** Key Subscription ID, value : PLMN allowed list from entitlement. */
+    @GuardedBy("mSupportedSatelliteServicesLock")
+    private SparseArray<List<String>> mEntitlementPlmnListPerCarrier = new SparseArray<>();
+    /**
+     * Key : Subscription ID, Value : If there is an entitlementPlmnList, use it. Otherwise, use the
+     * carrierPlmnList. */
+    @GuardedBy("mSupportedSatelliteServicesLock")
+    private final SparseArray<List<String>> mMergedPlmnListPerCarrier = new SparseArray<>();
 
     /**
      * @return The singleton instance of SatelliteController.
@@ -2323,11 +2337,7 @@ public class SatelliteController extends Handler {
             return new ArrayList<>();
         }
         synchronized (mSupportedSatelliteServicesLock) {
-            if (mSatelliteServicesSupportedByCarriers.containsKey(subId)) {
-                return new ArrayList<>(mSatelliteServicesSupportedByCarriers.get(subId).keySet());
-            } else {
-                return new ArrayList<>();
-            }
+            return mMergedPlmnListPerCarrier.get(subId, new ArrayList<>()).stream().toList();
         }
     }
 
@@ -2469,20 +2479,19 @@ public class SatelliteController extends Handler {
     }
 
     /**
-     * Update the satellite EntitlementStatus and PlmnAllowedList after receiving the HTTP response
-     * from the satellite entitlement server.
-     * If the satellite service is enabled then trigger internal satellite enabled for carrier,
-     * otherwise trigger internal satellite disabled for carrier.
+     * To use the satellite service, update the EntitlementStatus and the PlmnAllowedList after
+     * receiving the satellite configuration from the entitlement server. If satellite
+     * entitlement is enabled, enable satellite for the carrier. Otherwise, disable satellite.
+     *
+     * @param subId              subId
+     * @param entitlementEnabled {@code true} Satellite service enabled
+     * @param allowedPlmnList    plmn allowed list to use the satellite service
+     * @param callback           callback for accept
      */
-    public void updateSatelliteEntitlementStatus(int subId, boolean satelliteEnabled,
-            List<String> plmnAllowed, IIntegerConsumer callback) {
+    public void onSatelliteEntitlementStatusUpdated(int subId, boolean entitlementEnabled,
+            List<String> allowedPlmnList, @Nullable IIntegerConsumer callback) {
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
             return;
-        }
-
-        if (mCarrierSatelliteEnabled != satelliteEnabled) {
-            logd("update the carrier satellite enabled to " + satelliteEnabled);
-            mCarrierSatelliteEnabled = satelliteEnabled;
         }
 
         if (callback == null) {
@@ -2494,12 +2503,25 @@ public class SatelliteController extends Handler {
             };
         }
 
-        if (mCarrierSatelliteEnabled) {
-            removeSatelliteAttachRestrictionForCarrier(subId,
-                    SATELLITE_COMMUNICATION_RESTRICTION_REASON_ENTITLEMENT, callback);
-        } else {
-            addSatelliteAttachRestrictionForCarrier(subId,
-                    SATELLITE_COMMUNICATION_RESTRICTION_REASON_ENTITLEMENT, callback);
+        synchronized (mSupportedSatelliteServicesLock) {
+            if (mSatelliteEntitlementStatusPerCarrier.get(subId, false) != entitlementEnabled) {
+                logd("update the carrier satellite enabled to " + entitlementEnabled);
+                mSatelliteEntitlementStatusPerCarrier.put(subId, entitlementEnabled);
+            }
+            mMergedPlmnListPerCarrier.remove(subId);
+
+            mEntitlementPlmnListPerCarrier.put(subId, allowedPlmnList);
+            updatePlmnListPerCarrier(subId);
+            configureSatellitePlmnForCarrier(subId);
+
+            // TODO b/322143408 store entitlement status in telephony db.
+            if (mSatelliteEntitlementStatusPerCarrier.get(subId, false)) {
+                removeSatelliteAttachRestrictionForCarrier(subId,
+                        SATELLITE_COMMUNICATION_RESTRICTION_REASON_ENTITLEMENT, callback);
+            } else {
+                addSatelliteAttachRestrictionForCarrier(subId,
+                        SATELLITE_COMMUNICATION_RESTRICTION_REASON_ENTITLEMENT, callback);
+            }
         }
     }
 
@@ -3008,13 +3030,8 @@ public class SatelliteController extends Handler {
             return;
         }
         synchronized (mSupportedSatelliteServicesLock) {
-            List<String> carrierPlmnList;
-            if (mSatelliteServicesSupportedByCarriers.containsKey(subId)) {
-                carrierPlmnList =
-                        mSatelliteServicesSupportedByCarriers.get(subId).keySet().stream().toList();
-            } else {
-                carrierPlmnList = new ArrayList<>();
-            }
+            List<String> carrierPlmnList = mMergedPlmnListPerCarrier.get(subId,
+                    new ArrayList<>()).stream().toList();
             int slotId = SubscriptionManager.getSlotIndex(subId);
             mSatelliteModemInterface.setSatellitePlmn(slotId, carrierPlmnList,
                     SatelliteServiceUtils.mergeStrLists(
@@ -3037,6 +3054,7 @@ public class SatelliteController extends Handler {
 
         synchronized (mSupportedSatelliteServicesLock) {
             mSatelliteServicesSupportedByCarriers.clear();
+            mMergedPlmnListPerCarrier.clear();
             int[] activeSubIds = mSubscriptionManagerService.getActiveSubIdList(true);
             if (activeSubIds != null) {
                 for (int subId : activeSubIds) {
@@ -3049,10 +3067,37 @@ public class SatelliteController extends Handler {
         }
     }
 
+    /**
+     * If the entitlementPlmnList exist then used it.
+     * Otherwise, If the carrierPlmnList exist then used it.
+     */
+    private void updatePlmnListPerCarrier(int subId) {
+        synchronized (mSupportedSatelliteServicesLock) {
+            List<String> carrierPlmnList, entitlementPlmnList;
+            entitlementPlmnList = mEntitlementPlmnListPerCarrier.get(subId,
+                    new ArrayList<>()).stream().toList();
+            if (!entitlementPlmnList.isEmpty()) {
+                mMergedPlmnListPerCarrier.put(subId, entitlementPlmnList);
+                logd("update it using entitlementPlmnList=" + entitlementPlmnList);
+                return;
+            }
+
+            if (mSatelliteServicesSupportedByCarriers.containsKey(subId)) {
+                carrierPlmnList =
+                        mSatelliteServicesSupportedByCarriers.get(subId).keySet().stream().toList();
+            } else {
+                carrierPlmnList = new ArrayList<>();
+            }
+            mMergedPlmnListPerCarrier.put(subId, carrierPlmnList);
+            logd("update it using carrierPlmnList=" + carrierPlmnList);
+        }
+    }
+
     private void updateSupportedSatelliteServices(int subId) {
         synchronized (mSupportedSatelliteServicesLock) {
             mSatelliteServicesSupportedByCarriers.put(
                     subId, readSupportedSatelliteServicesFromCarrierConfig(subId));
+            updatePlmnListPerCarrier(subId);
         }
     }
 
@@ -3103,6 +3148,8 @@ public class SatelliteController extends Handler {
         }
 
         updateCarrierConfig(subId);
+        // TODO b/322143408 read the telephony db to get the entitlementStatus and update the
+        //  restriction
         updateSupportedSatelliteServicesForActiveSubscriptions();
         configureSatellitePlmnForCarrier(subId);
 
