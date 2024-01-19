@@ -1658,7 +1658,7 @@ public class SatelliteControllerTest extends TelephonyTest {
     @Test
     public void testSupportedSatelliteServices() {
         when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(false);
-        List<String> satellitePlmnList = mSatelliteControllerUT.getAllSatellitePlmnsForCarrier(
+        List<String> satellitePlmnList = mSatelliteControllerUT.getSatellitePlmnsForCarrier(
                 SUB_ID);
         assertEquals(EMPTY_STRING_ARRAY.length, satellitePlmnList.size());
         List<Integer> supportedSatelliteServices =
@@ -1682,7 +1682,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         TestSatelliteController testSatelliteController =
                 new TestSatelliteController(mContext, Looper.myLooper(), mFeatureFlags);
 
-        satellitePlmnList = testSatelliteController.getAllSatellitePlmnsForCarrier(SUB_ID);
+        satellitePlmnList = testSatelliteController.getSatellitePlmnsForCarrier(SUB_ID);
         assertTrue(satellitePlmnList.isEmpty());
         supportedSatelliteServices =
                 testSatelliteController.getSupportedSatelliteServices(SUB_ID, "00101");
@@ -1714,7 +1714,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         }
         processAllMessages();
 
-        satellitePlmnList = testSatelliteController.getAllSatellitePlmnsForCarrier(SUB_ID);
+        satellitePlmnList = testSatelliteController.getSatellitePlmnsForCarrier(SUB_ID);
         assertTrue(Arrays.equals(
                 expectedSupportedSatellitePlmns, satellitePlmnList.stream().toArray()));
         supportedSatelliteServices =
@@ -1741,7 +1741,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         }
         processAllMessages();
 
-        satellitePlmnList = testSatelliteController.getAllSatellitePlmnsForCarrier(SUB_ID);
+        satellitePlmnList = testSatelliteController.getSatellitePlmnsForCarrier(SUB_ID);
         assertTrue(satellitePlmnList.isEmpty());
         supportedSatelliteServices =
                 testSatelliteController.getSupportedSatelliteServices(SUB_ID, "00102");
@@ -1786,7 +1786,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         TestSatelliteController testSatelliteController =
                 new TestSatelliteController(mContext, Looper.myLooper(), mFeatureFlags);
         processAllMessages();
-        List<String> carrierPlmnList = testSatelliteController.getAllSatellitePlmnsForCarrier(
+        List<String> carrierPlmnList = testSatelliteController.getSatellitePlmnsForCarrier(
                 SUB_ID);
         verify(mMockSatelliteModemInterface, never()).setSatellitePlmn(
                 anyInt(), anyList(), anyList(), any(Message.class));
@@ -1814,7 +1814,7 @@ public class SatelliteControllerTest extends TelephonyTest {
             );
         }
         processAllMessages();
-        carrierPlmnList = testSatelliteController.getAllSatellitePlmnsForCarrier(SUB_ID);
+        carrierPlmnList = testSatelliteController.getSatellitePlmnsForCarrier(SUB_ID);
         verify(mMockSatelliteModemInterface, never()).setSatellitePlmn(
                 anyInt(), anyList(), anyList(), any(Message.class));
         assertTrue(carrierPlmnList.isEmpty());
@@ -1840,7 +1840,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         }
         processAllMessages();
 
-        carrierPlmnList = testSatelliteController.getAllSatellitePlmnsForCarrier(SUB_ID);
+        carrierPlmnList = testSatelliteController.getSatellitePlmnsForCarrier(SUB_ID);
         assertTrue(carrierPlmnList.isEmpty());
         List<String> allSatellitePlmnList = SatelliteServiceUtils.mergeStrLists(
                 carrierPlmnList, satellitePlmnListFromOverlayConfig);
@@ -1860,7 +1860,7 @@ public class SatelliteControllerTest extends TelephonyTest {
             );
         }
         processAllMessages();
-        carrierPlmnList = testSatelliteController.getAllSatellitePlmnsForCarrier(SUB_ID);
+        carrierPlmnList = testSatelliteController.getSatellitePlmnsForCarrier(SUB_ID);
         allSatellitePlmnList = SatelliteServiceUtils.mergeStrLists(
                 carrierPlmnList, satellitePlmnListFromOverlayConfig);
         assertEquals(expectedCarrierPlmnList, carrierPlmnList);
@@ -1899,7 +1899,7 @@ public class SatelliteControllerTest extends TelephonyTest {
             );
         }
         processAllMessages();
-        carrierPlmnList = testSatelliteController.getAllSatellitePlmnsForCarrier(SUB_ID);
+        carrierPlmnList = testSatelliteController.getSatellitePlmnsForCarrier(SUB_ID);
         assertTrue(carrierPlmnList.isEmpty());
         verify(mMockSatelliteModemInterface, times(1)).setSatellitePlmn(anyInt(),
                 eq(EMPTY_STRING_LIST), eq(EMPTY_STRING_LIST), any(Message.class));
@@ -2683,7 +2683,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, false,
                 entitlementPlmnList, mIIntegerConsumer);
 
-        List<String> plmnListPerCarrier = mSatelliteControllerUT.getAllSatellitePlmnsForCarrier(
+        List<String> plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(
                 SUB_ID);
         List<String> allSatellitePlmnList = SatelliteServiceUtils.mergeStrLists(
                 plmnListPerCarrier, overlayConfigPlmnList);
@@ -2704,7 +2704,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, true,
                 entitlementPlmnList, mIIntegerConsumer);
 
-        plmnListPerCarrier = mSatelliteControllerUT.getAllSatellitePlmnsForCarrier(SUB_ID);
+        plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(SUB_ID);
         allSatellitePlmnList = SatelliteServiceUtils.mergeStrLists(
                 plmnListPerCarrier, overlayConfigPlmnList);
 
@@ -2733,7 +2733,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, true,
                 entitlementPlmnList, mIIntegerConsumer);
 
-        plmnListPerCarrier = mSatelliteControllerUT.getAllSatellitePlmnsForCarrier(SUB_ID);
+        plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(SUB_ID);
         allSatellitePlmnList = SatelliteServiceUtils.mergeStrLists(
                 plmnListPerCarrier, overlayConfigPlmnList);
 
@@ -2767,7 +2767,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         }
         processAllMessages();
 
-        List<String> plmnListPerCarrier = mSatelliteControllerUT.getAllSatellitePlmnsForCarrier(
+        List<String> plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(
                 SUB_ID);
         assertEquals(new ArrayList<>(), plmnListPerCarrier);
 
@@ -2785,7 +2785,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         }
         processAllMessages();
 
-        plmnListPerCarrier = mSatelliteControllerUT.getAllSatellitePlmnsForCarrier(SUB_ID);
+        plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(SUB_ID);
         assertEquals(expectedPlmnListPerCarrier, plmnListPerCarrier);
 
         // If the carrier config list is exists and the entitlement plmn list is empty, verify
@@ -2815,7 +2815,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         processAllMessages();
 
         expectedPlmnListPerCarrier = carrierConfigPlmnList;
-        plmnListPerCarrier = mSatelliteControllerUT.getAllSatellitePlmnsForCarrier(SUB_ID);
+        plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(SUB_ID);
         assertEquals(expectedPlmnListPerCarrier.stream().sorted().toList(),
                 plmnListPerCarrier.stream().sorted().toList());
 
@@ -2833,7 +2833,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         processAllMessages();
 
         expectedPlmnListPerCarrier = entitlementPlmnList;
-        plmnListPerCarrier = mSatelliteControllerUT.getAllSatellitePlmnsForCarrier(
+        plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(
                 SUB_ID);
         assertEquals(expectedPlmnListPerCarrier.stream().sorted().toList(),
                 plmnListPerCarrier.stream().sorted().toList());

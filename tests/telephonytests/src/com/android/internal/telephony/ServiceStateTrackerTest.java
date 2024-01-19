@@ -260,7 +260,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSatelliteController = Mockito.mock(SatelliteController.class);
         replaceInstance(SatelliteController.class, "sInstance", null,
                 mSatelliteController);
-        doReturn(new ArrayList<>()).when(mSatelliteController).getAllSatellitePlmnsForCarrier(
+        doReturn(new ArrayList<>()).when(mSatelliteController).getSatellitePlmnsForCarrier(
                 anyInt());
 
         mContextFixture.putResource(R.string.kg_text_message_separator, " \u2014 ");
@@ -3387,7 +3387,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         CellIdentityGsm cellIdentity =
                 new CellIdentityGsm(0, 1, 900, 5, "101", "23", "test", "tst",
                         Collections.emptyList());
-        doReturn(Arrays.asList("10123")).when(mSatelliteController).getAllSatellitePlmnsForCarrier(
+        doReturn(Arrays.asList("10123")).when(mSatelliteController).getSatellitePlmnsForCarrier(
                 anyInt());
         doReturn(satelliteSupportedServiceList).when(mSatelliteController)
                 .getSupportedSatelliteServices(sst.mSubId, "10123");
