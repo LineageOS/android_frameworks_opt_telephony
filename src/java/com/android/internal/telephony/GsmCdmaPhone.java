@@ -539,7 +539,7 @@ public class GsmCdmaPhone extends Phone {
         mContext.registerReceiver(mBroadcastReceiver, filter,
                 android.Manifest.permission.MODIFY_PHONE_STATE, null, Context.RECEIVER_EXPORTED);
 
-        mCDM = new CarrierKeyDownloadManager(this, mFeatureFlags);
+        mCDM = new CarrierKeyDownloadManager(this);
         mCIM = new CarrierInfoManager();
 
         mCi.registerForImeiMappingChanged(this, EVENT_IMEI_MAPPING_CHANGED, null);
@@ -2124,8 +2124,13 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void deleteCarrierInfoForImsiEncryption(int carrierId) {
+        CarrierInfoManager.deleteCarrierInfoForImsiEncryption(mContext, getSubId(), carrierId);
+    }
+
+    @Override
+    public void deleteCarrierInfoForImsiEncryption(int carrierId, String simOperator) {
         CarrierInfoManager.deleteCarrierInfoForImsiEncryption(mContext, getSubId(),
-                carrierId);
+                carrierId, simOperator);
     }
 
     @Override

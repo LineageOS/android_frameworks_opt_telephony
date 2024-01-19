@@ -4025,6 +4025,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return;
     }
 
+    /**
+     * Deletes all the keys for a given Carrier from the device keystore.
+     * @param carrierId : the carrier ID which needs to be matched in the delete query
+     * @param simOperator : MccMnc which needs to be matched in the delete query.
+     */
+    public void deleteCarrierInfoForImsiEncryption(int carrierId, String simOperator) {
+
+    }
+
     public int getCarrierId() {
         return TelephonyManager.UNKNOWN_CARRIER_ID;
     }
