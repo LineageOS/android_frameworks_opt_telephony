@@ -305,6 +305,7 @@ import android.net.LinkAddress;
 import android.net.LinkProperties;
 import android.os.SystemClock;
 import android.service.carrier.CarrierIdentifier;
+import android.telephony.CarrierInfo;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
 import android.telephony.BarringInfo;
@@ -4039,6 +4040,9 @@ public class RILUtils {
     public static List<CarrierIdentifier> convertHalCarrierList(
             android.hardware.radio.sim.Carrier[] carrierList) {
         List<CarrierIdentifier> ret = new ArrayList<>();
+        if (carrierList == null) {
+            return ret;
+        }
         for (int i = 0; i < carrierList.length; i++) {
             String mcc = carrierList[i].mcc;
             String mnc = carrierList[i].mnc;
@@ -4057,6 +4061,85 @@ public class RILUtils {
             ret.add(new CarrierIdentifier(mcc, mnc, spn, imsi, gid1, gid2));
         }
         return ret;
+    }
+
+    /**
+     * Convert an array of CarrierInfo defined in
+     * radio/aidl/android/hardware/radio/sim/CarrierInfo.aidl to a list of CarrierInfo
+     * defined in android/service/carrier/CarrierInfo.java
+     *
+     * @param carrierInfos array of CarrierInfo defined in
+     *                     radio/aidl/android/hardware/radio/sim/CarrierInfo.aidl
+     * @return The converted list of CarrierInfo
+     */
+    public static List<CarrierInfo> convertAidlCarrierInfoList(
+            android.hardware.radio.sim.CarrierInfo[] carrierInfos) {
+        List<CarrierInfo> carrierInfoList = new ArrayList<>();
+        if (carrierInfos == null) {
+            loge("convertAidlCarrierInfoList received NULL carrierInfos");
+            return carrierInfoList;
+        }
+        for (int index = 0; index < carrierInfos.length; index++) {
+            String mcc = carrierInfos[index].mcc;
+            String mnc = carrierInfos[index].mnc;
+            String spn = carrierInfos[index].spn;
+            String gid1 = carrierInfos[index].gid1;
+            String gid2 = carrierInfos[index].gid2;
+            String imsi = carrierInfos[index].imsiPrefix;
+            String iccid = carrierInfos[index].iccid;
+            String impi = carrierInfos[index].impi;
+            List<android.hardware.radio.sim.Plmn> halEhplmn = carrierInfos[index].ehplmn;
+            List<String> eHplmnList = new ArrayList<>();
+            if (halEhplmn != null) {
+                for (int plmnIndex = 0; plmnIndex < halEhplmn.size(); plmnIndex++) {
+                    String ehplmnMcc = halEhplmn.get(plmnIndex).mcc;
+                    String ehplmnMnc = halEhplmn.get(plmnIndex).mnc;
+                    eHplmnList.add(ehplmnMcc + "," + ehplmnMnc);
+                }
+            } else {
+                loge("convertAidlCarrierInfoList ehplmList is NULL");
+            }
+            CarrierInfo carrierInfo = new CarrierInfo(mcc, mnc, spn, gid1, gid2, imsi, iccid, impi,
+                    eHplmnList);
+            carrierInfoList.add(carrierInfo);
+        }
+        return carrierInfoList;
+    }
+
+    /**
+     * Convert the sim policy defined in
+     * radio/aidl/android/hardware/radio/sim/SimLockMultiSimPolicy.aidl to the equivalent sim
+     * policy defined in android.telephony/CarrierRestrictionRules.MultiSimPolicy
+     *
+     * @param multiSimPolicy of type defined in SimLockMultiSimPolicy.aidl
+     * @return int of type CarrierRestrictionRules.MultiSimPolicy
+     */
+    public static @CarrierRestrictionRules.MultiSimPolicy int convertAidlSimLockMultiSimPolicy(
+            int multiSimPolicy) {
+        switch (multiSimPolicy) {
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.ONE_VALID_SIM_MUST_BE_PRESENT:
+                return CarrierRestrictionRules.MULTISIM_POLICY_ONE_VALID_SIM_MUST_BE_PRESENT;
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.APPLY_TO_ALL_SLOTS:
+                return CarrierRestrictionRules.MULTISIM_POLICY_APPLY_TO_ALL_SLOTS;
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.APPLY_TO_ONLY_SLOT_1:
+                return CarrierRestrictionRules.MULTISIM_POLICY_APPLY_TO_ONLY_SLOT_1;
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.VALID_SIM_MUST_PRESENT_ON_SLOT_1:
+                return CarrierRestrictionRules.MULTISIM_POLICY_VALID_SIM_MUST_PRESENT_ON_SLOT_1;
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.
+                    ACTIVE_SERVICE_ON_SLOT_1_TO_UNBLOCK_OTHER_SLOTS:
+                return CarrierRestrictionRules.
+                        MULTISIM_POLICY_ACTIVE_SERVICE_ON_SLOT_1_TO_UNBLOCK_OTHER_SLOTS;
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.
+                    ACTIVE_SERVICE_ON_ANY_SLOT_TO_UNBLOCK_OTHER_SLOTS:
+                return CarrierRestrictionRules.
+                        MULTISIM_POLICY_ACTIVE_SERVICE_ON_ANY_SLOT_TO_UNBLOCK_OTHER_SLOTS;
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.ALL_SIMS_MUST_BE_VALID:
+                return CarrierRestrictionRules.MULTISIM_POLICY_ALL_SIMS_MUST_BE_VALID;
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.SLOT_POLICY_OTHER:
+                return CarrierRestrictionRules.MULTISIM_POLICY_SLOT_POLICY_OTHER;
+            default:
+                return CarrierRestrictionRules.MULTISIM_POLICY_NONE;
+        }
     }
 
     /**
