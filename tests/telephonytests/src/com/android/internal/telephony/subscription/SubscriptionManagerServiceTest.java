@@ -63,6 +63,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.Manifest;
 import android.annotation.NonNull;
@@ -78,6 +79,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelUuid;
+import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
@@ -97,6 +99,7 @@ import android.testing.TestableLooper;
 import android.util.ArraySet;
 import android.util.Base64;
 
+import com.android.internal.R;
 import com.android.internal.telephony.ContextFixture;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
@@ -2994,5 +2997,118 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
                 .getSubscriptionInfoInternal(2);
         assertThat(subInfo.isGroupDisabled()).isFalse();
+    }
+
+    @Test
+    public void testIsSatelliteSpn() {
+        mContextFixture.putResource(R.string.config_satellite_sim_spn_identifier,
+                FAKE_CARRIER_NAME1);
+        System.setProperty("persist.radio.allow_mock_modem", "true");
+        doReturn(true).when(mFlags).oemEnabledSatelliteFlag();
+
+        EuiccProfileInfo profileInfo1 = new EuiccProfileInfo.Builder(FAKE_ICCID1)
+                .setIccid(FAKE_ICCID1)
+                .setNickname(FAKE_CARRIER_NAME1)
+                .setServiceProviderName(FAKE_CARRIER_NAME1)
+                .setProfileClass(SubscriptionManager.PROFILE_CLASS_OPERATIONAL)
+                .setCarrierIdentifier(new CarrierIdentifier(FAKE_MCC1, FAKE_MNC1,
+                        FAKE_CARRIER_NAME1, null, null, null, FAKE_CARRIER_ID1, FAKE_CARRIER_ID1))
+                .setUiccAccessRule(Arrays.asList(UiccAccessRule.decodeRules(
+                        FAKE_NATIVE_ACCESS_RULES1)))
+                .build();
+
+        GetEuiccProfileInfoListResult result = new GetEuiccProfileInfoListResult(
+                EuiccService.RESULT_OK, new EuiccProfileInfo[]{profileInfo1}, false);
+        doReturn(result).when(mEuiccController).blockingGetEuiccProfileInfoList(eq(1));
+        doReturn(TelephonyManager.INVALID_PORT_INDEX).when(mUiccSlot)
+                .getPortIndexFromIccId(anyString());
+        doReturn(FAKE_ICCID1).when(mUiccController).convertToCardString(eq(1));
+
+        mSubscriptionManagerServiceUT.updateEmbeddedSubscriptions(List.of(1), null);
+        processAllMessages();
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1);
+        assertThat(subInfo.getOnlyNonTerrestrialNetwork()).isEqualTo(1);
+
+        mContextFixture.putResource(R.string.config_satellite_sim_spn_identifier,
+                FAKE_CARRIER_NAME1);
+        System.setProperty("persist.radio.allow_mock_modem", "false");
+        doReturn(false).when(mFlags).oemEnabledSatelliteFlag();
+    }
+
+    @Test
+    public void testIsSatelliteSpnWithNullCarrierIdentifier() {
+        mContextFixture.putResource(R.string.config_satellite_sim_spn_identifier,
+                FAKE_CARRIER_NAME1);
+        System.setProperty("persist.radio.allow_mock_modem", "true");
+        doReturn(true).when(mFlags).oemEnabledSatelliteFlag();
+
+        EuiccProfileInfo profileInfo1 = new EuiccProfileInfo.Builder(FAKE_ICCID1)
+                .setIccid(FAKE_ICCID1)
+                .setNickname(FAKE_CARRIER_NAME1)
+                .setServiceProviderName(FAKE_CARRIER_NAME1)
+                .setProfileClass(SubscriptionManager.PROFILE_CLASS_OPERATIONAL)
+                .setCarrierIdentifier(null)
+                .setUiccAccessRule(Arrays.asList(UiccAccessRule.decodeRules(
+                        FAKE_NATIVE_ACCESS_RULES1)))
+                .build();
+
+        GetEuiccProfileInfoListResult result = new GetEuiccProfileInfoListResult(
+                EuiccService.RESULT_OK, new EuiccProfileInfo[]{profileInfo1}, false);
+        doReturn(result).when(mEuiccController).blockingGetEuiccProfileInfoList(eq(1));
+        doReturn(TelephonyManager.INVALID_PORT_INDEX).when(mUiccSlot)
+                .getPortIndexFromIccId(anyString());
+        doReturn(FAKE_ICCID1).when(mUiccController).convertToCardString(eq(1));
+
+        mSubscriptionManagerServiceUT.updateEmbeddedSubscriptions(List.of(1), null);
+        processAllMessages();
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1);
+        assertThat(subInfo.getOnlyNonTerrestrialNetwork()).isEqualTo(1);
+
+        mContextFixture.putResource(R.string.config_satellite_sim_spn_identifier,
+                FAKE_CARRIER_NAME1);
+        System.setProperty("persist.radio.allow_mock_modem", "false");
+        doReturn(false).when(mFlags).oemEnabledSatelliteFlag();
+    }
+
+    @Test
+    public void testIsSatelliteSpnWithWrongSpn() {
+        mContextFixture.putResource(R.string.config_satellite_sim_spn_identifier,
+                FAKE_CARRIER_NAME1);
+        System.setProperty("persist.radio.allow_mock_modem", "true");
+        doReturn(true).when(mFlags).oemEnabledSatelliteFlag();
+
+        EuiccProfileInfo profileInfo1 = new EuiccProfileInfo.Builder(FAKE_ICCID1)
+                .setIccid(FAKE_ICCID1)
+                .setNickname(FAKE_CARRIER_NAME1)
+                .setServiceProviderName(FAKE_CARRIER_NAME2)
+                .setProfileClass(SubscriptionManager.PROFILE_CLASS_OPERATIONAL)
+                .setCarrierIdentifier(new CarrierIdentifier(FAKE_MCC1, FAKE_MNC1,
+                        FAKE_CARRIER_NAME1, null, null, null, FAKE_CARRIER_ID1, FAKE_CARRIER_ID1))
+                .setUiccAccessRule(Arrays.asList(UiccAccessRule.decodeRules(
+                        FAKE_NATIVE_ACCESS_RULES1)))
+                .build();
+
+        GetEuiccProfileInfoListResult result = new GetEuiccProfileInfoListResult(
+                EuiccService.RESULT_OK, new EuiccProfileInfo[]{profileInfo1}, false);
+        doReturn(result).when(mEuiccController).blockingGetEuiccProfileInfoList(eq(1));
+        doReturn(TelephonyManager.INVALID_PORT_INDEX).when(mUiccSlot)
+                .getPortIndexFromIccId(anyString());
+        doReturn(FAKE_ICCID1).when(mUiccController).convertToCardString(eq(1));
+
+        mSubscriptionManagerServiceUT.updateEmbeddedSubscriptions(List.of(1), null);
+        processAllMessages();
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1);
+        assertThat(subInfo.getOnlyNonTerrestrialNetwork()).isEqualTo(0);
+
+        mContextFixture.putResource(R.string.config_satellite_sim_spn_identifier,
+                FAKE_CARRIER_NAME1);
+        System.setProperty("persist.radio.allow_mock_modem", "false");
+        doReturn(false).when(mFlags).oemEnabledSatelliteFlag();
     }
 }
