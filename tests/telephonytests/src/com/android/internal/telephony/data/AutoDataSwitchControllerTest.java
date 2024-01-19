@@ -76,6 +76,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
     private static final int SCORE_TOLERANCE = 100;
     private static final int GOOD_RAT_SIGNAL_SCORE = 200;
     private static final int BAD_RAT_SIGNAL_SCORE = 50;
+    private boolean mIsNonTerrestrialNetwork = false;
     // Mocked
     private AutoDataSwitchController.AutoDataSwitchControllerCallback mMockedPhoneSwitcherCallback;
 
@@ -155,6 +156,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
                 mPhoneSwitcher, mFeatureFlags, mMockedPhoneSwitcherCallback);
 
         doReturn(true).when(mFeatureFlags).autoSwitchAllowRoaming();
+        doReturn(true).when(mFeatureFlags).carrierEnabledSatelliteFlag();
     }
 
     @After
@@ -243,6 +245,31 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
         verify(mMockedPhoneSwitcherCallback).onRequireValidation(DEFAULT_PHONE_INDEX,
                 true/*needValidation*/);
+    }
+
+    @Test
+    public void testRoaming_prefer_roam_over_nonTerrestrial() {
+        // DDS -> nDDS: Prefer Roaming over non-terrestrial
+        prepareIdealUsesNonDdsCondition();
+        mIsNonTerrestrialNetwork = true;
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        mIsNonTerrestrialNetwork = false;
+        serviceStateChanged(PHONE_2, NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        processAllFutureMessages();
+
+        verify(mMockedPhoneSwitcherCallback).onRequireValidation(PHONE_2, true/*needValidation*/);
+
+        // nDDS -> DDS: Prefer Roaming over non-terrestrial
+        doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
+        mIsNonTerrestrialNetwork = false;
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        mIsNonTerrestrialNetwork = true;
+        serviceStateChanged(PHONE_2, NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        processAllFutureMessages();
+
+        verify(mMockedPhoneSwitcherCallback).onRequireValidation(DEFAULT_PHONE_INDEX,
+                true/*needValidation*/);
+        mIsNonTerrestrialNetwork = false;
     }
 
     @Test
@@ -677,6 +704,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
                 .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                 .setRegistrationState(dataRegState)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setIsNonTerrestrialNetwork(mIsNonTerrestrialNetwork)
                 .build());
 
         ss.setDataRoamingFromRegistration(dataRegState
