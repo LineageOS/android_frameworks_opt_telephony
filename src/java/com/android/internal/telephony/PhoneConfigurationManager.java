@@ -49,6 +49,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -74,6 +75,25 @@ public class PhoneConfigurationManager {
     private static final int EVENT_GET_SIMULTANEOUS_CALLING_SUPPORT_DONE = 105;
     private static final int EVENT_SIMULTANEOUS_CALLING_SUPPORT_CHANGED = 106;
 
+    /**
+     * Listener interface for events related to the {@link PhoneConfigurationManager} which should
+     * be reported to the {@link SimultaneousCallingTracker}.
+     */
+    public interface Listener {
+        public void onPhoneCapabilityChanged();
+        public void onDeviceConfigChanged();
+    }
+
+    /**
+     * Base listener implementation.
+     */
+    public abstract static class ListenerBase implements Listener {
+        @Override
+        public void onPhoneCapabilityChanged() {}
+        @Override
+        public void onDeviceConfigChanged() {}
+    }
+
 
     private static PhoneConfigurationManager sInstance = null;
     private final Context mContext;
@@ -95,6 +115,8 @@ public class PhoneConfigurationManager {
     @NonNull
     private final FeatureFlags mFeatureFlags;
     private final DefaultPhoneNotifier mNotifier;
+    public Set<Listener> mListeners = new CopyOnWriteArraySet<>();
+
     /**
      * True if 'Virtual DSDA' i.e., in-call IMS connectivity on both subs with only single logical
      * modem, is enabled.
@@ -153,6 +175,24 @@ public class PhoneConfigurationManager {
         for (Phone phone : mPhones) {
             registerForRadioState(phone);
         }
+    }
+
+    /**
+     * Assign a listener to be notified of state changes.
+     *
+     * @param listener A listener.
+     */
+    public void addListener(Listener listener) {
+        mListeners.add(listener);
+    }
+
+    /**
+     * Removes a listener.
+     *
+     * @param listener A listener.
+     */
+    public final void removeListener(Listener listener) {
+        mListeners.remove(listener);
     }
 
     /**
@@ -305,6 +345,9 @@ public class PhoneConfigurationManager {
                     if (ar != null && ar.exception == null) {
                         mStaticCapability = (PhoneCapability) ar.result;
                         notifyCapabilityChanged();
+                        for (Listener l : mListeners) {
+                            l.onPhoneCapabilityChanged();
+                        }
                         maybeEnableCellularDSDASupport();
                     } else {
                         log(msg.what + " failure. Not getting phone capability." + ar.exception);
@@ -317,6 +360,9 @@ public class PhoneConfigurationManager {
                         log("EVENT_DEVICE_CONFIG_CHANGED: from " + mVirtualDsdaEnabled + " to "
                                 + isVirtualDsdaEnabled);
                         mVirtualDsdaEnabled = isVirtualDsdaEnabled;
+                        for (Listener l : mListeners) {
+                            l.onDeviceConfigChanged();
+                        }
                     }
                     break;
                 case EVENT_SIMULTANEOUS_CALLING_SUPPORT_CHANGED:
@@ -463,7 +509,10 @@ public class PhoneConfigurationManager {
         return mTelephonyManager.getActiveModemCount();
     }
 
-    @VisibleForTesting
+    /**
+     * @return The updated list of logical slots that support simultaneous cellular calling from the
+     * modem based on current network conditions.
+     */
     public Set<Integer> getSlotsSupportingSimultaneousCellularCalls() {
         return mSlotsSupportingSimultaneousCellularCalls;
     }
@@ -508,6 +557,14 @@ public class PhoneConfigurationManager {
 
     public int getNumberOfModemsWithSimultaneousDataConnections() {
         return mStaticCapability.getMaxActiveDataSubscriptions();
+    }
+
+    public int getNumberOfModemsWithSimultaneousVoiceConnections() {
+        return getStaticPhoneCapability().getMaxActiveVoiceSubscriptions();
+    }
+
+    public boolean isVirtualDsdaEnabled() {
+        return mVirtualDsdaEnabled;
     }
 
     /**
