@@ -28,6 +28,7 @@ import static com.android.internal.telephony.emergency.EmergencyConstants.MODE_E
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.DisconnectCauses;
 import android.telephony.Annotation.NetCapability;
@@ -222,6 +223,26 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
         if (imsReasonInfo != null) builder.setPsDisconnectCause(imsReasonInfo);
         if (emergencyRegResult != null) builder.setEmergencyRegResult(emergencyRegResult);
 
+        return builder.build();
+    }
+
+    @Override
+    protected DomainSelectionService.SelectionAttributes
+            getSelectionAttributesToRebindService() {
+        DomainSelectionService.SelectionAttributes attr = getSelectionAttributes();
+        if (attr == null) return null;
+        DomainSelectionService.SelectionAttributes.Builder builder =
+                new DomainSelectionService.SelectionAttributes.Builder(
+                        attr.getSlotId(), attr.getSubId(), SELECTOR_TYPE_CALLING)
+                .setCallId(attr.getCallId())
+                .setNumber(attr.getNumber())
+                .setVideoCall(attr.isVideoCall())
+                .setEmergency(true)
+                .setExitedFromAirplaneMode(attr.isExitedFromAirplaneMode())
+                .setEmergencyRegResult(new EmergencyRegResult(AccessNetworkType.UNKNOWN,
+                        NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN,
+                        NetworkRegistrationInfo.DOMAIN_UNKNOWN, false, false, 0, 0,
+                        "", "", ""));
         return builder.build();
     }
 }

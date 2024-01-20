@@ -31,14 +31,15 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
 import android.telephony.DomainSelectionService;
-import android.telephony.TransportSelectorCallback;
-import android.telephony.WwanSelectorCallback;
 import android.telephony.ims.ImsReasonInfo;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.internal.telephony.ITransportSelectorCallback;
+import com.android.internal.telephony.ITransportSelectorResultCallback;
+import com.android.internal.telephony.IWwanSelectorCallback;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.AccessNetworksManager;
 
@@ -46,7 +47,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.util.concurrent.CompletableFuture;
@@ -65,7 +68,7 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
     @Mock
     private AccessNetworksManager mMockAccessNetworksManager;
 
-    private TransportSelectorCallback mTransportCallback;
+    private ITransportSelectorCallback mTransportCallback;
     private NormalCallDomainSelectionConnection mNormalCallDomainSelectionConnection;
 
     @Before
@@ -74,8 +77,11 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
         MockitoAnnotations.initMocks(this);
         doReturn(mMockAccessNetworksManager).when(mPhone).getAccessNetworksManager();
         doReturn(TEST_PHONE_ID).when(mPhone).getPhoneId();
+        doReturn(true).when(mMockDomainSelectionController).selectDomain(any(), any());
         mNormalCallDomainSelectionConnection =
                 new NormalCallDomainSelectionConnection(mPhone, mMockDomainSelectionController);
+        replaceInstance(DomainSelectionConnection.class, "mLooper",
+                mNormalCallDomainSelectionConnection, mTestableLooper.getLooper());
         mTransportCallback = mNormalCallDomainSelectionConnection.getTransportSelectorCallback();
     }
 
@@ -99,7 +105,8 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
         assertNotNull(future);
         assertFalse(future.isDone());
 
-        verify(mMockDomainSelectionController).selectDomain(any(), any());
+        verify(mMockDomainSelectionController).selectDomain(any(),
+                any(ITransportSelectorCallback.class));
 
         mTransportCallback.onWlanSelected(false);
 
@@ -121,9 +128,10 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
         assertNotNull(future);
         assertFalse(future.isDone());
 
-        verify(mMockDomainSelectionController).selectDomain(any(), any());
+        verify(mMockDomainSelectionController).selectDomain(any(),
+                any(ITransportSelectorCallback.class));
 
-        WwanSelectorCallback wwanCallback = mTransportCallback.onWwanSelected();
+        IWwanSelectorCallback wwanCallback = onWwanSelected(mTransportCallback);
 
         assertFalse(future.isDone());
         wwanCallback.onDomainSelected(DOMAIN_CS, false);
@@ -146,9 +154,10 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
         assertNotNull(future);
         assertFalse(future.isDone());
 
-        verify(mMockDomainSelectionController).selectDomain(any(), any());
+        verify(mMockDomainSelectionController).selectDomain(any(),
+                any(ITransportSelectorCallback.class));
 
-        WwanSelectorCallback wwanCallback = mTransportCallback.onWwanSelected();
+        IWwanSelectorCallback wwanCallback = onWwanSelected(mTransportCallback);
 
         assertFalse(future.isDone());
         wwanCallback.onDomainSelected(DOMAIN_PS, false);
@@ -208,5 +217,19 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
                 mNormalCallDomainSelectionConnection.getReasonMessage());
         assertEquals(imsReasonInfo, mNormalCallDomainSelectionConnection.getImsReasonInfo());
         assertEquals(TEST_PHONE_ID, mNormalCallDomainSelectionConnection.getPhoneId());
+    }
+
+    private IWwanSelectorCallback onWwanSelected(ITransportSelectorCallback transportCallback)
+            throws Exception {
+        ITransportSelectorResultCallback cb = Mockito.mock(ITransportSelectorResultCallback.class);
+        transportCallback.onWwanSelectedAsync(cb);
+        processAllMessages();
+
+        ArgumentCaptor<IWwanSelectorCallback> callbackCaptor =
+                ArgumentCaptor.forClass(IWwanSelectorCallback.class);
+
+        verify(cb).onCompleted(callbackCaptor.capture());
+
+        return callbackCaptor.getValue();
     }
 }
