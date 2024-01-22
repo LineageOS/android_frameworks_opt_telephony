@@ -63,7 +63,6 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import android.Manifest;
 import android.annotation.NonNull;
@@ -79,7 +78,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelUuid;
-import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
@@ -1328,9 +1326,17 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         // Test getActiveSubIdList, System
         assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false/*visible only*/))
                 .isEqualTo(new int[]{subId1, subId2});
-        // Test get getActiveSubInfoCount
+        // Test get getActiveSubInfoCount - forAllProfiles: false
         assertThat(mSubscriptionManagerServiceUT.getActiveSubInfoCount(
                 CALLING_PACKAGE, CALLING_FEATURE, false)).isEqualTo(1);
+        // Test get getActiveSubInfoCount - forAllProfiles: true
+        assertThrows(SecurityException.class,
+                () -> mSubscriptionManagerServiceUT.getActiveSubInfoCount(
+                        CALLING_PACKAGE, CALLING_FEATURE, true));
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.INTERACT_ACROSS_PROFILES);
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubInfoCount(
+                CALLING_PACKAGE, CALLING_FEATURE, true)).isEqualTo(2);
+        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.INTERACT_ACROSS_PROFILES);
         // Test getActiveSubscriptionInfo
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfo(
                 subId1, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId()).isEqualTo(subId1);
@@ -1350,11 +1356,21 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoForSimSlotIndex(
                 1, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId())
                 .isEqualTo(subId2);
-        // Test getActiveSubscriptionInfoList
+        // Test getActiveSubscriptionInfoList - forAllProfiles: false
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
                 CALLING_PACKAGE, CALLING_FEATURE, false)
                 .stream().map(SubscriptionInfo::getSubscriptionId)
                 .toList()).isEqualTo(List.of(subId1));
+        // Test getActiveSubscriptionInfoList - forAllProfiles: true
+        assertThrows(SecurityException.class,
+                () -> mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
+                        CALLING_PACKAGE, CALLING_FEATURE, true));
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.INTERACT_ACROSS_PROFILES);
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
+                        CALLING_PACKAGE, CALLING_FEATURE, true)
+                .stream().map(SubscriptionInfo::getSubscriptionId)
+                .toList()).isEqualTo(List.of(subId1, subId2));
+        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.INTERACT_ACROSS_PROFILES);
         // Test getAllSubInfoList
         assertThat(mSubscriptionManagerServiceUT.getAllSubInfoList(CALLING_PACKAGE,
                 CALLING_FEATURE).stream().map(SubscriptionInfo::getSubscriptionId).toList())
@@ -1446,9 +1462,17 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         // Test getActiveSubIdList, System
         assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false/*visible only*/))
                 .isEqualTo(new int[]{subId1, subId2});
-        // Test get getActiveSubInfoCount
+        // Test get getActiveSubInfoCount- forAllProfiles: false
         assertThat(mSubscriptionManagerServiceUT.getActiveSubInfoCount(
                 CALLING_PACKAGE, CALLING_FEATURE, false)).isEqualTo(1);
+        // Test get getActiveSubInfoCount - forAllProfiles: true
+        assertThrows(SecurityException.class,
+                () -> mSubscriptionManagerServiceUT.getActiveSubInfoCount(
+                        CALLING_PACKAGE, CALLING_FEATURE, true));
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.INTERACT_ACROSS_PROFILES);
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubInfoCount(
+                CALLING_PACKAGE, CALLING_FEATURE, true)).isEqualTo(2);
+        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.INTERACT_ACROSS_PROFILES);
         // Test getActiveSubscriptionInfo
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfo(
                 subId1, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId()).isEqualTo(subId1);
@@ -1468,11 +1492,21 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoForSimSlotIndex(
                 1, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId())
                 .isEqualTo(subId2);
-        // Test getActiveSubscriptionInfoList
+        // Test getActiveSubscriptionInfoList - forAllProfiles: false
         assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
                         CALLING_PACKAGE, CALLING_FEATURE, false).stream()
                 .map(SubscriptionInfo::getSubscriptionId)
                 .toList()).isEqualTo(List.of(subId1));
+        // Test getActiveSubscriptionInfoList - forAllProfiles: true
+        assertThrows(SecurityException.class,
+                () -> mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
+                        CALLING_PACKAGE, CALLING_FEATURE, true));
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.INTERACT_ACROSS_PROFILES);
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
+                        CALLING_PACKAGE, CALLING_FEATURE, true)
+                .stream().map(SubscriptionInfo::getSubscriptionId)
+                .toList()).isEqualTo(List.of(subId1, subId2));
+        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.INTERACT_ACROSS_PROFILES);
         // Test getAllSubInfoList
         assertThat(mSubscriptionManagerServiceUT.getAllSubInfoList(CALLING_PACKAGE,
                 CALLING_FEATURE).stream().map(SubscriptionInfo::getSubscriptionId).toList())
