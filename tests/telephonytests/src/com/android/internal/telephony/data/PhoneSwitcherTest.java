@@ -1936,6 +1936,17 @@ public class PhoneSwitcherTest extends TelephonyTest {
         }
 
         replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
+        for (Phone phone : mPhones) {
+            ServiceState ss = new ServiceState();
+
+            ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
+                    .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                    .setRegistrationState(
+                            NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING)
+                    .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                    .build());
+            doReturn(ss).when(phone).getServiceState();
+        }
     }
 
     private void initializeCommandInterfacesMock() {
