@@ -254,6 +254,36 @@ public class EuiccController extends IEuiccController.Stub {
     }
 
     /**
+     * Return the available memory in bytes of the eUICC.
+     *
+     * <p>For API simplicity, this call blocks until completion; while it requires an IPC to load,
+     * that IPC should generally be fast, and the available memory shouldn't be needed in the normal
+     * course of operation.
+     */
+    @Override
+    public long getAvailableMemoryInBytes(int cardId, String callingPackage) {
+        boolean callerCanReadPhoneStatePrivileged = callerCanReadPhoneStatePrivileged();
+        boolean callerCanReadPhoneState = callerCanReadPhoneState();
+        mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
+        long token = Binder.clearCallingIdentity();
+        try {
+            if (!callerCanReadPhoneStatePrivileged
+                    && !callerCanReadPhoneState
+                    && !canManageSubscriptionOnTargetSim(
+                            cardId, callingPackage, false, TelephonyManager.INVALID_PORT_INDEX)) {
+                throw new SecurityException(
+                        "Must have READ_PHONE_STATE permission or READ_PRIVILEGED_PHONE_STATE"
+                            + " permission or carrier privileges to read the available memory for"
+                            + "cardId="
+                                + cardId);
+            }
+            return blockingGetAvailableMemoryInBytesFromEuiccService(cardId);
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    /**
      * Return the current status of OTA update.
      *
      * <p>For API simplicity, this call blocks until completion; while it requires an IPC to load,
@@ -1750,6 +1780,27 @@ public class EuiccController extends IEuiccController.Stub {
         return awaitResult(latch, eidRef);
     }
 
+    private long blockingGetAvailableMemoryInBytesFromEuiccService(int cardId) {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<Long> memoryRef =
+                new AtomicReference<>(EuiccManager.EUICC_MEMORY_FIELD_UNAVAILABLE);
+        mConnector.getAvailableMemoryInBytes(
+                cardId,
+                new EuiccConnector.GetAvailableMemoryInBytesCommandCallback() {
+                    @Override
+                    public void onGetAvailableMemoryInBytesComplete(long availableMemoryInBytes) {
+                        memoryRef.set(availableMemoryInBytes);
+                        latch.countDown();
+                    }
+
+                    @Override
+                    public void onEuiccServiceUnavailable() {
+                        latch.countDown();
+                    }
+                });
+        return awaitResult(latch, memoryRef);
+    }
+
     private @OtaStatus int blockingGetOtaStatusFromEuiccService(int cardId) {
         CountDownLatch latch = new CountDownLatch(1);
         AtomicReference<Integer> statusRef =
@@ -1954,6 +2005,11 @@ public class EuiccController extends IEuiccController.Stub {
     private boolean callerCanReadPhoneStatePrivileged() {
         return mContext.checkCallingOrSelfPermission(
                 Manifest.permission.READ_PRIVILEGED_PHONE_STATE)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean callerCanReadPhoneState() {
+        return mContext.checkCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE)
                 == PackageManager.PERMISSION_GRANTED;
     }
 

@@ -134,6 +134,7 @@ public class EuiccControllerTest extends TelephonyTest {
     private static final String ICC_ID = "54321";
     private static final int CARD_ID = 25;
     private static final int REMOVABLE_CARD_ID = 26;
+    private static final long AVAILABLE_MEMORY = 123L;
 
     // Mocked classes
     private EuiccConnector mMockConnector;
@@ -254,6 +255,73 @@ public class EuiccControllerTest extends TelephonyTest {
         setGetEidPermissions(false /* hasPhoneStatePrivileged */, true /* hasCarrierPrivileges */);
         assertEquals("ABCDE", callGetEid(true /* success */, "ABCDE" /* eid */,
                 TelephonyManager.UNSUPPORTED_CARD_ID));
+    }
+
+    @Test(expected = SecurityException.class)
+    public void testGetAvailableMemoryInBytes_noPrivileges() throws Exception {
+        setGetAvailableMemoryInBytesPermissions(
+                false /* hasPhoneState */,
+                false /* hasPhoneStatePrivileged */,
+                false /* hasCarrierPrivileges */);
+        callGetAvailableMemoryInBytes(true /* success */, AVAILABLE_MEMORY, CARD_ID);
+    }
+
+    @Test
+    public void testGetAvailableMemoryInBytes_withPhoneState() throws Exception {
+        setGetAvailableMemoryInBytesPermissions(
+                true /* hasPhoneState */,
+                false /* hasPhoneStatePrivileged */,
+                false /* hasCarrierPrivileges */);
+        assertEquals(
+                AVAILABLE_MEMORY,
+                callGetAvailableMemoryInBytes(true /* success */, AVAILABLE_MEMORY, CARD_ID));
+    }
+
+    @Test
+    public void testGetAvailableMemoryInBytes_withPhoneStatePrivileged() throws Exception {
+        setGetAvailableMemoryInBytesPermissions(
+                false /* hasPhoneState */,
+                true /* hasPhoneStatePrivileged */,
+                false /* hasCarrierPrivileges */);
+        assertEquals(
+                AVAILABLE_MEMORY,
+                callGetAvailableMemoryInBytes(true /* success */, AVAILABLE_MEMORY, CARD_ID));
+    }
+
+    @Test
+    public void testGetAvailableMemoryInBytes_withCarrierPrivileges() throws Exception {
+        setGetAvailableMemoryInBytesPermissions(
+                false /* hasPhoneState */,
+                false /* hasPhoneStatePrivileged */,
+                true /* hasCarrierPrivileges */);
+        assertEquals(
+                AVAILABLE_MEMORY,
+                callGetAvailableMemoryInBytes(true /* success */, AVAILABLE_MEMORY, CARD_ID));
+    }
+
+    @Test
+    public void testGetAvailableMemoryInBytes_failure() throws Exception {
+        setGetAvailableMemoryInBytesPermissions(
+                true /* hasPhoneState */,
+                false /* hasPhoneStatePrivileged */,
+                false /* hasCarrierPrivileges */);
+        assertEquals(
+                EuiccManager.EUICC_MEMORY_FIELD_UNAVAILABLE,
+                callGetAvailableMemoryInBytes(false /* success */, AVAILABLE_MEMORY, CARD_ID));
+    }
+
+    @Test
+    public void testGetAvailableMemoryInBytes_unsupportedCardId() throws Exception {
+        setGetAvailableMemoryInBytesPermissions(
+                false /* hasPhoneState */,
+                false /* hasPhoneStatePrivileged */,
+                true /* hasCarrierPrivileges */);
+        assertEquals(
+                AVAILABLE_MEMORY,
+                callGetAvailableMemoryInBytes(
+                        true /* success */,
+                        AVAILABLE_MEMORY,
+                        TelephonyManager.UNSUPPORTED_CARD_ID));
     }
 
     @Test(expected = SecurityException.class)
@@ -1495,6 +1563,25 @@ public class EuiccControllerTest extends TelephonyTest {
         setHasCarrierPrivilegesOnActiveSubscription(hasCarrierPrivileges);
     }
 
+    private void setGetAvailableMemoryInBytesPermissions(
+            boolean hasPhoneState, boolean hasPhoneStatePrivileged, boolean hasCarrierPrivileges)
+            throws Exception {
+        doReturn(
+                        hasPhoneState
+                                ? PackageManager.PERMISSION_GRANTED
+                                : PackageManager.PERMISSION_DENIED)
+                .when(mContext)
+                .checkCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+        doReturn(
+                        hasPhoneStatePrivileged
+                                ? PackageManager.PERMISSION_GRANTED
+                                : PackageManager.PERMISSION_DENIED)
+                .when(mContext)
+                .checkCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        when(mTelephonyManager.getPhoneCount()).thenReturn(1);
+        setHasCarrierPrivilegesOnActiveSubscription(hasCarrierPrivileges);
+    }
+
     private void setHasWriteEmbeddedPermission(boolean hasPermission) {
         doReturn(hasPermission
                 ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED)
@@ -1616,6 +1703,29 @@ public class EuiccControllerTest extends TelephonyTest {
         }).when(mMockConnector).getEid(anyInt(),
                 Mockito.<EuiccConnector.GetEidCommandCallback>any());
         return mController.getEid(cardId, PACKAGE_NAME);
+    }
+
+    private long callGetAvailableMemoryInBytes(
+            final boolean success, final long availableMemoryInBytes, int cardId) {
+        doAnswer(
+                new Answer<Void>() {
+                    @Override
+                    public Void answer(InvocationOnMock invocation) throws Exception {
+                        EuiccConnector.GetAvailableMemoryInBytesCommandCallback cb =
+                                invocation.getArgument(1 /* resultCallback */);
+                        if (success) {
+                            cb.onGetAvailableMemoryInBytesComplete(availableMemoryInBytes);
+                        } else {
+                            cb.onEuiccServiceUnavailable();
+                        }
+                        return null;
+                    }
+                })
+                .when(mMockConnector)
+                .getAvailableMemoryInBytes(
+                        anyInt(),
+                        Mockito.<EuiccConnector.GetAvailableMemoryInBytesCommandCallback>any());
+        return mController.getAvailableMemoryInBytes(cardId, PACKAGE_NAME);
     }
 
     private int callGetOtaStatus(final boolean success, final int status) {
