@@ -5216,7 +5216,7 @@ public class GsmCdmaPhone extends Phone {
     }
 
     private void updateVoNrSettings(@NonNull PersistableBundle config) {
-        if (mSimState != TelephonyManager.SIM_STATE_LOADED) {
+        if (getIccCard().getState() != IccCardConstants.State.LOADED) {
             return;
         }
 
