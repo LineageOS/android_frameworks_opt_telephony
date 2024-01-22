@@ -753,7 +753,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, stats.rat);
         assertEquals(0L, stats.registeredMillis);
         assertEquals(2000L, stats.registeringMillis);
-        assertEquals(0, stats.registeredTimes);
+        assertEquals(1, stats.registeredTimes);
     }
 
     @Test
