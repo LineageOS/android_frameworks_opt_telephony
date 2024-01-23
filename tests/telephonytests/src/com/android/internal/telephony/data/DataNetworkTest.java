@@ -76,6 +76,7 @@ import android.util.SparseArray;
 
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
 import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetwork.DataNetworkCallback;
@@ -123,7 +124,7 @@ public class DataNetworkTest extends TelephonyTest {
             .setApnName("fake_apn")
             .setUser("user")
             .setPassword("passwd")
-            .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL)
+            .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL | ApnSetting.TYPE_MMS)
             .setProtocol(ApnSetting.PROTOCOL_IPV6)
             .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
             .setCarrierEnabled(true)
@@ -132,6 +133,18 @@ public class DataNetworkTest extends TelephonyTest {
             .setMaxConns(321)
             .setWaitTime(456)
             .setMaxConnsTime(789)
+            .build();
+
+    private final ApnSetting mMmsApnSetting = new ApnSetting.Builder()
+            .setId(2164)
+            .setOperatorNumeric("12345")
+            .setEntryName("fake_mms_apn")
+            .setApnName("fake_mms_apn")
+            .setApnTypeBitmask(ApnSetting.TYPE_MMS)
+            .setProtocol(ApnSetting.PROTOCOL_IPV6)
+            .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+            .setCarrierEnabled(true)
+            .setNetworkTypeBitmask((int) TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN)
             .build();
 
     private final ApnSetting mImsApnSetting = new ApnSetting.Builder()
@@ -154,6 +167,11 @@ public class DataNetworkTest extends TelephonyTest {
 
     private final DataProfile mInternetDataProfile = new DataProfile.Builder()
             .setApnSetting(mInternetApnSetting)
+            .setTrafficDescriptor(new TrafficDescriptor("fake_apn", null))
+            .build();
+
+    private final DataProfile mMmsDataProfile = new DataProfile.Builder()
+            .setApnSetting(mMmsApnSetting)
             .setTrafficDescriptor(new TrafficDescriptor("fake_apn", null))
             .build();
 
@@ -2202,5 +2220,44 @@ public class DataNetworkTest extends TelephonyTest {
         replaceInstance(DataNetwork.class, "mDataCallSessionStats",
                 mDataNetworkUT, mDataCallSessionStats);
         processAllMessages();
+    }
+
+    @Test
+    public void testMmsCapabilityRemovedWhenMmsPreferredOnIwlan() throws Exception {
+        doReturn(true).when(mFeatureFlags).forceIwlanMms();
+        setupDataNetwork();
+
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS)).isTrue();
+
+        ArgumentCaptor<AccessNetworksManagerCallback> accessNetworksManagerCallbackArgumentCaptor =
+                ArgumentCaptor.forClass(AccessNetworksManagerCallback.class);
+        verify(mAccessNetworksManager).registerCallback(
+                accessNetworksManagerCallbackArgumentCaptor.capture());
+
+        // Now QNS prefers MMS on IWLAN
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+        doReturn(mMmsDataProfile).when(mDataProfileManager).getDataProfileForNetworkRequest(
+                any(TelephonyNetworkRequest.class),
+                    eq(TelephonyManager.NETWORK_TYPE_IWLAN), eq(false), eq(false), eq(false));
+        accessNetworksManagerCallbackArgumentCaptor.getValue()
+                .onPreferredTransportChanged(NetworkCapabilities.NET_CAPABILITY_MMS);
+        processAllMessages();
+
+        // Check if MMS capability is removed.
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS)).isFalse();
+
+        // Now QNS prefers MMS on IWLAN
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
+            .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+        accessNetworksManagerCallbackArgumentCaptor.getValue()
+                .onPreferredTransportChanged(NetworkCapabilities.NET_CAPABILITY_MMS);
+        processAllMessages();
+
+        // Check if MMS capability is added back.
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS)).isTrue();
     }
 }
