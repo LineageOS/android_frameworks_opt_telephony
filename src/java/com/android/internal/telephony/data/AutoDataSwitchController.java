@@ -191,8 +191,7 @@ public class AutoDataSwitchController extends Handler {
         /** The phone */
         @NonNull private final Phone mPhone;
         /** Data registration state of the phone */
-        @RegistrationState private int mDataRegState = NetworkRegistrationInfo
-                .REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
+        @RegistrationState private int mDataRegState;
         /** Current Telephony display info of the phone */
         @NonNull private TelephonyDisplayInfo mDisplayInfo;
         /** Signal strength of the phone */
@@ -201,6 +200,10 @@ public class AutoDataSwitchController extends Handler {
         private boolean mListeningForEvents;
         private PhoneSignalStatus(@NonNull Phone phone) {
             this.mPhone = phone;
+            this.mDataRegState = phone.getServiceState().getNetworkRegistrationInfo(
+                            NetworkRegistrationInfo.DOMAIN_PS,
+                            AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                    .getRegistrationState();
             this.mDisplayInfo = phone.getDisplayInfoController().getTelephonyDisplayInfo();
             this.mSignalStrength = phone.getSignalStrength();
         }
