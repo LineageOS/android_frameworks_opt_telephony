@@ -112,6 +112,8 @@ public class SimResponse extends IRadioSimResponse.Stub {
             android.hardware.radio.sim.CarrierRestrictions carrierRestrictions,
             int multiSimPolicy) {
         RILRequest rr = mRil.processResponse(HAL_SERVICE_SIM, responseInfo);
+        boolean carrierLockInfoSupported = mRil.getHalVersion(HAL_SERVICE_SIM).greater(
+                RIL.RADIO_HAL_VERSION_2_2);
         if (rr == null) {
             return;
         }
@@ -132,7 +134,8 @@ public class SimResponse extends IRadioSimResponse.Stub {
                 RILUtils.convertAidlCarrierInfoList(
                         carrierRestrictions.allowedCarrierInfoList)).setExcludedCarrierInfo(
                 RILUtils.convertAidlCarrierInfoList(
-                        carrierRestrictions.excludedCarrierInfoList)).build();
+                        carrierRestrictions.excludedCarrierInfoList)).setCarrierLockInfoFeature(
+                carrierLockInfoSupported).build();
         if (responseInfo.error == RadioError.NONE) {
             RadioResponse.sendMessageResponse(rr.mResult, ret);
         }
