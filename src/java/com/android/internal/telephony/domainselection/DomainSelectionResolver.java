@@ -33,6 +33,7 @@ import android.util.Log;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.flags.Flags;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -57,6 +58,8 @@ public class DomainSelectionResolver {
      *                               to be bound to the domain selection controller.
      */
     public static void make(Context context, String flattenedComponentName) {
+        Log.i(TAG, "make flag=" + Flags.apDomainSelectionEnabled()
+                + ", useOem=" + Flags.useOemDomainSelectionService());
         if (sInstance == null) {
             sInstance = new DomainSelectionResolver(context, flattenedComponentName);
         }
