@@ -3784,6 +3784,11 @@ public class DataNetworkController extends Handler {
      * de-registered yet.
      */
     private boolean isSafeToTearDown(@NonNull DataNetwork dataNetwork) {
+        if (dataNetwork.hasNetworkCapabilityInNetworkRequests(
+                NetworkCapabilities.NET_CAPABILITY_EIMS)) {
+            // FWK currently doesn't track emergency registration state for graceful tear down.
+            return true;
+        }
         for (int imsFeature : SUPPORTED_IMS_FEATURES) {
             String imsFeaturePackage = mImsFeaturePackageName.get(imsFeature);
             if (imsFeaturePackage != null) {

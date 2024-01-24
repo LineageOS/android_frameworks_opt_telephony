@@ -338,18 +338,19 @@ public class ImsStats {
 
     /** Updates the stats when IMS registration succeeds. */
     public synchronized void onImsRegistered(ImsRegistrationAttributes attributes) {
+        // Updates registered_times as soon as the UE is registered
+        if (mLastRegistrationState != REGISTRATION_STATE_REGISTERED) {
+            // RegistrationStats captures in every state. Changing REGISTERED state has to capture
+            // only once.
+            mLastRegistrationStats.registeredTimes = 1;
+        }
+
         conclude();
 
         mLastTransportType = attributes.getTransportType();
         // NOTE: status can be unregistered (no registering phase)
         if (mLastRegistrationState == REGISTRATION_STATE_NOT_REGISTERED) {
             updateImsRegistrationStats();
-        }
-
-        if (mLastRegistrationState != REGISTRATION_STATE_REGISTERED) {
-            // RegistrationStats captures in every state. Changing REGISTERED state has to capture
-            // only once.
-            mLastRegistrationStats.registeredTimes = 1;
         }
 
         mLastRegistrationStats.rat =
