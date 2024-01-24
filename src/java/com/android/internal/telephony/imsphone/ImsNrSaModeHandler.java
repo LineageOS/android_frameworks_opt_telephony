@@ -286,7 +286,7 @@ public class ImsNrSaModeHandler extends Handler{
 
     private void setNrSaMode(boolean onOrOff) {
         if (mIsNrSaSupported) {
-            mPhone.getDefaultPhone().mCi.setN1ModeEnabled(onOrOff, null);
+            mPhone.getDefaultPhone().setN1ModeEnabled(onOrOff, null);
             Log.i(TAG, "setNrSaMode : " + onOrOff);
 
             setNrSaDisabledForWfc(!onOrOff);
