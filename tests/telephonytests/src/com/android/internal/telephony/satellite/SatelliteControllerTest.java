@@ -95,6 +95,7 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.os.ResultReceiver;
+import android.os.ServiceSpecificException;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -3189,11 +3190,10 @@ public class SatelliteControllerTest extends TelephonyTest {
                 throw new AssertionError();
             }
         } else {
-            RemoteException ex = assertThrows(RemoteException.class,
+            ServiceSpecificException ex = assertThrows(ServiceSpecificException.class,
                     () -> mSatelliteControllerUT.registerForNtnSignalStrengthChanged(subId,
                             callback));
-            assertTrue("The cause is not IllegalStateException",
-                    ex.getCause() instanceof IllegalStateException);
+            assertEquals(expectedError, ex.errorCode);
         }
     }
 

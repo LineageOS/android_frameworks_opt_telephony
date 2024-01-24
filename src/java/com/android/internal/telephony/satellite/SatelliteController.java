@@ -1998,7 +1998,7 @@ public class SatelliteController extends Handler {
         if (error == SATELLITE_RESULT_SUCCESS) {
             mNtnSignalStrengthChangedListeners.put(callback.asBinder(), callback);
         } else {
-            throw new RemoteException(new IllegalStateException("registration fails: " + error));
+            throw new ServiceSpecificException(error);
         }
     }
 
