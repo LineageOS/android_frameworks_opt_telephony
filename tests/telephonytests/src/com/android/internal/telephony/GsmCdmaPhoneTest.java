@@ -1510,6 +1510,44 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertEquals(captor.getValue().what, Phone.EVENT_GET_RADIO_CAPABILITY);
     }
 
+    private void setIsCarrierConfigForIdentifiedCarrier(
+            PersistableBundle carrierConfig, boolean isIdentified) {
+        carrierConfig.putBoolean(
+                CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL,
+                isIdentified);
+    }
+
+    @Test
+    public void testNrCapabilityChanged_firstRequest_incompleteCarrierConfig_changeNeeded() {
+        when(mFeatureFlags.enableCarrierConfigN1Control()).thenReturn(true);
+
+        mPhoneUT.mCi = mMockCi;
+        PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
+        bundle.putIntArray(CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY,
+                new int[]{
+                    CarrierConfigManager.CARRIER_NR_AVAILABILITY_NSA});
+
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(Phone.EVENT_CARRIER_CONFIG_CHANGED));
+        processAllMessages();
+
+
+        verify(mMockCi, never()).isN1ModeEnabled(any());
+        verify(mMockCi, never()).setN1ModeEnabled(anyBoolean(), any());
+
+        setIsCarrierConfigForIdentifiedCarrier(bundle, true);
+
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(Phone.EVENT_CARRIER_CONFIG_CHANGED));
+        processAllMessages();
+
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockCi, times(1)).isN1ModeEnabled(messageCaptor.capture());
+        AsyncResult.forMessage(messageCaptor.getValue(), Boolean.TRUE, null);
+        messageCaptor.getValue().sendToTarget();
+        processAllMessages();
+
+        verify(mMockCi, times(1)).setN1ModeEnabled(eq(false), messageCaptor.capture());
+    }
+
     @Test
     public void testNrCapabilityChanged_firstRequest_noChangeNeeded() {
         when(mFeatureFlags.enableCarrierConfigN1Control()).thenReturn(true);
@@ -1520,6 +1558,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 new int[]{
                     CarrierConfigManager.CARRIER_NR_AVAILABILITY_NSA,
                     CarrierConfigManager.CARRIER_NR_AVAILABILITY_SA});
+        setIsCarrierConfigForIdentifiedCarrier(bundle, true);
 
         mPhoneUT.sendMessage(mPhoneUT.obtainMessage(Phone.EVENT_CARRIER_CONFIG_CHANGED));
         processAllMessages();
@@ -1543,6 +1582,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 new int[]{
                     CarrierConfigManager.CARRIER_NR_AVAILABILITY_NSA,
                     CarrierConfigManager.CARRIER_NR_AVAILABILITY_SA});
+        setIsCarrierConfigForIdentifiedCarrier(bundle, true);
 
         mPhoneUT.sendMessage(mPhoneUT.obtainMessage(Phone.EVENT_CARRIER_CONFIG_CHANGED));
         processAllMessages();
@@ -1554,9 +1594,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         processAllMessages();
 
         verify(mMockCi, times(1)).setN1ModeEnabled(eq(true), messageCaptor.capture());
-        AsyncResult.forMessage(messageCaptor.getValue(), Boolean.TRUE, null);
-        messageCaptor.getValue().sendToTarget();
-        processAllMessages();
     }
 
     @Test
@@ -1571,6 +1608,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         bundle.putIntArray(
                 CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY,
                 new int[]{CarrierConfigManager.CARRIER_NR_AVAILABILITY_NSA});
+        setIsCarrierConfigForIdentifiedCarrier(bundle, true);
 
         mPhoneUT.sendMessage(mPhoneUT.obtainMessage(Phone.EVENT_CARRIER_CONFIG_CHANGED));
         processAllMessages();
@@ -1578,9 +1616,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mMockCi, times(1)).isN1ModeEnabled(any()); // not called again
         verify(mMockCi, times(1)).setN1ModeEnabled(eq(false), messageCaptor.capture());
-        AsyncResult.forMessage(messageCaptor.getValue(), null, null);
-        messageCaptor.getValue().sendToTarget();
-        processAllMessages();
     }
 
     @Test
@@ -1594,6 +1629,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                     new int[]{
                         CarrierConfigManager.CARRIER_NR_AVAILABILITY_NSA,
                         CarrierConfigManager.CARRIER_NR_AVAILABILITY_SA});
+            setIsCarrierConfigForIdentifiedCarrier(bundle, true);
 
             mPhoneUT.sendMessage(mPhoneUT.obtainMessage(Phone.EVENT_CARRIER_CONFIG_CHANGED));
             processAllMessages();
@@ -1642,9 +1678,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         verify(mMockCi, times(1)).isN1ModeEnabled(any()); // not called again
         verify(mMockCi, times(1)).setN1ModeEnabled(eq(true), messageCaptor.capture());
-        AsyncResult.forMessage(messageCaptor.getValue(), null, null);
-        messageCaptor.getValue().sendToTarget();
-        processAllMessages();
     }
 
     private void setupForWpsCallTest() throws Exception {
@@ -2861,7 +2894,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                         new AsyncResult(null, disclosure, null)));
         processAllMessages();
 
-        verify(mIdentifierDisclosureNotifier, times(1)).addDisclosure(eq(disclosure));
+        verify(mIdentifierDisclosureNotifier, times(1))
+                .addDisclosure(eq(mPhoneUT.getSubId()), eq(disclosure));
     }
 
     @Test
@@ -2886,7 +2920,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         processAllMessages();
 
         verify(mIdentifierDisclosureNotifier, never())
-                .addDisclosure(any(CellularIdentifierDisclosure.class));
+                .addDisclosure(eq(mPhoneUT.getSubId()), any(CellularIdentifierDisclosure.class));
     }
 
     @Test

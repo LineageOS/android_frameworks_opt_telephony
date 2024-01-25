@@ -106,6 +106,17 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
         mPhones = new Phone[]{mPhone, mPhone2};
         for (Phone phone : mPhones) {
+            ServiceState ss = new ServiceState();
+
+            ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
+                    .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                    .setRegistrationState(
+                            NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING)
+                    .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                    .setIsNonTerrestrialNetwork(mIsNonTerrestrialNetwork)
+                    .build());
+
+            doReturn(ss).when(phone).getServiceState();
             doReturn(mSST).when(phone).getServiceStateTracker();
             doReturn(mDisplayInfoController).when(phone).getDisplayInfoController();
             doReturn(mSignalStrengthController).when(phone).getSignalStrengthController();

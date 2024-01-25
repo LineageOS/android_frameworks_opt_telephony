@@ -16,8 +16,10 @@
 
 package com.android.internal.telephony.security;
 
-import static org.junit.Assert.assertEquals;
+import static junit.framework.Assert.assertEquals;
+
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import android.telephony.CellularIdentifierDisclosure;
 
@@ -33,6 +35,8 @@ public class CellularIdentifierDisclosureNotifierTest {
     // 15 minutes and 100 milliseconds. Can be used to advance time in a test executor far enough
     // to (hopefully, if the code is behaving) close a disclosure window.
     private static final long WINDOW_CLOSE_ADVANCE_MILLIS = (15 * 60 * 1000) + 100;
+    private static final int SUB_ID_1 = 1;
+    private static final int SUB_ID_2 = 2;
     private CellularIdentifierDisclosure mDislosure;
 
     @Before
@@ -61,8 +65,8 @@ public class CellularIdentifierDisclosureNotifierTest {
                 new CellularIdentifierDisclosureNotifier(executor, 15, TimeUnit.MINUTES);
 
         assertFalse(notifier.isEnabled());
-        notifier.addDisclosure(mDislosure);
-        assertEquals(0, notifier.getCurrentDisclosureCount());
+        notifier.addDisclosure(SUB_ID_1, mDislosure);
+        assertEquals(0, notifier.getCurrentDisclosureCount(SUB_ID_1));
     }
 
     @Test
@@ -78,9 +82,9 @@ public class CellularIdentifierDisclosureNotifierTest {
                         true);
 
         notifier.enable();
-        notifier.addDisclosure(emergencyDisclosure);
+        notifier.addDisclosure(SUB_ID_1, emergencyDisclosure);
 
-        assertEquals(0, notifier.getCurrentDisclosureCount());
+        assertEquals(0, notifier.getCurrentDisclosureCount(SUB_ID_1));
     }
 
     @Test
@@ -90,11 +94,46 @@ public class CellularIdentifierDisclosureNotifierTest {
                 new CellularIdentifierDisclosureNotifier(executor, 15, TimeUnit.MINUTES);
 
         notifier.enable();
-        notifier.addDisclosure(mDislosure);
-        notifier.addDisclosure(mDislosure);
-        notifier.addDisclosure(mDislosure);
 
-        assertEquals(3, notifier.getCurrentDisclosureCount());
+        for (int i = 0; i < 3; i++) {
+            notifier.addDisclosure(SUB_ID_1, mDislosure);
+        }
+
+        assertEquals(3, notifier.getCurrentDisclosureCount(SUB_ID_1));
+    }
+
+    @Test
+    public void testSingleDisclosureStartAndEndTimesAreEqual() {
+        TestExecutorService executor = new TestExecutorService();
+        CellularIdentifierDisclosureNotifier notifier =
+                new CellularIdentifierDisclosureNotifier(executor, 15, TimeUnit.MINUTES);
+
+        notifier.enable();
+
+        notifier.addDisclosure(SUB_ID_1, mDislosure);
+
+        assertEquals(1, notifier.getCurrentDisclosureCount(SUB_ID_1));
+        assertTrue(notifier.getFirstOpen(SUB_ID_1).equals(notifier.getCurrentEnd(SUB_ID_1)));
+    }
+
+    @Test
+    public void testMultipleDisclosuresTimeWindows() {
+        TestExecutorService executor = new TestExecutorService();
+        CellularIdentifierDisclosureNotifier notifier =
+                new CellularIdentifierDisclosureNotifier(executor, 15, TimeUnit.MINUTES);
+
+        notifier.enable();
+
+        notifier.addDisclosure(SUB_ID_1, mDislosure);
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        notifier.addDisclosure(SUB_ID_1, mDislosure);
+
+        assertEquals(2, notifier.getCurrentDisclosureCount(SUB_ID_1));
+        assertTrue(notifier.getFirstOpen(SUB_ID_1).isBefore(notifier.getCurrentEnd(SUB_ID_1)));
     }
 
     @Test
@@ -105,17 +144,17 @@ public class CellularIdentifierDisclosureNotifierTest {
 
         // One round of disclosures
         notifier.enable();
-        notifier.addDisclosure(mDislosure);
-        notifier.addDisclosure(mDislosure);
-        assertEquals(2, notifier.getCurrentDisclosureCount());
+        notifier.addDisclosure(SUB_ID_1, mDislosure);
+        notifier.addDisclosure(SUB_ID_1, mDislosure);
+        assertEquals(2, notifier.getCurrentDisclosureCount(SUB_ID_1));
 
         // Window close should reset the counter
         executor.advanceTime(WINDOW_CLOSE_ADVANCE_MILLIS);
-        assertEquals(0, notifier.getCurrentDisclosureCount());
+        assertEquals(0, notifier.getCurrentDisclosureCount(SUB_ID_1));
 
         // A new disclosure should increment as normal
-        notifier.addDisclosure(mDislosure);
-        assertEquals(1, notifier.getCurrentDisclosureCount());
+        notifier.addDisclosure(SUB_ID_1, mDislosure);
+        assertEquals(1, notifier.getCurrentDisclosureCount(SUB_ID_1));
     }
 
     @Test
@@ -126,15 +165,34 @@ public class CellularIdentifierDisclosureNotifierTest {
 
         // One round of disclosures
         notifier.enable();
-        notifier.addDisclosure(mDislosure);
-        notifier.addDisclosure(mDislosure);
-        assertEquals(2, notifier.getCurrentDisclosureCount());
+        notifier.addDisclosure(SUB_ID_1, mDislosure);
+        notifier.addDisclosure(SUB_ID_1, mDislosure);
+        assertEquals(2, notifier.getCurrentDisclosureCount(SUB_ID_1));
 
         notifier.disable();
         assertFalse(notifier.isEnabled());
 
         // We're disabled now so no disclosures should open the disclosure window
-        notifier.addDisclosure(mDislosure);
-        assertEquals(0, notifier.getCurrentDisclosureCount());
+        notifier.addDisclosure(SUB_ID_1, mDislosure);
+        assertEquals(0, notifier.getCurrentDisclosureCount(SUB_ID_1));
+    }
+
+    @Test
+    public void testMultipleSubIdsTrackedIndependently() {
+        TestExecutorService executor = new TestExecutorService();
+        CellularIdentifierDisclosureNotifier notifier =
+                new CellularIdentifierDisclosureNotifier(executor, 15, TimeUnit.MINUTES);
+
+        notifier.enable();
+        for (int i = 0; i < 3; i++) {
+            notifier.addDisclosure(SUB_ID_1, mDislosure);
+        }
+
+        for (int i = 0; i < 4; i++) {
+            notifier.addDisclosure(SUB_ID_2, mDislosure);
+        }
+
+        assertEquals(3, notifier.getCurrentDisclosureCount(SUB_ID_1));
+        assertEquals(4, notifier.getCurrentDisclosureCount(SUB_ID_2));
     }
 }
