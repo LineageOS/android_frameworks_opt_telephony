@@ -1774,6 +1774,9 @@ public class SatelliteController extends Handler {
     public void sendSatelliteDatagram(int subId, @SatelliteManager.DatagramType int datagramType,
             SatelliteDatagram datagram, boolean needFullScreenPointingUI,
             @NonNull IIntegerConsumer callback) {
+        logd("sendSatelliteDatagram: subId: " + subId + " datagramType: " + datagramType
+                + " needFullScreenPointingUI: " + needFullScreenPointingUI);
+
         Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(callback::accept);
         int error = evaluateOemSatelliteRequestAllowed(true);
         if (error != SATELLITE_RESULT_SUCCESS) {
