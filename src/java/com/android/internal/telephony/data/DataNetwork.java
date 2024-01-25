@@ -31,6 +31,7 @@ import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
 import android.net.NetworkFactory;
 import android.net.NetworkProvider;
+import android.net.NetworkRequest;
 import android.net.NetworkScore;
 import android.net.ProxyInfo;
 import android.net.RouteInfo;
@@ -91,6 +92,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RIL;
+import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
 import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
@@ -743,6 +745,11 @@ public class DataNetwork extends StateMachine {
     private @Nullable Consumer<Integer> mNetworkValidationResultCodeCallback;
 
     /**
+     * Callback used to listen QNS preference changes.
+     */
+    private @Nullable AccessNetworksManagerCallback mAccessNetworksManagerCallback;
+
+    /**
      * The network bandwidth.
      */
     public static class NetworkBandwidth {
@@ -1172,6 +1179,23 @@ public class DataNetwork extends StateMachine {
                         getHandler(), EVENT_VOICE_CALL_ENDED, null);
             }
 
+            if (mFlags.forceIwlanMms()) {
+                if (mDataProfile.canSatisfy(NetworkCapabilities.NET_CAPABILITY_MMS)) {
+                    mAccessNetworksManagerCallback = new AccessNetworksManagerCallback(
+                            getHandler()::post) {
+                        @Override
+                        public void onPreferredTransportChanged(
+                                @NetCapability int networkCapability) {
+                            if (networkCapability == NetworkCapabilities.NET_CAPABILITY_MMS) {
+                                log("MMS preference changed.");
+                                updateNetworkCapabilities();
+                            }
+                        }
+                    };
+                    mAccessNetworksManager.registerCallback(mAccessNetworksManagerCallback);
+                }
+            }
+
             // Only add symmetric code here, for example, registering and unregistering.
             // DefaultState.enter() is the starting point in the life cycle of the DataNetwork,
             // and DefaultState.exit() is the end. For non-symmetric initializing works, put them
@@ -1181,6 +1205,10 @@ public class DataNetwork extends StateMachine {
         @Override
         public void exit() {
             logv("Unregistering all events.");
+            if (mFlags.forceIwlanMms() && mAccessNetworksManagerCallback != null) {
+                mAccessNetworksManager.unregisterCallback(mAccessNetworksManagerCallback);
+            }
+
             // Check null for devices not supporting FEATURE_TELEPHONY_IMS.
             if (mPhone.getImsPhone() != null) {
                 mPhone.getImsPhone().getCallTracker().unregisterForVoiceCallStarted(getHandler());
@@ -2331,6 +2359,35 @@ public class DataNetwork extends StateMachine {
 
         if (mDataNetworkController.isEsimBootStrapProvisioningActivated()) {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+        }
+
+        // Check if the feature force MMS on IWLAN is enabled. When the feature is enabled, MMS
+        // will be attempted on IWLAN if possible, even if existing cellular networks already
+        // supports IWLAN.
+        if (mFlags.forceIwlanMms() && builder.build()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS)) {
+            // If QNS sets MMS preferred on IWLAN, and it is possible to setup an MMS network on
+            // IWLAN, then we need to remove the MMS capability on the cellular network. This will
+            // allow the new MMS network to be brought up on IWLAN when MMS network request arrives.
+            if (mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                    NetworkCapabilities.NET_CAPABILITY_MMS)
+                    == AccessNetworkConstants.TRANSPORT_TYPE_WLAN && mTransport
+                    == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+
+                DataProfile dataProfile = mDataNetworkController.getDataProfileManager()
+                        .getDataProfileForNetworkRequest(new TelephonyNetworkRequest(
+                                new NetworkRequest.Builder().addCapability(
+                                NetworkCapabilities.NET_CAPABILITY_MMS).build(), mPhone),
+                        TelephonyManager.NETWORK_TYPE_IWLAN, false, false, false);
+                // If we find another data data profile that can support MMS on IWLAN, then remove
+                // the MMS capability from this cellular network. This will allow IWLAN to be
+                // brought up for MMS later.
+                if (dataProfile != null && !dataProfile.equals(mDataProfile)) {
+                    log("Found a different data profile " + mDataProfile.getApn()
+                            + " that can serve MMS on IWLAN.");
+                    builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+                }
+            }
         }
 
         // If one of the capabilities are for special use, for example, IMS, CBS, then this
