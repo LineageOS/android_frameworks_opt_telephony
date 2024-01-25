@@ -1318,6 +1318,13 @@ public class SatelliteModemInterface {
         return mIsSatelliteServiceSupported;
     }
 
+    /** Check if vendor satellite service is connected */
+    public boolean isSatelliteServiceConnected() {
+        synchronized (mLock) {
+            return (mSatelliteService != null);
+        }
+    }
+
     /**
      * This API can be used by only CTS to update satellite vendor service package name.
      *

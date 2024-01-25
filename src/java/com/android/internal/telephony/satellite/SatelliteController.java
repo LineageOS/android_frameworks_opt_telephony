@@ -784,13 +784,6 @@ public class SatelliteController extends Handler {
                             mWaitingForRadioDisabled = true;
                         }
                         setSettingsKeyForSatelliteMode(SATELLITE_MODE_ENABLED_TRUE);
-
-                        /**
-                         * TODO for NTN-based satellites: Check if satellite is acquired.
-                         */
-                        if (mNeedsSatellitePointing) {
-                            mPointingAppController.startPointingUI(false);
-                        }
                         evaluateToSendSatelliteEnabledSuccess();
                     } else {
                         /**
@@ -908,7 +901,7 @@ public class SatelliteController extends Handler {
                         error = SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE;
                     } else {
                         boolean supported = (boolean) ar.result;
-                        if (DBG) logd("isSatelliteSupported: " + supported);
+                        logd("isSatelliteSupported: " + supported);
                         bundle.putBoolean(SatelliteManager.KEY_SATELLITE_SUPPORTED, supported);
                         updateSatelliteSupportedStateWhenSatelliteServiceConnected(supported);
                     }
@@ -1019,6 +1012,24 @@ public class SatelliteController extends Handler {
             case EVENT_RADIO_STATE_CHANGED: {
                 if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON) {
                     mIsRadioOn = true;
+                }
+                if (mCi.getRadioState() != TelephonyManager.RADIO_POWER_UNAVAILABLE) {
+                    if (mSatelliteModemInterface.isSatelliteServiceConnected()) {
+                        synchronized (mIsSatelliteSupportedLock) {
+                            if (mIsSatelliteSupported == null || !mIsSatelliteSupported) {
+                                ResultReceiver receiver = new ResultReceiver(this) {
+                                    @Override
+                                    protected void onReceiveResult(
+                                            int resultCode, Bundle resultData) {
+                                        logd("onRadioStateChanged.requestIsSatelliteSupported: "
+                                                + "resultCode=" + resultCode
+                                                + ", resultData=" + resultData);
+                                    }
+                                };
+                                sendRequestAsync(CMD_IS_SATELLITE_SUPPORTED, receiver, null);
+                            }
+                        }
+                    }
                 }
                 break;
             }
@@ -2727,7 +2738,8 @@ public class SatelliteController extends Handler {
                     new ResultReceiver(this) {
                         @Override
                         protected void onReceiveResult(int resultCode, Bundle resultData) {
-                            logd("requestIsSatelliteProvisioned: resultCode=" + resultCode);
+                            logd("requestIsSatelliteProvisioned: resultCode=" + resultCode
+                                    + ", resultData=" + resultData);
                             requestSatelliteEnabled(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                                     false, false,
                                     new IIntegerConsumer.Stub() {
@@ -2742,7 +2754,8 @@ public class SatelliteController extends Handler {
                     new ResultReceiver(this) {
                         @Override
                         protected void onReceiveResult(int resultCode, Bundle resultData) {
-                            logd("requestSatelliteCapabilities: resultCode=" + resultCode);
+                            logd("requestSatelliteCapabilities: resultCode=" + resultCode
+                                    + ", resultData=" + resultData);
                         }
                     });
         }

@@ -656,6 +656,55 @@ public class SatelliteControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testRadioStateChanged() {
+        mIsSatelliteEnabledSemaphore.drainPermits();
+
+        when(mMockSatelliteModemInterface.isSatelliteServiceConnected()).thenReturn(false);
+        setRadioPower(false);
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, never())
+                .requestIsSatelliteSupported(any(Message.class));
+
+        setRadioPower(true);
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, never())
+                .requestIsSatelliteSupported(any(Message.class));
+
+        when(mMockSatelliteModemInterface.isSatelliteServiceConnected()).thenReturn(true);
+        setRadioPower(false);
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, times(1))
+                .requestIsSatelliteSupported(any(Message.class));
+
+        setRadioPower(true);
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, times(2))
+                .requestIsSatelliteSupported(any(Message.class));
+
+        setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_RESULT_SUCCESS);
+        setRadioPower(false);
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, times(3))
+                .requestIsSatelliteSupported(any(Message.class));
+
+        setRadioPower(true);
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, times(4))
+                .requestIsSatelliteSupported(any(Message.class));
+
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        setRadioPower(false);
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, times(5))
+                .requestIsSatelliteSupported(any(Message.class));
+
+        setRadioPower(true);
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, times(5))
+                .requestIsSatelliteSupported(any(Message.class));
+    }
+
+    @Test
     public void testRequestSatelliteEnabled() {
         mIsSatelliteEnabledSemaphore.drainPermits();
 
@@ -711,7 +760,6 @@ public class SatelliteControllerTest extends TelephonyTest {
         verify(mMockSatelliteSessionController, times(1)).onSatelliteEnabledStateChanged(eq(true));
         verify(mMockSatelliteSessionController, times(2)).setDemoMode(eq(false));
         verify(mMockDatagramController, times(2)).setDemoMode(eq(false));
-        verify(mMockPointingAppController).startPointingUI(eq(false));
         verify(mMockControllerMetricsStats, times(1)).onSatelliteEnabled();
         verify(mMockControllerMetricsStats, times(1)).reportServiceEnablementSuccessCount();
 
@@ -770,7 +818,6 @@ public class SatelliteControllerTest extends TelephonyTest {
         verifySatelliteEnabled(true, SATELLITE_RESULT_SUCCESS);
         assertTrue(mSatelliteControllerUT.setSettingsKeyForSatelliteModeCalled);
         assertEquals(SATELLITE_MODE_ENABLED_TRUE, mSatelliteControllerUT.satelliteModeSettingValue);
-        verify(mMockPointingAppController).startPointingUI(eq(false));
         verify(mMockSatelliteSessionController, times(2)).onSatelliteEnabledStateChanged(eq(true));
         verify(mMockSatelliteSessionController, times(4)).setDemoMode(eq(false));
         verify(mMockDatagramController, times(4)).setDemoMode(eq(false));
