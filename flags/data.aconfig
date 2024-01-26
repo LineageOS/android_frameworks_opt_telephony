@@ -104,3 +104,10 @@ flag {
   description: "The DataCallSessionStats metrics will capture whether the IWLAN PDN is set up on cross-SIM calling."
   bug: "313956117"
 }
+
+flag {
+  name: "force_iwlan_mms"
+  namespace: "telephony"
+  description: "When QNS prefers MMS on IWLAN, MMS will be attempted on IWLAN if it can, even though if existing cellular network already supports MMS."
+  bug: "316211526"
+}
