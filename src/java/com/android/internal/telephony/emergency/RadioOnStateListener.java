@@ -505,7 +505,7 @@ public class RadioOnStateListener {
         if (mPhone != null) {
             subId = mPhone.getSubId();
         }
-        mSatelliteController.unregisterForSatelliteModemStateChanged(subId, mSatelliteCallback);
+        mSatelliteController.unregisterForModemStateChanged(subId, mSatelliteCallback);
         mHandler.removeMessages(MSG_SATELLITE_ENABLED_CHANGED);
     }
 
