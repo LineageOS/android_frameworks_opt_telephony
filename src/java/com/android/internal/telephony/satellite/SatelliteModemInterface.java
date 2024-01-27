@@ -1236,10 +1236,13 @@ public class SatelliteModemInterface {
                             }
                         }, new INtnSignalStrengthConsumer.Stub() {
                             @Override
-                            public void accept(NtnSignalStrength result) {
-                                logd("requestNtnSignalStrength: " + result);
+                            public void accept(
+                                    android.telephony.satellite.stub.NtnSignalStrength result) {
+                                NtnSignalStrength ntnSignalStrength =
+                                        SatelliteServiceUtils.fromNtnSignalStrength(result);
+                                logd("requestNtnSignalStrength: " + ntnSignalStrength);
                                 Binder.withCleanCallingIdentity(() -> sendMessageWithResult(
-                                        message, result,
+                                        message, ntnSignalStrength,
                                         SatelliteManager.SATELLITE_RESULT_SUCCESS));
                             }
                         });
@@ -1316,6 +1319,13 @@ public class SatelliteModemInterface {
 
     public boolean isSatelliteServiceSupported() {
         return mIsSatelliteServiceSupported;
+    }
+
+    /** Check if vendor satellite service is connected */
+    public boolean isSatelliteServiceConnected() {
+        synchronized (mLock) {
+            return (mSatelliteService != null);
+        }
     }
 
     /**
