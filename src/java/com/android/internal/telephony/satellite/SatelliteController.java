@@ -2342,9 +2342,9 @@ public class SatelliteController extends Handler {
      * @return The list of satellite PLMNs used for connecting to satellite networks.
      */
     @NonNull
-    public List<String> getAllSatellitePlmnsForCarrier(int subId) {
+    public List<String> getSatellitePlmnsForCarrier(int subId) {
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
-            logd("getAllSatellitePlmnsForCarrier: carrierEnabledSatelliteFlag is disabled");
+            logd("getSatellitePlmnsForCarrier: carrierEnabledSatelliteFlag is disabled");
             return new ArrayList<>();
         }
         synchronized (mSupportedSatelliteServicesLock) {
