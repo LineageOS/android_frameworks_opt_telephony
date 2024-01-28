@@ -647,8 +647,7 @@ public class EmergencyStateTracker {
         setEmergencyModeInProgress(true);
 
         Message m = mHandler.obtainMessage(msg, Integer.valueOf(emergencyType));
-        if ((mIsTestEmergencyNumber && emergencyType == EMERGENCY_TYPE_CALL)
-                || (mIsTestEmergencyNumberForSms && emergencyType == EMERGENCY_TYPE_SMS)) {
+        if (mIsTestEmergencyNumberForSms && emergencyType == EMERGENCY_TYPE_SMS) {
             Rlog.d(TAG, "TestEmergencyNumber for " + emergencyTypeToString(emergencyType)
                     + ": Skipping setting emergency mode on modem.");
             // Send back a response for the command, but with null information
