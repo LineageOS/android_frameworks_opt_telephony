@@ -83,6 +83,7 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import android.annotation.NonNull;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncResult;
@@ -159,7 +160,10 @@ public class SatelliteControllerTest extends TelephonyTest {
     private static final String TEST_NEXT_SATELLITE_TOKEN = "TEST_NEXT_SATELLITE_TOKEN";
     private static final String[] EMPTY_STRING_ARRAY = {};
     private static final List<String> EMPTY_STRING_LIST = new ArrayList<>();
+    private static final String SATELLITE_SYSTEM_NOTIFICATION_DONE_KEY =
+            "satellite_system_notification_done_key";
     private static final int[] ACTIVE_SUB_IDS = {SUB_ID};
+
     private List<Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener>>
             mCarrierConfigChangedListenerList = new ArrayList<>();
 
@@ -176,6 +180,7 @@ public class SatelliteControllerTest extends TelephonyTest {
     @Mock private ProvisionMetricsStats mMockProvisionMetricsStats;
     @Mock private SessionMetricsStats mMockSessionMetricsStats;
     @Mock private SubscriptionManagerService mMockSubscriptionManagerService;
+    @Mock private NotificationManager mMockNotificationManager;
     private List<Integer> mIIntegerConsumerResults =  new ArrayList<>();
     @Mock private ISatelliteTransmissionUpdateCallback mStartTransmissionUpdateCallback;
     @Mock private ISatelliteTransmissionUpdateCallback mStopTransmissionUpdateCallback;
@@ -503,6 +508,13 @@ public class SatelliteControllerTest extends TelephonyTest {
         doNothing().when(mMockProvisionMetricsStats).reportProvisionMetrics();
         doNothing().when(mMockControllerMetricsStats).reportDeprovisionCount(anyInt());
         when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
+        doReturn(mSST).when(mPhone).getServiceStateTracker();
+        doReturn(mSST).when(mPhone2).getServiceStateTracker();
+        doReturn(mServiceState).when(mSST).getServiceState();
+        doReturn(Context.NOTIFICATION_SERVICE).when(mContext).getSystemServiceName(
+                NotificationManager.class);
+        doReturn(mMockNotificationManager).when(mContext).getSystemService(
+                Context.NOTIFICATION_SERVICE);
         mSatelliteControllerUT =
                 new TestSatelliteController(mContext, Looper.myLooper(), mFeatureFlags);
         verify(mMockSatelliteModemInterface).registerForSatelliteProvisionStateChanged(
@@ -2867,6 +2879,33 @@ public class SatelliteControllerTest extends TelephonyTest {
 
         assertEquals(false, satelliteEnabledPerCarrier.get(SUB_ID));
         assertEquals(true, satelliteEnabledPerCarrier.get(SUB_ID1));
+    }
+
+    @Test
+    public void testHandleEventServiceStateChanged() throws Exception {
+        when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(true);
+        // Do nothing when the satellite is not connected
+        doReturn(false).when(mServiceState).isUsingNonTerrestrialNetwork();
+        sendServiceStateChangedEvent();
+        processAllMessages();
+        assertEquals(false,
+                mSharedPreferences.getBoolean(SATELLITE_SYSTEM_NOTIFICATION_DONE_KEY, false));
+        verify(mMockNotificationManager, never()).notifyAsUser(anyString(), anyInt(), any(), any());
+
+        // Check sending a system notification when the satellite is connected
+        doReturn(true).when(mServiceState).isUsingNonTerrestrialNetwork();
+        sendServiceStateChangedEvent();
+        processAllMessages();
+        verify(mMockNotificationManager, times(1)).notifyAsUser(anyString(), anyInt(), any(),
+                any());
+        assertEquals(true,
+                mSharedPreferences.getBoolean(SATELLITE_SYSTEM_NOTIFICATION_DONE_KEY, false));
+
+        // Check don't display again after displayed already a system notification.
+        sendServiceStateChangedEvent();
+        processAllMessages();
+        verify(mMockNotificationManager, times(1)).notifyAsUser(anyString(), anyInt(), any(),
+                any());
     }
 
     private void resetSatelliteControllerUTEnabledState() {
