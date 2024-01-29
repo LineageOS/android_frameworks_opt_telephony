@@ -1603,6 +1603,17 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(2, copiedDialArgs.eccCategory);
     }
 
+    @Test
+    @SmallTest
+    public void testCanMakeWifiCall() {
+        mImsPhoneUT.setServiceState(ServiceState.STATE_IN_SERVICE);
+        mImsPhoneUT.setImsRegistered(true);
+        doReturn(ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN).when(mImsCT)
+                .getImsRegistrationTech();
+
+        assertTrue(mImsPhoneUT.canMakeWifiCall());
+    }
+
     private ServiceState getServiceStateDataAndVoice(int rat, int regState, boolean isRoaming) {
         ServiceState ss = new ServiceState();
         ss.setStateOutOfService();
