@@ -24,6 +24,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.ComponentName;
 import android.content.Context;
+import android.os.SystemProperties;
 import android.telephony.DomainSelectionService;
 import android.text.TextUtils;
 import android.util.IndentingPrintWriter;
@@ -34,6 +35,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.flags.Flags;
+import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -48,6 +50,10 @@ public class DomainSelectionResolver {
     @VisibleForTesting
     protected static final String PACKAGE_NAME_NONE = "none";
     private static final String TAG = DomainSelectionResolver.class.getSimpleName();
+    private static final boolean DBG = TelephonyUtils.IS_DEBUGGABLE;
+    /** For test purpose only with userdebug release */
+    private static final String PROP_DISABLE_DOMAIN_SELECTION =
+            "telephony.test.disable_domain_selection";
     private static DomainSelectionResolver sInstance = null;
 
     /**
@@ -132,6 +138,10 @@ public class DomainSelectionResolver {
      *         {@code false} otherwise.
      */
     public boolean isDomainSelectionSupported() {
+        if (DBG && SystemProperties.getBoolean(PROP_DISABLE_DOMAIN_SELECTION, false)) {
+            logi("Disabled for test");
+            return false;
+        }
         return mDefaultComponentName != null && PhoneFactory.getDefaultPhone()
                 .getHalVersion(HAL_SERVICE_NETWORK).greaterOrEqual(RADIO_HAL_VERSION_2_1);
     }
