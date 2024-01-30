@@ -128,13 +128,13 @@ public class EmergencyStateTracker {
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private final Runnable mExitEcmRunnable = this::exitEmergencyCallbackMode;
     // Tracks emergency calls by callId that have reached {@link Call.State#ACTIVE}.
-    private final Set<String> mActiveEmergencyCalls = new ArraySet<>();
+    private final Set<android.telecom.Connection> mActiveEmergencyCalls = new ArraySet<>();
     private Phone mPhoneToExit;
     private int mPdnDisconnectionTimeoutMs = DEFAULT_EPDN_DISCONNECTION_TIMEOUT_MS;
     private final Object mLock = new Object();
     private Phone mPhone;
-    // Tracks ongoing emergency callId to handle a second emergency call
-    private String mOngoingCallId;
+    // Tracks ongoing emergency connection to handle a second emergency call
+    private android.telecom.Connection mOngoingConnection;
     // Domain of the active emergency call. Assuming here that there will only be one domain active.
     private int mEmergencyCallDomain = NetworkRegistrationInfo.DOMAIN_UNKNOWN;
     private CompletableFuture<Integer> mCallEmergencyModeFuture;
@@ -498,21 +498,22 @@ public class EmergencyStateTracker {
      * Handles turning on radio and switching DDS.
      *
      * @param phone                 the {@code Phone} on which to process the emergency call.
-     * @param callId                the call id on which to process the emergency call.
+     * @param c                     the {@code Connection} on which to process the emergency call.
      * @param isTestEmergencyNumber whether this is a test emergency number.
      * @return a {@code CompletableFuture} that results in {@code DisconnectCause.NOT_DISCONNECTED}
      *         if emergency call successfully started.
      */
     public CompletableFuture<Integer> startEmergencyCall(@NonNull Phone phone,
-            @NonNull String callId, boolean isTestEmergencyNumber) {
-        Rlog.i(TAG, "startEmergencyCall: phoneId=" + phone.getPhoneId() + ", callId=" + callId);
+            @NonNull android.telecom.Connection c, boolean isTestEmergencyNumber) {
+        Rlog.i(TAG, "startEmergencyCall: phoneId=" + phone.getPhoneId()
+                + ", callId=" + c.getTelecomCallId());
 
         if (mPhone != null) {
             // Create new future to return as to not interfere with any uncompleted futures.
             // Case1) When 2nd emergency call is initiated during an active call on the same phone.
             // Case2) While the device is in ECBM, an emergency call is initiated on the same phone.
             if (isSamePhone(mPhone, phone) && (!mActiveEmergencyCalls.isEmpty() || isInEcm())) {
-                mOngoingCallId = callId;
+                mOngoingConnection = c;
                 mIsTestEmergencyNumber = isTestEmergencyNumber;
                 // Ensure that domain selector requests scan.
                 mLastEmergencyRegResult = new EmergencyRegResult(
@@ -547,13 +548,13 @@ public class EmergencyStateTracker {
             }
 
             mPhone = phone;
-            mOngoingCallId = callId;
+            mOngoingConnection = c;
             mIsTestEmergencyNumber = isTestEmergencyNumber;
             return mCallEmergencyModeFuture;
         }
 
         mPhone = phone;
-        mOngoingCallId = callId;
+        mOngoingConnection = c;
         mIsTestEmergencyNumber = isTestEmergencyNumber;
         turnOnRadioAndSwitchDds(mPhone, EMERGENCY_TYPE_CALL, mIsTestEmergencyNumber);
         return mCallEmergencyModeFuture;
@@ -566,13 +567,13 @@ public class EmergencyStateTracker {
      * Enter ECM only once all active emergency calls have ended. If a call never reached
      * {@link Call.State#ACTIVE}, then no need to enter ECM.
      *
-     * @param callId the call id on which to end the emergency call.
+     * @param c the emergency call disconnected.
      */
-    public void endCall(@NonNull String callId) {
-        boolean wasActive = mActiveEmergencyCalls.remove(callId);
+    public void endCall(@NonNull android.telecom.Connection c) {
+        boolean wasActive = mActiveEmergencyCalls.remove(c);
 
-        if (Objects.equals(mOngoingCallId, callId)) {
-            mOngoingCallId = null;
+        if (Objects.equals(mOngoingConnection, c)) {
+            mOngoingConnection = null;
             mOngoingCallProperties = 0;
         }
 
@@ -580,11 +581,11 @@ public class EmergencyStateTracker {
                 && isEmergencyCallbackModeSupported()) {
             enterEmergencyCallbackMode();
 
-            if (mOngoingCallId == null) {
+            if (mOngoingConnection == null) {
                 mIsEmergencyCallStartedDuringEmergencySms = false;
                 mCallEmergencyModeFuture = null;
             }
-        } else if (mOngoingCallId == null) {
+        } else if (mOngoingConnection == null) {
             if (isInEcm()) {
                 mIsEmergencyCallStartedDuringEmergencySms = false;
                 mCallEmergencyModeFuture = null;
@@ -605,7 +606,7 @@ public class EmergencyStateTracker {
         mIsTestEmergencyNumber = false;
         mIsEmergencyCallStartedDuringEmergencySms = false;
         mCallEmergencyModeFuture = null;
-        mOngoingCallId = null;
+        mOngoingConnection = null;
         mOngoingCallProperties = 0;
         mPhone = null;
     }
@@ -844,10 +845,10 @@ public class EmergencyStateTracker {
     /**
      * Notify the tracker that the emergency call domain has been updated.
      * @param phoneType The new PHONE_TYPE_* of the call.
-     * @param callId The ID of the call
+     * @param c The connection of the call
      */
-    public void onEmergencyCallDomainUpdated(int phoneType, String callId) {
-        Rlog.d(TAG, "domain update for callId: " + callId);
+    public void onEmergencyCallDomainUpdated(int phoneType, android.telecom.Connection c) {
+        Rlog.d(TAG, "domain update for callId: " + c.getTelecomCallId());
         int domain = -1;
         switch(phoneType) {
             case (PhoneConstants.PHONE_TYPE_CDMA_LTE):
@@ -875,13 +876,13 @@ public class EmergencyStateTracker {
      * Handles emergency call state change.
      *
      * @param state the new call state
-     * @param callId the callId whose state has changed
+     * @param c the call whose state has changed
      */
-    public void onEmergencyCallStateChanged(Call.State state, String callId) {
+    public void onEmergencyCallStateChanged(Call.State state, android.telecom.Connection c) {
         if (state == Call.State.ACTIVE) {
-            mActiveEmergencyCalls.add(callId);
-            if (Objects.equals(mOngoingCallId, callId)) {
-                Rlog.i(TAG, "call connected " + callId);
+            mActiveEmergencyCalls.add(c);
+            if (Objects.equals(mOngoingConnection, c)) {
+                Rlog.i(TAG, "call connected " + c.getTelecomCallId());
                 if (mPhone != null
                         && isVoWiFi(mOngoingCallProperties)
                         && mEmergencyMode == EmergencyConstants.MODE_EMERGENCY_WLAN) {
@@ -896,10 +897,10 @@ public class EmergencyStateTracker {
      * Handles the change of emergency call properties.
      *
      * @param properties the new call properties.
-     * @param callId the callId whose state has changed.
+     * @param c the call whose state has changed.
      */
-    public void onEmergencyCallPropertiesChanged(int properties, String callId) {
-        if (Objects.equals(mOngoingCallId, callId)) {
+    public void onEmergencyCallPropertiesChanged(int properties, android.telecom.Connection c) {
+        if (Objects.equals(mOngoingConnection, c)) {
             mOngoingCallProperties = properties;
         }
     }
@@ -1162,7 +1163,7 @@ public class EmergencyStateTracker {
             if (isInEcm()) {
                 // When the emergency mode is not in MODE_EMERGENCY_CALLBACK,
                 // it needs to notify the emergency callback mode to modem.
-                if (mActiveEmergencyCalls.isEmpty() && mOngoingCallId == null) {
+                if (mActiveEmergencyCalls.isEmpty() && mOngoingConnection == null) {
                     setEmergencyMode(mPhone, EMERGENCY_TYPE_CALL, MODE_EMERGENCY_CALLBACK,
                             MSG_SET_EMERGENCY_CALLBACK_MODE_DONE);
                 }
@@ -1230,7 +1231,7 @@ public class EmergencyStateTracker {
             }
 
             final Phone phoneForEmergency = phone;
-            final String expectedCallId = mOngoingCallId;
+            final android.telecom.Connection expectedConnection = mOngoingConnection;
             final int waitForInServiceTimeout =
                     needToTurnOnRadio ? DEFAULT_WAIT_FOR_IN_SERVICE_TIMEOUT_MS : 0;
             Rlog.i(TAG, "turnOnRadioAndSwitchDds: timeout=" + waitForInServiceTimeout);
@@ -1248,8 +1249,9 @@ public class EmergencyStateTracker {
                             completeEmergencyMode(emergencyType, DisconnectCause.POWER_OFF);
                         }
                     } else {
-                        if (!Objects.equals(mOngoingCallId, expectedCallId)) {
-                            Rlog.i(TAG, "onComplete " + expectedCallId + " canceled.");
+                        if (!Objects.equals(mOngoingConnection, expectedConnection)) {
+                            Rlog.i(TAG, "onComplete "
+                                    + expectedConnection.getTelecomCallId() + " canceled.");
                             return;
                         }
                         switchDdsAndSetEmergencyMode(phone, emergencyType);
