@@ -635,7 +635,7 @@ public abstract class TelephonyTest {
                         nullable(IccCardStatus.class), anyInt(), nullable(UiccCard.class),
                         nullable(Object.class), any(FeatureFlags.class));
         doReturn(mCT).when(mTelephonyComponentFactory)
-                .makeGsmCdmaCallTracker(nullable(GsmCdmaPhone.class));
+                .makeGsmCdmaCallTracker(nullable(GsmCdmaPhone.class), any(FeatureFlags.class));
         doReturn(mIccPhoneBookIntManager).when(mTelephonyComponentFactory)
                 .makeIccPhoneBookInterfaceManager(nullable(Phone.class));
         doReturn(mDisplayInfoController).when(mTelephonyComponentFactory)

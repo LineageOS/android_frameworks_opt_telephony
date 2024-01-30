@@ -75,7 +75,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         mSimulatedCommands.setRadioPower(true, null);
         mPhone.mCi = this.mSimulatedCommands;
 
-        mCTUT = new GsmCdmaCallTracker(mPhone);
+        mCTUT = new GsmCdmaCallTracker(mPhone, mFeatureFlags);
         logd("GsmCdmaCallTracker initiated, waiting for Power on");
         /* Make sure radio state is power on before dial.
          * When radio state changed from off to on, CallTracker

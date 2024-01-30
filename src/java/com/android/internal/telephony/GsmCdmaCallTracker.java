@@ -47,6 +47,7 @@ import com.android.internal.telephony.PhoneInternalInterface.DialArgs;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.emergency.EmergencyStateTracker;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.telephony.Rlog;
 
@@ -155,7 +156,9 @@ public class GsmCdmaCallTracker extends CallTracker {
 
     //***** Constructors
 
-    public GsmCdmaCallTracker (GsmCdmaPhone phone) {
+    public GsmCdmaCallTracker(GsmCdmaPhone phone, FeatureFlags featureFlags) {
+        super(featureFlags);
+
         this.mPhone = phone;
         mCi = phone.mCi;
         mCi.registerForCallStateChanged(this, EVENT_CALL_STATE_CHANGE, null);

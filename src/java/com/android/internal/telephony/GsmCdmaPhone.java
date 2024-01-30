@@ -464,7 +464,7 @@ public class GsmCdmaPhone extends Phone {
         }
 
         mCT = mTelephonyComponentFactory.inject(GsmCdmaCallTracker.class.getName())
-                .makeGsmCdmaCallTracker(this);
+                .makeGsmCdmaCallTracker(this, mFeatureFlags);
         mIccPhoneBookIntManager = mTelephonyComponentFactory
                 .inject(IccPhoneBookInterfaceManager.class.getName())
                 .makeIccPhoneBookInterfaceManager(this);
