@@ -96,7 +96,7 @@ public class RadioOnHelper implements RadioOnStateListener.Callback {
                 continue;
             }
 
-            int timeoutCallbackInterval = (forEmergencyCall && phone == phoneForEmergencyCall)
+            int timeoutCallbackInterval = (phone == phoneForEmergencyCall)
                     ? emergencyTimeoutIntervalMillis : 0;
             mInProgressListeners.add(mListeners.get(i));
             mListeners.get(i).waitForRadioOn(phone, this, forEmergencyCall, forEmergencyCall
