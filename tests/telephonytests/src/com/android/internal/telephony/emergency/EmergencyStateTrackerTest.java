@@ -53,9 +53,11 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.UserHandle;
 import android.provider.Settings;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.EmergencyRegResult;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyCallback;
@@ -152,6 +154,13 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
                 false /* isRadioOn */);
         setConfigForDdsSwitch(testPhone, null,
                 CarrierConfigManager.Gps.SUPL_EMERGENCY_MODE_TYPE_DP_ONLY, "150");
+        ServiceState ss = mock(ServiceState.class);
+        doReturn(ss).when(mSST).getServiceState();
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .build();
+        doReturn(nri).when(ss).getNetworkRegistrationInfo(anyInt(), anyInt());
         // Spy is used to capture consumer in delayDialForDdsSwitch
         EmergencyStateTracker spyEst = spy(emergencyStateTracker);
         CompletableFuture<Integer> unused = spyEst.startEmergencyCall(testPhone, TEST_CALL_ID,
@@ -168,6 +177,14 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         when(mSST.isRadioOn()).thenReturn(true);
         assertFalse(callback.getValue()
                 .isOkToCall(testPhone, ServiceState.STATE_OUT_OF_SERVICE, false));
+
+        nri = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setRegistrationState(REGISTRATION_STATE_HOME)
+                .build();
+        doReturn(nri).when(ss).getNetworkRegistrationInfo(anyInt(), anyInt());
+
         assertTrue(callback.getValue()
                 .isOkToCall(testPhone, ServiceState.STATE_IN_SERVICE, false));
         // Once radio on is complete, trigger delay dial
@@ -196,6 +213,13 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
                 false /* isRadioOn */);
         setConfigForDdsSwitch(testPhone, null,
                 CarrierConfigManager.Gps.SUPL_EMERGENCY_MODE_TYPE_DP_ONLY, "150");
+        ServiceState ss = mock(ServiceState.class);
+        doReturn(ss).when(mSST).getServiceState();
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .build();
+        doReturn(nri).when(ss).getNetworkRegistrationInfo(anyInt(), anyInt());
         // Spy is used to capture consumer in delayDialForDdsSwitch
         EmergencyStateTracker spyEst = spy(emergencyStateTracker);
         CompletableFuture<Integer> unused = spyEst.startEmergencyCall(testPhone, TEST_CALL_ID,
@@ -212,6 +236,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertFalse(callback.getValue()
                 .onTimeout(testPhone, ServiceState.STATE_OUT_OF_SERVICE, false));
         when(mSST.isRadioOn()).thenReturn(true);
+
         assertFalse(callback.getValue()
                 .isOkToCall(testPhone, ServiceState.STATE_OUT_OF_SERVICE, false));
         assertTrue(callback.getValue()
