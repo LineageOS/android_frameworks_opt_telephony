@@ -1,0 +1,15 @@
+package: "com.android.internal.telephony.flags"
+
+flag {
+    name: "oem_enabled_satellite_flag"
+    namespace: "telephony"
+    description: "This flag controls satellite communication supported by OEMs."
+    bug:"291811962"
+}
+
+flag {
+    name: "carrier_enabled_satellite_flag"
+    namespace: "telephony"
+    description: "This flag controls satellite communication supported by carriers."
+    bug:"296437388"
+}

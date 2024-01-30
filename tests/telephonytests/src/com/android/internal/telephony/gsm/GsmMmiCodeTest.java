@@ -36,11 +36,14 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.flags.FeatureFlags;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.concurrent.Executor;
@@ -56,15 +59,18 @@ public class GsmMmiCodeTest extends TelephonyTest {
     private static final String TEST_DIAL_STRING_NON_EMERGENCY_NUMBER = "11976";
     private GsmMmiCode mGsmMmiCode;
     private GsmCdmaPhone mGsmCdmaPhoneUT;
+    @Mock private FeatureFlags mFeatureFlags;
 
     private final Executor mExecutor = Runnable::run;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mFeatureFlags = Mockito.mock(FeatureFlags.class);
         doReturn(mExecutor).when(mContext).getMainExecutor();
         mGsmCdmaPhoneUT = new GsmCdmaPhone(mContext, mSimulatedCommands, mNotifier, true, 0,
-                PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory, (c, p) -> mImsManager);
+                PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory, (c, p) -> mImsManager,
+                mFeatureFlags);
         setCarrierSupportsCallerIdVerticalServiceCodesCarrierConfig();
     }
 

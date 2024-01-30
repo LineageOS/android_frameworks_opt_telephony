@@ -150,9 +150,14 @@ public class DomainSelectionResolver {
             throw new IllegalStateException("DomainSelection is not supported!");
         }
 
-        if (phone == null || !phone.isImsAvailable()) {
-            // If ImsPhone is null or the binder of ImsService is not available,
-            // CS domain is used for the telephony services.
+        if (phone == null || phone.getImsPhone() == null
+                || (!(isEmergency && selectorType == DomainSelectionService.SELECTOR_TYPE_CALLING)
+                        && !phone.isImsAvailable())) {
+            // In case of emergency calls, to recover the temporary failure in IMS service
+            // connection, DomainSelection shall be started even when IMS isn't available.
+            // DomainSelector will keep finding next available transport.
+            // For other telephony services, if the binder of ImsService is not available,
+            // CS domain will be used.
             return null;
         }
 

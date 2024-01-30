@@ -19,6 +19,8 @@ package com.android.internal.telephony.satellite;
 import static android.telephony.NetworkRegistrationInfo.FIRST_SERVICE_TYPE;
 import static android.telephony.NetworkRegistrationInfo.LAST_SERVICE_TYPE;
 
+import static java.util.stream.Collectors.joining;
+
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
@@ -29,23 +31,23 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.satellite.AntennaPosition;
+import android.telephony.satellite.NtnSignalStrength;
 import android.telephony.satellite.PointingInfo;
 import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
 import android.telephony.satellite.stub.NTRadioTechnology;
-import android.telephony.satellite.stub.SatelliteError;
 import android.telephony.satellite.stub.SatelliteModemState;
+import android.telephony.satellite.stub.SatelliteResult;
 
-import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
-import com.android.internal.telephony.RILUtils;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -81,53 +83,51 @@ public class SatelliteServiceUtils {
     /**
      * Convert satellite error from service definition to framework definition.
      * @param error The SatelliteError from the satellite service.
-     * @return The converted SatelliteError for the framework.
+     * @return The converted SatelliteResult for the framework.
      */
-    @SatelliteManager.SatelliteError public static int fromSatelliteError(int error) {
+    @SatelliteManager.SatelliteResult public static int fromSatelliteError(int error) {
         switch (error) {
-            case SatelliteError.ERROR_NONE:
-                return SatelliteManager.SATELLITE_ERROR_NONE;
-            case SatelliteError.SATELLITE_ERROR:
-                return SatelliteManager.SATELLITE_ERROR;
-            case SatelliteError.SERVER_ERROR:
-                return SatelliteManager.SATELLITE_SERVER_ERROR;
-            case SatelliteError.SERVICE_ERROR:
-                return SatelliteManager.SATELLITE_SERVICE_ERROR;
-            case SatelliteError.MODEM_ERROR:
-                return SatelliteManager.SATELLITE_MODEM_ERROR;
-            case SatelliteError.NETWORK_ERROR:
-                return SatelliteManager.SATELLITE_NETWORK_ERROR;
-            case SatelliteError.INVALID_TELEPHONY_STATE:
-                return SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE;
-            case SatelliteError.INVALID_MODEM_STATE:
-                return SatelliteManager.SATELLITE_INVALID_MODEM_STATE;
-            case SatelliteError.INVALID_ARGUMENTS:
-                return SatelliteManager.SATELLITE_INVALID_ARGUMENTS;
-            case SatelliteError.REQUEST_FAILED:
-                return SatelliteManager.SATELLITE_REQUEST_FAILED;
-            case SatelliteError.RADIO_NOT_AVAILABLE:
-                return SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE;
-            case SatelliteError.REQUEST_NOT_SUPPORTED:
-                return SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED;
-            case SatelliteError.NO_RESOURCES:
-                return SatelliteManager.SATELLITE_NO_RESOURCES;
-            case SatelliteError.SERVICE_NOT_PROVISIONED:
-                return SatelliteManager.SATELLITE_SERVICE_NOT_PROVISIONED;
-            case SatelliteError.SERVICE_PROVISION_IN_PROGRESS:
-                return SatelliteManager.SATELLITE_SERVICE_PROVISION_IN_PROGRESS;
-            case SatelliteError.REQUEST_ABORTED:
-                return SatelliteManager.SATELLITE_REQUEST_ABORTED;
-            case SatelliteError.SATELLITE_ACCESS_BARRED:
-                return SatelliteManager.SATELLITE_ACCESS_BARRED;
-            case SatelliteError.NETWORK_TIMEOUT:
-                return SatelliteManager.SATELLITE_NETWORK_TIMEOUT;
-            case SatelliteError.SATELLITE_NOT_REACHABLE:
-                return SatelliteManager.SATELLITE_NOT_REACHABLE;
-            case SatelliteError.NOT_AUTHORIZED:
-                return SatelliteManager.SATELLITE_NOT_AUTHORIZED;
+            case SatelliteResult.SATELLITE_RESULT_SUCCESS:
+                return SatelliteManager.SATELLITE_RESULT_SUCCESS;
+            case SatelliteResult.SATELLITE_RESULT_ERROR:
+                return SatelliteManager.SATELLITE_RESULT_ERROR;
+            case SatelliteResult.SATELLITE_RESULT_SERVER_ERROR:
+                return SatelliteManager.SATELLITE_RESULT_SERVER_ERROR;
+            case SatelliteResult.SATELLITE_RESULT_SERVICE_ERROR:
+                return SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR;
+            case SatelliteResult.SATELLITE_RESULT_MODEM_ERROR:
+                return SatelliteManager.SATELLITE_RESULT_MODEM_ERROR;
+            case SatelliteResult.SATELLITE_RESULT_NETWORK_ERROR:
+                return SatelliteManager.SATELLITE_RESULT_NETWORK_ERROR;
+            case SatelliteResult.SATELLITE_RESULT_INVALID_MODEM_STATE:
+                return SatelliteManager.SATELLITE_RESULT_INVALID_MODEM_STATE;
+            case SatelliteResult.SATELLITE_RESULT_INVALID_ARGUMENTS:
+                return SatelliteManager.SATELLITE_RESULT_INVALID_ARGUMENTS;
+            case SatelliteResult.SATELLITE_RESULT_REQUEST_FAILED:
+                return SatelliteManager.SATELLITE_RESULT_REQUEST_FAILED;
+            case SatelliteResult.SATELLITE_RESULT_RADIO_NOT_AVAILABLE:
+                return SatelliteManager.SATELLITE_RESULT_RADIO_NOT_AVAILABLE;
+            case SatelliteResult.SATELLITE_RESULT_REQUEST_NOT_SUPPORTED:
+                return SatelliteManager.SATELLITE_RESULT_REQUEST_NOT_SUPPORTED;
+            case SatelliteResult.SATELLITE_RESULT_NO_RESOURCES:
+                return SatelliteManager.SATELLITE_RESULT_NO_RESOURCES;
+            case SatelliteResult.SATELLITE_RESULT_SERVICE_NOT_PROVISIONED:
+                return SatelliteManager.SATELLITE_RESULT_SERVICE_NOT_PROVISIONED;
+            case SatelliteResult.SATELLITE_RESULT_SERVICE_PROVISION_IN_PROGRESS:
+                return SatelliteManager.SATELLITE_RESULT_SERVICE_PROVISION_IN_PROGRESS;
+            case SatelliteResult.SATELLITE_RESULT_REQUEST_ABORTED:
+                return SatelliteManager.SATELLITE_RESULT_REQUEST_ABORTED;
+            case SatelliteResult.SATELLITE_RESULT_ACCESS_BARRED:
+                return SatelliteManager.SATELLITE_RESULT_ACCESS_BARRED;
+            case SatelliteResult.SATELLITE_RESULT_NETWORK_TIMEOUT:
+                return SatelliteManager.SATELLITE_RESULT_NETWORK_TIMEOUT;
+            case SatelliteResult.SATELLITE_RESULT_NOT_REACHABLE:
+                return SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE;
+            case SatelliteResult.SATELLITE_RESULT_NOT_AUTHORIZED:
+                return SatelliteManager.SATELLITE_RESULT_NOT_AUTHORIZED;
         }
         loge("Received invalid satellite service error: " + error);
-        return SatelliteManager.SATELLITE_SERVICE_ERROR;
+        return SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR;
     }
 
     /**
@@ -150,6 +150,10 @@ public class SatelliteServiceUtils {
                 return SatelliteManager.SATELLITE_MODEM_STATE_OFF;
             case SatelliteModemState.SATELLITE_MODEM_STATE_UNAVAILABLE:
                 return SatelliteManager.SATELLITE_MODEM_STATE_UNAVAILABLE;
+            case SatelliteModemState.SATELLITE_MODEM_STATE_NOT_CONNECTED:
+                return SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED;
+            case SatelliteModemState.SATELLITE_MODEM_STATE_CONNECTED:
+                return SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED;
             default:
                 loge("Received invalid modem state: " + modemState);
                 return SatelliteManager.SATELLITE_MODEM_STATE_UNKNOWN;
@@ -209,6 +213,16 @@ public class SatelliteServiceUtils {
     }
 
     /**
+     * Convert non-terrestrial signal strength from service definition to framework definition.
+     * @param ntnSignalStrength The non-terrestrial signal strength from the satellite service.
+     * @return The converted non-terrestrial signal strength for the framework.
+     */
+    @Nullable public static NtnSignalStrength fromNtnSignalStrength(
+            android.telephony.satellite.stub.NtnSignalStrength ntnSignalStrength) {
+        return new NtnSignalStrength(ntnSignalStrength.signalStrengthLevel);
+    }
+
+    /**
      * Convert SatelliteDatagram from framework definition to service definition.
      * @param datagram The SatelliteDatagram from the framework.
      * @return The converted SatelliteDatagram for the satellite service.
@@ -222,25 +236,21 @@ public class SatelliteServiceUtils {
     }
 
     /**
-     * Get the {@link SatelliteManager.SatelliteError} from the provided result.
+     * Get the {@link SatelliteManager.SatelliteResult} from the provided result.
      *
      * @param ar AsyncResult used to determine the error code.
      * @param caller The satellite request.
      *
-     * @return The {@link SatelliteManager.SatelliteError} error code from the request.
+     * @return The {@link SatelliteManager.SatelliteResult} error code from the request.
      */
-    @SatelliteManager.SatelliteError public static int getSatelliteError(@NonNull AsyncResult ar,
+    @SatelliteManager.SatelliteResult public static int getSatelliteError(@NonNull AsyncResult ar,
             @NonNull String caller) {
         int errorCode;
         if (ar.exception == null) {
-            errorCode = SatelliteManager.SATELLITE_ERROR_NONE;
+            errorCode = SatelliteManager.SATELLITE_RESULT_SUCCESS;
         } else {
-            errorCode = SatelliteManager.SATELLITE_ERROR;
-            if (ar.exception instanceof CommandException) {
-                CommandException.Error error = ((CommandException) ar.exception).getCommandError();
-                errorCode = RILUtils.convertToSatelliteError(error);
-                loge(caller + " CommandException: " + ar.exception);
-            } else if (ar.exception instanceof SatelliteManager.SatelliteException) {
+            errorCode = SatelliteManager.SATELLITE_RESULT_ERROR;
+            if (ar.exception instanceof SatelliteManager.SatelliteException) {
                 errorCode = ((SatelliteManager.SatelliteException) ar.exception).getErrorCode();
                 loge(caller + " SatelliteException: " + ar.exception);
             } else {
@@ -274,58 +284,6 @@ public class SatelliteServiceUtils {
     }
 
     /**
-     * Expected format of each input string in the array: "PLMN_1:service_1,service_2,..."
-     *
-     * @return The map of supported services with key: PLMN, value: set of services supported by
-     * the PLMN.
-     */
-    @NonNull
-    @NetworkRegistrationInfo.ServiceType
-    public static Map<String, Set<Integer>> parseSupportedSatelliteServices(
-            String[] supportedSatelliteServicesStrArray) {
-        Map<String, Set<Integer>> supportedServicesMap = new HashMap<>();
-        if (supportedSatelliteServicesStrArray == null
-                || supportedSatelliteServicesStrArray.length == 0) {
-            return supportedServicesMap;
-        }
-
-        for (String supportedServicesPerPlmnStr : supportedSatelliteServicesStrArray) {
-            String[] pairOfPlmnAndsupportedServicesStr =
-                    supportedServicesPerPlmnStr.split(":");
-            if (pairOfPlmnAndsupportedServicesStr != null
-                    && (pairOfPlmnAndsupportedServicesStr.length == 1
-                    || pairOfPlmnAndsupportedServicesStr.length == 2)) {
-                String plmn = pairOfPlmnAndsupportedServicesStr[0];
-                Set<Integer> supportedServicesSet = new HashSet<>();
-                if (pairOfPlmnAndsupportedServicesStr.length == 2) {
-                    String[] supportedServicesStrArray =
-                            pairOfPlmnAndsupportedServicesStr[1].split(",");
-                    for (String service : supportedServicesStrArray) {
-                        try {
-                            int serviceType = Integer.parseInt(service);
-                            if (isServiceTypeValid(serviceType)) {
-                                supportedServicesSet.add(serviceType);
-                            } else {
-                                loge("parseSupportedSatelliteServices: invalid serviceType="
-                                        + serviceType);
-                            }
-                        } catch (NumberFormatException e) {
-                            loge("parseSupportedSatelliteServices: supportedServicesPerPlmnStr="
-                                    + supportedServicesPerPlmnStr + ", service=" + service
-                                    + ", e=" + e);
-                        }
-                    }
-                }
-                supportedServicesMap.put(plmn, supportedServicesSet);
-            } else {
-                loge("parseSupportedSatelliteServices: invalid format input, "
-                        + "supportedServicesPerPlmnStr=" + supportedServicesPerPlmnStr);
-            }
-        }
-        return supportedServicesMap;
-    }
-
-    /**
      * Expected format of the input dictionary bundle is:
      * <ul>
      *     <li>Key: PLMN string.</li>
@@ -353,41 +311,23 @@ public class SatelliteServiceUtils {
                             + " for plmn=" + plmn);
                 }
             }
+            logd("parseSupportedSatelliteServices: plmn=" + plmn + ", supportedServicesSet="
+                    + supportedServicesSet.stream().map(String::valueOf).collect(
+                            joining(",")));
             supportedServicesMap.put(plmn, supportedServicesSet);
         }
         return supportedServicesMap;
     }
 
     /**
-     * For the PLMN that exists in both {@code providerSupportedServices} and
-     * {@code carrierSupportedServices}, the supported services will be the intersection of the two
-     * sets. For the PLMN that is present in {@code providerSupportedServices} but not in
-     * {@code carrierSupportedServices}, the provider supported services will be used. The rest
-     * will not be used.
-     *
-     * @param providerSupportedServices Satellite provider supported satellite services.
-     * @param carrierSupportedServices Carrier supported satellite services.
-     * @return The supported satellite services by the device for the corresponding carrier and the
-     * satellite provider.
+     * Merge two string lists into one such that the result list does not have any duplicate items.
      */
     @NonNull
-    @NetworkRegistrationInfo.ServiceType
-    public static Map<String, Set<Integer>> mergeSupportedSatelliteServices(
-            @NonNull @NetworkRegistrationInfo.ServiceType Map<String, Set<Integer>>
-                    providerSupportedServices,
-            @NonNull @NetworkRegistrationInfo.ServiceType Map<String, Set<Integer>>
-                    carrierSupportedServices) {
-        Map<String, Set<Integer>> supportedServicesMap = new HashMap<>();
-        for (Map.Entry<String, Set<Integer>> entry : providerSupportedServices.entrySet()) {
-            Set<Integer> supportedServices = new HashSet<>(entry.getValue());
-            if (carrierSupportedServices.containsKey(entry.getKey())) {
-                supportedServices.retainAll(carrierSupportedServices.get(entry.getKey()));
-            }
-            if (!supportedServices.isEmpty()) {
-                supportedServicesMap.put(entry.getKey(), supportedServices);
-            }
-        }
-        return supportedServicesMap;
+    public static List<String> mergeStrLists(List<String> strList1, List<String> strList2) {
+        Set<String> mergedStrSet = new HashSet<>();
+        mergedStrSet.addAll(strList1);
+        mergedStrSet.addAll(strList2);
+        return mergedStrSet.stream().toList();
     }
 
     private static boolean isServiceTypeValid(int serviceType) {
@@ -401,6 +341,15 @@ public class SatelliteServiceUtils {
      */
     public static @Nullable Phone getPhone() {
         return PhoneFactory.getPhone(0);
+    }
+
+    /**
+     * Return phone associated with subscription ID.
+     *
+     * @return phone associated with {@code subId} or {@code null} if it doesn't exist.
+     */
+    public static @Nullable Phone getPhone(int subId) {
+        return PhoneFactory.getPhone(subId);
     }
 
     private static void logd(@NonNull String log) {

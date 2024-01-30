@@ -20,7 +20,9 @@ import static android.hardware.radio.V1_0.DeviceStateType.LOW_DATA_EXPECTED;
 import static android.hardware.radio.V1_0.DeviceStateType.POWER_SAVE_MODE;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
@@ -30,6 +32,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import static java.util.Arrays.asList;
 
@@ -40,22 +43,31 @@ import android.content.Intent;
 import android.hardware.radio.V1_5.IndicationFilter;
 import android.net.ConnectivityManager;
 import android.net.TetheringManager;
+import android.os.AsyncResult;
 import android.os.BatteryManager;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+
+import com.android.internal.telephony.flags.FeatureFlags;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -114,6 +126,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
 
     private static final int STATE_OFF = 0;
     private static final int STATE_ON = 1;
+    private static final long TIMEOUT = 500;
 
     // The keys are the single IndicationFilter flags,
     // The values are the array of states, when one state turn on, the corresponding
@@ -135,6 +148,9 @@ public class DeviceStateMonitorTest extends TelephonyTest {
     UiModeManager mUiModeManager;
 
     private DeviceStateMonitor mDSM;
+    private TestSatelliteController mSatelliteControllerUT;
+
+    @Mock private FeatureFlags mFeatureFlags;
 
     // Given a stateType, return the event type that can change the state
     private int state2Event(@StateType int stateType) {
@@ -162,11 +178,12 @@ public class DeviceStateMonitorTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        MockitoAnnotations.initMocks(this);
         mUiModeManager = mock(UiModeManager.class);
         mContextFixture.setSystemService(Context.UI_MODE_SERVICE, mUiModeManager);
         // We don't even need a mock executor, we just need to not throw.
         doReturn(null).when(mContextFixture.getTestDouble()).getMainExecutor();
-        mDSM = new DeviceStateMonitor(mPhone);
+        mDSM = new DeviceStateMonitor(mPhone, mFeatureFlags);
 
         // Initialize with ALL states off
         updateAllStatesToOff();
@@ -177,6 +194,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mSatelliteControllerUT = null;
         mDSM = null;
         super.tearDown();
     }
@@ -452,5 +470,161 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         updateState(STATE_TYPE_RADIO_OFF_OR_NOT_AVAILABLE, /* stateValue is not used */ 0);
         verify(mSimulatedCommandsVerifier).setUnsolResponseFilter(
                 eq(INDICATION_FILTERS_MINIMUM), nullable(Message.class));
+    }
+
+    @Test
+    public void testRegisterForSignalStrengthReportDecisionWithFeatureEnabled() {
+        logd("testRegisterForSignalStrengthReportDecisionWithFeatureEnabled()");
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
+        mSatelliteControllerUT = new TestSatelliteController(Looper.myLooper(), mDSM);
+
+        updateState(STATE_TYPE_RADIO_OFF_OR_NOT_AVAILABLE, 0);
+        updateState(STATE_TYPE_SCREEN, STATE_OFF);
+        mSatelliteControllerUT.resetCount();
+        sEventDeviceStatusChanged.drainPermits();
+
+        updateState(STATE_TYPE_SCREEN, STATE_ON);
+        assertTrue(waitForEventDeviceStatusChanged());
+        assertEquals(0, mSatelliteControllerUT.getStartEventCount());
+        assertEquals(1, mSatelliteControllerUT.getStopEventCount());
+        mSatelliteControllerUT.resetCount();
+
+        mSatelliteControllerUT.resetCount();
+        updateState(STATE_TYPE_SCREEN, STATE_OFF);
+        assertTrue(waitForEventDeviceStatusChanged());
+        assertEquals(0, mSatelliteControllerUT.getStartEventCount());
+        assertEquals(1, mSatelliteControllerUT.getStopEventCount());
+        mSatelliteControllerUT.resetCount();
+
+        updateState(STATE_TYPE_RADIO_ON, 0);
+        assertTrue(waitForEventDeviceStatusChanged());
+        assertEquals(0, mSatelliteControllerUT.getStartEventCount());
+        assertEquals(1, mSatelliteControllerUT.getStopEventCount());
+        mSatelliteControllerUT.resetCount();
+
+        updateState(STATE_TYPE_SCREEN, STATE_ON);
+        assertTrue(waitForEventDeviceStatusChanged());
+        assertEquals(1, mSatelliteControllerUT.getStartEventCount());
+        assertEquals(0, mSatelliteControllerUT.getStopEventCount());
+        mSatelliteControllerUT.resetCount();
+
+        updateState(STATE_TYPE_RADIO_OFF_OR_NOT_AVAILABLE, 0);
+        assertTrue(waitForEventDeviceStatusChanged());
+        assertEquals(0, mSatelliteControllerUT.getStartEventCount());
+        assertEquals(1, mSatelliteControllerUT.getStopEventCount());
+    }
+
+    @Test
+    public void testRegisterForSignalStrengthReportDecisionWithFeatureDisabled() {
+        logd("testRegisterForSignalStrengthReportDecisionWithFeatureDisabled()");
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(false);
+        mSatelliteControllerUT = new TestSatelliteController(Looper.myLooper(), mDSM);
+
+        updateState(STATE_TYPE_RADIO_OFF_OR_NOT_AVAILABLE, 0);
+        updateState(STATE_TYPE_SCREEN, STATE_OFF);
+        mSatelliteControllerUT.resetCount();
+        sEventDeviceStatusChanged.drainPermits();
+
+
+        /* Sending stop ntn signal strength as radio is off */
+        updateState(STATE_TYPE_SCREEN, STATE_ON);
+        assertFalse(waitForEventDeviceStatusChanged());
+        assertEquals(0, mSatelliteControllerUT.getStartEventCount());
+        assertEquals(0, mSatelliteControllerUT.getStopEventCount());
+
+        updateState(STATE_TYPE_SCREEN, STATE_OFF);
+        assertFalse(waitForEventDeviceStatusChanged());
+        assertEquals(0, mSatelliteControllerUT.getStartEventCount());
+        assertEquals(0, mSatelliteControllerUT.getStopEventCount());
+
+        updateState(STATE_TYPE_RADIO_ON, 0);
+        assertFalse(waitForEventDeviceStatusChanged());
+        assertEquals(0, mSatelliteControllerUT.getStartEventCount());
+        assertEquals(0, mSatelliteControllerUT.getStopEventCount());
+
+        updateState(STATE_TYPE_SCREEN, STATE_ON);
+        assertFalse(waitForEventDeviceStatusChanged());
+        assertEquals(0, mSatelliteControllerUT.getStartEventCount());
+        assertEquals(0, mSatelliteControllerUT.getStopEventCount());
+
+        updateState(STATE_TYPE_RADIO_OFF_OR_NOT_AVAILABLE, 0);
+        assertFalse(waitForEventDeviceStatusChanged());
+        assertEquals(0, mSatelliteControllerUT.getStartEventCount());
+        assertEquals(0, mSatelliteControllerUT.getStopEventCount());
+    }
+
+    private static Semaphore sEventDeviceStatusChanged = new Semaphore(0);
+    private boolean waitForEventDeviceStatusChanged() {
+        try {
+            if (!sEventDeviceStatusChanged.tryAcquire(TIMEOUT, TimeUnit.MILLISECONDS)) {
+                logd("Time out to receive EVENT_DEVICE_STATUS_CHANGED");
+                return false;
+            }
+        } catch (Exception ex) {
+            logd("waitForEventDeviceStatusChanged: ex=" + ex);
+            return false;
+        }
+        return true;
+    }
+
+    private static class TestSatelliteController extends Handler {
+        public static final int EVENT_DEVICE_STATUS_CHANGED = 35;
+        private final DeviceStateMonitor mDsm;
+        private int mStartEventCount;
+        private int mStopEventCount;
+
+        TestSatelliteController(Looper looper, DeviceStateMonitor dsm) {
+            super(looper);
+            mDsm = dsm;
+            mDsm.registerForSignalStrengthReportDecision(this, EVENT_DEVICE_STATUS_CHANGED, null);
+        }
+
+        /**
+         * Resets the count of occurred events.
+         */
+        public void resetCount() {
+            mStartEventCount = 0;
+            mStopEventCount = 0;
+        }
+
+        public int getStartEventCount() {
+            return mStartEventCount;
+        }
+
+        public int getStopEventCount() {
+            return mStopEventCount;
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch(msg.what) {
+                case EVENT_DEVICE_STATUS_CHANGED: {
+                    logd("EVENT_DEVICE_STATUS_CHANGED");
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    boolean shouldReport = (boolean) ar.result;
+                    if (shouldReport) {
+                        startSendingNtnSignalStrength();
+                    } else {
+                        stopSendingNtnSignalStrength();
+                    }
+                    try {
+                        sEventDeviceStatusChanged.release();
+                    } catch (Exception ex) {
+                        logd("waitForEventDeviceStatusChanged: ex=" + ex);
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+
+        private void startSendingNtnSignalStrength() {
+            mStartEventCount++;
+        }
+
+        private void stopSendingNtnSignalStrength() {
+            mStopEventCount++;
+        }
     }
 }

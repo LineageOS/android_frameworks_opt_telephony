@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.CarrierServiceStateTracker.ACTION_NEVER_ASK_AGAIN;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.any;
@@ -26,12 +28,15 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.isA;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
@@ -78,11 +83,12 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         mBundle = mContextFixture.getCarrierConfigBundle();
         when(mPhone.getSubId()).thenReturn(SUB_ID);
         when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(mBundle);
+        doReturn(false).when(mPackageManager).hasSystemFeature(PackageManager.FEATURE_WATCH);
 
         // Capture listener to emulate the carrier config change notification used later
         ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
                 ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
-        mCarrierSST = new CarrierServiceStateTracker(mPhone, mSST);
+        mCarrierSST = new CarrierServiceStateTracker(mPhone, mSST, mFeatureFlags);
         verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
                 listenerArgumentCaptor.capture());
         mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(0);
@@ -270,5 +276,55 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
                 eq(SUB_ID), isA(Notification.class));
         verify(mNotificationManager, never()).cancel(
                 CarrierServiceStateTracker.EMERGENCY_NOTIFICATION_TAG, SUB_ID);
+    }
+
+    /**
+     * Verify the WIFI emergency calling notification is silenced if the user requests (via a
+     * simulated notification action)
+     */
+    @Test
+    @SmallTest
+    public void testEmergencyNotificationBehaviorWhenSilenced() {
+        when(mFeatureFlags.stopSpammingEmergencyNotification()).thenReturn(true);
+        logd(LOG_TAG + ":testEmergencyNotificationBehaviorWhenSilenced()");
+        sendMessageOnHandler(CarrierServiceStateTracker.NOTIFICATION_EMERGENCY_NETWORK);
+
+        // verify the notification was sent
+        verify(mNotificationManager, times(1)).notify(
+                eq(CarrierServiceStateTracker.EMERGENCY_NOTIFICATION_TAG),
+                eq(SUB_ID), isA(Notification.class));
+
+        // simulate the user clicking the "Do Not Show Again" button on the notification
+        mCarrierSST.mActionReceiver.onReceive(mContext, new Intent(ACTION_NEVER_ASK_AGAIN));
+
+        // resend the msg to trigger the notification to be posted
+        sendMessageOnHandler(CarrierServiceStateTracker.NOTIFICATION_EMERGENCY_NETWORK);
+
+        // verify the notification was sent
+        verify(mNotificationManager, times(1)).notify(
+                eq(CarrierServiceStateTracker.EMERGENCY_NOTIFICATION_TAG),
+                eq(SUB_ID), isA(Notification.class));
+    }
+
+
+    /** Verifies notification map is empty when device is watch. */
+    @Test
+    @SmallTest
+    public void testNotificationMapWhenDeviceIsWatch() {
+        doReturn(true).when(mPackageManager).hasSystemFeature(PackageManager.FEATURE_WATCH);
+
+        CarrierServiceStateTracker tracker = new CarrierServiceStateTracker(mPhone, mSST,
+                mFeatureFlags);
+
+        assertTrue(tracker.getNotificationTypeMap().isEmpty());
+    }
+
+    private void sendMessageOnHandler(int messageWhat) {
+        Message notificationMsg = mSpyCarrierSST.obtainMessage(messageWhat, null);
+        doReturn(true).when(mSpyCarrierSST).evaluateSendingMessage(any());
+        doReturn(0).when(mSpyCarrierSST).getDelay(any());
+        doReturn(mNotificationManager).when(mSpyCarrierSST).getNotificationManager(any());
+        mSpyCarrierSST.handleMessage(notificationMsg);
+        processAllMessages();
     }
 }

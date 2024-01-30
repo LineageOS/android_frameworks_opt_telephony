@@ -17,7 +17,6 @@
 package com.android.internal.telephony.satellite;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import android.os.PersistableBundle;
@@ -33,8 +32,7 @@ import org.junit.runner.RunWith;
 import org.mockito.MockitoAnnotations;
 
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -54,58 +52,6 @@ public class SatelliteServiceUtilsTest extends TelephonyTest {
     public void tearDown() throws Exception {
         logd(TAG + " tearDown");
         super.tearDown();
-    }
-
-    @Test
-    public void testParseSupportedSatelliteServicesFromStringArray() {
-        // Parse correct format input string
-        int[] expectedServices1 = {2, 3};
-        int[] expectedServices2 = {3};
-        String[] supportedServicesStrArr1 = {"10011:2,3", "10112:3"};
-        Map<String, Set<Integer>> supportedServiceMap =
-                SatelliteServiceUtils.parseSupportedSatelliteServices(supportedServicesStrArr1);
-
-        assertTrue(supportedServiceMap.containsKey("10011"));
-        Set<Integer> supportedServices = supportedServiceMap.get("10011");
-        assertTrue(Arrays.equals(expectedServices1,
-                supportedServices.stream()
-                        .mapToInt(Integer::intValue)
-                        .toArray()));
-
-        assertTrue(supportedServiceMap.containsKey("10112"));
-        supportedServices = supportedServiceMap.get("10112");
-        assertTrue(Arrays.equals(expectedServices2,
-                supportedServices.stream()
-                        .mapToInt(Integer::intValue)
-                        .toArray()));
-
-        // Parse correct mixed with incorrect format input string
-        String[] supportedServicesStrArr2 = {"10011:2,3,1xy", "10112:3,70", "10012:"};
-        supportedServiceMap = SatelliteServiceUtils.parseSupportedSatelliteServices(
-                supportedServicesStrArr2);
-
-        assertTrue(supportedServiceMap.containsKey("10011"));
-        supportedServices = supportedServiceMap.get("10011");
-        assertTrue(Arrays.equals(expectedServices1,
-                supportedServices.stream()
-                        .mapToInt(Integer::intValue)
-                        .toArray()));
-
-        assertTrue(supportedServiceMap.containsKey("10112"));
-        supportedServices = supportedServiceMap.get("10112");
-        assertTrue(Arrays.equals(expectedServices2,
-                supportedServices.stream()
-                        .mapToInt(Integer::intValue)
-                        .toArray()));
-
-        assertTrue(supportedServiceMap.containsKey("10012"));
-        assertTrue(supportedServiceMap.get("10012").isEmpty());
-
-        // Parse an empty input string
-        String[] supportedServicesStrArr3 = {};
-        supportedServiceMap = SatelliteServiceUtils.parseSupportedSatelliteServices(
-                supportedServicesStrArr3);
-        assertTrue(supportedServiceMap.isEmpty());
     }
 
     @Test
@@ -153,46 +99,11 @@ public class SatelliteServiceUtilsTest extends TelephonyTest {
     }
 
     @Test
-    public void testMergeSupportedSatelliteServices() {
-        String plmn1 = "00101";
-        String plmn2 = "00102";
-        String plmn3 = "00103";
-
-        Integer[] providerSupportedServicesForPlmn1 = {1, 2, 3};
-        Integer[] providerSupportedServicesForPlmn2 = {3, 4};
-        Map<String, Set<Integer>> providerSupportedServicesMap = new HashMap<>();
-        providerSupportedServicesMap.put(
-                plmn1, new HashSet<>(Arrays.asList(providerSupportedServicesForPlmn1)));
-        providerSupportedServicesMap.put(
-                plmn2, new HashSet<>(Arrays.asList(providerSupportedServicesForPlmn2)));
-
-        Integer[] carrierSupportedServicesForPlmn2 = {3};
-        Integer[] carrierSupportedServicesForPlmn3 = {1, 3, 4};
-        Map<String, Set<Integer>> carrierSupportedServicesMap = new HashMap<>();
-        carrierSupportedServicesMap.put(
-                plmn2, new HashSet<>(Arrays.asList(carrierSupportedServicesForPlmn2)));
-        carrierSupportedServicesMap.put(
-                plmn3, new HashSet<>(Arrays.asList(carrierSupportedServicesForPlmn3)));
-
-        // {@code plmn1} is present in only provider support services.
-        int[] expectedSupportedServicesForPlmn1 = {1, 2, 3};
-        // Intersection of {3,4} and {3}.
-        int[] expectedSupportedServicesForPlmn2 = {3};
-        Map<String, Set<Integer>> supportedServicesMap =
-                SatelliteServiceUtils.mergeSupportedSatelliteServices(
-                        providerSupportedServicesMap, carrierSupportedServicesMap);
-
-        assertEquals(2, supportedServicesMap.size());
-        assertTrue(supportedServicesMap.containsKey(plmn1));
-        assertTrue(supportedServicesMap.containsKey(plmn2));
-        assertFalse(supportedServicesMap.containsKey(plmn3));
-        assertTrue(Arrays.equals(expectedSupportedServicesForPlmn1,
-                supportedServicesMap.get(plmn1).stream()
-                        .mapToInt(Integer::intValue)
-                        .toArray()));
-        assertTrue(Arrays.equals(expectedSupportedServicesForPlmn2,
-                supportedServicesMap.get(plmn2).stream()
-                        .mapToInt(Integer::intValue)
-                        .toArray()));
+    public void testMergeStrLists() {
+        List<String> l1 = Arrays.asList("1", "2", "2");
+        List<String> l2 = Arrays.asList("1", "3", "3");
+        List<String> expectedMergedList = Arrays.asList("1", "2", "3");
+        List<String> mergedList = SatelliteServiceUtils.mergeStrLists(l1, l2);
+        assertEquals(expectedMergedList, mergedList);
     }
 }

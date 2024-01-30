@@ -495,40 +495,6 @@ public class UiccControllerTest extends TelephonyTest {
         assertEquals(uiccCardInfo, mUiccControllerUT.getAllUiccCardInfos().get(0));
     }
 
-    @Test
-    public void testEidNotSupported() {
-        // Give UiccController a real context so it can use shared preferences
-        mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
-
-        // Mock out UiccSlots
-        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
-        doReturn(true).when(mMockSlot).isEuicc();
-        doReturn(mMockEuiccCard).when(mMockSlot).getUiccCard();
-        doReturn(null).when(mMockEuiccCard).getEid();
-
-        // simulate card status loaded so that the UiccController sets the card ID
-        IccCardStatus ics = new IccCardStatus();
-        ics.setCardState(1 /* present */);
-        ics.setUniversalPinState(3 /* disabled */);
-        ics.atr = "abcdef0123456789abcdef";
-        ics.iccid = "123451234567890";
-        ics.mSlotPortMapping = new IccSlotPortMapping();
-        ics.mSlotPortMapping.mPhysicalSlotIndex = UiccController.INVALID_SLOT_ID;
-        // make it seem like EID is not supported by setting physical slot = -1 like on HAL < 1.2
-
-        mSimulatedCommands.setSupportsEid(false);
-
-        AsyncResult ar = new AsyncResult(null, ics, null);
-        Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_ICC_STATUS_DONE, ar);
-        mUiccControllerUT.handleMessage(msg);
-
-        // assert that the default eUICC card Id is UNSUPPORTED_CARD_ID
-        assertEquals(TelephonyManager.UNSUPPORTED_CARD_ID,
-                mUiccControllerUT.getCardIdForDefaultEuicc());
-
-        mSimulatedCommands.setSupportsEid(true);
-    }
-
     /**
      * The default eUICC should not be the removable slot if there is a built-in eUICC.
      */

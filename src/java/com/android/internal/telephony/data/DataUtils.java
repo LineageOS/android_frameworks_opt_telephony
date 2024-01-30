@@ -90,6 +90,8 @@ public class DataUtils {
                 return NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH;
             case "PRIORITIZE_LATENCY":
                 return NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY;
+            case "RCS":
+                return NetworkCapabilities.NET_CAPABILITY_RCS;
             default:
                 return -1;
         }
@@ -254,6 +256,8 @@ public class DataUtils {
                 return ApnSetting.TYPE_VSIM;
             case NetworkCapabilities.NET_CAPABILITY_BIP:
                 return ApnSetting.TYPE_BIP;
+            case NetworkCapabilities.NET_CAPABILITY_RCS:
+                return ApnSetting.TYPE_RCS;
             default:
                 return ApnSetting.TYPE_NONE;
         }
@@ -295,6 +299,8 @@ public class DataUtils {
                 return NetworkCapabilities.NET_CAPABILITY_VSIM;
             case ApnSetting.TYPE_ENTERPRISE:
                 return NetworkCapabilities.NET_CAPABILITY_ENTERPRISE;
+            case ApnSetting.TYPE_RCS:
+                return NetworkCapabilities.NET_CAPABILITY_RCS;
             default:
                 return -1;
         }

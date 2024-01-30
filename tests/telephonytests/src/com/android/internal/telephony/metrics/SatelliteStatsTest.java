@@ -196,7 +196,8 @@ public class SatelliteStatsTest extends TelephonyTest {
     public void onSatelliteProvisionMetrics_withAtoms() throws Exception {
         SatelliteStats.SatelliteProvisionParams param =
                 new SatelliteStats.SatelliteProvisionParams.Builder()
-                        .setResultCode(SatelliteProtoEnums.SATELLITE_SERVICE_PROVISION_IN_PROGRESS)
+                        .setResultCode(
+                                SatelliteProtoEnums.SATELLITE_SERVICE_PROVISION_IN_PROGRESS)
                         .setProvisioningTimeSec(5 * 1000)
                         .setIsProvisionRequest(true)
                         .setIsCanceled(false)
@@ -224,6 +225,9 @@ public class SatelliteStatsTest extends TelephonyTest {
                         .setCountOfTimerStarted(5)
                         .setImsRegistered(false)
                         .setCellularServiceState(TelephonyProtoEnums.SERVICE_STATE_OUT_OF_SERVICE)
+                        .setIsMultiSim(false)
+                        .setRecommendingHandoverType(0)
+                        .setIsSatelliteAllowedInCurrentLocation(true)
                         .build();
 
         mSatelliteStats.onSatelliteSosMessageRecommender(param);
@@ -237,6 +241,10 @@ public class SatelliteStatsTest extends TelephonyTest {
         assertEquals(param.getCountOfTimerStarted(), stats.countOfTimerStarted);
         assertEquals(param.isImsRegistered(), stats.isImsRegistered);
         assertEquals(param.getCellularServiceState(), stats.cellularServiceState);
+        assertEquals(param.isMultiSim(), stats.isMultiSim);
+        assertEquals(param.getRecommendingHandoverType(), stats.recommendingHandoverType);
+        assertEquals(param.isSatelliteAllowedInCurrentLocation(),
+                stats.isSatelliteAllowedInCurrentLocation);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 }
