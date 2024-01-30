@@ -2602,7 +2602,7 @@ public class GsmCdmaPhone extends Phone {
             Bundle extras = new Bundle();
             extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, phoneAccountHandle);
 
-            final TelecomManager telecomManager = TelecomManager.from(mContext);
+            final TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
             telecomManager.placeCall(
                     Uri.fromParts(PhoneAccount.SCHEME_TEL, cfNumber, null), extras);
 
@@ -2863,7 +2863,7 @@ public class GsmCdmaPhone extends Phone {
             Bundle extras = new Bundle();
             extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, phoneAccountHandle);
 
-            final TelecomManager telecomManager = TelecomManager.from(mContext);
+            final TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
             telecomManager.placeCall(
                     Uri.fromParts(PhoneAccount.SCHEME_TEL, cwPrefix, null), extras);
 
@@ -5002,7 +5002,7 @@ public class GsmCdmaPhone extends Phone {
     }
 
     private PhoneAccountHandle subscriptionIdToPhoneAccountHandle(final int subId) {
-        final TelecomManager telecomManager = TelecomManager.from(mContext);
+        final TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
         final TelephonyManager telephonyManager = TelephonyManager.from(mContext);
         final Iterator<PhoneAccountHandle> phoneAccounts =
             telecomManager.getCallCapablePhoneAccounts(true).listIterator();
