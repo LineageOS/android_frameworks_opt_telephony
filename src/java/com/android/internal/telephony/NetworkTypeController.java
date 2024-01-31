@@ -1349,7 +1349,9 @@ public class NetworkTypeController extends StateMachine {
 
         String currentState = getCurrentState().getName();
 
-        if (mIsPrimaryTimerActive && getOverrideNetworkType() == getCurrentOverrideNetworkType()) {
+        if (mIsPrimaryTimerActive && getOverrideNetworkType() == getCurrentOverrideNetworkType()
+                && getDataNetworkType()
+                == mDisplayInfoController.getTelephonyDisplayInfo().getNetworkType()) {
             // remove primary timer if device goes back to the original icon
             if (DBG) {
                 log("Remove primary timer since icon of primary state and current icon equal: "
