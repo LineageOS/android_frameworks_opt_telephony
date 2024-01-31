@@ -1305,10 +1305,9 @@ public class SatelliteController extends Handler {
                 if (SATELLITE_RESULT_SUCCESS != evaluateOemSatelliteRequestAllowed(true)) {
                     return;
                 }
-                if (mShouldReportNtnSignalStrength.get() == shouldReport) {
+                if (!isSatelliteEnabled() || mShouldReportNtnSignalStrength.get() == shouldReport) {
                     if (DBG) {
-                        logd("CMD_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING : modem state matches the "
-                                + "expected state, return.");
+                        logd("CMD_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING: ignore request.");
                     }
                     return;
                 }
@@ -2975,6 +2974,9 @@ public class SatelliteController extends Handler {
             mSatelliteSessionController.setDemoMode(mIsDemoModeEnabled);
         } else {
             loge(caller + ": mSatelliteSessionController is not initialized yet");
+        }
+        if (!enabled) {
+            mShouldReportNtnSignalStrength.set(false);
         }
     }
 
