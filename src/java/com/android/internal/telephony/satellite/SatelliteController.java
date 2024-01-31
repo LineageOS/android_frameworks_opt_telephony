@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.satellite;
 
+import static android.provider.Settings.ACTION_SATELLITE_SETTING;
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE;
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL;
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_CONNECTION_HYSTERESIS_SEC_INT;
@@ -33,6 +34,10 @@ import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCC
 import android.annotation.ArrayRes;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
@@ -42,6 +47,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.database.ContentObserver;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.nfc.NfcAdapter;
 import android.os.AsyncResult;
@@ -62,6 +68,7 @@ import android.os.ResultReceiver;
 import android.os.ServiceSpecificException;
 import android.os.SystemClock;
 import android.os.SystemProperties;
+import android.os.UserHandle;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
@@ -334,6 +341,16 @@ public class SatelliteController extends Handler {
      * carrierPlmnList. */
     @GuardedBy("mSupportedSatelliteServicesLock")
     private final SparseArray<List<String>> mMergedPlmnListPerCarrier = new SparseArray<>();
+
+    /** Key used to read/write satellite system notification done in shared preferences. */
+    private static final String SATELLITE_SYSTEM_NOTIFICATION_DONE_KEY =
+            "satellite_system_notification_done_key";
+    // The notification tag used when showing a notification. The combination of notification tag
+    // and notification id should be unique within the phone app.
+    private static final String NOTIFICATION_TAG = "SatelliteController";
+    private static final int NOTIFICATION_ID = 1;
+    private static final String NOTIFICATION_CHANNEL = "satelliteChannel";
+    private static final String NOTIFICATION_CHANNEL_ID = "satellite";
 
     /**
      * @return The singleton instance of SatelliteController.
@@ -3462,6 +3479,7 @@ public class SatelliteController extends Handler {
 
     private void handleEventServiceStateChanged() {
         handleServiceStateForSatelliteConnectionViaCarrier();
+        determineSystemNotification();
     }
 
     private void handleServiceStateForSatelliteConnectionViaCarrier() {
@@ -3596,6 +3614,78 @@ public class SatelliteController extends Handler {
 
         mDatagramController.setShouldSendDatagramToModemInDemoMode(shouldSendToModemInDemoMode);
         return true;
+    }
+
+    private void determineSystemNotification() {
+        if (isUsingNonTerrestrialNetworkViaCarrier()) {
+            if (mSharedPreferences == null) {
+                try {
+                    mSharedPreferences = mContext.getSharedPreferences(SATELLITE_SHARED_PREF,
+                            Context.MODE_PRIVATE);
+                } catch (Exception e) {
+                    loge("Cannot get default shared preferences: " + e);
+                }
+            }
+            if (mSharedPreferences == null) {
+                loge("handleEventServiceStateChanged: Cannot get default shared preferences");
+                return;
+            }
+            if (!mSharedPreferences.getBoolean(SATELLITE_SYSTEM_NOTIFICATION_DONE_KEY, false)) {
+                showSatelliteSystemNotification();
+                mSharedPreferences.edit().putBoolean(SATELLITE_SYSTEM_NOTIFICATION_DONE_KEY,
+                        true).apply();
+            }
+        }
+    }
+
+    private void showSatelliteSystemNotification() {
+        logd("showSatelliteSystemNotification");
+        final NotificationChannel notificationChannel = new NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                NOTIFICATION_CHANNEL,
+                NotificationManager.IMPORTANCE_DEFAULT
+        );
+        notificationChannel.setSound(null, null);
+        NotificationManager notificationManager = mContext.getSystemService(
+                NotificationManager.class);
+        notificationManager.createNotificationChannel(notificationChannel);
+
+        Notification.Builder notificationBuilder = new Notification.Builder(mContext)
+                .setContentTitle(mContext.getResources().getString(
+                        R.string.satellite_notification_title))
+                .setContentText(mContext.getResources().getString(
+                        R.string.satellite_notification_summary))
+                .setSmallIcon(R.drawable.ic_satellite_alt_24px)
+                .setChannelId(NOTIFICATION_CHANNEL_ID)
+                .setAutoCancel(true)
+                .setColor(mContext.getColor(
+                        com.android.internal.R.color.system_notification_accent_color))
+                .setVisibility(Notification.VISIBILITY_PUBLIC);
+
+        // Add action to invoke `What to expect` dialog of Messaging application.
+        Intent intentOpenMessage = new Intent(Intent.ACTION_VIEW);
+        intentOpenMessage.setData(Uri.parse("sms:"));
+        // TODO : b/322733285 add putExtra to invoke "What to expect" dialog.
+        PendingIntent pendingIntentOpenMessage = PendingIntent.getActivity(mContext, 0,
+                intentOpenMessage, PendingIntent.FLAG_IMMUTABLE);
+
+        Notification.Action actionOpenMessage = new Notification.Action.Builder(0,
+                mContext.getResources().getString(R.string.satellite_notification_open_message),
+                pendingIntentOpenMessage).build();
+        notificationBuilder.addAction(actionOpenMessage);
+
+        // Add action to invoke Satellite setting activity in Settings.
+        Intent intentSatelliteSetting = new Intent(ACTION_SATELLITE_SETTING);
+        PendingIntent pendingIntentSatelliteSetting = PendingIntent.getActivity(mContext, 0,
+                intentSatelliteSetting, PendingIntent.FLAG_IMMUTABLE);
+
+        Notification.Action actionOpenSatelliteSetting = new Notification.Action.Builder(null,
+                mContext.getResources().getString(R.string.satellite_notification_how_it_works),
+                pendingIntentSatelliteSetting).build();
+        notificationBuilder.addAction(actionOpenSatelliteSetting);
+
+        notificationManager.notifyAsUser(NOTIFICATION_TAG, NOTIFICATION_ID,
+                notificationBuilder.build(), UserHandle.ALL);
     }
 
     private static void logd(@NonNull String log) {
