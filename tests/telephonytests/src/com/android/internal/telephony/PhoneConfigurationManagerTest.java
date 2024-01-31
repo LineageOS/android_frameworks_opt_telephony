@@ -60,6 +60,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -220,6 +222,61 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         assertTrue(mPcm.getSlotsSupportingSimultaneousCellularCalls().isEmpty());
     }
 
+    /**
+     * If the device uses the older "dsda" multi_sim_config setting, ensure that DSDA is set
+     * statically for that device and subId updates work.
+     */
+    @Test
+    @SmallTest
+    public void testBkwdsCompatSimultaneousCallingDsda() throws Exception {
+        doReturn(true).when(mFeatureFlags).simultaneousCallingIndications();
+        doReturn(RIL.RADIO_HAL_VERSION_2_1).when(mMockRadioConfigProxy).getVersion();
+        doReturn(Optional.of("dsda")).when(mMi).getMultiSimProperty();
+        final int phone0SubId = 2;
+        final int phone1SubId = 3;
+        mPhones = new Phone[]{mPhone, mPhone1};
+        doReturn(0).when(mPhone).getPhoneId();
+        doReturn(1).when(mPhone1).getPhoneId();
+        replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
+        init(2);
+        doReturn(phone0SubId).when(mPhone).getSubId();
+        doReturn(phone1SubId).when(mPhone1).getSubId();
+        Set<Integer>[] cachedSimultaneousCallingSlots = new Set[]{Collections.emptySet()};
+        mPcm.registerForSimultaneousCellularCallingSlotsChanged(newSlots ->
+                cachedSimultaneousCallingSlots[0] = newSlots);
+
+        mPcm.getStaticPhoneCapability();
+        setAndVerifyStaticCapability(STATIC_DSDA_CAPABILITY);
+        ArgumentCaptor<SubscriptionManager.OnSubscriptionsChangedListener> cBCaptor =
+                ArgumentCaptor.forClass(SubscriptionManager.OnSubscriptionsChangedListener.class);
+        verify(mMockRegistryManager).addOnSubscriptionsChangedListener(cBCaptor.capture(), any());
+        processAllMessages();
+
+        int[] enabledLogicalSlots = {0, 1};
+        HashSet<Integer> expectedSlots = new HashSet<>(2);
+        for (int i : enabledLogicalSlots) {
+            expectedSlots.add(i);
+        }
+        HashSet<Integer> expectedSubIds = new HashSet<>(2);
+        expectedSubIds.add(phone0SubId);
+        expectedSubIds.add(phone1SubId);
+        assertEquals(expectedSlots, mPcm.getSlotsSupportingSimultaneousCellularCalls());
+        verify(mMockRegistryManager).notifySimultaneousCellularCallingSubscriptionsChanged(
+                eq(expectedSubIds));
+        assertEquals(expectedSlots, cachedSimultaneousCallingSlots[0]);
+
+        // Change sub ID mapping
+        final int phone1SubIdV2 = 4;
+        expectedSubIds.clear();
+        expectedSubIds.add(phone0SubId);
+        expectedSubIds.add(phone1SubIdV2);
+        doReturn(phone1SubIdV2).when(mPhone1).getSubId();
+        cBCaptor.getValue().onSubscriptionsChanged();
+        processAllMessages();
+        verify(mMockRegistryManager, times(2))
+                .notifySimultaneousCellularCallingSubscriptionsChanged(eq(expectedSubIds));
+    }
+
     @Test
     @SmallTest
     public void testUpdateSimultaneousCallingSupportNotifications() throws Exception {
@@ -233,6 +290,9 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         init(2);
         doReturn(phone0SubId).when(mPhone).getSubId();
         doReturn(phone1SubId).when(mPhone1).getSubId();
+        Set<Integer>[] cachedSimultaneousCallingSlots = new Set[]{Collections.emptySet()};
+        mPcm.registerForSimultaneousCellularCallingSlotsChanged(newSlots ->
+                cachedSimultaneousCallingSlots[0] = newSlots);
 
         // Simultaneous calling enabled
         mPcm.updateSimultaneousCallingSupport();
@@ -254,6 +314,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         assertEquals(expectedSlots, mPcm.getSlotsSupportingSimultaneousCellularCalls());
         verify(mMockRegistryManager).notifySimultaneousCellularCallingSubscriptionsChanged(
                 eq(expectedSubIds));
+        assertEquals(expectedSlots, cachedSimultaneousCallingSlots[0]);
 
         // Simultaneous Calling Disabled
         mPcm.updateSimultaneousCallingSupport();
@@ -268,6 +329,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         assertEquals(Collections.emptySet(), mPcm.getSlotsSupportingSimultaneousCellularCalls());
         verify(mMockRegistryManager, times(2))
                 .notifySimultaneousCellularCallingSubscriptionsChanged(eq(Collections.emptySet()));
+        assertEquals(Collections.emptySet(), cachedSimultaneousCallingSlots[0]);
     }
 
     @Test
