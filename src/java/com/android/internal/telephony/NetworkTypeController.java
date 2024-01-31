@@ -366,7 +366,8 @@ public class NetworkTypeController extends StateMachine {
         String overrideSecondaryTimerRule = config.getString(
                 CarrierConfigManager.KEY_5G_ICON_DISPLAY_SECONDARY_GRACE_PERIOD_STRING);
         createTimerRules(nrIconConfiguration, overrideTimerRule, overrideSecondaryTimerRule);
-        updatePhysicalChannelConfigs();
+        updatePhysicalChannelConfigs(
+                mPhone.getServiceStateTracker().getPhysicalChannelConfigList());
     }
 
     private void createTimerRules(String icons, String timers, String secondaryTimers) {
@@ -598,6 +599,7 @@ public class NetworkTypeController extends StateMachine {
     private final class DefaultState extends State {
         @Override
         public boolean processMessage(Message msg) {
+            AsyncResult ar;
             if (DBG) log("DefaultState: process " + getEventName(msg.what));
             switch (msg.what) {
                 case EVENT_UPDATE:
@@ -623,12 +625,12 @@ public class NetworkTypeController extends StateMachine {
                     transitionToCurrentState();
                     break;
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
-                    AsyncResult ar = (AsyncResult) msg.obj;
+                    ar = (AsyncResult) msg.obj;
                     mPhysicalLinkStatus = (int) ar.result;
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIG_NOTIF_CHANGED:
-                    AsyncResult result = (AsyncResult) msg.obj;
-                    mIsPhysicalChannelConfigOn = (boolean) result.result;
+                    ar = (AsyncResult) msg.obj;
+                    mIsPhysicalChannelConfigOn = (boolean) ar.result;
                     if (DBG) {
                         log("mIsPhysicalChannelConfigOn changed to: " + mIsPhysicalChannelConfigOn);
                     }
@@ -668,7 +670,8 @@ public class NetworkTypeController extends StateMachine {
                     transitionToCurrentState();
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED:
-                    updatePhysicalChannelConfigs();
+                    ar = (AsyncResult) msg.obj;
+                    updatePhysicalChannelConfigs((List<PhysicalChannelConfig>) ar.result);
                     if (isUsingPhysicalChannelConfigForRrcDetection()) {
                         mPhysicalLinkStatus = getPhysicalLinkStatusFromPhysicalChannelConfig();
                     }
@@ -720,6 +723,7 @@ public class NetworkTypeController extends StateMachine {
         public boolean processMessage(Message msg) {
             if (DBG) log("LegacyState: process " + getEventName(msg.what));
             updateTimers();
+            AsyncResult ar;
             switch (msg.what) {
                 case EVENT_SERVICE_STATE_CHANGED:
                     mServiceState = mPhone.getServiceStateTracker().getServiceState();
@@ -748,7 +752,8 @@ public class NetworkTypeController extends StateMachine {
                     mIsNrRestricted = isNrRestricted();
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED:
-                    updatePhysicalChannelConfigs();
+                    ar = (AsyncResult) msg.obj;
+                    updatePhysicalChannelConfigs((List<PhysicalChannelConfig>) ar.result);
                     if (isUsingPhysicalChannelConfigForRrcDetection()) {
                         mPhysicalLinkStatus = getPhysicalLinkStatusFromPhysicalChannelConfig();
                         if (mIsTimerResetEnabledForLegacyStateRrcIdle && !isPhysicalLinkActive()) {
@@ -758,7 +763,7 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
-                    AsyncResult ar = (AsyncResult) msg.obj;
+                    ar = (AsyncResult) msg.obj;
                     mPhysicalLinkStatus = (int) ar.result;
                     if (mIsTimerResetEnabledForLegacyStateRrcIdle && !isPhysicalLinkActive()) {
                         if (DBG) log("Reset timers since timer reset is enabled for RRC idle.");
@@ -801,6 +806,7 @@ public class NetworkTypeController extends StateMachine {
         public boolean processMessage(Message msg) {
             if (DBG) log("IdleState: process " + getEventName(msg.what));
             updateTimers();
+            AsyncResult ar;
             switch (msg.what) {
                 case EVENT_SERVICE_STATE_CHANGED:
                     mServiceState = mPhone.getServiceStateTracker().getServiceState();
@@ -829,7 +835,8 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED:
-                    updatePhysicalChannelConfigs();
+                    ar = (AsyncResult) msg.obj;
+                    updatePhysicalChannelConfigs((List<PhysicalChannelConfig>) ar.result);
                     if (isUsingPhysicalChannelConfigForRrcDetection()) {
                         mPhysicalLinkStatus = getPhysicalLinkStatusFromPhysicalChannelConfig();
                         if (isPhysicalLinkActive()) {
@@ -841,7 +848,7 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
-                    AsyncResult ar = (AsyncResult) msg.obj;
+                    ar = (AsyncResult) msg.obj;
                     mPhysicalLinkStatus = (int) ar.result;
                     if (isPhysicalLinkActive()) {
                         transitionWithTimerTo(mLteConnectedState);
@@ -885,6 +892,7 @@ public class NetworkTypeController extends StateMachine {
         public boolean processMessage(Message msg) {
             if (DBG) log("LteConnectedState: process " + getEventName(msg.what));
             updateTimers();
+            AsyncResult ar;
             switch (msg.what) {
                 case EVENT_SERVICE_STATE_CHANGED:
                     mServiceState = mPhone.getServiceStateTracker().getServiceState();
@@ -913,7 +921,8 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED:
-                    updatePhysicalChannelConfigs();
+                    ar = (AsyncResult) msg.obj;
+                    updatePhysicalChannelConfigs((List<PhysicalChannelConfig>) ar.result);
                     if (isUsingPhysicalChannelConfigForRrcDetection()) {
                         mPhysicalLinkStatus = getPhysicalLinkStatusFromPhysicalChannelConfig();
                         if (!isPhysicalLinkActive()) {
@@ -925,7 +934,7 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
-                    AsyncResult ar = (AsyncResult) msg.obj;
+                    ar = (AsyncResult) msg.obj;
                     mPhysicalLinkStatus = (int) ar.result;
                     if (!isPhysicalLinkActive()) {
                         transitionWithTimerTo(mIdleState);
@@ -969,6 +978,7 @@ public class NetworkTypeController extends StateMachine {
         public boolean processMessage(Message msg) {
             if (DBG) log("NrIdleState: process " + getEventName(msg.what));
             updateTimers();
+            AsyncResult ar;
             switch (msg.what) {
                 case EVENT_SERVICE_STATE_CHANGED:
                     mServiceState = mPhone.getServiceStateTracker().getServiceState();
@@ -994,7 +1004,8 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED:
-                    updatePhysicalChannelConfigs();
+                    ar = (AsyncResult) msg.obj;
+                    updatePhysicalChannelConfigs((List<PhysicalChannelConfig>) ar.result);
                     if (isUsingPhysicalChannelConfigForRrcDetection()) {
                         mPhysicalLinkStatus = getPhysicalLinkStatusFromPhysicalChannelConfig();
                     }
@@ -1006,7 +1017,7 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
-                    AsyncResult ar = (AsyncResult) msg.obj;
+                    ar = (AsyncResult) msg.obj;
                     mPhysicalLinkStatus = (int) ar.result;
                     if (isPhysicalLinkActive()) {
                         transitionWithTimerTo(mNrConnectedState);
@@ -1047,6 +1058,7 @@ public class NetworkTypeController extends StateMachine {
         public boolean processMessage(Message msg) {
             if (DBG) log("NrConnectedState: process " + getEventName(msg.what));
             updateTimers();
+            AsyncResult ar;
             switch (msg.what) {
                 case EVENT_SERVICE_STATE_CHANGED:
                     mServiceState = mPhone.getServiceStateTracker().getServiceState();
@@ -1072,7 +1084,8 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED:
-                    updatePhysicalChannelConfigs();
+                    ar = (AsyncResult) msg.obj;
+                    updatePhysicalChannelConfigs((List<PhysicalChannelConfig>) ar.result);
                     if (isUsingPhysicalChannelConfigForRrcDetection()) {
                         mPhysicalLinkStatus = getPhysicalLinkStatusFromPhysicalChannelConfig();
                     }
@@ -1084,7 +1097,7 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
-                    AsyncResult ar = (AsyncResult) msg.obj;
+                    ar = (AsyncResult) msg.obj;
                     mPhysicalLinkStatus = (int) ar.result;
                     if (!isPhysicalLinkActive() && mFeatureFlags.supportNrSaRrcIdle()) {
                         transitionWithTimerTo(mNrIdleState);
@@ -1126,6 +1139,7 @@ public class NetworkTypeController extends StateMachine {
         public boolean processMessage(Message msg) {
             if (DBG) log("NrConnectedAdvancedState: process " + getEventName(msg.what));
             updateTimers();
+            AsyncResult ar;
             switch (msg.what) {
                 case EVENT_SERVICE_STATE_CHANGED:
                     mServiceState = mPhone.getServiceStateTracker().getServiceState();
@@ -1158,7 +1172,8 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED:
-                    updatePhysicalChannelConfigs();
+                    ar = (AsyncResult) msg.obj;
+                    updatePhysicalChannelConfigs((List<PhysicalChannelConfig>) ar.result);
                     if (isUsingPhysicalChannelConfigForRrcDetection()) {
                         mPhysicalLinkStatus = getPhysicalLinkStatusFromPhysicalChannelConfig();
                     }
@@ -1170,7 +1185,7 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
-                    AsyncResult ar = (AsyncResult) msg.obj;
+                    ar = (AsyncResult) msg.obj;
                     mPhysicalLinkStatus = (int) ar.result;
                     break;
                 default:
@@ -1191,9 +1206,7 @@ public class NetworkTypeController extends StateMachine {
     private final NrConnectedAdvancedState mNrConnectedAdvancedState =
             new NrConnectedAdvancedState();
 
-    private void updatePhysicalChannelConfigs() {
-        List<PhysicalChannelConfig> physicalChannelConfigs =
-                mPhone.getServiceStateTracker().getPhysicalChannelConfigList();
+    private void updatePhysicalChannelConfigs(List<PhysicalChannelConfig> physicalChannelConfigs) {
         boolean isPccListEmpty = physicalChannelConfigs == null || physicalChannelConfigs.isEmpty();
         if (isPccListEmpty && isUsingPhysicalChannelConfigForRrcDetection()) {
             log("Physical channel configs updated: not updating PCC fields for empty PCC list "
