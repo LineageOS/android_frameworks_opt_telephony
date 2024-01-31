@@ -1262,7 +1262,7 @@ public class NetworkTypeController extends StateMachine {
         } else {
             if (mFeatureFlags.supportNrSaRrcIdle() && mDoesPccListIndicateIdle
                     && isUsingPhysicalChannelConfigForRrcDetection()
-                    && !mPrimaryCellChangedWhileIdle && isTimerActiveForNrSaRrcIdle()
+                    && !mPrimaryCellChangedWhileIdle && isTimerActiveForRrcIdle()
                     && !isNrAdvancedForPccFields(nrBandwidths, nrBands)) {
                 log("Allow primary cell change during RRC idle timer without changing state: "
                         + mLastAnchorNrCellId + " -> " + anchorNrCellId);
@@ -1418,11 +1418,13 @@ public class NetworkTypeController extends StateMachine {
         mSecondaryTimerState = "";
     }
 
-    private boolean isTimerActiveForNrSaRrcIdle() {
+    private boolean isTimerActiveForRrcIdle() {
         if (mIsPrimaryTimerActive) {
-            return mPrimaryTimerState.equals(STATE_CONNECTED_RRC_IDLE);
+            return mPrimaryTimerState.equals(STATE_CONNECTED_RRC_IDLE)
+                    || mPrimaryTimerState.equals(STATE_NOT_RESTRICTED_RRC_IDLE);
         } else if (mIsSecondaryTimerActive) {
-            return mSecondaryTimerState.equals(STATE_CONNECTED_RRC_IDLE);
+            return mSecondaryTimerState.equals(STATE_CONNECTED_RRC_IDLE)
+                    || mSecondaryTimerState.equals(STATE_NOT_RESTRICTED_RRC_IDLE);
         } else {
             return false;
         }
