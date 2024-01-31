@@ -444,7 +444,7 @@ public class SubscriptionInfoInternal {
 
     /**
      * Whether satellite attach for carrier is enabled or disabled by user.
-     * By default, its disabled. It is intended to use integer to fit the database format.
+     * By default, its enabled. It is intended to use integer to fit the database format.
      */
     private final int mIsSatelliteAttachEnabledForCarrier;
 
@@ -1750,7 +1750,7 @@ public class SubscriptionInfoInternal {
         /**
          * Whether satellite attach for carrier is enabled by user.
          */
-        private int mIsSatelliteAttachEnabledForCarrier = 0;
+        private int mIsSatelliteAttachEnabledForCarrier = 1;
 
         /**
          * Whether this subscription is used for communicating with non-terrestrial network or not.

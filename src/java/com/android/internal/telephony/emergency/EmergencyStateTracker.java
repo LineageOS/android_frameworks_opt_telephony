@@ -1261,7 +1261,7 @@ public class EmergencyStateTracker {
                     // Wait for normal service state or timeout if required.
                     if (phone == phoneForEmergency
                             && waitForInServiceTimeout > 0
-                            && serviceState != ServiceState.STATE_IN_SERVICE) {
+                            && !isNetworkRegistered(phone)) {
                         return false;
                     }
                     return phone.getServiceStateTracker().isRadioOn()
@@ -1425,6 +1425,27 @@ public class EmergencyStateTracker {
     private boolean isAvailableForEmergencyCalls(Phone phone) {
         return ServiceState.STATE_IN_SERVICE == phone.getServiceState().getState()
                 || phone.getServiceState().isEmergencyOnly();
+    }
+
+    private static boolean isNetworkRegistered(Phone phone) {
+        ServiceState ss = phone.getServiceStateTracker().getServiceState();
+        if (ss != null) {
+            NetworkRegistrationInfo nri = ss.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS,
+                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (nri != null && nri.isNetworkRegistered()) {
+                // PS is IN_SERVICE state.
+                return true;
+            }
+            nri = ss.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_CS,
+                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (nri != null && nri.isNetworkRegistered()) {
+                // CS is IN_SERVICE state.
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

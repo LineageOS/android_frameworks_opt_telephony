@@ -34,6 +34,7 @@ import android.sysprop.TelephonyProperties;
 import android.telephony.PhoneCapability;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyRegistryManager;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -47,6 +48,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * This class manages phone's configuration which defines the potential capability (static) of the
@@ -74,7 +76,8 @@ public class PhoneConfigurationManager {
     private static PhoneConfigurationManager sInstance = null;
     private final Context mContext;
     private PhoneCapability mStaticCapability;
-    private Set<Integer> mSlotsSupportingSimultaneousCellularCalls = new HashSet<>();
+    private final Set<Integer> mSlotsSupportingSimultaneousCellularCalls = new HashSet<>(2);
+    private final Set<Integer> mSubIdsSupportingSimultaneousCellularCalls = new HashSet<>(2);
     private final RadioConfig mRadioConfig;
     private final Handler mHandler;
     // mPhones is obtained from PhoneFactory and can have phones corresponding to inactive modems as
@@ -148,6 +151,25 @@ public class PhoneConfigurationManager {
         }
     }
 
+    /**
+     * Updates the mapping between the slot IDs that support simultaneous calling and the
+     * associated sub IDs as well as notifies listeners.
+     */
+    private void updateSimultaneousSubIdsFromPhoneIdMappingAndNotify() {
+        if (!mFeatureFlags.simultaneousCallingIndications()) return;
+        Set<Integer> slotCandidates = mSlotsSupportingSimultaneousCellularCalls.stream()
+                .map(i -> mPhones[i].getSubId())
+                .filter(i ->i > SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+                        .collect(Collectors.toSet());
+        if (mSubIdsSupportingSimultaneousCellularCalls.equals(slotCandidates))  return;
+        log("updateSimultaneousSubIdsFromPhoneIdMapping update: "
+                + mSubIdsSupportingSimultaneousCellularCalls + " -> " + slotCandidates);
+        mSubIdsSupportingSimultaneousCellularCalls.clear();
+        mSubIdsSupportingSimultaneousCellularCalls.addAll(slotCandidates);
+        mNotifier.notifySimultaneousCellularCallingSubscriptionsChanged(
+                mSubIdsSupportingSimultaneousCellularCalls);
+    }
+
     private void registerForRadioState(Phone phone) {
         phone.mCi.registerForAvailable(mHandler, Phone.EVENT_RADIO_AVAILABLE, phone);
     }
@@ -187,6 +209,16 @@ public class PhoneConfigurationManager {
             updateSimultaneousCallingSupport();
             mRadioConfig.registerForSimultaneousCallingSupportStatusChanged(mHandler,
                     EVENT_SIMULTANEOUS_CALLING_SUPPORT_CHANGED, null);
+            if (mFeatureFlags.simultaneousCallingIndications()) {
+                mContext.getSystemService(TelephonyRegistryManager.class)
+                        .addOnSubscriptionsChangedListener(
+                                new SubscriptionManager.OnSubscriptionsChangedListener() {
+                                    @Override
+                                    public void onSubscriptionsChanged() {
+                                        updateSimultaneousSubIdsFromPhoneIdMappingAndNotify();
+                                    }
+                                }, mHandler::post);
+            }
         }
     }
 
@@ -291,7 +323,6 @@ public class PhoneConfigurationManager {
                         if (mSlotsSupportingSimultaneousCellularCalls.size() > getPhoneCount()) {
                             loge("Invalid size of DSDA slots. Disabling cellular DSDA.");
                             mSlotsSupportingSimultaneousCellularCalls.clear();
-                            break;
                         }
                     } else {
                         log(msg.what + " failure. Not getting logical slots that support "
@@ -299,8 +330,7 @@ public class PhoneConfigurationManager {
                         mSlotsSupportingSimultaneousCellularCalls.clear();
                     }
                     if (mFeatureFlags.simultaneousCallingIndications()) {
-                        mNotifier.notifySimultaneousCellularCallingSubscriptionsChanged(
-                                mSlotsSupportingSimultaneousCellularCalls);
+                        updateSimultaneousSubIdsFromPhoneIdMappingAndNotify();
                     }
                     break;
                 default:
@@ -540,6 +570,9 @@ public class PhoneConfigurationManager {
             } else {
                 // The number of active modems is 0 or 1, disable cellular DSDA:
                 mSlotsSupportingSimultaneousCellularCalls.clear();
+                if (mFeatureFlags.simultaneousCallingIndications()) {
+                    updateSimultaneousSubIdsFromPhoneIdMappingAndNotify();
+                }
             }
 
             // When the user enables DSDS mode, the default VOICE and SMS subId should be switched

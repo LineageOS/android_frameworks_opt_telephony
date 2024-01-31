@@ -20,3 +20,10 @@ flag {
     description: "This flag controls the order of the binder to prevent deadlock in system_server"
     bug: "315973270"
 }
+
+flag {
+    name: "prevent_invocation_repeat_of_ril_call_when_device_does_not_support_voice"
+    namespace: "telephony"
+    description: "This flag prevents repeat invocation of call related APIs in RIL when the device is not voice capable"
+    bug: "290833783"
+}

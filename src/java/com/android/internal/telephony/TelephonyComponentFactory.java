@@ -278,8 +278,14 @@ public class TelephonyComponentFactory {
         return sInstance;
     }
 
-    public GsmCdmaCallTracker makeGsmCdmaCallTracker(GsmCdmaPhone phone) {
-        return new GsmCdmaCallTracker(phone);
+    /**
+     * Create a new GsmCdmaCallTracker
+     * @param phone GsmCdmaPhone
+     * @param featureFlags Telephony feature flag
+     */
+    public GsmCdmaCallTracker makeGsmCdmaCallTracker(GsmCdmaPhone phone,
+            @NonNull FeatureFlags featureFlags) {
+        return new GsmCdmaCallTracker(phone, featureFlags);
     }
 
     public SmsStorageMonitor makeSmsStorageMonitor(Phone phone) {
