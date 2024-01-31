@@ -711,6 +711,9 @@ public class SatelliteSessionController extends StateMachine {
                     && datagramTransferState.receiveState
                     == SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE) {
                 startNbIotInactivityTimer();
+            } else if (isSending(datagramTransferState.sendState)
+                    || isReceiving(datagramTransferState.receiveState)) {
+                restartNbIotInactivityTimer();
             }
         }
     }
@@ -761,9 +764,8 @@ public class SatelliteSessionController extends StateMachine {
 
         private void handleEventDatagramTransferStateChanged(
                 @NonNull DatagramTransferState datagramTransferState) {
-            if (datagramTransferState.sendState == SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING
-                    || datagramTransferState.receiveState
-                    == SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING) {
+            if (isSending(datagramTransferState.sendState)
+                    || isReceiving(datagramTransferState.receiveState)) {
                 transitionTo(mTransferringState);
             }
         }
@@ -972,6 +974,11 @@ public class SatelliteSessionController extends StateMachine {
     private long getSatelliteNbIotInactivityTimeoutMillis() {
         return mContext.getResources().getInteger(
                 R.integer.config_satellite_nb_iot_inactivity_timeout_millis);
+    }
+
+    private void restartNbIotInactivityTimer() {
+        stopNbIotInactivityTimer();
+        startNbIotInactivityTimer();
     }
 
     private void startNbIotInactivityTimer() {

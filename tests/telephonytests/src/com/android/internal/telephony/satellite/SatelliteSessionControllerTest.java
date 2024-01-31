@@ -18,6 +18,7 @@ package com.android.internal.telephony.satellite;
 
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_SUCCESS;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_FAILED;
@@ -546,6 +547,35 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         mTestSatelliteSessionController.onDatagramTransferStateChanged(
                 SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
                 SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING);
+        processAllMessages();
+
+        // SatelliteSessionController should move to TRANSFERRING state.
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
+                SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
+        assertEquals(STATE_TRANSFERRING, mTestSatelliteSessionController.getCurrentStateName());
+        assertFalse(mTestSatelliteSessionController.isNbIotInactivityTimerStarted());
+        verify(mMockDatagramController).onSatelliteModemStateChanged(
+                SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
+        clearInvocations(mMockDatagramController);
+
+        // Receiving datagrams is successful and done.
+        mTestSatelliteSessionController.onDatagramTransferStateChanged(
+                SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE, SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE);
+        processAllMessages();
+
+        // SatelliteSessionController should move to CONNECTED state.
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
+                SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
+        assertEquals(STATE_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
+        assertTrue(mTestSatelliteSessionController.isNbIotInactivityTimerStarted());
+        verify(mMockDatagramController).onSatelliteModemStateChanged(
+                SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
+        clearInvocations(mMockDatagramController);
+
+        // Start receiving datagrams
+        mTestSatelliteSessionController.onDatagramTransferStateChanged(
+                SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
+                SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_SUCCESS);
         processAllMessages();
 
         // SatelliteSessionController should move to TRANSFERRING state.
