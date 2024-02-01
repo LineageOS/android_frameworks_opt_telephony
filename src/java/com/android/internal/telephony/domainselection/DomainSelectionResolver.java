@@ -208,7 +208,6 @@ public class DomainSelectionResolver {
      * @return {@code true} if the requested operation is successfully done,
      *         {@code false} otherwise.
      */
-    @VisibleForTesting
     public boolean setDomainSelectionServiceOverride(@NonNull ComponentName componentName) {
         if (mController == null) {
             logd("Controller is not initialized.");
@@ -234,7 +233,6 @@ public class DomainSelectionResolver {
      * @return {@code true} if the requested operation is successfully done,
      *         {@code false} otherwise.
      */
-    @VisibleForTesting
     public boolean clearDomainSelectionServiceOverride() {
         if (mController == null) {
             logd("Controller is not initialized.");
