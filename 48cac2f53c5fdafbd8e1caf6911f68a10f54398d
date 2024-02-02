@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0b3e4af5_c1b879d4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 32620
+      },
+      "writtenOn": "2024-02-02T00:42:09Z",
+      "side": 1,
+      "message": "Is there any specific reason why this patch was not merged into newer versions of LineageOS? This commit is useful to fix signal strength on my Huawei P20 Lite.",
+      "revId": "48cac2f53c5fdafbd8e1caf6911f68a10f54398d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
