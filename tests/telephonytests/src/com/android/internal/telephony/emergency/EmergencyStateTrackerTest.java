@@ -1082,11 +1082,9 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         processAllMessages();
 
         assertTrue(emergencyStateTracker.isInEmergencyMode());
-        assertTrue(emergencyStateTracker.isInEmergencyCall());
-        // Expect: DisconnectCause#NOT_DISCONNECTED.
-        assertEquals(future.getNow(DisconnectCause.ERROR_UNSPECIFIED),
-                Integer.valueOf(DisconnectCause.NOT_DISCONNECTED));
-        verify(phone0, never()).setEmergencyMode(anyInt(), any(Message.class));
+        assertFalse(emergencyStateTracker.isInEmergencyCall());
+        assertFalse(future.isDone());
+        verify(phone0).setEmergencyMode(anyInt(), any(Message.class));
     }
 
     @Test
