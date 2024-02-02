@@ -53,5 +53,12 @@ flag {
   name: "support_nr_sa_rrc_idle"
   namespace: "telephony"
   description: "Support RRC idle for NR SA."
-  bug: "301467052"
+  bug: "298233308"
+}
+
+flag {
+  name: "network_registration_info_reject_cause"
+  namespace: "telephony"
+  description: "Elevate NRI#getRejectCause from System to Public"
+  bug: "239730435"
 }

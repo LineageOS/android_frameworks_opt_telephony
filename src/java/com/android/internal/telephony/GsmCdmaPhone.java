@@ -96,6 +96,7 @@ import android.telephony.UiccAccessRule;
 import android.telephony.UssdResponse;
 import android.telephony.ims.ImsCallProfile;
 import android.text.TextUtils;
+import android.util.ArraySet;
 import android.util.Log;
 import android.util.Pair;
 
@@ -307,12 +308,20 @@ public class GsmCdmaPhone extends Phone {
     private CellularIdentifierDisclosureNotifier mIdentifierDisclosureNotifier;
     private NullCipherNotifier mNullCipherNotifier;
 
+    /**
+     * Temporary placeholder variables until b/312788638 is resolved, whereupon these should be
+     * ported to TelephonyManager.
+     */
     // Set via Carrier Config
-    private boolean mIsN1ModeAllowedByCarrier = true;
+    private static final Integer N1_MODE_DISALLOWED_REASON_CARRIER = 1;
     // Set via a call to the method on Phone; the only caller is IMS, and all of this code will
     // need to be updated to a voting mechanism (...enabled for reason...) if additional callers
     // are desired.
-    private boolean mIsN1ModeAllowedByIms = true;
+    private static final Integer N1_MODE_DISALLOWED_REASON_IMS = 2;
+
+    // Set of use callers/reasons why N1 Mode is disallowed. If the set is empty, it's allowed.
+    private final Set<Integer> mN1ModeDisallowedReasons = new ArraySet<>();
+
     // If this value is null, then the modem value is unknown. If a caller explicitly sets the
     // N1 mode, this value will be initialized before any attempt to set the value in the modem.
     private Boolean mModemN1Mode = null;
@@ -2426,7 +2435,11 @@ public class GsmCdmaPhone extends Phone {
             // This might be called by IMS on another thread, so to avoid the requirement to
             // lock, post it through the handler.
             post(() -> {
-                mIsN1ModeAllowedByIms = enable;
+                if (enable) {
+                    mN1ModeDisallowedReasons.remove(N1_MODE_DISALLOWED_REASON_IMS);
+                } else {
+                    mN1ModeDisallowedReasons.add(N1_MODE_DISALLOWED_REASON_IMS);
+                }
                 if (mModemN1Mode == null) {
                     mCi.isN1ModeEnabled(obtainMessage(EVENT_GET_N1_MODE_ENABLED_DONE, result));
                 } else {
@@ -2440,7 +2453,7 @@ public class GsmCdmaPhone extends Phone {
 
     /** Only called on the handler thread. */
     private void maybeUpdateModemN1Mode(@Nullable Message result) {
-        final boolean wantN1Enabled = mIsN1ModeAllowedByCarrier && mIsN1ModeAllowedByIms;
+        final boolean wantN1Enabled = mN1ModeDisallowedReasons.isEmpty();
 
         logd("N1 Mode: isModemN1Enabled=" + mModemN1Mode + ", wantN1Enabled=" + wantN1Enabled);
 
@@ -2466,8 +2479,15 @@ public class GsmCdmaPhone extends Phone {
         final int[] supportedNrModes = b.getIntArray(
                 CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY);
 
-        mIsN1ModeAllowedByCarrier = ArrayUtils.contains(
-                supportedNrModes, CarrierConfigManager.CARRIER_NR_AVAILABILITY_SA);
+
+        if (ArrayUtils.contains(
+                supportedNrModes,
+                CarrierConfigManager.CARRIER_NR_AVAILABILITY_SA)) {
+            mN1ModeDisallowedReasons.remove(N1_MODE_DISALLOWED_REASON_CARRIER);
+        } else {
+            mN1ModeDisallowedReasons.add(N1_MODE_DISALLOWED_REASON_CARRIER);
+        }
+
         if (mModemN1Mode == null) {
             mCi.isN1ModeEnabled(obtainMessage(EVENT_GET_N1_MODE_ENABLED_DONE));
         } else {
