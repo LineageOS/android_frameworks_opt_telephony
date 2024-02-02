@@ -48,6 +48,7 @@ import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.nitz.NitzStateMachineImpl;
 import com.android.internal.telephony.security.CellularIdentifierDisclosureNotifier;
+import com.android.internal.telephony.security.CellularNetworkSecuritySafetySource;
 import com.android.internal.telephony.security.NullCipherNotifier;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccCard;
@@ -573,6 +574,12 @@ public class TelephonyComponentFactory {
             @NonNull DataNetworkController dataNetworkController, @NonNull Looper looper,
             @NonNull DataSettingsManager.DataSettingsManagerCallback callback) {
         return new DataSettingsManager(phone, dataNetworkController, looper, callback);
+    }
+
+    /** Create CellularNetworkSecuritySafetySource. */
+    public CellularNetworkSecuritySafetySource makeCellularNetworkSecuritySafetySource(
+            Context context) {
+        return CellularNetworkSecuritySafetySource.getInstance(context);
     }
 
     /** Create CellularIdentifierDisclosureNotifier. */
