@@ -18,4 +18,4 @@ tnd@google.com
 xiaotonj@google.com
 
 # Domain Selection code is co-owned, adding additional owners for this code
-per-file EmergencyStateTracker*=hwangoo@google.com,forestchoi@google.com,avinashmp@google.com,mkoon@google.com,seheele@google.com
+per-file EmergencyStateTracker*=hwangoo@google.com,forestchoi@google.com,avinashmp@google.com,mkoon@google.com,seheele@google.com,jdyou@google.com

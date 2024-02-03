@@ -2832,6 +2832,15 @@ public class ImsPhone extends ImsPhoneBase {
         mCT.triggerNotifyAnbr(mediaType, direction, bitsPerSecond);
     }
 
+    /**
+     * Check whether making a call using Wi-Fi is possible or not.
+     * @return {code true} if IMS is registered over IWLAN else return {code false}.
+     */
+    public boolean canMakeWifiCall() {
+        return isImsRegistered() && (getImsRegistrationTech()
+                == ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN);
+    }
+
     @Override
     public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
