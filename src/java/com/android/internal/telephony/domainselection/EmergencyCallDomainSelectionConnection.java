@@ -28,6 +28,8 @@ import static com.android.internal.telephony.emergency.EmergencyConstants.MODE_E
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.net.Uri;
+import android.telecom.PhoneAccount;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.DisconnectCauses;
@@ -201,6 +203,7 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
      * @param exited {@code true} if the request caused the device to move out of airplane mode.
      * @param callId The call identifier.
      * @param number The dialed number.
+     * @param isTest Indicates it's a test emergency number.
      * @param callFailCause The reason why the last CS attempt failed.
      * @param imsReasonInfo The reason why the last PS attempt failed.
      * @param emergencyRegResult The current registration result for emergency services.
@@ -208,16 +211,17 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
      */
     public static @NonNull DomainSelectionService.SelectionAttributes getSelectionAttributes(
             int slotId, int subId, boolean exited,
-            @NonNull String callId, @NonNull String number, int callFailCause,
-            @Nullable ImsReasonInfo imsReasonInfo,
+            @NonNull String callId, @NonNull String number, boolean isTest,
+            int callFailCause, @Nullable ImsReasonInfo imsReasonInfo,
             @Nullable EmergencyRegResult emergencyRegResult) {
         DomainSelectionService.SelectionAttributes.Builder builder =
                 new DomainSelectionService.SelectionAttributes.Builder(
                         slotId, subId, SELECTOR_TYPE_CALLING)
                 .setEmergency(true)
+                .setTestEmergencyNumber(isTest)
                 .setExitedFromAirplaneMode(exited)
                 .setCallId(callId)
-                .setNumber(number)
+                .setAddress(Uri.fromParts(PhoneAccount.SCHEME_TEL, number, null))
                 .setCsDisconnectCause(callFailCause);
 
         if (imsReasonInfo != null) builder.setPsDisconnectCause(imsReasonInfo);
@@ -233,11 +237,12 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
         if (attr == null) return null;
         DomainSelectionService.SelectionAttributes.Builder builder =
                 new DomainSelectionService.SelectionAttributes.Builder(
-                        attr.getSlotId(), attr.getSubId(), SELECTOR_TYPE_CALLING)
+                        attr.getSlotIndex(), attr.getSubscriptionId(), SELECTOR_TYPE_CALLING)
                 .setCallId(attr.getCallId())
-                .setNumber(attr.getNumber())
+                .setAddress(attr.getAddress())
                 .setVideoCall(attr.isVideoCall())
                 .setEmergency(true)
+                .setTestEmergencyNumber(attr.isTestEmergencyNumber())
                 .setExitedFromAirplaneMode(attr.isExitedFromAirplaneMode())
                 .setEmergencyRegResult(new EmergencyRegResult(AccessNetworkType.UNKNOWN,
                         NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN,

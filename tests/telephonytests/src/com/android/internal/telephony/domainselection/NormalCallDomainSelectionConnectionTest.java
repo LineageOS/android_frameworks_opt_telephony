@@ -188,10 +188,10 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
                 NormalCallDomainSelectionConnection.getSelectionAttributes(1, 2,
                         TELECOM_CALL_ID1, "123", false, 10, imsReasonInfo);
 
-        assertEquals(1, attributes.getSlotId());
-        assertEquals(2, attributes.getSubId());
+        assertEquals(1, attributes.getSlotIndex());
+        assertEquals(2, attributes.getSubscriptionId());
         assertEquals(TELECOM_CALL_ID1, attributes.getCallId());
-        assertEquals("123", attributes.getNumber());
+        assertEquals("123", attributes.getAddress().getSchemeSpecificPart());
         assertEquals(false, attributes.isVideoCall());
         assertEquals(false, attributes.isEmergency());
         assertEquals(SELECTOR_TYPE_CALLING, attributes.getSelectorType());

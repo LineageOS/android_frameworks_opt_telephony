@@ -121,7 +121,7 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
         DomainSelectionService.SelectionAttributes attr =
                 EmergencyCallDomainSelectionConnection.getSelectionAttributes(
                         mPhone.getPhoneId(), mPhone.getSubId(), false,
-                        TELECOM_CALL_ID1, "911", 0, null, regResult);
+                        TELECOM_CALL_ID1, "911", false, 0, null, regResult);
 
         CompletableFuture<Integer> future =
                 mEcDsc.createEmergencyConnection(attr, mConnectionCallback);
@@ -170,7 +170,7 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
         DomainSelectionService.SelectionAttributes attr =
                 EmergencyCallDomainSelectionConnection.getSelectionAttributes(
                         mPhone.getPhoneId(), mPhone.getSubId(), false,
-                        TELECOM_CALL_ID1, "911", 0, null, regResult);
+                        TELECOM_CALL_ID1, "911", false, 0, null, regResult);
 
         CompletableFuture<Integer> future =
                 mEcDsc.createEmergencyConnection(attr, mConnectionCallback);
@@ -208,7 +208,7 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
         DomainSelectionService.SelectionAttributes attr =
                 EmergencyCallDomainSelectionConnection.getSelectionAttributes(
                         mPhone.getPhoneId(), mPhone.getSubId(), false,
-                        TELECOM_CALL_ID1, "911", 0, null, regResult);
+                        TELECOM_CALL_ID1, "911", false, 0, null, regResult);
 
         CompletableFuture<Integer> future =
                 mEcDsc.createEmergencyConnection(attr, mConnectionCallback);
@@ -242,7 +242,7 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
         DomainSelectionService.SelectionAttributes attr =
                 EmergencyCallDomainSelectionConnection.getSelectionAttributes(
                         mPhone.getPhoneId(), mPhone.getSubId(), false,
-                        TELECOM_CALL_ID1, "911", 0, null, regResult);
+                        TELECOM_CALL_ID1, "911", false, 0, null, regResult);
 
         mEcDsc.createEmergencyConnection(attr, mConnectionCallback);
         mTransportCallback.onSelectionTerminated(ERROR_UNSPECIFIED);
