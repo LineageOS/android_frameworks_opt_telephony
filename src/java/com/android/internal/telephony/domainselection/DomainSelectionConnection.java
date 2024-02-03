@@ -95,7 +95,7 @@ public class DomainSelectionConnection {
                 mDomainSelector = selector;
                 if (checkState(STATUS_DISPOSED)) {
                     try {
-                        selector.cancelSelection();
+                        selector.finishSelection();
                     } catch (RemoteException e) {
                         // ignore exception
                     }
@@ -113,20 +113,6 @@ public class DomainSelectionConnection {
                 }
                 setState(STATUS_DOMAIN_SELECTED);
                 DomainSelectionConnection.this.onWlanSelected(useEmergencyPdn);
-            }
-        }
-
-        @Override
-        public @NonNull IWwanSelectorCallback onWwanSelected() {
-            synchronized (mLock) {
-                if (mWwanSelectorCallback == null) {
-                    mWwanSelectorCallback = new WwanSelectorCallbackAdaptor();
-                }
-                if (checkState(STATUS_DISPOSED)) {
-                    return mWwanSelectorCallback;
-                }
-                DomainSelectionConnection.this.onWwanSelected();
-                return mWwanSelectorCallback;
             }
         }
 
@@ -517,17 +503,7 @@ public class DomainSelectionConnection {
      * to clean up all ongoing operations with the framework.
      */
     public void cancelSelection() {
-        synchronized (mLock) {
-            try {
-                if (mDomainSelector != null) {
-                    mDomainSelector.cancelSelection();
-                }
-            } catch (RemoteException e) {
-                loge("cancelSelection exception=" + e);
-            } finally {
-                dispose();
-            }
-        }
+        finishSelection();
     }
 
     /**

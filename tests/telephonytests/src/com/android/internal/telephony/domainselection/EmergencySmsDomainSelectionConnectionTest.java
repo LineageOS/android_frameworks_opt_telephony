@@ -444,7 +444,7 @@ public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
 
         assertFalse(future.isDone());
         verify(mAnm).unregisterForQualifiedNetworksChanged(any(Handler.class));
-        verify(mDomainSelector).cancelSelection();
+        verify(mDomainSelector).finishSelection();
     }
 
     @Test
