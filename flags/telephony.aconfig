@@ -27,3 +27,10 @@ flag {
     description: "This flag prevents repeat invocation of call related APIs in RIL when the device is not voice capable"
     bug: "290833783"
 }
+
+flag {
+    name: "minimal_telephony_cdm_check"
+    namespace: "telephony"
+    description: "This flag disables Calling/Data/Messaging features if their respective feature is missing"
+    bug: "310710841"
+}
