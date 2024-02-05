@@ -550,7 +550,7 @@ public class GsmCdmaPhone extends Phone {
             mIdentifierDisclosureNotifier =
                     mTelephonyComponentFactory
                             .inject(CellularIdentifierDisclosureNotifier.class.getName())
-                            .makeIdentifierDisclosureNotifier();
+                            .makeIdentifierDisclosureNotifier(mSafetySource);
             mCi.registerForCellularIdentifierDisclosures(
                     this, EVENT_CELL_IDENTIFIER_DISCLOSURE, null);
         }
@@ -3745,7 +3745,7 @@ public class GsmCdmaPhone extends Phone {
                 if (mFeatureFlags.enableIdentifierDisclosureTransparencyUnsolEvents()
                         && mIdentifierDisclosureNotifier != null
                         && disclosure != null) {
-                    mIdentifierDisclosureNotifier.addDisclosure(getSubId(), disclosure);
+                    mIdentifierDisclosureNotifier.addDisclosure(mContext, getSubId(), disclosure);
                 }
                 break;
 
@@ -5388,11 +5388,11 @@ public class GsmCdmaPhone extends Phone {
         // enable/disable API, so we only toggle the enable state if the unsol events feature
         // flag is enabled.
         if (mFeatureFlags.enableIdentifierDisclosureTransparencyUnsolEvents()) {
-          if (prefEnabled) {
-            mIdentifierDisclosureNotifier.enable();
-          } else {
-            mIdentifierDisclosureNotifier.disable();
-          }
+            if (prefEnabled) {
+                mIdentifierDisclosureNotifier.enable(mContext);
+            } else {
+                mIdentifierDisclosureNotifier.disable(mContext);
+            }
         } else {
             logi("Not toggling enable state for disclosure notifier. Feature flag "
                     + "enable_identifier_disclosure_transparency_unsol_events is disabled");
