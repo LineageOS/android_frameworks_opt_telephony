@@ -683,7 +683,7 @@ public abstract class TelephonyTest {
                 .makeCellularNetworkSecuritySafetySource(any(Context.class));
         doReturn(mIdentifierDisclosureNotifier)
                 .when(mTelephonyComponentFactory)
-                .makeIdentifierDisclosureNotifier();
+                .makeIdentifierDisclosureNotifier(any(CellularNetworkSecuritySafetySource.class));
         doReturn(mNullCipherNotifier)
                 .when(mTelephonyComponentFactory)
                 .makeNullCipherNotifier();

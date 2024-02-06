@@ -80,7 +80,7 @@ public class NormalCallDomainSelectionConnection extends DomainSelectionConnecti
     /** {@inheritDoc} */
     @Override
     public void onRequestEmergencyNetworkScan(@RadioAccessNetworkType int[] preferredNetworks,
-            @EmergencyScanType int scanType) {
+            @EmergencyScanType int scanType, boolean resetScan) {
         // Not expected with normal calling.
         // Override to prevent abnormal behavior.
     }

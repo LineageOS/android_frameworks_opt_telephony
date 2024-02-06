@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.security;
 
+import android.content.Context;
 import android.telephony.CellularIdentifierDisclosure;
 
 import com.android.internal.annotations.GuardedBy;
@@ -49,6 +50,7 @@ public class CellularIdentifierDisclosureNotifier {
     private static CellularIdentifierDisclosureNotifier sInstance = null;
     private final long mWindowCloseDuration;
     private final TimeUnit mWindowCloseUnit;
+    private final CellularNetworkSecuritySafetySource mSafetySource;
     private final Object mEnabledLock = new Object();
 
     @GuardedBy("mEnabledLock")
@@ -61,11 +63,12 @@ public class CellularIdentifierDisclosureNotifier {
     // outside of that thread would require additional synchronization.
     private Map<Integer, DisclosureWindow> mWindows;
 
-    public CellularIdentifierDisclosureNotifier() {
+    public CellularIdentifierDisclosureNotifier(CellularNetworkSecuritySafetySource safetySource) {
         this(
                 Executors.newSingleThreadScheduledExecutor(),
                 DEFAULT_WINDOW_CLOSE_DURATION_IN_MINUTES,
-                TimeUnit.MINUTES);
+                TimeUnit.MINUTES,
+                safetySource);
     }
 
     /**
@@ -79,18 +82,20 @@ public class CellularIdentifierDisclosureNotifier {
     public CellularIdentifierDisclosureNotifier(
             ScheduledExecutorService notificationQueue,
             long windowCloseDuration,
-            TimeUnit windowCloseUnit) {
+            TimeUnit windowCloseUnit,
+            CellularNetworkSecuritySafetySource safetySource) {
         mSerializedWorkQueue = notificationQueue;
         mWindowCloseDuration = windowCloseDuration;
         mWindowCloseUnit = windowCloseUnit;
         mWindows = new HashMap<>();
+        mSafetySource = safetySource;
     }
 
     /**
      * Add a CellularIdentifierDisclosure to be tracked by this instance. If appropriate, this will
      * trigger a user notification.
      */
-    public void addDisclosure(int subId, CellularIdentifierDisclosure disclosure) {
+    public void addDisclosure(Context context, int subId, CellularIdentifierDisclosure disclosure) {
         Rlog.d(TAG, "Identifier disclosure reported: " + disclosure);
 
         synchronized (mEnabledLock) {
@@ -111,7 +116,7 @@ public class CellularIdentifierDisclosureNotifier {
             // because we know that any actions taken on disabled will be scheduled after this
             // incrementAndNotify call.
             try {
-                mSerializedWorkQueue.execute(incrementAndNotify(subId));
+                mSerializedWorkQueue.execute(incrementAndNotify(context, subId));
             } catch (RejectedExecutionException e) {
                 Rlog.e(TAG, "Failed to schedule incrementAndNotify: " + e.getMessage());
             }
@@ -122,12 +127,12 @@ public class CellularIdentifierDisclosureNotifier {
      * Re-enable if previously disabled. This means that {@code addDisclsoure} will start tracking
      * disclosures again and potentially emitting notifications.
      */
-    public void enable() {
+    public void enable(Context context) {
         synchronized (mEnabledLock) {
             Rlog.d(TAG, "enabled");
             mEnabled = true;
             try {
-                mSerializedWorkQueue.execute(onEnableNotifier());
+                mSerializedWorkQueue.execute(onEnableNotifier(context));
             } catch (RejectedExecutionException e) {
                 Rlog.e(TAG, "Failed to schedule onEnableNotifier: " + e.getMessage());
             }
@@ -139,12 +144,12 @@ public class CellularIdentifierDisclosureNotifier {
      * This can be used to in response to a user disabling the feature to emit notifications.
      * If {@code addDisclosure} is called while in a disabled state, disclosures will be dropped.
      */
-    public void disable() {
+    public void disable(Context context) {
         Rlog.d(TAG, "disabled");
         synchronized (mEnabledLock) {
             mEnabled = false;
             try {
-                mSerializedWorkQueue.execute(onDisableNotifier());
+                mSerializedWorkQueue.execute(onDisableNotifier(context));
             } catch (RejectedExecutionException e) {
                 Rlog.e(TAG, "Failed to schedule onDisableNotifier: " + e.getMessage());
             }
@@ -158,15 +163,16 @@ public class CellularIdentifierDisclosureNotifier {
     }
 
     /** Get a singleton CellularIdentifierDisclosureNotifier. */
-    public static synchronized CellularIdentifierDisclosureNotifier getInstance() {
+    public static synchronized CellularIdentifierDisclosureNotifier getInstance(
+            CellularNetworkSecuritySafetySource safetySource) {
         if (sInstance == null) {
-            sInstance = new CellularIdentifierDisclosureNotifier();
+            sInstance = new CellularIdentifierDisclosureNotifier(safetySource);
         }
 
         return sInstance;
     }
 
-    private Runnable incrementAndNotify(int subId) {
+    private Runnable incrementAndNotify(Context context, int subId) {
         return () -> {
             DisclosureWindow window = mWindows.get(subId);
             if (window == null) {
@@ -174,7 +180,7 @@ public class CellularIdentifierDisclosureNotifier {
                 mWindows.put(subId, window);
             }
 
-            window.increment(this);
+            window.increment(context, this);
 
             int disclosureCount = window.getDisclosureCount();
 
@@ -185,31 +191,29 @@ public class CellularIdentifierDisclosureNotifier {
                             + ". New disclosure count "
                             + disclosureCount);
 
-            // TODO (b/308985417) emit safety center issue
-            //            mSafetySource.setIdentifierDisclosure(
-            //                    subId,
-            //                    disclosureCount,
-            //                    window.getFirstOpen(),
-            //                    window.getCurrentEnd());
+            mSafetySource.setIdentifierDisclosure(
+                    context,
+                    subId,
+                    disclosureCount,
+                    window.getFirstOpen(),
+                    window.getCurrentEnd());
         };
     }
 
-    private Runnable onDisableNotifier() {
+    private Runnable onDisableNotifier(Context context) {
         return () -> {
             Rlog.d(TAG, "On disable notifier");
             for (DisclosureWindow window : mWindows.values()) {
                 window.close();
             }
-            // TODO (b/308985417) disable safety center issues
-            // mSafetySource.setIdentifierDisclosureIssueEnabled(false);
+            mSafetySource.setIdentifierDisclosureIssueEnabled(context, false);
         };
     }
 
-    private Runnable onEnableNotifier() {
+    private Runnable onEnableNotifier(Context context) {
         return () -> {
             Rlog.i(TAG, "On enable notifier");
-            // TODO (b/308985417) enable safety center issues
-            // mSafetySource.setIdentifierDisclosureIssueEnabled(true);
+            mSafetySource.setIdentifierDisclosureIssueEnabled(context, true);
         };
     }
 
@@ -262,7 +266,7 @@ public class CellularIdentifierDisclosureNotifier {
      * A helper class that maintains all state associated with the disclosure window for a single
      * subId. No methods are thread safe. Callers must implement all synchronization.
      */
-    private static class DisclosureWindow {
+    private class DisclosureWindow {
         private int mDisclosureCount;
         private Instant mWindowFirstOpen;
         private Instant mLastEvent;
@@ -278,7 +282,7 @@ public class CellularIdentifierDisclosureNotifier {
             mWhenWindowCloses = null;
         }
 
-        void increment(CellularIdentifierDisclosureNotifier notifier) {
+        void increment(Context context, CellularIdentifierDisclosureNotifier notifier) {
 
             mDisclosureCount++;
 
@@ -295,7 +299,7 @@ public class CellularIdentifierDisclosureNotifier {
             try {
                 mWhenWindowCloses =
                         notifier.mSerializedWorkQueue.schedule(
-                                closeWindowRunnable(),
+                                closeWindowRunnable(context),
                                 notifier.mWindowCloseDuration,
                                 notifier.mWindowCloseUnit);
             } catch (RejectedExecutionException e) {
@@ -331,7 +335,7 @@ public class CellularIdentifierDisclosureNotifier {
             mWhenWindowCloses = null;
         }
 
-        private Runnable closeWindowRunnable() {
+        private Runnable closeWindowRunnable(Context context) {
             return () -> {
                 Rlog.i(
                         TAG,
@@ -340,9 +344,7 @@ public class CellularIdentifierDisclosureNotifier {
                                 + ". Disclosure count was "
                                 + getDisclosureCount());
                 close();
-
-                // TODO (b/308985417) clear safety center issue
-                // mSafetySource.setIdentifierDisclosure(mSubId, 0, null, null);
+                mSafetySource.clearIdentifierDisclosure(context, mSubId);
             };
         }
 
