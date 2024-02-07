@@ -45,7 +45,7 @@ import android.telephony.BarringInfo;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
 import android.telephony.CellularIdentifierDisclosure;
-import android.telephony.EmergencyRegResult;
+import android.telephony.EmergencyRegistrationResult;
 import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhysicalChannelConfig;
@@ -415,7 +415,7 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
             android.hardware.radio.network.EmergencyRegResult result) {
         mRil.processIndication(HAL_SERVICE_NETWORK, indicationType);
 
-        EmergencyRegResult response = RILUtils.convertHalEmergencyRegResult(result);
+        EmergencyRegistrationResult response = RILUtils.convertHalEmergencyRegResult(result);
 
         if (mRil.isLogOrTrace()) {
             mRil.unsljLogRet(RIL_UNSOL_EMERGENCY_NETWORK_SCAN_RESULT, response);
