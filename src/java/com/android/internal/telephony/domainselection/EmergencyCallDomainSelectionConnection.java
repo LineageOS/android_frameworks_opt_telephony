@@ -160,7 +160,8 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
     private AccessNetworksManager.AccessNetworksManagerCallback mPreferredTransportCallback =
             new AccessNetworksManager.AccessNetworksManagerCallback(Runnable::run) {
         @Override
-        public void onPreferredTransportChanged(@NetCapability int capability) {
+        public void onPreferredTransportChanged(
+                @NetCapability int capability, boolean forceReconnect) {
         }
     };
 

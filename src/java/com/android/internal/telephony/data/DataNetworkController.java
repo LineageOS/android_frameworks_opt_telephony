@@ -952,13 +952,16 @@ public class DataNetworkController extends Handler {
 
         mAccessNetworksManager.registerCallback(new AccessNetworksManagerCallback(this::post) {
             @Override
-            public void onPreferredTransportChanged(@NetCapability int capability) {
+            public void onPreferredTransportChanged(
+                    @NetCapability int capability, boolean forceReconnect) {
                 int preferredTransport = mAccessNetworksManager
                         .getPreferredTransportByNetworkCapability(capability);
                 logl("onPreferredTransportChanged: "
                         + DataUtils.networkCapabilityToString(capability) + " preferred on "
-                        + AccessNetworkConstants.transportTypeToString(preferredTransport));
-                DataNetworkController.this.onEvaluatePreferredTransport(capability);
+                        + AccessNetworkConstants.transportTypeToString(preferredTransport)
+                        + (forceReconnect ? "forceReconnect:true" : ""));
+
+                DataNetworkController.this.onEvaluatePreferredTransport(capability, forceReconnect);
                 if (!hasMessages(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS)) {
                     sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
                             DataEvaluationReason.PREFERRED_TRANSPORT_CHANGED));
@@ -1142,7 +1145,7 @@ public class DataNetworkController extends Handler {
                 }
                 break;
             case EVENT_EVALUATE_PREFERRED_TRANSPORT:
-                onEvaluatePreferredTransport(msg.arg1);
+                onEvaluatePreferredTransport(msg.arg1, msg.arg2 != 0 /* forceReconnect */);
                 break;
             case EVENT_SUBSCRIPTION_PLANS_CHANGED:
                 SubscriptionPlan[] plans = (SubscriptionPlan[]) msg.obj;
@@ -3223,8 +3226,12 @@ public class DataNetworkController extends Handler {
      * Called when needed to evaluate the preferred transport for certain capability.
      *
      * @param capability The network capability to evaluate.
+     * @param forceReconnect indicates whether enforce reconnection to move to the preferred
+     *                       transport type.
+     *
      */
-    private void onEvaluatePreferredTransport(@NetCapability int capability) {
+    private void onEvaluatePreferredTransport(
+            @NetCapability int capability, boolean forceReconnect) {
         int preferredTransport = mAccessNetworksManager
                 .getPreferredTransportByNetworkCapability(capability);
         log("onEvaluatePreferredTransport: " + DataUtils.networkCapabilityToString(capability)
@@ -3248,7 +3255,13 @@ public class DataNetworkController extends Handler {
                     continue;
                 }
 
-                tryHandoverDataNetwork(dataNetwork, preferredTransport, null/*handoverRetryEntry*/);
+                if (forceReconnect) {
+                    tearDownGracefully(
+                            dataNetwork, DataNetwork.TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED);
+                } else {
+                    tryHandoverDataNetwork(
+                            dataNetwork, preferredTransport, null/*handoverRetryEntry*/);
+                }
             }
         }
     }

@@ -1185,7 +1185,7 @@ public class DataNetwork extends StateMachine {
                             getHandler()::post) {
                         @Override
                         public void onPreferredTransportChanged(
-                                @NetCapability int networkCapability) {
+                                @NetCapability int networkCapability, boolean forceReconnect) {
                             if (networkCapability == NetworkCapabilities.NET_CAPABILITY_MMS) {
                                 log("MMS preference changed.");
                                 updateNetworkCapabilities();

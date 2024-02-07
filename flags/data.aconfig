@@ -111,3 +111,10 @@ flag {
   description: "When QNS prefers MMS on IWLAN, MMS will be attempted on IWLAN if it can, even though if existing cellular network already supports MMS."
   bug: "316211526"
 }
+
+flag {
+  name: "reconnect_qualified_network"
+  namespace: "telephony"
+  description: "This flag is for internal implementation to handle reconnect request from QNS in telephony FWK."
+  bug: "319520561"
+}

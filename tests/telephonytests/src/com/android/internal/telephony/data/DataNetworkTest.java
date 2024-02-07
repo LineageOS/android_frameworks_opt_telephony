@@ -2242,7 +2242,7 @@ public class DataNetworkTest extends TelephonyTest {
                 any(TelephonyNetworkRequest.class),
                     eq(TelephonyManager.NETWORK_TYPE_IWLAN), eq(false), eq(false), eq(false));
         accessNetworksManagerCallbackArgumentCaptor.getValue()
-                .onPreferredTransportChanged(NetworkCapabilities.NET_CAPABILITY_MMS);
+                .onPreferredTransportChanged(NetworkCapabilities.NET_CAPABILITY_MMS, false);
         processAllMessages();
 
         // Check if MMS capability is removed.
@@ -2253,7 +2253,7 @@ public class DataNetworkTest extends TelephonyTest {
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
             .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
         accessNetworksManagerCallbackArgumentCaptor.getValue()
-                .onPreferredTransportChanged(NetworkCapabilities.NET_CAPABILITY_MMS);
+                .onPreferredTransportChanged(NetworkCapabilities.NET_CAPABILITY_MMS, false);
         processAllMessages();
 
         // Check if MMS capability is added back.
