@@ -72,6 +72,7 @@ import com.android.internal.telephony.uicc.UiccSlot;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Stack;
@@ -79,6 +80,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 /** Backing implementation of {@link android.telephony.euicc.EuiccManager}. */
 public class EuiccController extends IEuiccController.Stub {
@@ -121,6 +123,7 @@ public class EuiccController extends IEuiccController.Stub {
     // the phone process, 3) values are updated remotely by server flags.
     private List<String> mSupportedCountries;
     private List<String> mUnsupportedCountries;
+    private List<Integer> mPsimConversionSupportedCarrierIds;
 
     /** Initialize the instance. Should only be called once. */
     public static EuiccController init(Context context, FeatureFlags featureFlags) {
@@ -2071,6 +2074,34 @@ public class EuiccController extends IEuiccController.Stub {
         Log.i(TAG, "isCompatChangeEnabled changeId: " + changeId
                 + " changeEnabled: " + changeEnabled);
         return changeEnabled;
+    }
+
+
+    @Override
+    public void setPsimConversionSupportedCarriers(int[] carrierIds) {
+        if (!callerCanWriteEmbeddedSubscriptions()) {
+            throw new SecurityException(
+                    "Must have WRITE_EMBEDDED_SUBSCRIPTIONS to "
+                            + "set pSIM conversion supported carriers");
+        }
+        mPsimConversionSupportedCarrierIds = Arrays.stream(carrierIds).boxed()
+                .collect(Collectors.toList());
+    }
+
+
+
+    @Override
+    public boolean isPsimConversionSupported(int carrierId) {
+        if (!callerCanWriteEmbeddedSubscriptions()) {
+            throw new SecurityException(
+                    "Must have WRITE_EMBEDDED_SUBSCRIPTIONS "
+                            + "to check if the carrier is supported pSIM conversion");
+        }
+        if (mPsimConversionSupportedCarrierIds == null
+                || mPsimConversionSupportedCarrierIds.isEmpty()) {
+            return false;
+        }
+        return mPsimConversionSupportedCarrierIds.contains(carrierId);
     }
 
     /**

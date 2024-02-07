@@ -284,7 +284,10 @@ public class SubscriptionDatabaseManager extends Handler {
                     SubscriptionInfoInternal::getOnlyNonTerrestrialNetwork),
             new AbstractMap.SimpleImmutableEntry<>(
                     SimInfo.COLUMN_SERVICE_CAPABILITIES,
-                    SubscriptionInfoInternal::getServiceCapabilities)
+                    SubscriptionInfoInternal::getServiceCapabilities),
+            new AbstractMap.SimpleImmutableEntry<>(
+                    SimInfo.COLUMN_TRANSFER_STATUS,
+                    SubscriptionInfoInternal::getTransferStatus)
     );
 
     /**
@@ -418,7 +421,10 @@ public class SubscriptionDatabaseManager extends Handler {
                     SubscriptionDatabaseManager::setNtn),
             new AbstractMap.SimpleImmutableEntry<>(
                     SimInfo.COLUMN_SERVICE_CAPABILITIES,
-                    SubscriptionDatabaseManager::setServiceCapabilities)
+                    SubscriptionDatabaseManager::setServiceCapabilities),
+            new AbstractMap.SimpleImmutableEntry<>(
+                    SimInfo.COLUMN_TRANSFER_STATUS,
+                    SubscriptionDatabaseManager::setTransferStatus)
     );
 
     /**
@@ -2335,6 +2341,10 @@ public class SubscriptionDatabaseManager extends Handler {
             builder.setOnlyNonTerrestrialNetwork(cursor.getInt(cursor.getColumnIndexOrThrow(
                     SimInfo.COLUMN_IS_NTN)));
         }
+        if (mFeatureFlags.supportPsimToEsimConversion()) {
+            builder.setTransferStatus(cursor.getInt(cursor.getColumnIndexOrThrow(
+                    SimInfo.COLUMN_TRANSFER_STATUS)));
+        }
         return builder.build();
     }
 
@@ -2406,6 +2416,25 @@ public class SubscriptionDatabaseManager extends Handler {
         } finally {
             mReadWriteLock.readLock().unlock();
         }
+    }
+
+    /**
+     * Set the transfer status of the subscriptionInfo that corresponds to subId.
+     *
+     * @param subId Subscription ID.
+     * @param status The transfer status to change.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
+     */
+    public void setTransferStatus(int subId, int status) {
+        if (!mFeatureFlags.supportPsimToEsimConversion()) {
+            log("SubscriptionDatabaseManager:supportPsimToEsimConversion is false");
+            return;
+        }
+
+        writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_TRANSFER_STATUS,
+                status,
+                SubscriptionInfoInternal.Builder::setTransferStatus);
     }
 
     /**

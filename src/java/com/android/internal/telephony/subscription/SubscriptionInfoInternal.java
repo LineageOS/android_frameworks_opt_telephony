@@ -474,6 +474,11 @@ public class SubscriptionInfoInternal {
     private final int mServiceCapabilities;
 
     /**
+     * The transfer status of the subscription
+     */
+    private final int mTransferStatus;
+
+    /**
      * Constructor from builder.
      *
      * @param builder Builder of {@link SubscriptionInfoInternal}.
@@ -549,6 +554,7 @@ public class SubscriptionInfoInternal {
         this.mCardId = builder.mCardId;
         this.mIsGroupDisabled = builder.mIsGroupDisabled;
         this.mServiceCapabilities = builder.mServiceCapabilities;
+        this.mTransferStatus = builder.mTransferStatus;
     }
 
     /**
@@ -1205,6 +1211,12 @@ public class SubscriptionInfoInternal {
     public int getServiceCapabilities() {
         return mServiceCapabilities;
     }
+    /**
+     * @return Transfer status.
+     */
+    public int getTransferStatus() {
+        return mTransferStatus;
+    }
 
     /** @return converted {@link SubscriptionInfo}. */
     @NonNull
@@ -1244,6 +1256,7 @@ public class SubscriptionInfoInternal {
                 .setOnlyNonTerrestrialNetwork(mIsOnlyNonTerrestrialNetwork == 1)
                 .setServiceCapabilities(
                         SubscriptionManager.getServiceCapabilitiesSet(mServiceCapabilities))
+                .setTransferStatus(mTransferStatus)
                 .build();
     }
 
@@ -1304,6 +1317,7 @@ public class SubscriptionInfoInternal {
                 + " getOnlyNonTerrestrialNetwork=" + mIsOnlyNonTerrestrialNetwork
                 + " isGroupDisabled=" + mIsGroupDisabled
                 + " serviceCapabilities=" + mServiceCapabilities
+                + " transferStatus=" + mTransferStatus
                 + "]";
     }
 
@@ -1361,7 +1375,8 @@ public class SubscriptionInfoInternal {
                 that.mNumberFromCarrier) && mNumberFromIms.equals(that.mNumberFromIms)
                 && mIsSatelliteAttachEnabledForCarrier == that.mIsSatelliteAttachEnabledForCarrier
                 && mIsOnlyNonTerrestrialNetwork == that.mIsOnlyNonTerrestrialNetwork
-                && mServiceCapabilities == that.mServiceCapabilities;
+                && mServiceCapabilities == that.mServiceCapabilities
+                && mTransferStatus == that.mTransferStatus;
     }
 
     @Override
@@ -1384,7 +1399,7 @@ public class SubscriptionInfoInternal {
                 mNumberFromIms, mPortIndex, mUsageSetting, mLastUsedTPMessageReference, mUserId,
                 mIsSatelliteEnabled, mCardId, mIsGroupDisabled,
                 mIsSatelliteAttachEnabledForCarrier, mIsOnlyNonTerrestrialNetwork,
-                mServiceCapabilities);
+                mServiceCapabilities, mTransferStatus);
         result = 31 * result + Arrays.hashCode(mNativeAccessRules);
         result = 31 * result + Arrays.hashCode(mCarrierConfigAccessRules);
         result = 31 * result + Arrays.hashCode(mRcsConfig);
@@ -1777,6 +1792,11 @@ public class SubscriptionInfoInternal {
         private int mServiceCapabilities;
 
         /**
+         * The transfer status of the subscription
+         */
+        private int mTransferStatus;
+
+        /**
          * Default constructor.
          */
         public Builder() {
@@ -1855,6 +1875,7 @@ public class SubscriptionInfoInternal {
             mCardId = info.mCardId;
             mIsGroupDisabled = info.mIsGroupDisabled;
             mServiceCapabilities = info.mServiceCapabilities;
+            mTransferStatus = info.mTransferStatus;
         }
 
         /**
@@ -2783,6 +2804,18 @@ public class SubscriptionInfoInternal {
          */
         public Builder setServiceCapabilities(int capabilities) {
             mServiceCapabilities = capabilities;
+            return this;
+        }
+
+        /**
+         * Set the transfer status of the subscription.
+         *
+         * @param status The transfer status
+         * @return The builder.
+         */
+        @NonNull
+        public Builder setTransferStatus(int status) {
+            mTransferStatus = status;
             return this;
         }
 

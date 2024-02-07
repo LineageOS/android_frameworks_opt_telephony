@@ -22,6 +22,7 @@ import static android.telephony.TelephonyManager.ENABLE_FEATURE_MAPPING;
 import android.Manifest;
 import android.annotation.CallbackExecutor;
 import android.annotation.ColorInt;
+import android.annotation.EnforcePermission;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.RequiresPermission;
@@ -1219,7 +1220,11 @@ public class SubscriptionManagerService extends ISub.Stub {
                         builder.setCardString(mUiccController.convertToCardString(cardId));
                     }
 
+                    if (mFeatureFlags.supportPsimToEsimConversion()) {
+                        builder.setTransferStatus(subInfo.getTransferStatus());
+                    }
                     embeddedSubs.add(subInfo.getSubscriptionId());
+
                     subInfo = builder.build();
                     log("updateEmbeddedSubscriptions: update subscription " + subInfo);
                     mSubscriptionDatabaseManager.updateSubscription(subInfo);
@@ -4298,6 +4303,36 @@ public class SubscriptionManagerService extends ISub.Stub {
                     oppSubInfo.getSubscriptionId(), groupDisabled);
         }
     }
+
+
+
+    /**
+     * Set the transfer status of the subscriptionInfo that corresponds to subId.
+     * @param subId The unique SubscriptionInfo key in database.
+     * @param status The transfer status to change. This value must be one of the following.
+     * {@link SubscriptionManager#TRANSFER_STATUS_NONE},
+     * {@link SubscriptionManager#TRANSFER_STATUS_TRANSFERRED_OUT} or
+     * {@link SubscriptionManager#TRANSFER_STATUS_CONVERTED}
+     *
+     */
+    @Override
+    @EnforcePermission(Manifest.permission.WRITE_EMBEDDED_SUBSCRIPTIONS)
+    public void setTransferStatus(int subId, int status) {
+        setTransferStatus_enforcePermission();
+        if (mContext.checkCallingOrSelfPermission(
+                Manifest.permission.WRITE_EMBEDDED_SUBSCRIPTIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            throw new SecurityException("Must have WRITE_EMBEDDED_SUBSCRIPTIONS to"
+                    + "setTransferStatus");
+        }
+        long token = Binder.clearCallingIdentity();
+        try {
+            mSubscriptionDatabaseManager.setTransferStatus(subId, status);
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
 
     /**
      * Get the current calling package name.
