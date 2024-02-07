@@ -35,7 +35,7 @@ import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.DisconnectCauses;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.DomainSelectionService;
-import android.telephony.EmergencyRegResult;
+import android.telephony.EmergencyRegistrationResult;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.data.ApnSetting;
 import android.telephony.ims.ImsReasonInfo;
@@ -213,7 +213,7 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
             int slotId, int subId, boolean exited,
             @NonNull String callId, @NonNull String number, boolean isTest,
             int callFailCause, @Nullable ImsReasonInfo imsReasonInfo,
-            @Nullable EmergencyRegResult emergencyRegResult) {
+            @Nullable EmergencyRegistrationResult emergencyRegResult) {
         DomainSelectionService.SelectionAttributes.Builder builder =
                 new DomainSelectionService.SelectionAttributes.Builder(
                         slotId, subId, SELECTOR_TYPE_CALLING)
@@ -225,7 +225,7 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
                 .setCsDisconnectCause(callFailCause);
 
         if (imsReasonInfo != null) builder.setPsDisconnectCause(imsReasonInfo);
-        if (emergencyRegResult != null) builder.setEmergencyRegResult(emergencyRegResult);
+        if (emergencyRegResult != null) builder.setEmergencyRegistrationResult(emergencyRegResult);
 
         return builder.build();
     }
@@ -244,7 +244,8 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
                 .setEmergency(true)
                 .setTestEmergencyNumber(attr.isTestEmergencyNumber())
                 .setExitedFromAirplaneMode(attr.isExitedFromAirplaneMode())
-                .setEmergencyRegResult(new EmergencyRegResult(AccessNetworkType.UNKNOWN,
+                .setEmergencyRegistrationResult(
+                        new EmergencyRegistrationResult(AccessNetworkType.UNKNOWN,
                         NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN,
                         NetworkRegistrationInfo.DOMAIN_UNKNOWN, false, false, 0, 0,
                         "", "", ""));

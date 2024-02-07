@@ -56,7 +56,7 @@ import android.provider.Settings;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
-import android.telephony.EmergencyRegResult;
+import android.telephony.EmergencyRegistrationResult;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
@@ -96,7 +96,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
     private static final String TEST_SMS_ID = "1111";
     private static final String TEST_SMS_ID_2 = "2222";
     private static final long TEST_ECM_EXIT_TIMEOUT_MS = 500;
-    private static final EmergencyRegResult E_REG_RESULT = new EmergencyRegResult(
+    private static final EmergencyRegistrationResult E_REG_RESULT = new EmergencyRegistrationResult(
             EUTRAN, REGISTRATION_STATE_HOME, DOMAIN_CS_PS, true, true, 0, 1, "001", "01", "US");
 
     @Mock EmergencyStateTracker.PhoneFactoryProxy mPhoneFactoryProxy;
@@ -485,7 +485,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
 
     /**
      * Test that once EmergencyStateTracker handler receives set emergency mode done message it sets
-     * IsInEmergencyCall to true, sets LastEmergencyRegResult and completes future with
+     * IsInEmergencyCall to true, sets LastEmergencyRegistrationResult and completes future with
      * DisconnectCause.NOT_DISCONNECTED.
      */
     @Test
@@ -509,7 +509,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         processAllMessages();
 
         assertTrue(emergencyStateTracker.isInEmergencyCall());
-        assertTrue(emergencyStateTracker.getEmergencyRegResult().equals(E_REG_RESULT));
+        assertTrue(emergencyStateTracker.getEmergencyRegistrationResult().equals(E_REG_RESULT));
         verify(testPhone).setEmergencyMode(eq(MODE_EMERGENCY_WWAN), any(Message.class));
     }
 
@@ -1268,7 +1268,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertTrue(emergencyStateTracker.isInEmergencyMode());
         verify(phone0).setEmergencyMode(eq(MODE_EMERGENCY_WWAN), any(Message.class));
 
-        assertTrue(emergencyStateTracker.getEmergencyRegResult().equals(E_REG_RESULT));
+        assertTrue(emergencyStateTracker.getEmergencyRegistrationResult().equals(E_REG_RESULT));
         // Expect: DisconnectCause#NOT_DISCONNECTED.
         assertEquals(future.getNow(DisconnectCause.ERROR_UNSPECIFIED),
                 Integer.valueOf(DisconnectCause.NOT_DISCONNECTED));
@@ -1289,7 +1289,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertTrue(emergencyStateTracker.isInEmergencyMode());
         verify(phone0).setEmergencyMode(eq(MODE_EMERGENCY_WWAN), any(Message.class));
 
-        assertTrue(emergencyStateTracker.getEmergencyRegResult().equals(E_REG_RESULT));
+        assertTrue(emergencyStateTracker.getEmergencyRegistrationResult().equals(E_REG_RESULT));
         // Expect: DisconnectCause#NOT_DISCONNECTED.
         assertEquals(future.getNow(DisconnectCause.ERROR_UNSPECIFIED),
                 Integer.valueOf(DisconnectCause.NOT_DISCONNECTED));
@@ -1323,7 +1323,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         processAllMessages();
 
         assertTrue(emergencyStateTracker.isInEmergencyMode());
-        assertTrue(emergencyStateTracker.getEmergencyRegResult().equals(E_REG_RESULT));
+        assertTrue(emergencyStateTracker.getEmergencyRegistrationResult().equals(E_REG_RESULT));
         verify(phone0).setEmergencyMode(eq(MODE_EMERGENCY_WLAN), any(Message.class));
     }
 
@@ -1572,7 +1572,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         processAllMessages();
 
         // Exit emergency mode and set the emergency mode again by the call when the exit result
-        // is received for obtaining the latest EmergencyRegResult.
+        // is received for obtaining the latest EmergencyRegistrationResult.
         verify(phone0).exitEmergencyMode(any(Message.class));
         ArgumentCaptor<Message> callCaptor = ArgumentCaptor.forClass(Message.class);
         verify(phone0, times(2)).setEmergencyMode(eq(MODE_EMERGENCY_WWAN), callCaptor.capture());
@@ -1688,7 +1688,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         processAllMessages();
 
         // Exit emergency mode and set the emergency mode again by the call when the exit result
-        // is received for obtaining the latest EmergencyRegResult.
+        // is received for obtaining the latest EmergencyRegistrationResult.
         verify(phone0).exitEmergencyMode(any(Message.class));
         ArgumentCaptor<Message> callCaptor = ArgumentCaptor.forClass(Message.class);
         verify(phone1).setEmergencyMode(eq(MODE_EMERGENCY_WWAN), callCaptor.capture());
@@ -2263,7 +2263,8 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
                 .putString(CarrierConfigManager.Gps.KEY_ES_EXTENSION_SEC_STRING, esExtensionSec);
     }
 
-    private void setUpAsyncResultForSetEmergencyMode(Phone phone, EmergencyRegResult regResult) {
+    private void setUpAsyncResultForSetEmergencyMode(Phone phone,
+            EmergencyRegistrationResult regResult) {
         doAnswer((invocation) -> {
             Object[] args = invocation.getArguments();
             final Message msg = (Message) args[1];

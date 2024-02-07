@@ -42,7 +42,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.DomainSelectionService;
-import android.telephony.EmergencyRegResult;
+import android.telephony.EmergencyRegistrationResult;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.data.ApnSetting;
 import android.testing.AndroidTestingRunner;
@@ -113,7 +113,7 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
         replaceInstance(EmergencyCallDomainSelectionConnection.class,
                 "mEmergencyStateTracker", mEcDsc, mEmergencyStateTracker);
 
-        EmergencyRegResult regResult = new EmergencyRegResult(
+        EmergencyRegistrationResult regResult = new EmergencyRegistrationResult(
                 EUTRAN, REGISTRATION_STATE_UNKNOWN,
                 NetworkRegistrationInfo.DOMAIN_PS,
                 true, false, 0, 0, "", "", "");
@@ -162,7 +162,7 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
         replaceInstance(EmergencyCallDomainSelectionConnection.class,
                 "mEmergencyStateTracker", mEcDsc, mEmergencyStateTracker);
 
-        EmergencyRegResult regResult = new EmergencyRegResult(
+        EmergencyRegistrationResult regResult = new EmergencyRegistrationResult(
                 UTRAN, REGISTRATION_STATE_UNKNOWN,
                 NetworkRegistrationInfo.DOMAIN_CS,
                 true, false, 0, 0, "", "", "");
@@ -200,7 +200,7 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
         replaceInstance(EmergencyCallDomainSelectionConnection.class,
                 "mEmergencyStateTracker", mEcDsc, mEmergencyStateTracker);
 
-        EmergencyRegResult regResult = new EmergencyRegResult(
+        EmergencyRegistrationResult regResult = new EmergencyRegistrationResult(
                 EUTRAN, REGISTRATION_STATE_UNKNOWN,
                 NetworkRegistrationInfo.DOMAIN_PS,
                 true, true, 0, 0, "", "", "");
@@ -234,7 +234,7 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testOnSelectionTerminated() throws Exception {
-        EmergencyRegResult regResult = new EmergencyRegResult(
+        EmergencyRegistrationResult regResult = new EmergencyRegistrationResult(
                 EUTRAN, REGISTRATION_STATE_UNKNOWN,
                 NetworkRegistrationInfo.DOMAIN_PS,
                 true, true, 0, 0, "", "", "");

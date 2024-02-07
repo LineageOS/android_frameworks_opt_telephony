@@ -33,7 +33,7 @@ import android.telephony.DisconnectCause;
 import android.telephony.DomainSelectionService;
 import android.telephony.DomainSelectionService.EmergencyScanType;
 import android.telephony.DomainSelector;
-import android.telephony.EmergencyRegResult;
+import android.telephony.EmergencyRegistrationResult;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.data.ApnSetting;
 import android.util.LocalLog;
@@ -232,7 +232,7 @@ public class DomainSelectionConnection {
             switch (msg.what) {
                 case EVENT_EMERGENCY_NETWORK_SCAN_RESULT:
                     ar = (AsyncResult) msg.obj;
-                    EmergencyRegResult regResult = (EmergencyRegResult) ar.result;
+                    EmergencyRegistrationResult regResult = (EmergencyRegistrationResult) ar.result;
                     if (DBG) logd("EVENT_EMERGENCY_NETWORK_SCAN_RESULT result=" + regResult);
                     synchronized (mLock) {
                         clearState(STATUS_WAIT_SCAN_RESULT);
@@ -377,7 +377,7 @@ public class DomainSelectionConnection {
      *
      * @return The {@link IWwanSelectorResultCallback} interface.
      */
-    public @Nullable IWwanSelectorResultCallback getEmergencyRegResultCallback() {
+    public @Nullable IWwanSelectorResultCallback getWwanSelectorResultCallback() {
         return mResultCallback;
     }
 
