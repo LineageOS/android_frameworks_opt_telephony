@@ -109,7 +109,7 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
     /** {@inheritDoc} */
     @Override
     public void onWwanSelected() {
-        mEmergencyStateTracker.onEmergencyTransportChanged(
+        mEmergencyStateTracker.onEmergencyTransportChangedAndWait(
                 EmergencyStateTracker.EMERGENCY_TYPE_CALL, MODE_EMERGENCY_WWAN);
     }
 
