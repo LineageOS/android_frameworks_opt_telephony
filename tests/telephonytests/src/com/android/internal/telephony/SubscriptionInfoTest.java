@@ -68,6 +68,7 @@ public class SubscriptionInfoTest {
                 .setOnlyNonTerrestrialNetwork(true)
                 .setServiceCapabilities(SubscriptionManager.getServiceCapabilitiesSet(
                     SubscriptionManager.SERVICE_CAPABILITY_DATA_BITMASK))
+                .setTransferStatus(1)
                 .build();
     }
 
@@ -92,6 +93,9 @@ public class SubscriptionInfoTest {
         }
         assertThat(mSubscriptionInfoUT.getServiceCapabilities()).isEqualTo(
                 Set.of(SubscriptionManager.SERVICE_CAPABILITY_DATA));
+        if (Flags.supportPsimToEsimConversion()) {
+            assertThat(mSubscriptionInfoUT.getTransferStatus()).isEqualTo(1);
+        }
     }
 
     @Test

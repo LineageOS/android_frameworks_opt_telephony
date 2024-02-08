@@ -27,3 +27,10 @@ flag {
   description: "Support emergency call only for data only cellular service."
   bug: "296097429"
 }
+
+flag {
+  name: "support_psim_to_esim_conversion"
+  namespace: "telephony"
+  description: "Support the psim to esim conversion."
+  bug: "315073761"
+}
