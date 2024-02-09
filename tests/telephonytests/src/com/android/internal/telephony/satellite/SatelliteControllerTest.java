@@ -45,6 +45,7 @@ import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_INVA
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_INVALID_MODEM_STATE;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_MODEM_ERROR;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_MODEM_TIMEOUT;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_NOT_AUTHORIZED;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_NOT_SUPPORTED;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_NO_RESOURCES;
@@ -132,6 +133,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -163,7 +165,8 @@ public class SatelliteControllerTest extends TelephonyTest {
     private static final String SATELLITE_SYSTEM_NOTIFICATION_DONE_KEY =
             "satellite_system_notification_done_key";
     private static final int[] ACTIVE_SUB_IDS = {SUB_ID};
-
+    private static final int TEST_WAIT_FOR_SATELLITE_ENABLING_RESPONSE_TIMEOUT_MILLIS =
+            (int) TimeUnit.SECONDS.toMillis(60);
     private List<Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener>>
             mCarrierConfigChangedListenerList = new ArrayList<>();
 
@@ -465,6 +468,9 @@ public class SatelliteControllerTest extends TelephonyTest {
         mContextFixture.putStringArrayResource(
                 R.array.config_satellite_providers,
                 EMPTY_STRING_ARRAY);
+        mContextFixture.putIntResource(
+                R.integer.config_wait_for_satellite_enabling_response_timeout_millis,
+                TEST_WAIT_FOR_SATELLITE_ENABLING_RESPONSE_TIMEOUT_MILLIS);
         doReturn(ACTIVE_SUB_IDS).when(mMockSubscriptionManagerService).getActiveSubIdList(true);
 
         mCarrierConfigBundle = mContextFixture.getCarrierConfigBundle();
@@ -2906,6 +2912,90 @@ public class SatelliteControllerTest extends TelephonyTest {
         processAllMessages();
         verify(mMockNotificationManager, times(1)).notifyAsUser(anyString(), anyInt(), any(),
                 any());
+    }
+
+    @Test
+    public void testRequestSatelliteEnabled_timeout() {
+        mIsSatelliteEnabledSemaphore.drainPermits();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        sendProvisionedStateChangedEvent(true, null);
+        processAllMessages();
+        verifySatelliteProvisioned(true, SATELLITE_RESULT_SUCCESS);
+
+        // Successfully disable satellite
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestSatelliteEnabled(false, false, SATELLITE_RESULT_SUCCESS);
+        mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, false, false, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verifySatelliteEnabled(false, SATELLITE_RESULT_SUCCESS);
+
+        // Time out to enable satellite
+        ArgumentCaptor<Message> enableSatelliteResponse = ArgumentCaptor.forClass(Message.class);
+        mIIntegerConsumerResults.clear();
+        setUpNoResponseForRequestSatelliteEnabled(true, false);
+        mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, true, false, mIIntegerConsumer);
+        processAllMessages();
+        assertFalse(waitForIIntegerConsumerResult(1));
+        verify(mMockSatelliteModemInterface).requestSatelliteEnabled(eq(true), eq(false),
+                enableSatelliteResponse.capture());
+
+        clearInvocations(mMockSatelliteModemInterface);
+        moveTimeForward(TEST_WAIT_FOR_SATELLITE_ENABLING_RESPONSE_TIMEOUT_MILLIS);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_MODEM_TIMEOUT, (long) mIIntegerConsumerResults.get(0));
+        verify(mMockSatelliteModemInterface).requestSatelliteEnabled(eq(false), eq(false), any(
+                Message.class));
+        verifySatelliteEnabled(false, SATELLITE_RESULT_SUCCESS);
+
+        // Send the response for the above request to enable satellite. SatelliteController should
+        // ignore the event
+        Message response = enableSatelliteResponse.getValue();
+        AsyncResult.forMessage(response, null, null);
+        response.sendToTarget();
+        processAllMessages();
+        verifySatelliteEnabled(false, SATELLITE_RESULT_SUCCESS);
+
+        // Successfully enable satellite
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestSatelliteEnabled(true, false, SATELLITE_RESULT_SUCCESS);
+        mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, true, false, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verifySatelliteEnabled(true, SATELLITE_RESULT_SUCCESS);
+
+        // Time out to disable satellite
+        ArgumentCaptor<Message> disableSatelliteResponse = ArgumentCaptor.forClass(Message.class);
+        mIIntegerConsumerResults.clear();
+        clearInvocations(mMockSatelliteModemInterface);
+        setUpNoResponseForRequestSatelliteEnabled(false, false);
+        mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, false, false, mIIntegerConsumer);
+        processAllMessages();
+        assertFalse(waitForIIntegerConsumerResult(1));
+        verify(mMockSatelliteModemInterface).requestSatelliteEnabled(eq(false), eq(false),
+                disableSatelliteResponse.capture());
+
+        clearInvocations(mMockSatelliteModemInterface);
+        moveTimeForward(TEST_WAIT_FOR_SATELLITE_ENABLING_RESPONSE_TIMEOUT_MILLIS);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_MODEM_TIMEOUT, (long) mIIntegerConsumerResults.get(0));
+        verify(mMockSatelliteModemInterface, never()).requestSatelliteEnabled(anyBoolean(),
+                anyBoolean(), any(Message.class));
+        verifySatelliteEnabled(false, SATELLITE_RESULT_SUCCESS);
+
+        // Send the response for the above request to disable satellite. SatelliteController should
+        // ignore the event
+        response = disableSatelliteResponse.getValue();
+        AsyncResult.forMessage(response, null, null);
+        response.sendToTarget();
+        processAllMessages();
+        verifySatelliteEnabled(false, SATELLITE_RESULT_SUCCESS);
     }
 
     private void resetSatelliteControllerUTEnabledState() {

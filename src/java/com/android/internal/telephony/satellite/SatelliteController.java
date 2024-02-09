@@ -28,6 +28,7 @@ import static android.telephony.satellite.SatelliteManager.EMERGENCY_CALL_TO_SAT
 import static android.telephony.satellite.SatelliteManager.KEY_NTN_SIGNAL_STRENGTH;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_COMMUNICATION_RESTRICTION_REASON_ENTITLEMENT;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_MODEM_TIMEOUT;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_REQUEST_NOT_SUPPORTED;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
@@ -115,6 +116,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 /**
@@ -133,6 +135,11 @@ public class SatelliteController extends Handler {
     public static final int SATELLITE_MODE_ENABLED_TRUE = 1;
     public static final int SATELLITE_MODE_ENABLED_FALSE = 0;
     public static final int INVALID_EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE = -1;
+    /**
+     * This is used by CTS to override the timeout duration to wait for the response of the request
+     * to enable satellite.
+     */
+    public static final int TIMEOUT_TYPE_WAIT_FOR_SATELLITE_ENABLING_RESPONSE = 1;
 
     /** Key used to read/write OEM-enabled satellite provision status in shared preferences. */
     private static final String OEM_ENABLED_SATELLITE_PROVISION_STATUS_KEY =
@@ -176,6 +183,7 @@ public class SatelliteController extends Handler {
     private static final int EVENT_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING_DONE = 36;
     private static final int EVENT_SERVICE_STATE_CHANGED = 37;
     private static final int EVENT_SATELLITE_CAPABILITIES_CHANGED = 38;
+    private static final int EVENT_WAIT_FOR_SATELLITE_ENABLING_RESPONSE_TIMED_OUT = 39;
 
     @NonNull private static SatelliteController sInstance;
     @NonNull private final Context mContext;
@@ -341,6 +349,8 @@ public class SatelliteController extends Handler {
      * carrierPlmnList. */
     @GuardedBy("mSupportedSatelliteServicesLock")
     private final SparseArray<List<String>> mMergedPlmnListPerCarrier = new SparseArray<>();
+    private static AtomicLong sNextSatelliteEnableRequestId = new AtomicLong(0);
+    private long mWaitTimeForSatelliteEnablingResponse;
 
     /** Key used to read/write satellite system notification done in shared preferences. */
     private static final String SATELLITE_SYSTEM_NOTIFICATION_DONE_KEY =
@@ -444,6 +454,7 @@ public class SatelliteController extends Handler {
         mDSM.registerForSignalStrengthReportDecision(this, CMD_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING,
                 null);
         loadSatelliteSharedPreferences();
+        mWaitTimeForSatelliteEnablingResponse = getWaitForSatelliteEnablingResponseTimeoutMillis();
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
@@ -651,12 +662,15 @@ public class SatelliteController extends Handler {
         public boolean enableSatellite;
         public boolean enableDemoMode;
         @NonNull public Consumer<Integer> callback;
+        public long requestId;
 
         RequestSatelliteEnabledArgument(boolean enableSatellite, boolean enableDemoMode,
                 Consumer<Integer> callback) {
             this.enableSatellite = enableSatellite;
             this.enableDemoMode = enableDemoMode;
             this.callback = callback;
+            this.requestId = sNextSatelliteEnableRequestId.getAndUpdate(
+                    n -> ((n + 1) % Long.MAX_VALUE));
         }
     }
 
@@ -809,6 +823,17 @@ public class SatelliteController extends Handler {
                 int error =  SatelliteServiceUtils.getSatelliteError(ar, "setSatelliteEnabled");
                 logd("EVENT_SET_SATELLITE_ENABLED_DONE = " + error);
 
+                /*
+                 * The timer to wait for EVENT_SET_SATELLITE_ENABLED_DONE might have expired and
+                 * thus the request resources might have been cleaned up.
+                 */
+                if (!shouldProcessEventSetSatelliteEnabledDone(argument)) {
+                    logw("The request ID=" + argument.requestId + ", enableSatellite="
+                            + argument.enableSatellite + " was already processed");
+                    return;
+                }
+                stopWaitForSatelliteEnablingResponseTimer(argument);
+
                 if (error == SATELLITE_RESULT_SUCCESS) {
                     if (argument.enableSatellite) {
                         synchronized (mSatelliteEnabledRequestLock) {
@@ -883,6 +908,11 @@ public class SatelliteController extends Handler {
                 }
                 break;
             }
+
+            case EVENT_WAIT_FOR_SATELLITE_ENABLING_RESPONSE_TIMED_OUT:
+                handleEventWaitForSatelliteEnablingResponseTimedOut(
+                        (RequestSatelliteEnabledArgument) msg.obj);
+                break;
 
             case CMD_IS_SATELLITE_ENABLED: {
                 request = (SatelliteControllerHandlerRequest) msg.obj;
@@ -2160,18 +2190,56 @@ public class SatelliteController extends Handler {
     }
 
     /**
-     * This API can be used by only CTS to update the timeout duration in milliseconds whether
-     * the device is aligned with the satellite for demo mode
+     * This API can be used by only CTS to override timeout durations used by DatagramController
+     * module.
      *
      * @param timeoutMillis The timeout duration in millisecond.
      * @return {@code true} if the timeout duration is set successfully, {@code false} otherwise.
      */
-    public boolean setSatelliteDeviceAlignedTimeoutDuration(long timeoutMillis) {
+    public boolean setDatagramControllerTimeoutDuration(
+            boolean reset, int timeoutType, long timeoutMillis) {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
-            logd("setSatelliteDeviceAlignedTimeoutDuration: oemEnabledSatelliteFlag is disabled");
+            logd("setDatagramControllerTimeoutDuration: oemEnabledSatelliteFlag is disabled");
             return false;
         }
-        return mDatagramController.setSatelliteDeviceAlignedTimeoutDuration(timeoutMillis);
+        logd("setDatagramControllerTimeoutDuration: reset=" + reset + ", timeoutType="
+                + timeoutType + ", timeoutMillis=" + timeoutMillis);
+        return mDatagramController.setDatagramControllerTimeoutDuration(
+                reset, timeoutType, timeoutMillis);
+    }
+
+    /**
+     * This API can be used by only CTS to override timeout durations used by SatelliteController
+     * module.
+     *
+     * @param timeoutMillis The timeout duration in millisecond.
+     * @return {@code true} if the timeout duration is set successfully, {@code false} otherwise.
+     */
+    public boolean setSatelliteControllerTimeoutDuration(
+            boolean reset, int timeoutType, long timeoutMillis) {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("setSatelliteControllerTimeoutDuration: oemEnabledSatelliteFlag is disabled");
+            return false;
+        }
+        if (!isMockModemAllowed()) {
+            logd("setSatelliteControllerTimeoutDuration: mock modem is not allowed");
+            return false;
+        }
+        logd("setSatelliteControllerTimeoutDuration: reset=" + reset + ", timeoutType="
+                + timeoutType + ", timeoutMillis=" + timeoutMillis);
+        if (timeoutType == TIMEOUT_TYPE_WAIT_FOR_SATELLITE_ENABLING_RESPONSE) {
+            if (reset) {
+                mWaitTimeForSatelliteEnablingResponse =
+                        getWaitForSatelliteEnablingResponseTimeoutMillis();
+            } else {
+                mWaitTimeForSatelliteEnablingResponse = timeoutMillis;
+            }
+            logd("mWaitTimeForSatelliteEnablingResponse=" + mWaitTimeForSatelliteEnablingResponse);
+        } else {
+            logw("Invalid timeoutType=" + timeoutType);
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -2743,6 +2811,7 @@ public class SatelliteController extends Handler {
         Message onCompleted = obtainMessage(EVENT_SET_SATELLITE_ENABLED_DONE, request);
         mSatelliteModemInterface.requestSatelliteEnabled(argument.enableSatellite,
                 argument.enableDemoMode, onCompleted);
+        startWaitForSatelliteEnablingResponseTimer(argument);
     }
 
     private void handleRequestSatelliteAttachRestrictionForCarrierCmd(
@@ -3591,6 +3660,109 @@ public class SatelliteController extends Handler {
         ((ResultReceiver) request.argument).send(error, bundle);
     }
 
+    private long getWaitForSatelliteEnablingResponseTimeoutMillis() {
+        return mContext.getResources().getInteger(
+                R.integer.config_wait_for_satellite_enabling_response_timeout_millis);
+    }
+
+    private void startWaitForSatelliteEnablingResponseTimer(
+            @NonNull RequestSatelliteEnabledArgument argument) {
+        synchronized (mSatelliteEnabledRequestLock) {
+            if (hasMessages(EVENT_WAIT_FOR_SATELLITE_ENABLING_RESPONSE_TIMED_OUT, argument)) {
+                logd("WaitForSatelliteEnablingResponseTimer of request ID "
+                        + argument.requestId + " was already started");
+                return;
+            }
+            logd("Start timer to wait for response of the satellite enabling request ID="
+                    + argument.requestId + ", enableSatellite=" + argument.enableSatellite
+                    + ", mWaitTimeForSatelliteEnablingResponse="
+                    + mWaitTimeForSatelliteEnablingResponse);
+            sendMessageDelayed(obtainMessage(EVENT_WAIT_FOR_SATELLITE_ENABLING_RESPONSE_TIMED_OUT,
+                            argument), mWaitTimeForSatelliteEnablingResponse);
+        }
+    }
+
+    private void stopWaitForSatelliteEnablingResponseTimer(
+            @NonNull RequestSatelliteEnabledArgument argument) {
+        synchronized (mSatelliteEnabledRequestLock) {
+            logd("Stop timer to wait for response of the satellite enabling request ID="
+                    + argument.requestId + ", enableSatellite=" + argument.enableSatellite);
+            removeMessages(EVENT_WAIT_FOR_SATELLITE_ENABLING_RESPONSE_TIMED_OUT, argument);
+        }
+    }
+
+    private boolean shouldProcessEventSetSatelliteEnabledDone(
+            @NonNull RequestSatelliteEnabledArgument argument) {
+        synchronized (mSatelliteEnabledRequestLock) {
+            if (hasMessages(EVENT_WAIT_FOR_SATELLITE_ENABLING_RESPONSE_TIMED_OUT, argument)) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    private void handleEventWaitForSatelliteEnablingResponseTimedOut(
+            @NonNull RequestSatelliteEnabledArgument argument) {
+        logw("Timed out to wait for response of the satellite enabling request ID="
+                + argument.requestId + ", enableSatellite=" + argument.enableSatellite);
+
+        synchronized (mSatelliteEnabledRequestLock) {
+            if (mSatelliteEnabledRequest != null) {
+                if (mSatelliteEnabledRequest.enableSatellite && !argument.enableSatellite
+                        && mWaitingForRadioDisabled) {
+                    // Previous mSatelliteEnabledRequest is successful but waiting for
+                    // all radios to be turned off.
+                    mSatelliteEnabledRequest.callback.accept(SATELLITE_RESULT_SUCCESS);
+                    resetSatelliteEnabledRequest();
+                } else if (mSatelliteEnabledRequest.requestId == argument.requestId) {
+                    resetSatelliteEnabledRequest();
+                }
+            }
+        }
+        argument.callback.accept(SATELLITE_RESULT_MODEM_TIMEOUT);
+
+        synchronized (mIsSatelliteEnabledLock) {
+            if (argument.enableSatellite) {
+                if (!mWaitingForDisableSatelliteModemResponse && !mWaitingForSatelliteModemOff) {
+                    resetSatelliteEnabledRequest();
+                    IIntegerConsumer callback = new IIntegerConsumer.Stub() {
+                        @Override
+                        public void accept(int result) {
+                            logd("handleEventWaitForSatelliteEnablingResponseTimedOut: "
+                                    + "disable satellite result=" + result);
+                        }
+                    };
+                    Consumer<Integer> result =
+                            FunctionalUtils.ignoreRemoteException(callback::accept);
+                    RequestSatelliteEnabledArgument request = new RequestSatelliteEnabledArgument(
+                            false, false, result);
+                    synchronized (mSatelliteEnabledRequestLock) {
+                        mSatelliteEnabledRequest = request;
+                    }
+                    sendRequestAsync(CMD_SET_SATELLITE_ENABLED, request, null);
+                }
+                mControllerMetricsStats.reportServiceEnablementFailCount();
+                SessionMetricsStats.getInstance()
+                        .setInitializationResult(SATELLITE_RESULT_MODEM_TIMEOUT)
+                        .setRadioTechnology(getSupportedNtnRadioTechnology())
+                        .reportSessionMetrics();
+            } else {
+                /*
+                 * Unregister Importance Listener for Pointing UI when Satellite is disabled
+                 */
+                synchronized (mNeedsSatellitePointingLock) {
+                    if (mNeedsSatellitePointing) {
+                        mPointingAppController.removeListenerForPointingUI();
+                    }
+                }
+                moveSatelliteToOffStateAndCleanUpResources(SATELLITE_RESULT_MODEM_TIMEOUT, null);
+                mControllerMetricsStats.onSatelliteDisabled();
+                mWaitingForDisableSatelliteModemResponse = false;
+                mWaitingForSatelliteModemOff = false;
+            }
+        }
+    }
+
     /**
      * This API can be used by only CTS to override the cached value for the device overlay config
      * value : config_send_satellite_datagram_to_modem_in_demo_mode, which determines whether
@@ -3690,6 +3862,10 @@ public class SatelliteController extends Handler {
 
     private static void logd(@NonNull String log) {
         Rlog.d(TAG, log);
+    }
+
+    private static void logw(@NonNull String log) {
+        Rlog.w(TAG, log);
     }
 
     private static void loge(@NonNull String log) {

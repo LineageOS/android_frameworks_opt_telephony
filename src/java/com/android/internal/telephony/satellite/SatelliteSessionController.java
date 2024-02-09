@@ -358,6 +358,7 @@ public class SatelliteSessionController extends StateMachine {
         }
         return true;
     }
+
     /**
      * Adjusts listening timeout duration when demo mode is on
      *
