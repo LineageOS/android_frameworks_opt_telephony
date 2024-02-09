@@ -13,3 +13,10 @@ flag {
     description: "This flag controls satellite communication supported by carriers."
     bug:"296437388"
 }
+
+flag {
+    name: "satellite_internet"
+    namespace: "telephony"
+    description: "This flag enables satellite internet support."
+    bug:"326972202"
+}
