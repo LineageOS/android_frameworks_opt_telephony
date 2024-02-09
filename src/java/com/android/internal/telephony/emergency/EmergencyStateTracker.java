@@ -43,7 +43,7 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation.DisconnectCauses;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
-import android.telephony.EmergencyRegResult;
+import android.telephony.EmergencyRegistrationResult;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
@@ -119,7 +119,7 @@ public class EmergencyStateTracker {
     @EmergencyConstants.EmergencyMode
     private int mEmergencyMode = MODE_EMERGENCY_NONE;
     private boolean mWasEmergencyModeSetOnModem;
-    private EmergencyRegResult mLastEmergencyRegResult;
+    private EmergencyRegistrationResult mLastEmergencyRegistrationResult;
     private boolean mIsEmergencyModeInProgress;
     private boolean mIsEmergencyCallStartedDuringEmergencySms;
 
@@ -288,10 +288,11 @@ public class EmergencyStateTracker {
                     Rlog.v(TAG, "MSG_SET_EMERGENCY_MODE_DONE for "
                             + emergencyTypeToString(emergencyType));
                     if (ar.exception == null) {
-                        mLastEmergencyRegResult = (EmergencyRegResult) ar.result;
+                        mLastEmergencyRegistrationResult = (EmergencyRegistrationResult) ar.result;
                     } else {
-                        mLastEmergencyRegResult = null;
-                        Rlog.w(TAG, "LastEmergencyRegResult not set. AsyncResult.exception: "
+                        mLastEmergencyRegistrationResult = null;
+                        Rlog.w(TAG,
+                                "LastEmergencyRegistrationResult not set. AsyncResult.exception: "
                                 + ar.exception);
                     }
                     setEmergencyModeInProgress(false);
@@ -516,7 +517,7 @@ public class EmergencyStateTracker {
                 mOngoingConnection = c;
                 mIsTestEmergencyNumber = isTestEmergencyNumber;
                 // Ensure that domain selector requests scan.
-                mLastEmergencyRegResult = new EmergencyRegResult(
+                mLastEmergencyRegistrationResult = new EmergencyRegistrationResult(
                         AccessNetworkConstants.AccessNetworkType.UNKNOWN,
                         NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN,
                         NetworkRegistrationInfo.DOMAIN_UNKNOWN, false, false, 0, 0, "", "", "");
@@ -619,10 +620,10 @@ public class EmergencyStateTracker {
                 Rlog.e(TAG, "DDS Switch failed.");
             }
             // Once radio is on and DDS switched, must call setEmergencyMode() before selecting
-            // emergency domain. EmergencyRegResult is required to determine domain and this is the
-            // only API that can receive it before starting domain selection. Once domain selection
-            // is finished, the actual emergency mode will be set when onEmergencyTransportChanged()
-            // is called.
+            // emergency domain. EmergencyRegistrationResult is required to determine domain and
+            // this is the only API that can receive it before starting domain selection.
+            // Once domain selection is finished, the actual emergency mode will be set when
+            // onEmergencyTransportChanged() is called.
             setEmergencyMode(phone, emergencyType, MODE_EMERGENCY_WWAN,
                     MSG_SET_EMERGENCY_MODE_DONE);
         });
@@ -810,9 +811,9 @@ public class EmergencyStateTracker {
         }
     }
 
-    /** Returns last {@link EmergencyRegResult} as set by {@code setEmergencyMode()}. */
-    public EmergencyRegResult getEmergencyRegResult() {
-        return mLastEmergencyRegResult;
+    /** Returns last {@link EmergencyRegistrationResult} as set by {@code setEmergencyMode()}. */
+    public EmergencyRegistrationResult getEmergencyRegistrationResult() {
+        return mLastEmergencyRegistrationResult;
     }
 
     /**
@@ -1205,8 +1206,8 @@ public class EmergencyStateTracker {
      *
      * <p>
      * Once radio is on and DDS switched, must call setEmergencyMode() before completing the future
-     * and selecting emergency domain. EmergencyRegResult is required to determine domain and
-     * setEmergencyMode() is the only API that can receive it before starting domain selection.
+     * and selecting emergency domain. EmergencyRegistrationResult is required to determine domain
+     * and setEmergencyMode() is the only API that can receive it before starting domain selection.
      * Once domain selection is finished, the actual emergency mode will be set when
      * onEmergencyTransportChanged() is called.
      *

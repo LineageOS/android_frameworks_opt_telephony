@@ -43,7 +43,7 @@ import android.telecom.PhoneAccount;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.DomainSelectionService;
-import android.telephony.EmergencyRegResult;
+import android.telephony.EmergencyRegistrationResult;
 import android.telephony.data.ApnSetting;
 import android.telephony.ims.ImsReasonInfo;
 import android.testing.AndroidTestingRunner;
@@ -195,8 +195,8 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
 
         assertNotNull(handler);
 
-        EmergencyRegResult regResult =
-                new EmergencyRegResult(UTRAN, 0, 0, true, false, 0, 0, "", "", "");
+        EmergencyRegistrationResult regResult =
+                new EmergencyRegistrationResult(UTRAN, 0, 0, true, false, 0, 0, "", "", "");
         handler.sendMessage(handler.obtainMessage(event, new AsyncResult(null, regResult, null)));
         processAllMessages();
 
@@ -303,8 +303,8 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
 
         assertNotNull(handler);
 
-        EmergencyRegResult regResult =
-                new EmergencyRegResult(UTRAN, 0, 0, true, false, 0, 0, "", "", "");
+        EmergencyRegistrationResult regResult =
+                new EmergencyRegistrationResult(UTRAN, 0, 0, true, false, 0, 0, "", "", "");
         handler.sendMessage(handler.obtainMessage(event, new AsyncResult(null, regResult, null)));
         processAllMessages();
 
@@ -634,8 +634,8 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
         verify(mPhone, times(1)).triggerEmergencyNetworkScan(any(), anyInt(), any());
 
         // Result received
-        EmergencyRegResult regResult =
-                new EmergencyRegResult(UTRAN, 0, 0, true, false, 0, 0, "", "", "");
+        EmergencyRegistrationResult regResult =
+                new EmergencyRegistrationResult(UTRAN, 0, 0, true, false, 0, 0, "", "", "");
         handler.sendMessage(handler.obtainMessage(event, new AsyncResult(null, regResult, null)));
         processAllMessages();
 
@@ -699,8 +699,8 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
         verify(mDomainSelectionController, times(1)).selectDomain(eq(attr), eq(transportCallback));
 
         // Result received
-        EmergencyRegResult regResult =
-                new EmergencyRegResult(UTRAN, 0, 0, true, false, 0, 0, "", "", "");
+        EmergencyRegistrationResult regResult =
+                new EmergencyRegistrationResult(UTRAN, 0, 0, true, false, 0, 0, "", "", "");
         handler.sendMessage(handler.obtainMessage(event, new AsyncResult(null, regResult, null)));
         processAllMessages();
 
@@ -725,7 +725,7 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
 
         // Result received
         regResult =
-                new EmergencyRegResult(EUTRAN, 0, 0, true, false, 0, 0, "", "", "");
+                new EmergencyRegistrationResult(EUTRAN, 0, 0, true, false, 0, 0, "", "", "");
         handler.sendMessage(handler.obtainMessage(event, new AsyncResult(null, regResult, null)));
         processAllMessages();
 
@@ -785,7 +785,7 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
     private DomainSelectionService.SelectionAttributes getSelectionAttributes(
             int slotId, int subId, int selectorType, boolean isEmergency,
             boolean exited, int callFailCause, String callId, String number,
-            ImsReasonInfo imsReasonInfo, EmergencyRegResult regResult) {
+            ImsReasonInfo imsReasonInfo, EmergencyRegistrationResult regResult) {
         DomainSelectionService.SelectionAttributes.Builder builder =
                 new DomainSelectionService.SelectionAttributes.Builder(
                         slotId, subId, selectorType)
@@ -798,7 +798,7 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
             builder.setAddress(Uri.fromParts(PhoneAccount.SCHEME_TEL, number, null));
         }
         if (imsReasonInfo != null) builder.setPsDisconnectCause(imsReasonInfo);
-        if (regResult != null) builder.setEmergencyRegResult(regResult);
+        if (regResult != null) builder.setEmergencyRegistrationResult(regResult);
 
         return builder.build();
     }
