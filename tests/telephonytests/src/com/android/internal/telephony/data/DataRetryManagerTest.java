@@ -292,7 +292,7 @@ public class DataRetryManagerTest extends TelephonyTest {
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build();
-        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone, mFeatureFlags);
         DataNetworkController.NetworkRequestList
                 networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
         mDataRetryManagerUT.evaluateDataSetupRetry(mDataProfile1,
@@ -316,7 +316,7 @@ public class DataRetryManagerTest extends TelephonyTest {
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
                 .build();
-        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone, mFeatureFlags);
         DataNetworkController.NetworkRequestList
                 networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
         mDataRetryManagerUT.evaluateDataSetupRetry(mDataProfile3,
@@ -345,7 +345,7 @@ public class DataRetryManagerTest extends TelephonyTest {
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
                 .build();
-        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone, mFeatureFlags);
         DataNetworkController.NetworkRequestList
                 networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
         mDataRetryManagerUT.evaluateDataSetupRetry(mDataProfile3,
@@ -432,7 +432,7 @@ public class DataRetryManagerTest extends TelephonyTest {
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)
                 .build();
-        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone, mFeatureFlags);
         DataNetworkController.NetworkRequestList
                 networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
 
@@ -535,7 +535,7 @@ public class DataRetryManagerTest extends TelephonyTest {
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build();
-        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone, mFeatureFlags);
         DataNetworkController.NetworkRequestList
                 networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
         mDataRetryManagerUT.evaluateDataSetupRetry(mDataProfile1,
@@ -568,7 +568,7 @@ public class DataRetryManagerTest extends TelephonyTest {
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build();
-        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone, mFeatureFlags);
         DataNetworkController.NetworkRequestList
                 networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
 
@@ -647,7 +647,7 @@ public class DataRetryManagerTest extends TelephonyTest {
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
                 .build();
-        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone, mFeatureFlags);
         DataNetworkController.NetworkRequestList
                 networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
 
@@ -709,7 +709,7 @@ public class DataRetryManagerTest extends TelephonyTest {
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
                 .build();
-        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone, mFeatureFlags);
         DataNetworkController.NetworkRequestList
                 networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
 
@@ -798,7 +798,7 @@ public class DataRetryManagerTest extends TelephonyTest {
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build();
-        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone, mFeatureFlags);
         DataNetworkController.NetworkRequestList
                 networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
         mDataRetryManagerUT.evaluateDataSetupRetry(mDataProfile1,
@@ -839,7 +839,7 @@ public class DataRetryManagerTest extends TelephonyTest {
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build();
-        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone, mFeatureFlags);
         DataNetworkController.NetworkRequestList
                 networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
 
@@ -853,7 +853,7 @@ public class DataRetryManagerTest extends TelephonyTest {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
-                .build(), mPhone);
+                .build(), mPhone, mFeatureFlags);
         assertThat(mDataRetryManagerUT.isSimilarNetworkRequestRetryScheduled(tnr,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN)).isTrue();
         assertThat(mDataRetryManagerUT.isSimilarNetworkRequestRetryScheduled(tnr,

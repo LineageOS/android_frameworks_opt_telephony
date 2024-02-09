@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony.data;
 
-import static android.net.NetworkCapabilities.TRANSPORT_CELLULAR;
 import static android.telephony.CarrierConfigManager.KEY_DATA_SWITCH_VALIDATION_TIMEOUT_LONG;
 import static android.telephony.SubscriptionManager.DEFAULT_PHONE_INDEX;
 import static android.telephony.SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
@@ -334,7 +333,7 @@ public class PhoneSwitcher extends Handler {
         @Override
         public void onCapabilitiesChanged(Network network,
                 NetworkCapabilities networkCapabilities) {
-            if (networkCapabilities.hasTransport(TRANSPORT_CELLULAR)) {
+            if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
                 if (SubscriptionManager.isValidSubscriptionId(mExpectedSubId)
                         && mExpectedSubId == getSubIdFromNetworkSpecifier(
                         networkCapabilities.getNetworkSpecifier())) {
@@ -569,7 +568,7 @@ public class PhoneSwitcher extends Handler {
         mConnectivityManager.registerDefaultNetworkCallback(mDefaultNetworkCallback, this);
 
         final NetworkCapabilities.Builder builder = new NetworkCapabilities.Builder()
-                .addTransportType(TRANSPORT_CELLULAR)
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_DUN)
@@ -593,6 +592,15 @@ public class PhoneSwitcher extends Handler {
                 .addEnterpriseId(NetworkCapabilities.NET_ENTERPRISE_ID_4)
                 .addEnterpriseId(NetworkCapabilities.NET_ENTERPRISE_ID_5)
                 .setNetworkSpecifier(new MatchAllNetworkSpecifier());
+
+        if (mFlags.satelliteInternet()) {
+            // TODO: b/328622096 remove the try/catch
+            try {
+                builder.addTransportType(NetworkCapabilities.TRANSPORT_SATELLITE);
+            } catch (IllegalArgumentException exception) {
+                loge("TRANSPORT_SATELLITE is not supported.");
+            }
+        }
 
         NetworkFactory networkFactory = new PhoneSwitcherNetworkRequestListener(looper, context,
                 builder.build(), this);
@@ -987,7 +995,7 @@ public class PhoneSwitcher extends Handler {
 
     private void onRequestNetwork(NetworkRequest networkRequest) {
         TelephonyNetworkRequest telephonyNetworkRequest = new TelephonyNetworkRequest(
-                networkRequest, PhoneFactory.getDefaultPhone());
+                networkRequest, PhoneFactory.getDefaultPhone(), mFlags);
         if (!mNetworkRequestList.contains(telephonyNetworkRequest)) {
             mNetworkRequestList.add(telephonyNetworkRequest);
             onEvaluate(REQUESTS_CHANGED, "netRequest");
@@ -996,7 +1004,7 @@ public class PhoneSwitcher extends Handler {
 
     private void onReleaseNetwork(NetworkRequest networkRequest) {
         TelephonyNetworkRequest telephonyNetworkRequest = new TelephonyNetworkRequest(
-                networkRequest, PhoneFactory.getDefaultPhone());
+                networkRequest, PhoneFactory.getDefaultPhone(), mFlags);
         if (mNetworkRequestList.remove(telephonyNetworkRequest)) {
             onEvaluate(REQUESTS_CHANGED, "netReleased");
             collectReleaseNetworkMetrics(networkRequest);
