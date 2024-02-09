@@ -1352,6 +1352,17 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * @return Indicating whether the retry timer from setup data call response for data throttling
+     * should be honored for emergency network request. By default this is off, meaning emergency
+     * network requests will ignore the previous retry timer passed in from setup data call
+     * response.
+     */
+    public boolean shouldHonorRetryTimerForEmergencyNetworkRequest() {
+        return mResources.getBoolean(
+                com.android.internal.R.bool.config_honor_data_retry_timer_for_emergency_network);
+    }
+
+    /**
      * Log debug messages.
      * @param s debug messages
      */
@@ -1394,6 +1405,8 @@ public class DataConfigManager extends Handler {
         pw.increaseIndent();
         mDataHandoverRetryRules.forEach(pw::println);
         pw.decreaseIndent();
+        pw.println("shouldHonorRetryTimerForEmergencyNetworkRequest="
+                + shouldHonorRetryTimerForEmergencyNetworkRequest());
         pw.println("mSetupDataCallAnomalyReport=" + mSetupDataCallAnomalyReportThreshold);
         pw.println("mNetworkUnwantedAnomalyReport=" + mNetworkUnwantedAnomalyReportThreshold);
         pw.println("mImsReleaseRequestAnomalyReport=" + mImsReleaseRequestAnomalyReportThreshold);

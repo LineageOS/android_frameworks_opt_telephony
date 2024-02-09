@@ -577,8 +577,26 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private void serviceStateChanged(@NetworkType int networkType,
             @RegistrationState int dataRegState, @RegistrationState int voiceRegState,
             @RegistrationState int iwlanRegState, DataSpecificRegistrationInfo dsri) {
+        boolean isEmergencyOnly = false;
+        if (dataRegState == NetworkRegistrationInfo.REGISTRATION_STATE_DENIED) {
+            isEmergencyOnly = true;
+        }
         ServiceState ss = createSS(networkType, networkType, dataRegState, voiceRegState,
-                iwlanRegState, dsri);
+                iwlanRegState, dsri, isEmergencyOnly);
+
+        doReturn(ss).when(mSST).getServiceState();
+        doReturn(ss).when(mPhone).getServiceState();
+
+        mDataNetworkControllerUT.obtainMessage(17/*EVENT_SERVICE_STATE_CHANGED*/).sendToTarget();
+        processAllMessages();
+    }
+
+    private void serviceStateChanged(@NetworkType int networkType,
+            @RegistrationState int dataRegState, @RegistrationState int voiceRegState,
+            @RegistrationState int iwlanRegState, DataSpecificRegistrationInfo dsri,
+            boolean isEmergencyOnly) {
+        ServiceState ss = createSS(networkType, networkType, dataRegState, voiceRegState,
+                iwlanRegState, dsri, isEmergencyOnly);
 
         doReturn(ss).when(mSST).getServiceState();
         doReturn(ss).when(mPhone).getServiceState();
@@ -590,7 +608,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private ServiceState createSS(@NetworkType int dataNetworkType,
             @NetworkType int voiceNetworkType,
             @RegistrationState int dataRegState, @RegistrationState int voiceRegState,
-            @RegistrationState int iwlanRegState, DataSpecificRegistrationInfo dsri) {
+            @RegistrationState int iwlanRegState, DataSpecificRegistrationInfo dsri,
+            boolean isEmergencyOnly) {
         if (dsri == null) {
             dsri = new DataSpecificRegistrationInfo.Builder(8)
                     .setNrAvailable(true)
@@ -609,6 +628,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .setRegistrationState(dataRegState)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
                 .setDataSpecificInfo(dsri)
+                .setEmergencyOnly(isEmergencyOnly)
                 .build());
 
         ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
@@ -616,6 +636,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
                 .setRegistrationState(iwlanRegState)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setEmergencyOnly(isEmergencyOnly)
                 .build());
 
         ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
@@ -623,6 +644,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .setAccessNetworkTechnology(voiceNetworkType)
                 .setRegistrationState(voiceRegState)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
+                .setEmergencyOnly(isEmergencyOnly)
                 .build());
 
         ss.setDataRoamingFromRegistration(dataRegState
@@ -725,10 +747,18 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mCarrierConfig.putIntArray(CarrierConfigManager
                         .KEY_CAPABILITIES_EXEMPT_FROM_SINGLE_DC_CHECK_INT_ARRAY,
                 new int[]{NetworkCapabilities.NET_CAPABILITY_IMS});
+        mCarrierConfig.putBooleanArray(
+                CarrierConfigManager.KEY_DATA_STALL_RECOVERY_SHOULD_SKIP_BOOL_ARRAY,
+                new boolean[] {false, false, true, false, false}
+        );
+        mCarrierConfig.putLongArray(CarrierConfigManager.KEY_DATA_STALL_RECOVERY_TIMERS_LONG_ARRAY,
+                new long[] {180000, 180000, 180000, 180000});
 
         mContextFixture.putResource(com.android.internal.R.string.config_bandwidthEstimateSource,
                 "bandwidth_estimator");
 
+        mContextFixture.putBooleanResource(com.android.internal.R.bool
+                .config_honor_data_retry_timer_for_emergency_network, true);
         mContextFixture.putIntResource(com.android.internal.R.integer
                         .config_delay_for_ims_dereg_millis, 3000);
         mContextFixture.putBooleanResource(com.android.internal.R.bool
@@ -1925,6 +1955,53 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_EIMS);
         verifyConnectedNetworkHasDataProfile(mEmergencyDataProfile);
+    }
+
+    @Test
+    public void testEmergencyRequestWithThrottling() throws Exception {
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_UNKNOWN,
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING, /* data */
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING, /* voice */
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING, /* iwlan */
+                null, false);
+        mDataNetworkControllerUT.getDataRetryManager()
+                .registerCallback(mMockedDataRetryManagerCallback);
+
+        setFailedSetupDataResponse(mMockedWwanDataServiceManager, DataFailCause.PROTOCOL_ERRORS,
+                10000, false);
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_EIMS));
+        processAllMessages();
+
+        // There should be only one attempt, and no retry should happen because the second one
+        // was throttled.
+        verify(mMockedWwanDataServiceManager, times(1)).setupDataCall(anyInt(),
+                any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(),
+                any(), any(), anyBoolean(), any(Message.class));
+
+        ArgumentCaptor<List<ThrottleStatus>> throttleStatusCaptor =
+                ArgumentCaptor.forClass(List.class);
+        verify(mMockedDataRetryManagerCallback)
+                .onThrottleStatusChanged(throttleStatusCaptor.capture());
+        assertThat(throttleStatusCaptor.getValue()).hasSize(1);
+        ThrottleStatus throttleStatus = throttleStatusCaptor.getValue().get(0);
+        assertThat(throttleStatus.getApnType()).isEqualTo(ApnSetting.TYPE_EMERGENCY);
+        assertThat(throttleStatus.getRetryType())
+                .isEqualTo(ThrottleStatus.RETRY_TYPE_NEW_CONNECTION);
+        assertThat(throttleStatus.getTransportType())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+        Mockito.reset(mMockedWwanDataServiceManager);
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_DENIED, /* data */
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING, /* voice */
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING, /* iwlan */
+                null, true);
+
+        // No retry should happen because the second one was throttled.
+        verify(mMockedWwanDataServiceManager, never()).setupDataCall(anyInt(),
+                any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(),
+                any(), any(), anyBoolean(), any(Message.class));
     }
 
     @Test
@@ -4503,7 +4580,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 TelephonyManager.NETWORK_TYPE_1xRTT /* voice RAT */,
                 NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING ,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME,
-                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING, null);
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING, null, true);
         doReturn(ss).when(mSST).getServiceState();
         mDataNetworkControllerUT.obtainMessage(17/*EVENT_SERVICE_STATE_CHANGED*/).sendToTarget();
         mDataNetworkControllerUT.removeNetworkRequest(request);
