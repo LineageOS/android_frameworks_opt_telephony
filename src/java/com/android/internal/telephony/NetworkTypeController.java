@@ -662,6 +662,11 @@ public class NetworkTypeController extends StateMachine {
                 case EVENT_RADIO_OFF_OR_UNAVAILABLE:
                     if (DBG) log("Reset timers since radio is off or unavailable.");
                     resetAllTimers();
+                    mRatchetedNrBands.clear();
+                    mRatchetedNrBandwidths = 0;
+                    mLastAnchorNrCellId = PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN;
+                    mDoesPccListIndicateIdle = false;
+                    mPhysicalChannelConfigs = null;
                     transitionTo(mLegacyState);
                     break;
                 case EVENT_PREFERRED_NETWORK_MODE_CHANGED:
