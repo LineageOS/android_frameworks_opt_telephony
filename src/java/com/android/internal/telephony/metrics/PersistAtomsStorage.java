@@ -2291,8 +2291,6 @@ public class PersistAtomsStorage {
                     normalizeDurationTo24H(stats[i].registeringMillis, intervalMillis);
             stats[i].unregisteredMillis =
                     normalizeDurationTo24H(stats[i].unregisteredMillis, intervalMillis);
-            stats[i].registeredTimes =
-                    normalizeDurationTo24H(stats[i].registeredTimes, intervalMillis);
         }
         return stats;
     }

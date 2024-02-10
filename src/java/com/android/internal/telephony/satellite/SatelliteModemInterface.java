@@ -1317,6 +1317,35 @@ public class SatelliteModemInterface {
         }
     }
 
+    /**
+     * The satellite service should abort all datagram-sending requests.
+     *
+     * @param message The Message to send to result of the operation to.
+     */
+    public void abortSendingSatelliteDatagrams(@NonNull Message message) {
+        if (mSatelliteService != null) {
+            try {
+                mSatelliteService.abortSendingSatelliteDatagrams(new IIntegerConsumer.Stub() {
+                    @Override
+                    public void accept(int result) {
+                        int error = SatelliteServiceUtils.fromSatelliteError(result);
+                        logd("abortSendingSatelliteDatagrams: " + error);
+                        Binder.withCleanCallingIdentity(() ->
+                                sendMessageWithResult(message, null, error));
+                    }
+                });
+            } catch (RemoteException e) {
+                loge("abortSendingSatelliteDatagrams: RemoteException " + e);
+                sendMessageWithResult(message, null,
+                        SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR);
+            }
+        } else {
+            loge("abortSendingSatelliteDatagrams: Satellite service is unavailable.");
+            sendMessageWithResult(message, null,
+                    SatelliteManager.SATELLITE_RESULT_RADIO_NOT_AVAILABLE);
+        }
+    }
+
     public boolean isSatelliteServiceSupported() {
         return mIsSatelliteServiceSupported;
     }
