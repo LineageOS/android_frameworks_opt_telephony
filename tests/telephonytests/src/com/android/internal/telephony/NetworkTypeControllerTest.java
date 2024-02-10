@@ -958,15 +958,32 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testEventRadioOffOrUnavailable() throws Exception {
-        testTransitionToCurrentStateNrConnected();
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA,
-                mNetworkTypeController.getOverrideNetworkType());
+        mBundle.putBoolean(CarrierConfigManager.KEY_RATCHET_NR_ADVANCED_BANDWIDTH_IF_RRC_IDLE_BOOL,
+                true);
+        testTransitionToCurrentStateNrConnectedMmwaveWithAdditionalBandAndNoMmwaveNrNsa();
 
+        // Radio off
         doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(9 /* EVENT_RADIO_OFF_OR_UNAVAILABLE */);
         processAllMessages();
+
+        assertEquals("legacy", getCurrentState().getName());
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
                 mNetworkTypeController.getOverrideNetworkType());
+
+        // NR connected: Primary serving NR PCC with cell ID = 1, band = none
+        PhysicalChannelConfig pcc = new PhysicalChannelConfig.Builder()
+                .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
+                .setPhysicalCellId(1)
+                .setCellConnectionStatus(CellInfo.CONNECTION_PRIMARY_SERVING)
+                .build();
+
+        mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED */,
+                new AsyncResult(null, List.of(pcc), null));
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+        mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
+        processAllMessages();
+        assertEquals("connected", getCurrentState().getName());
     }
 
     @Test
