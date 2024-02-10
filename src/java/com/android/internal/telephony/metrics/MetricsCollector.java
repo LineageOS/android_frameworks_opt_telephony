@@ -1125,7 +1125,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 roundAndConvertMillisToSeconds(stats.registeringMillis),
                 roundAndConvertMillisToSeconds(stats.unregisteredMillis),
                 stats.isIwlanCrossSim,
-                roundAndConvertMillisToSeconds(stats.registeredTimes));
+                stats.registeredTimes);
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationTermination termination) {
