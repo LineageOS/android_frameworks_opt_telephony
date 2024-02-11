@@ -312,6 +312,7 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_ILLEGAL_STATE,
                     TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK,
                     TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED,
+                    TEAR_DOWN_REASON_DATA_LIMIT_REACHED,
             })
     public @interface TearDownReason {}
 
@@ -407,6 +408,9 @@ public class DataNetwork extends StateMachine {
 
     /** Data network tear down due to preferred data switched to another phone. */
     public static final int TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED = 30;
+
+    /** Data network tear down due to bootstrap sim data limit reached. */
+    public static final int TEAR_DOWN_REASON_DATA_LIMIT_REACHED = 31;
 
     //********************************************************************************************//
     // WHENEVER ADD A NEW TEAR DOWN REASON, PLEASE UPDATE DataDeactivateReasonEnum in enums.proto //
@@ -3757,6 +3761,8 @@ public class DataNetwork extends StateMachine {
                 return "TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK";
             case TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED:
                 return "TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED";
+            case TEAR_DOWN_REASON_DATA_LIMIT_REACHED:
+                return "TEAR_DOWN_REASON_DATA_LIMIT_REACHED";
             default:
                 return "UNKNOWN(" + reason + ")";
         }
