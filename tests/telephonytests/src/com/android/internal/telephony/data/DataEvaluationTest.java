@@ -58,6 +58,14 @@ public class DataEvaluationTest extends TelephonyTest {
         mDataEvaluationUT.removeDataDisallowedReason(
                 DataEvaluation.DataDisallowedReason.DATA_DISABLED);
         assertThat(mDataEvaluationUT.getDataDisallowedReasons().size()).isEqualTo(1);
+
+        mDataEvaluationUT.addDataDisallowedReason(
+                DataEvaluation.DataDisallowedReason.DATA_LIMIT_REACHED);
+        assertThat(mDataEvaluationUT.getDataDisallowedReasons().size()).isEqualTo(2);
+
+        mDataEvaluationUT.removeDataDisallowedReason(
+                DataEvaluation.DataDisallowedReason.ROAMING_DISABLED);
+        assertThat(mDataEvaluationUT.getDataDisallowedReasons().size()).isEqualTo(1);
     }
 
 

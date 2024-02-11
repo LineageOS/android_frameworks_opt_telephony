@@ -870,6 +870,14 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * @return the data limit in bytes that can be used for esim bootstrap usage.
+     */
+    public long getEsimBootStrapMaxDataLimitBytes() {
+        return mResources.getInteger(
+                com.android.internal.R.integer.config_esim_bootstrap_data_limit_bytes);
+    }
+
+    /**
      * Update the TCP buffer sizes from the resource overlays.
      */
     private void updateTcpBuffers() {
