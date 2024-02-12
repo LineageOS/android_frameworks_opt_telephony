@@ -353,6 +353,11 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(subInfo.getSimSlotIndex()).isEqualTo(0);
         assertThat(subInfo.getSubscriptionType()).isEqualTo(
                 SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+
+        // Invalid slot index should trigger IllegalArgumentException
+        assertThrows(IllegalArgumentException.class,
+                () -> mSubscriptionManagerServiceUT.addSubInfo(FAKE_ICCID1, FAKE_CARRIER_NAME1,
+                        2, SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM));
     }
 
     @Test
