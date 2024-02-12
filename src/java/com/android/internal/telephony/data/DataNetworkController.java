@@ -1517,11 +1517,27 @@ public class DataNetworkController extends Handler {
 
         // Bypass all checks for emergency network request.
         if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)) {
-            evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_REQUEST);
-            evaluation.setCandidateDataProfile(mDataProfileManager.getDataProfileForNetworkRequest(
+            DataProfile emergencyProfile = mDataProfileManager.getDataProfileForNetworkRequest(
                     networkRequest, getDataNetworkType(transport),
                     mServiceState.isUsingNonTerrestrialNetwork(),
-                    isEsimBootStrapProvisioningActivated(), true));
+                    isEsimBootStrapProvisioningActivated(), true);
+
+            // Check if the profile is being throttled.
+            if (mDataConfigManager.shouldHonorRetryTimerForEmergencyNetworkRequest()
+                    && emergencyProfile != null
+                    && mDataRetryManager.isDataProfileThrottled(emergencyProfile, transport)) {
+                evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_THROTTLED);
+                log("Emergency network request is throttled by the previous setup data "
+                            + "call response.");
+                log(evaluation.toString());
+                networkRequest.setEvaluation(evaluation);
+                return evaluation;
+            }
+
+            evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_REQUEST);
+            if (emergencyProfile != null) {
+                evaluation.setCandidateDataProfile(emergencyProfile);
+            }
             networkRequest.setEvaluation(evaluation);
             log(evaluation.toString());
             return evaluation;
