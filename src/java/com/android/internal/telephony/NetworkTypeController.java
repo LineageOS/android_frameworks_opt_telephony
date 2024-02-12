@@ -620,8 +620,7 @@ public class NetworkTypeController extends StateMachine {
                     parseCarrierConfigs();
                     break;
                 case EVENT_SERVICE_STATE_CHANGED:
-                    mServiceState = mPhone.getServiceStateTracker().getServiceState();
-                    if (DBG) log("ServiceState updated: " + mServiceState);
+                    onServiceStateChanged();
                     transitionToCurrentState();
                     break;
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
@@ -726,8 +725,7 @@ public class NetworkTypeController extends StateMachine {
             AsyncResult ar;
             switch (msg.what) {
                 case EVENT_SERVICE_STATE_CHANGED:
-                    mServiceState = mPhone.getServiceStateTracker().getServiceState();
-                    if (DBG) log("ServiceState updated: " + mServiceState);
+                    onServiceStateChanged();
                     // fallthrough
                 case EVENT_UPDATE:
                     int rat = getDataNetworkType();
@@ -809,8 +807,7 @@ public class NetworkTypeController extends StateMachine {
             AsyncResult ar;
             switch (msg.what) {
                 case EVENT_SERVICE_STATE_CHANGED:
-                    mServiceState = mPhone.getServiceStateTracker().getServiceState();
-                    if (DBG) log("ServiceState updated: " + mServiceState);
+                    onServiceStateChanged();
                     // fallthrough
                 case EVENT_UPDATE:
                     int rat = getDataNetworkType();
@@ -895,8 +892,7 @@ public class NetworkTypeController extends StateMachine {
             AsyncResult ar;
             switch (msg.what) {
                 case EVENT_SERVICE_STATE_CHANGED:
-                    mServiceState = mPhone.getServiceStateTracker().getServiceState();
-                    if (DBG) log("ServiceState updated: " + mServiceState);
+                    onServiceStateChanged();
                     // fallthrough
                 case EVENT_UPDATE:
                     int rat = getDataNetworkType();
@@ -981,8 +977,7 @@ public class NetworkTypeController extends StateMachine {
             AsyncResult ar;
             switch (msg.what) {
                 case EVENT_SERVICE_STATE_CHANGED:
-                    mServiceState = mPhone.getServiceStateTracker().getServiceState();
-                    if (DBG) log("ServiceState updated: " + mServiceState);
+                    onServiceStateChanged();
                     // fallthrough
                 case EVENT_UPDATE:
                     int rat = getDataNetworkType();
@@ -1061,8 +1056,7 @@ public class NetworkTypeController extends StateMachine {
             AsyncResult ar;
             switch (msg.what) {
                 case EVENT_SERVICE_STATE_CHANGED:
-                    mServiceState = mPhone.getServiceStateTracker().getServiceState();
-                    if (DBG) log("ServiceState updated: " + mServiceState);
+                    onServiceStateChanged();
                     // fallthrough
                 case EVENT_UPDATE:
                     int rat = getDataNetworkType();
@@ -1142,8 +1136,7 @@ public class NetworkTypeController extends StateMachine {
             AsyncResult ar;
             switch (msg.what) {
                 case EVENT_SERVICE_STATE_CHANGED:
-                    mServiceState = mPhone.getServiceStateTracker().getServiceState();
-                    if (DBG) log("ServiceState updated: " + mServiceState);
+                    onServiceStateChanged();
                     // fallthrough
                 case EVENT_UPDATE:
                     int rat = getDataNetworkType();
@@ -1205,6 +1198,17 @@ public class NetworkTypeController extends StateMachine {
 
     private final NrConnectedAdvancedState mNrConnectedAdvancedState =
             new NrConnectedAdvancedState();
+
+    /** On service state changed. */
+    private void onServiceStateChanged() {
+        ServiceState newSS = mPhone.getServiceStateTracker().getServiceState();
+        if (!TextUtils.equals(mServiceState.getOperatorAlpha(), newSS.getOperatorAlpha())) {
+            log("PLMN changed, reset any timers");
+            resetAllTimers();
+        }
+        mServiceState = newSS;
+        if (DBG) log("ServiceState updated: " + mServiceState);
+    }
 
     private void updatePhysicalChannelConfigs(List<PhysicalChannelConfig> physicalChannelConfigs) {
         boolean isPccListEmpty = physicalChannelConfigs == null || physicalChannelConfigs.isEmpty();
