@@ -122,11 +122,18 @@ public class CellularNetworkSecuritySafetySource {
         updateSafetyCenter(context);
     }
 
-    /** Enables or disables the identifier disclosure issue and clears any current issues. */
+    /**
+     * Enables or disables the identifier disclosure issue and clears any current issues if the
+     * enable state is changed.
+     */
     public synchronized void setIdentifierDisclosureIssueEnabled(Context context, boolean enabled) {
-        mIdentifierDisclosureIssuesEnabled = enabled;
-        mIdentifierDisclosures.clear();
-        updateSafetyCenter(context);
+        // This check ensures that if we're enabled and we are asked to enable ourselves again (can
+        // happen if the modem restarts), we don't clear our state.
+        if (enabled != mIdentifierDisclosureIssuesEnabled) {
+            mIdentifierDisclosureIssuesEnabled = enabled;
+            mIdentifierDisclosures.clear();
+            updateSafetyCenter(context);
+        }
     }
 
     /** Sets the identifier disclosure issue state for the identifier subscription. */
