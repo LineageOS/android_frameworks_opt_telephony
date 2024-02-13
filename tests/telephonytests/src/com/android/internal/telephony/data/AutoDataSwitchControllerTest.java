@@ -20,10 +20,15 @@ import static android.telephony.SubscriptionManager.DEFAULT_PHONE_INDEX;
 
 import static com.android.internal.telephony.data.AutoDataSwitchController.EVALUATION_REASON_DATA_SETTINGS_CHANGED;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
@@ -32,6 +37,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.net.NetworkCapabilities;
@@ -59,6 +65,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.Map;
+
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class AutoDataSwitchControllerTest extends TelephonyTest {
@@ -66,7 +74,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
     private static final int EVENT_DISPLAY_INFO_CHANGED = 2;
     private static final int EVENT_EVALUATE_AUTO_SWITCH = 3;
     private static final int EVENT_SIGNAL_STRENGTH_CHANGED = 4;
-    private static final int EVENT_MEETS_AUTO_DATA_SWITCH_STATE = 5;
+    private static final int EVENT_STABILITY_CHECK_PASSED = 5;
 
     private static final int PHONE_1 = 0;
     private static final int SUB_1 = 1;
@@ -79,12 +87,14 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
     private boolean mIsNonTerrestrialNetwork = false;
     // Mocked
     private AutoDataSwitchController.AutoDataSwitchControllerCallback mMockedPhoneSwitcherCallback;
+    private AlarmManager mMockedAlarmManager;
 
     // Real
     private TelephonyDisplayInfo mGoodTelephonyDisplayInfo;
     private TelephonyDisplayInfo mBadTelephonyDisplayInfo;
     private int mDefaultDataSub;
     private AutoDataSwitchController mAutoDataSwitchControllerUT;
+    private Map<Integer, AlarmManager.OnAlarmListener> mEventsToAlarmListener;
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
@@ -94,6 +104,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
                 TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false /*roaming*/);
         mMockedPhoneSwitcherCallback =
                 mock(AutoDataSwitchController.AutoDataSwitchControllerCallback.class);
+        mMockedAlarmManager = mock(AlarmManager.class);
 
         doReturn(PHONE_1).when(mPhone).getPhoneId();
         doReturn(SUB_1).when(mPhone).getSubId();
@@ -147,6 +158,8 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         doReturn(true).when(mDataConfigManager).isPingTestBeforeAutoDataSwitchRequired();
         doReturn(10000L).when(mDataConfigManager)
                 .getAutoDataSwitchAvailabilityStabilityTimeThreshold();
+        doReturn(120000L).when(mDataConfigManager)
+                .getAutoDataSwitchPerformanceStabilityTimeThreshold();
         doReturn(MAX_RETRY).when(mDataConfigManager).getAutoDataSwitchValidationMaxRetry();
         doReturn(SCORE_TOLERANCE).when(mDataConfigManager).getAutoDataSwitchScoreTolerance();
         doAnswer(invocation -> {
@@ -165,6 +178,11 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
         mAutoDataSwitchControllerUT = new AutoDataSwitchController(mContext, Looper.myLooper(),
                 mPhoneSwitcher, mFeatureFlags, mMockedPhoneSwitcherCallback);
+
+        replaceInstance(AutoDataSwitchController.class, "mAlarmManager",
+                mAutoDataSwitchControllerUT, mMockedAlarmManager);
+        mEventsToAlarmListener = getPrivateField(mAutoDataSwitchControllerUT,
+                "mEventsToAlarmListener", Map.class);
 
         doReturn(true).when(mFeatureFlags).autoSwitchAllowRoaming();
         doReturn(true).when(mFeatureFlags).carrierEnabledSatelliteFlag();
@@ -356,6 +374,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
     @Test
     public void testCancelSwitch_onPrimary_rat_signalStrength() {
+        doReturn(true).when(mFeatureFlags).autoDataSwitchRatSs();
         // 4.1.1 Display info and signal strength on secondary phone became bad,
         // but primary is still OOS, so still switch to the secondary.
         prepareIdealUsesNonDdsCondition();
@@ -371,30 +390,39 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         // but primary become service, then don't switch.
         prepareIdealUsesNonDdsCondition();
         processAllFutureMessages();
-        clearInvocations(mMockedPhoneSwitcherCallback);
+        clearInvocations(mMockedPhoneSwitcherCallback, mMockedAlarmManager);
         serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         displayInfoChanged(PHONE_2, mBadTelephonyDisplayInfo);
         signalStrengthChanged(PHONE_2, SignalStrength.SIGNAL_STRENGTH_MODERATE);
         processAllFutureMessages();
-        verify(mMockedPhoneSwitcherCallback).onRequireCancelAnyPendingAutoSwitchValidation();
+        verify(mMockedPhoneSwitcherCallback, atLeastOnce())
+                .onRequireCancelAnyPendingAutoSwitchValidation();
+        verify(mMockedAlarmManager, atLeastOnce()).cancel(mEventsToAlarmListener.get(
+                EVENT_STABILITY_CHECK_PASSED));
 
         // 4.2 Display info on default phone became good just as the secondary
         prepareIdealUsesNonDdsCondition();
         processAllFutureMessages();
-        clearInvocations(mMockedPhoneSwitcherCallback);
+        clearInvocations(mMockedPhoneSwitcherCallback, mMockedAlarmManager);
         serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         displayInfoChanged(PHONE_1, mGoodTelephonyDisplayInfo);
         processAllFutureMessages();
-        verify(mMockedPhoneSwitcherCallback).onRequireCancelAnyPendingAutoSwitchValidation();
+        verify(mMockedPhoneSwitcherCallback, atLeastOnce())
+                .onRequireCancelAnyPendingAutoSwitchValidation();
+        verify(mMockedAlarmManager, atLeastOnce()).cancel(mEventsToAlarmListener.get(
+                EVENT_STABILITY_CHECK_PASSED));
 
         // 4.3 Signal strength on default phone became just as good as the secondary
         prepareIdealUsesNonDdsCondition();
         processAllFutureMessages();
-        clearInvocations(mMockedPhoneSwitcherCallback);
+        clearInvocations(mMockedPhoneSwitcherCallback, mMockedAlarmManager);
         serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         signalStrengthChanged(PHONE_1, SignalStrength.SIGNAL_STRENGTH_GREAT);
         processAllFutureMessages();
-        verify(mMockedPhoneSwitcherCallback).onRequireCancelAnyPendingAutoSwitchValidation();
+        verify(mMockedPhoneSwitcherCallback, atLeastOnce())
+                .onRequireCancelAnyPendingAutoSwitchValidation();
+        verify(mMockedAlarmManager, atLeastOnce()).cancel(mEventsToAlarmListener.get(
+                EVENT_STABILITY_CHECK_PASSED));
     }
 
     @Test
@@ -459,16 +487,18 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
     @Test
     public void testOnNonDdsSwitchBackToPrimary_rat_signalStrength() {
         doReturn(true).when(mFeatureFlags).autoDataSwitchRatSs();
+        prepareIdealUsesNonDdsCondition();
+        processAllFutureMessages();
         doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
 
-        prepareIdealUsesNonDdsCondition();
         // 4.1 Display info and signal strength on secondary phone became bad just as the default
-        // Expect no switch since both phone has the same score.
+        // Expect switch back since both phone has the same score.
         serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         displayInfoChanged(PHONE_2, mBadTelephonyDisplayInfo);
         signalStrengthChanged(PHONE_2, SignalStrength.SIGNAL_STRENGTH_POOR);
         processAllFutureMessages();
-        verify(mMockedPhoneSwitcherCallback, never()).onRequireValidation(anyInt(), anyBoolean());
+        verify(mMockedPhoneSwitcherCallback).onRequireValidation(DEFAULT_PHONE_INDEX,
+                true/*needValidation*/);
 
         clearInvocations(mMockedPhoneSwitcherCallback);
         prepareIdealUsesNonDdsCondition();
@@ -504,7 +534,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testStabilityCheckOverride() {
+    public void testStabilityCheckOverride_basic() {
         // Starting stability check for switching to non-DDS
         prepareIdealUsesNonDdsCondition();
         processAllMessages();
@@ -515,9 +545,6 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         // Display info and signal strength on secondary phone became worse than the default.
         // Expect to switch back, and it should override the previous stability check
         serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
-        signalStrengthChanged(PHONE_1, SignalStrength.SIGNAL_STRENGTH_GREAT);
-        displayInfoChanged(PHONE_2, mBadTelephonyDisplayInfo);
-        signalStrengthChanged(PHONE_2, SignalStrength.SIGNAL_STRENGTH_POOR);
         // process all messages include the delayed message
         processAllFutureMessages();
 
@@ -525,6 +552,25 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
                 true/*needValidation*/);
         verify(mMockedPhoneSwitcherCallback, never()).onRequireValidation(PHONE_2,
                 true/*needValidation*/);
+    }
+
+    @Test
+    public void testStabilityCheckOverride_uses_rat_signalStrength() {
+        doReturn(true).when(mFeatureFlags).autoDataSwitchRatSs();
+        // Switching due to availability first.
+        prepareIdealUsesNonDdsCondition();
+
+        // Verify stability check pending with short timer.
+        verify(mMockedPhoneSwitcherCallback, never()).onRequireValidation(anyInt(), anyBoolean());
+
+        // Switching due to performance now, should override to use long timer.
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+
+        // Verify stability check pending with long timer.
+        assertThat(mAutoDataSwitchControllerUT.hasMessages(EVENT_STABILITY_CHECK_PASSED)).isFalse();
+        verify(mMockedAlarmManager).setExact(anyInt(), anyLong(), anyString(),
+                eq(mEventsToAlarmListener.get(
+                        EVENT_STABILITY_CHECK_PASSED)), any());
     }
 
     @Test
@@ -643,6 +689,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
     @Test
     public void testRatSignalStrengthSkipEvaluation() {
         // Verify the secondary phone is OOS and its score(0) is too low to justify the evaluation
+        clearInvocations(mMockedPhoneSwitcherCallback);
         displayInfoChanged(PHONE_2, mBadTelephonyDisplayInfo);
         processAllFutureMessages();
         verify(mMockedPhoneSwitcherCallback, never())
@@ -726,9 +773,19 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         Message msg = mAutoDataSwitchControllerUT.obtainMessage(EVENT_SERVICE_STATE_CHANGED);
         msg.obj = new AsyncResult(phoneId, null, null);
         mAutoDataSwitchControllerUT.sendMessage(msg);
+        processAllMessages();
     }
     private void setDefaultDataSubId(int defaultDataSub) {
         mDefaultDataSub = defaultDataSub;
         doReturn(mDefaultDataSub).when(mSubscriptionManagerService).getDefaultDataSubId();
+    }
+
+    @Override
+    public void processAllFutureMessages() {
+        if (mFeatureFlags.autoDataSwitchRatSs()
+                && mEventsToAlarmListener.containsKey(EVENT_STABILITY_CHECK_PASSED)) {
+            mEventsToAlarmListener.get(EVENT_STABILITY_CHECK_PASSED).onAlarm();
+        }
+        super.processAllFutureMessages();
     }
 }
