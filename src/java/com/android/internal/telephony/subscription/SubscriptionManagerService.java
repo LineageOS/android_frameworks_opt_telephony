@@ -2166,6 +2166,7 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @return 0 if success, < 0 on error
      *
      * @throws SecurityException if the caller does not have required permissions.
+     * @throws IllegalArgumentException if {@code slotIndex} is invalid.
      */
     @Override
     @RequiresPermission(Manifest.permission.MODIFY_PHONE_STATE)
@@ -2178,6 +2179,11 @@ public class SubscriptionManagerService extends ISub.Stub {
                 + getCallingPackage());
 
         enforceTelephonyFeatureWithException(getCurrentPackageName(), "addSubInfo");
+
+        if (!SubscriptionManager.isValidSlotIndex(slotIndex)
+                && slotIndex != SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
+            throw new IllegalArgumentException("Invalid slotIndex " + slotIndex);
+        }
 
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
