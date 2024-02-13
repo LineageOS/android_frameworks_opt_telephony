@@ -287,7 +287,13 @@ public class SubscriptionDatabaseManager extends Handler {
                     SubscriptionInfoInternal::getServiceCapabilities),
             new AbstractMap.SimpleImmutableEntry<>(
                     SimInfo.COLUMN_TRANSFER_STATUS,
-                    SubscriptionInfoInternal::getTransferStatus)
+                    SubscriptionInfoInternal::getTransferStatus),
+            new AbstractMap.SimpleImmutableEntry<>(
+                    SimInfo.COLUMN_SATELLITE_ENTITLEMENT_STATUS,
+                    SubscriptionInfoInternal::getSatelliteEntitlementStatus),
+            new AbstractMap.SimpleImmutableEntry<>(
+                    SimInfo.COLUMN_SATELLITE_ENTITLEMENT_PLMNS,
+                    SubscriptionInfoInternal::getSatelliteEntitlementPlmns)
     );
 
     /**
@@ -424,7 +430,10 @@ public class SubscriptionDatabaseManager extends Handler {
                     SubscriptionDatabaseManager::setServiceCapabilities),
             new AbstractMap.SimpleImmutableEntry<>(
                     SimInfo.COLUMN_TRANSFER_STATUS,
-                    SubscriptionDatabaseManager::setTransferStatus)
+                    SubscriptionDatabaseManager::setTransferStatus),
+            new AbstractMap.SimpleImmutableEntry<>(
+                    SimInfo.COLUMN_SATELLITE_ENTITLEMENT_STATUS,
+                    SubscriptionDatabaseManager::setSatelliteEntitlementStatus)
     );
 
     /**
@@ -486,7 +495,10 @@ public class SubscriptionDatabaseManager extends Handler {
                     SubscriptionDatabaseManager::setNumberFromCarrier),
             new AbstractMap.SimpleImmutableEntry<>(
                     SimInfo.COLUMN_PHONE_NUMBER_SOURCE_IMS,
-                    SubscriptionDatabaseManager::setNumberFromIms)
+                    SubscriptionDatabaseManager::setNumberFromIms),
+            new AbstractMap.SimpleImmutableEntry<>(
+                    SimInfo.COLUMN_SATELLITE_ENTITLEMENT_PLMNS,
+                    SubscriptionDatabaseManager::setSatelliteEntitlementPlmns)
     );
 
     /**
@@ -2105,6 +2117,51 @@ public class SubscriptionDatabaseManager extends Handler {
     }
 
     /**
+     * Set whether satellite entitlement status is enabled by entitlement query result.
+     *
+     * @param subId Subscription id.
+     * @param isSatelliteEntitlementStatus Whether satellite entitlement status is enabled or
+     * disabled.
+     * @throws IllegalArgumentException if the subscription does not exist.
+     */
+    public void setSatelliteEntitlementStatus(int subId,
+            int isSatelliteEntitlementStatus) {
+        writeDatabaseAndCacheHelper(subId,
+                SimInfo.COLUMN_SATELLITE_ENTITLEMENT_STATUS,
+                isSatelliteEntitlementStatus,
+                SubscriptionInfoInternal.Builder::setSatelliteEntitlementStatus);
+    }
+
+    /**
+     * Set satellite entitlement plmns by entitlement query result.
+     *
+     * @param subId Subscription id.
+     * @param satelliteEntitlementPlmns Satellite entitlement plmns
+     * @throws IllegalArgumentException if the subscription does not exist.
+     */
+    public void setSatelliteEntitlementPlmns(int subId,
+            @NonNull String satelliteEntitlementPlmns) {
+        writeDatabaseAndCacheHelper(subId,
+                SimInfo.COLUMN_SATELLITE_ENTITLEMENT_PLMNS,
+                satelliteEntitlementPlmns,
+                SubscriptionInfoInternal.Builder::setSatelliteEntitlementPlmns);
+    }
+
+    /**
+     * Set satellite entitlement plmn list by entitlement query result.
+     *
+     * @param subId Subscription id.
+     * @param satelliteEntitlementPlmnList Satellite entitlement plmn list
+     * @throws IllegalArgumentException if the subscription does not exist.
+     */
+    public void setSatelliteEntitlementPlmnList(int subId,
+            @NonNull List<String> satelliteEntitlementPlmnList) {
+        String satelliteEntitlementPlmns = satelliteEntitlementPlmnList.stream().collect(
+                Collectors.joining(","));
+        setSatelliteEntitlementPlmns(subId, satelliteEntitlementPlmns);
+    }
+
+    /**
      * Reload the database from content provider to the cache. This must be a synchronous operation
      * to prevent cache/database out-of-sync. Callers should be cautious to call this method because
      * it might take longer time to complete.
@@ -2336,7 +2393,13 @@ public class SubscriptionDatabaseManager extends Handler {
                                 SimInfo.COLUMN_SATELLITE_ATTACH_ENABLED_FOR_CARRIER)))
                 .setServiceCapabilities(cursor.getInt(
                         cursor.getColumnIndexOrThrow(
-                                SimInfo.COLUMN_SERVICE_CAPABILITIES)));
+                                SimInfo.COLUMN_SERVICE_CAPABILITIES)))
+                .setSatelliteEntitlementStatus(cursor.getInt(
+                        cursor.getColumnIndexOrThrow(
+                                SimInfo.COLUMN_SATELLITE_ENTITLEMENT_STATUS)))
+                .setSatelliteEntitlementPlmns(cursor.getString(
+                        cursor.getColumnIndexOrThrow(
+                                SimInfo.COLUMN_SATELLITE_ENTITLEMENT_PLMNS)));
         if (mFeatureFlags.oemEnabledSatelliteFlag()) {
             builder.setOnlyNonTerrestrialNetwork(cursor.getInt(cursor.getColumnIndexOrThrow(
                     SimInfo.COLUMN_IS_NTN)));

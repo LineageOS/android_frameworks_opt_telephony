@@ -187,7 +187,9 @@ public class SubscriptionManagerService extends ISub.Stub {
             SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED,
             SimInfo.COLUMN_SATELLITE_ENABLED,
             SimInfo.COLUMN_SATELLITE_ATTACH_ENABLED_FOR_CARRIER,
-            SimInfo.COLUMN_IS_NTN
+            SimInfo.COLUMN_IS_NTN,
+            SimInfo.COLUMN_SATELLITE_ENTITLEMENT_STATUS,
+            SimInfo.COLUMN_SATELLITE_ENTITLEMENT_PLMNS
     );
 
     /**
@@ -4339,6 +4341,40 @@ public class SubscriptionManagerService extends ISub.Stub {
         }
     }
 
+    /**
+     * Set the satellite entitlement plmn list value in the subscription database.
+     *
+     * @param subId subscription id.
+     * @param satelliteEntitlementPlmnList satellite entitlement plmn list
+     */
+    public void setSatelliteEntitlementPlmnList(int subId,
+            @NonNull List<String> satelliteEntitlementPlmnList) {
+        try {
+            mSubscriptionDatabaseManager.setSatelliteEntitlementPlmnList(
+                    subId, satelliteEntitlementPlmnList);
+        } catch (IllegalArgumentException e) {
+            loge("setSatelliteEntitlementPlmnList: invalid subId=" + subId);
+        }
+    }
+
+    /**
+     * Get the satellite entitlement plmn list value from the subscription database.
+     *
+     * @param subId subscription id.
+     * @return satellite entitlement plmn list
+     */
+    @NonNull
+    public List<String> getSatelliteEntitlementPlmnList(int subId) {
+        SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager.getSubscriptionInfoInternal(
+                subId);
+        if (subInfo == null) {
+            loge("getSatelliteEntitlementPlmnList: invalid subId=" + subId);
+            return new ArrayList<>();
+        }
+
+        return Arrays.stream(subInfo.getSatelliteEntitlementPlmns().split(",")).collect(
+                Collectors.toList());
+    }
 
     /**
      * Get the current calling package name.
