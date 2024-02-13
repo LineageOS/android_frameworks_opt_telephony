@@ -18,6 +18,7 @@ package com.android.internal.telephony.satellite;
 
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL;
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_CONNECTION_HYSTERESIS_SEC_INT;
+import static android.telephony.SubscriptionManager.SATELLITE_ENTITLEMENT_STATUS;
 import static android.telephony.satellite.NtnSignalStrength.NTN_SIGNAL_STRENGTH_GOOD;
 import static android.telephony.satellite.NtnSignalStrength.NTN_SIGNAL_STRENGTH_GREAT;
 import static android.telephony.satellite.NtnSignalStrength.NTN_SIGNAL_STRENGTH_NONE;
@@ -2885,6 +2886,130 @@ public class SatelliteControllerTest extends TelephonyTest {
 
         assertEquals(false, satelliteEnabledPerCarrier.get(SUB_ID));
         assertEquals(true, satelliteEnabledPerCarrier.get(SUB_ID1));
+    }
+
+    @Test
+    public void testUpdateRestrictReasonForEntitlementPerCarrier() throws Exception {
+        logd("testUpdateRestrictReasonForEntitlementPerCarrier");
+        when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(true);
+
+        // Verify that the entitlement restriction reason is added before the entitlement query,
+        // When the Satellite entitlement status value read from DB is disabled.
+        doReturn("").when(mContext).getOpPackageName();
+        doReturn("").when(mContext).getAttributionTag();
+        doReturn("0").when(mMockSubscriptionManagerService).getSubscriptionProperty(anyInt(),
+                eq(SATELLITE_ENTITLEMENT_STATUS), anyString(), anyString());
+        doReturn(new ArrayList<>()).when(
+                mMockSubscriptionManagerService).getSatelliteEntitlementPlmnList(anyInt());
+        mCarrierConfigBundle.putBoolean(CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL,
+                true);
+        mCarrierConfigBundle.putBoolean(
+                CarrierConfigManager.KEY_SATELLITE_ENTITLEMENT_SUPPORTED_BOOL, true);
+        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
+                : mCarrierConfigChangedListenerList) {
+            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
+                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
+            );
+        }
+        processAllMessages();
+        Set<Integer> restrictionSet =
+                mSatelliteControllerUT.getAttachRestrictionReasonsForCarrier(SUB_ID);
+        assertEquals(1, restrictionSet.size());
+        assertTrue(restrictionSet.contains(SATELLITE_COMMUNICATION_RESTRICTION_REASON_ENTITLEMENT));
+    }
+
+    @Test
+    public void testUpdateEntitlementPlmnListPerCarrier() throws Exception {
+        logd("testUpdateEntitlementPlmnListPerCarrier");
+        when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(true);
+
+        // If the Satellite entitlement plmn list read from the DB is empty and carrier config
+        // plmn list also is empty , check whether an empty list is returned when calling
+        // getSatellitePlmnsForCarrier before the entitlement query.
+        doReturn(new ArrayList<>()).when(
+                mMockSubscriptionManagerService).getSatelliteEntitlementPlmnList(anyInt());
+        replaceInstance(SatelliteController.class, "mEntitlementPlmnListPerCarrier",
+                mSatelliteControllerUT, new SparseArray<>());
+        replaceInstance(SatelliteController.class, "mSatelliteServicesSupportedByCarriers",
+                mSatelliteControllerUT, new HashMap<>());
+        mCarrierConfigBundle.putBoolean(CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL,
+                true);
+        mCarrierConfigBundle.putBoolean(
+                CarrierConfigManager.KEY_SATELLITE_ENTITLEMENT_SUPPORTED_BOOL, true);
+        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
+                : mCarrierConfigChangedListenerList) {
+            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
+                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
+            );
+        }
+        processAllMessages();
+
+        assertEquals(new ArrayList<>(), mSatelliteControllerUT.getSatellitePlmnsForCarrier(SUB_ID));
+
+        // If the Satellite entitlement plmn list read from the DB is valid and carrier config
+        // plmn list is empty, check whether valid entitlement plmn list is returned
+        // when calling getSatellitePlmnsForCarrier before the entitlement query.
+        replaceInstance(SatelliteController.class, "mEntitlementPlmnListPerCarrier",
+                mSatelliteControllerUT, new SparseArray<>());
+        List<String> expectedSatelliteEntitlementPlmnList = Arrays.asList("123456,12560");
+        doReturn(expectedSatelliteEntitlementPlmnList).when(
+                mMockSubscriptionManagerService).getSatelliteEntitlementPlmnList(anyInt());
+        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
+                : mCarrierConfigChangedListenerList) {
+            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
+                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
+            );
+        }
+        processAllMessages();
+
+        assertEquals(expectedSatelliteEntitlementPlmnList,
+                mSatelliteControllerUT.getSatellitePlmnsForCarrier(SUB_ID));
+
+        // If the Satellite entitlement plmn list read from the DB is valid and carrier config
+        // plmn list is valid, check whether valid entitlement plmn list is returned when
+        // calling getSatellitePlmnsForCarrier before the entitlement query.
+        replaceInstance(SatelliteController.class, "mEntitlementPlmnListPerCarrier",
+                mSatelliteControllerUT, new SparseArray<>());
+        PersistableBundle carrierSupportedSatelliteServicesPerProvider = new PersistableBundle();
+        List<String> carrierConfigPlmnList = Arrays.asList("00102", "00103", "00105");
+        carrierSupportedSatelliteServicesPerProvider.putIntArray(
+                carrierConfigPlmnList.get(0), new int[]{2});
+        carrierSupportedSatelliteServicesPerProvider.putIntArray(
+                carrierConfigPlmnList.get(1), new int[]{1, 3});
+        carrierSupportedSatelliteServicesPerProvider.putIntArray(
+                carrierConfigPlmnList.get(2), new int[]{2});
+        mCarrierConfigBundle.putPersistableBundle(CarrierConfigManager
+                        .KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE,
+                carrierSupportedSatelliteServicesPerProvider);
+        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
+                : mCarrierConfigChangedListenerList) {
+            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
+                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
+            );
+        }
+        processAllMessages();
+
+        assertEquals(expectedSatelliteEntitlementPlmnList,
+                mSatelliteControllerUT.getSatellitePlmnsForCarrier(SUB_ID));
+
+        // If the Satellite entitlement plmn list read from the DB is empty and carrier config
+        // plmn list is valid, check whether valid carrier config plmn list is returned when
+        // calling getSatellitePlmnsForCarrier before the entitlement query.
+        replaceInstance(SatelliteController.class, "mEntitlementPlmnListPerCarrier",
+                mSatelliteControllerUT, new SparseArray<>());
+        doReturn(new ArrayList<>()).when(
+                mMockSubscriptionManagerService).getSatelliteEntitlementPlmnList(anyInt());
+        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
+                : mCarrierConfigChangedListenerList) {
+            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
+                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
+            );
+        }
+        processAllMessages();
+
+        assertEquals(carrierConfigPlmnList.stream().sorted().toList(),
+                mSatelliteControllerUT.getSatellitePlmnsForCarrier(
+                        SUB_ID).stream().sorted().toList());
     }
 
     @Test
