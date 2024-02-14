@@ -109,6 +109,9 @@ public class SmsDispatchersController extends Handler {
     /** Called when AP domain selection is abnormally terminated. */
     private static final int EVENT_DOMAIN_SELECTION_TERMINATED_ABNORMALLY = 20;
 
+    /** Called when MT SMS is received via IMS. */
+    private static final int EVENT_SMS_RECEIVED_VIA_IMS = 21;
+
     /** Delete any partial message segments after being IN_SERVICE for 1 day. */
     private static final long PARTIAL_SEGMENT_WAIT_DURATION = (long) (60 * 60 * 1000) * 24;
     /** Constant for invalid time */
@@ -487,8 +490,10 @@ public class SmsDispatchersController extends Handler {
                 String destAddr = (String) args.arg1;
                 Long messageId = (Long) args.arg2;
                 Boolean success = (Boolean) args.arg3;
+                Boolean isOverIms = (Boolean) args.arg4;
                 try {
-                    handleSmsSentCompletedUsingDomainSelection(destAddr, messageId, success);
+                    handleSmsSentCompletedUsingDomainSelection(
+                            destAddr, messageId, success, isOverIms);
                 } finally {
                     args.recycle();
                 }
@@ -497,6 +502,10 @@ public class SmsDispatchersController extends Handler {
             case EVENT_DOMAIN_SELECTION_TERMINATED_ABNORMALLY: {
                 handleDomainSelectionTerminatedAbnormally(
                         (DomainSelectionConnectionHolder) msg.obj);
+                break;
+            }
+            case EVENT_SMS_RECEIVED_VIA_IMS: {
+                handleSmsReceivedViaIms((String) msg.obj);
                 break;
             }
             default:
@@ -808,7 +817,7 @@ public class SmsDispatchersController extends Handler {
                 Rlog.e(TAG, "sendRetrySms failed to re-encode per missing fields!");
                 tracker.onFailed(mContext, SmsManager.RESULT_SMS_SEND_RETRY_FAILED, NO_ERROR_CODE);
                 notifySmsSentFailedToEmergencyStateTracker(
-                        tracker.mDestAddress, tracker.mMessageId);
+                        tracker.mDestAddress, tracker.mMessageId, !retryUsingImsService);
                 return;
             }
             String scAddr = (String) map.get("scAddr");
@@ -817,7 +826,7 @@ public class SmsDispatchersController extends Handler {
                 Rlog.e(TAG, "sendRetrySms failed due to null destAddr");
                 tracker.onFailed(mContext, SmsManager.RESULT_SMS_SEND_RETRY_FAILED, NO_ERROR_CODE);
                 notifySmsSentFailedToEmergencyStateTracker(
-                        tracker.mDestAddress, tracker.mMessageId);
+                        tracker.mDestAddress, tracker.mMessageId, !retryUsingImsService);
                 return;
             }
 
@@ -859,7 +868,7 @@ public class SmsDispatchersController extends Handler {
                         + "destPort: %s", scAddr, map.get("destPort")));
                 tracker.onFailed(mContext, SmsManager.RESULT_SMS_SEND_RETRY_FAILED, NO_ERROR_CODE);
                 notifySmsSentFailedToEmergencyStateTracker(
-                        tracker.mDestAddress, tracker.mMessageId);
+                        tracker.mDestAddress, tracker.mMessageId, !retryUsingImsService);
                 return;
             }
             // replace old smsc and pdu with newly encoded ones
@@ -1147,13 +1156,16 @@ public class SmsDispatchersController extends Handler {
      * @param destAddr The destination address for SMS.
      * @param messageId The message id for SMS.
      * @param success A flag specifying whether MO SMS is successfully sent or not.
+     * @param isOverIms A flag specifying whether MO SMS is sent over IMS or not.
      */
     private void handleSmsSentCompletedUsingDomainSelection(@NonNull String destAddr,
-            long messageId, boolean success) {
+            long messageId, boolean success, boolean isOverIms) {
         if (mEmergencyStateTracker != null) {
             TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
             if (tm.isEmergencyNumber(destAddr)) {
-                mEmergencyStateTracker.endSms(String.valueOf(messageId), success);
+                mEmergencyStateTracker.endSms(String.valueOf(messageId), success,
+                        isOverIms ? NetworkRegistrationInfo.DOMAIN_PS
+                                  : NetworkRegistrationInfo.DOMAIN_CS);
             }
         }
     }
@@ -1161,13 +1173,15 @@ public class SmsDispatchersController extends Handler {
     /**
      * Called when MO SMS is successfully sent.
      */
-    protected void notifySmsSentToEmergencyStateTracker(@NonNull String destAddr, long messageId) {
+    protected void notifySmsSentToEmergencyStateTracker(@NonNull String destAddr, long messageId,
+            boolean isOverIms) {
         if (isSmsDomainSelectionEnabled()) {
             // Run on main thread for interworking with EmergencyStateTracker.
             SomeArgs args = SomeArgs.obtain();
             args.arg1 = destAddr;
             args.arg2 = Long.valueOf(messageId);
             args.arg3 = Boolean.TRUE;
+            args.arg4 = Boolean.valueOf(isOverIms);
             sendMessage(obtainMessage(EVENT_SMS_SENT_COMPLETED_USING_DOMAIN_SELECTION, args));
         }
     }
@@ -1176,14 +1190,39 @@ public class SmsDispatchersController extends Handler {
      * Called when sending MO SMS is failed.
      */
     protected void notifySmsSentFailedToEmergencyStateTracker(@NonNull String destAddr,
-            long messageId) {
+            long messageId, boolean isOverIms) {
         if (isSmsDomainSelectionEnabled()) {
             // Run on main thread for interworking with EmergencyStateTracker.
             SomeArgs args = SomeArgs.obtain();
             args.arg1 = destAddr;
             args.arg2 = Long.valueOf(messageId);
             args.arg3 = Boolean.FALSE;
+            args.arg4 = Boolean.valueOf(isOverIms);
             sendMessage(obtainMessage(EVENT_SMS_SENT_COMPLETED_USING_DOMAIN_SELECTION, args));
+        }
+    }
+
+    /**
+     * Called when MT SMS is received via IMS.
+     *
+     * @param origAddr The originating address of MT SMS.
+     */
+    private void handleSmsReceivedViaIms(@Nullable String origAddr) {
+        if (mEmergencyStateTracker != null) {
+            TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
+            if (origAddr != null && tm.isEmergencyNumber(origAddr)) {
+                mEmergencyStateTracker.onEmergencySmsReceived();
+            }
+        }
+    }
+
+    /**
+     * Called when MT SMS is received via IMS.
+     */
+    protected void notifySmsReceivedViaImsToEmergencyStateTracker(@Nullable String origAddr) {
+        if (isSmsDomainSelectionEnabled()) {
+            // Run on main thread for interworking with EmergencyStateTracker.
+            sendMessage(obtainMessage(EVENT_SMS_RECEIVED_VIA_IMS, origAddr));
         }
     }
 
