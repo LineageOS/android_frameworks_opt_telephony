@@ -479,6 +479,18 @@ public class SubscriptionInfoInternal {
     private final int mTransferStatus;
 
     /**
+     * Whether satellite entitlement status is enabled or disabled by the entitlement query result.
+     * By default, its disabled. It is intended to use integer to fit the database format.
+     */
+    private final int mIsSatelliteEntitlementStatus;
+
+    /**
+     * The satellite entitlement plmns based on the entitlement query results
+     * By default, its empty. It is intended to use string to fit the database format.
+     */
+    @NonNull private final String mSatelliteEntitlementPlmns;
+
+    /**
      * Constructor from builder.
      *
      * @param builder Builder of {@link SubscriptionInfoInternal}.
@@ -555,6 +567,8 @@ public class SubscriptionInfoInternal {
         this.mIsGroupDisabled = builder.mIsGroupDisabled;
         this.mServiceCapabilities = builder.mServiceCapabilities;
         this.mTransferStatus = builder.mTransferStatus;
+        this.mIsSatelliteEntitlementStatus = builder.mIsSatelliteEntitlementStatus;
+        this.mSatelliteEntitlementPlmns = builder.mSatelliteEntitlementPlmns;
     }
 
     /**
@@ -1218,6 +1232,23 @@ public class SubscriptionInfoInternal {
         return mTransferStatus;
     }
 
+    /**
+     * @return {@code 1} if satellite entitlement status is enabled by entitlement query result.
+     */
+    public int getSatelliteEntitlementStatus() {
+        return mIsSatelliteEntitlementStatus;
+    }
+
+    /**
+     * @return Satellite entitlement plmns is empty or not by entitlement query result.
+     *
+     * For example, "123123, 12310" or ""
+     */
+    @NonNull
+    public String getSatelliteEntitlementPlmns() {
+        return mSatelliteEntitlementPlmns;
+    }
+
     /** @return converted {@link SubscriptionInfo}. */
     @NonNull
     public SubscriptionInfo toSubscriptionInfo() {
@@ -1318,6 +1349,8 @@ public class SubscriptionInfoInternal {
                 + " isGroupDisabled=" + mIsGroupDisabled
                 + " serviceCapabilities=" + mServiceCapabilities
                 + " transferStatus=" + mTransferStatus
+                + " satelliteEntitlementStatus=" + mIsSatelliteEntitlementStatus
+                + " satelliteEntitlementPlmns=" + mSatelliteEntitlementPlmns
                 + "]";
     }
 
@@ -1376,7 +1409,9 @@ public class SubscriptionInfoInternal {
                 && mIsSatelliteAttachEnabledForCarrier == that.mIsSatelliteAttachEnabledForCarrier
                 && mIsOnlyNonTerrestrialNetwork == that.mIsOnlyNonTerrestrialNetwork
                 && mServiceCapabilities == that.mServiceCapabilities
-                && mTransferStatus == that.mTransferStatus;
+                && mTransferStatus == that.mTransferStatus
+                && mIsSatelliteEntitlementStatus == that.mIsSatelliteEntitlementStatus
+                && mSatelliteEntitlementPlmns == that.mSatelliteEntitlementPlmns;
     }
 
     @Override
@@ -1399,7 +1434,8 @@ public class SubscriptionInfoInternal {
                 mNumberFromIms, mPortIndex, mUsageSetting, mLastUsedTPMessageReference, mUserId,
                 mIsSatelliteEnabled, mCardId, mIsGroupDisabled,
                 mIsSatelliteAttachEnabledForCarrier, mIsOnlyNonTerrestrialNetwork,
-                mServiceCapabilities, mTransferStatus);
+                mServiceCapabilities, mTransferStatus, mIsSatelliteEntitlementStatus,
+                mSatelliteEntitlementPlmns);
         result = 31 * result + Arrays.hashCode(mNativeAccessRules);
         result = 31 * result + Arrays.hashCode(mCarrierConfigAccessRules);
         result = 31 * result + Arrays.hashCode(mRcsConfig);
@@ -1797,6 +1833,17 @@ public class SubscriptionInfoInternal {
         private int mTransferStatus;
 
         /**
+         * Whether satellite entitlement status is enabled by entitlement query result.
+         */
+        private int mIsSatelliteEntitlementStatus = 0;
+
+        /**
+         * Whether satellite entitlement plmns is empty or not by entitlement query result.
+         */
+        @NonNull
+        private String mSatelliteEntitlementPlmns = "";
+
+        /**
          * Default constructor.
          */
         public Builder() {
@@ -1876,6 +1923,8 @@ public class SubscriptionInfoInternal {
             mIsGroupDisabled = info.mIsGroupDisabled;
             mServiceCapabilities = info.mServiceCapabilities;
             mTransferStatus = info.mTransferStatus;
+            mIsSatelliteEntitlementStatus = info.mIsSatelliteEntitlementStatus;
+            mSatelliteEntitlementPlmns = info.mSatelliteEntitlementPlmns;
         }
 
         /**
@@ -2816,6 +2865,32 @@ public class SubscriptionInfoInternal {
         @NonNull
         public Builder setTransferStatus(int status) {
             mTransferStatus = status;
+            return this;
+        }
+
+        /**
+         * Set whether satellite entitlement status is enabled by entitlement query result.
+         *
+         * @param isSatelliteEntitlementStatus {@code 1} if satellite entitlement status is
+         * enabled by entitlement query result.
+         * @return The builder
+         */
+        @NonNull
+        public Builder setSatelliteEntitlementStatus(int isSatelliteEntitlementStatus) {
+            mIsSatelliteEntitlementStatus = isSatelliteEntitlementStatus;
+            return this;
+        }
+
+        /**
+         * Set whether satellite entitlement plmns is empty or not by entitlement query result.
+         *
+         * @param satelliteEntitlementPlmns satellite entitlement plmns is empty or not by
+         * entitlement query result.
+         * @return The builder
+         */
+        @NonNull
+        public Builder setSatelliteEntitlementPlmns(@NonNull String satelliteEntitlementPlmns) {
+            mSatelliteEntitlementPlmns = satelliteEntitlementPlmns;
             return this;
         }
 

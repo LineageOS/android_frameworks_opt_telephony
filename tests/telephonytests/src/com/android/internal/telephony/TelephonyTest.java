@@ -424,6 +424,16 @@ public abstract class TelephonyTest {
         field.set(obj, newValue);
     }
 
+    protected static <T> T getPrivateField(Object object, String fieldName, Class<T> fieldType)
+            throws Exception {
+
+        Class<?> clazz = object.getClass();
+        Field field = clazz.getDeclaredField(fieldName);
+        field.setAccessible(true);
+
+        return fieldType.cast(field.get(object));
+    }
+
     protected synchronized void restoreInstance(final Class c, final String instanceName,
                                                 final Object obj) throws Exception {
         InstanceKey key = new InstanceKey(c, instanceName, obj);

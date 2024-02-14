@@ -116,6 +116,12 @@ public class SubscriptionInfoInternalTest {
                     .setServiceCapabilities(
                             SubscriptionManager.SERVICE_CAPABILITY_DATA_BITMASK)
                     .setTransferStatus(1)
+                    .setSatelliteEntitlementStatus(
+                            SubscriptionDatabaseManagerTest
+                                    .FAKE_SATELLITE_ENTITLEMENT_STATUS_ENABLED)
+                    .setSatelliteEntitlementPlmns(
+                            SubscriptionDatabaseManagerTest
+                                    .FAKE_SATELLITE_ENTITLEMENT_PLMNS1)
                     .build();
 
     private final SubscriptionInfoInternal mSubInfoNull =
@@ -240,6 +246,12 @@ public class SubscriptionInfoInternalTest {
         assertThat(mSubInfo.getServiceCapabilities()).isEqualTo(
                 SubscriptionManager.SERVICE_CAPABILITY_DATA_BITMASK);
         assertThat(mSubInfo.getTransferStatus()).isEqualTo(1);
+        assertThat(mSubInfo.getSatelliteEntitlementStatus())
+                .isEqualTo(SubscriptionDatabaseManagerTest
+                        .FAKE_SATELLITE_ENTITLEMENT_STATUS_ENABLED);
+        assertThat(mSubInfo.getSatelliteEntitlementPlmns())
+                .isEqualTo(SubscriptionDatabaseManagerTest
+                        .FAKE_SATELLITE_ENTITLEMENT_PLMNS1);
     }
 
     @Test

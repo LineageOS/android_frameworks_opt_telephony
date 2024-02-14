@@ -21,10 +21,10 @@ import static android.telephony.ims.ImsManager.EXTRA_WFC_REGISTRATION_FAILURE_TI
 import static android.telephony.ims.RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED;
 import static android.telephony.ims.RegistrationManager.REGISTRATION_STATE_REGISTERED;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_NONE;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCKS;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_RAT_BLOCK;
-import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCKS;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
 
 import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAIC;
@@ -49,7 +49,6 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDI
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_NONE;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 
-import android.annotation.FlaggedApi;
 import android.annotation.NonNull;
 import android.app.Activity;
 import android.app.Notification;
@@ -124,7 +123,6 @@ import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.emergency.EmergencyStateTracker;
 import com.android.internal.telephony.flags.FeatureFlags;
-import com.android.internal.telephony.flags.Flags;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.metrics.ImsStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
@@ -2561,7 +2559,6 @@ public class ImsPhone extends ImsPhoneBase {
 
     /** Clear the IMS phone number from IMS associated Uris when IMS registration is lost. */
     @VisibleForTesting
-    @FlaggedApi(Flags.FLAG_CLEAR_CACHED_IMS_PHONE_NUMBER_WHEN_DEVICE_LOST_IMS_REGISTRATION)
     public void clearPhoneNumberForSourceIms() {
         int subId = getSubId();
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {

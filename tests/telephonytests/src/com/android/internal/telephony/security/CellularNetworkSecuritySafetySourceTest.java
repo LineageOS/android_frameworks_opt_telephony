@@ -106,7 +106,7 @@ public final class CellularNetworkSecuritySafetySourceTest extends TelephonyTest
 
     @Test
     public void disableNullCipherIssue_nullData() {
-        mSafetySource.setIdentifierDisclosureIssueEnabled(mContext, false);
+        mSafetySource.setNullCipherIssueEnabled(mContext, false);
 
         verify(mSafetyCenterManagerWrapper, times(1)).setSafetySourceData(isNull());
     }
@@ -173,9 +173,27 @@ public final class CellularNetworkSecuritySafetySourceTest extends TelephonyTest
 
     @Test
     public void disableIdentifierDisclosueIssue_nullData() {
+        // We must first enable before disabling, since a standalone call to disable may result in
+        // a no-op when the default for a new notifier is to be disabled.
+        mSafetySource.setIdentifierDisclosureIssueEnabled(mContext, true);
         mSafetySource.setIdentifierDisclosureIssueEnabled(mContext, false);
 
         verify(mSafetyCenterManagerWrapper, times(1)).setSafetySourceData(isNull());
+    }
+
+    @Test
+    public void enableIdentifierDisclosureIssue_enableTwice() {
+        ArgumentCaptor<SafetySourceData> data = ArgumentCaptor.forClass(SafetySourceData.class);
+        mSafetySource.setIdentifierDisclosureIssueEnabled(mContext, true);
+        mSafetySource.setIdentifierDisclosure(mContext, 0, 12, Instant.now(), Instant.now());
+        mSafetySource.setIdentifierDisclosureIssueEnabled(mContext, true);
+
+        // Two invocations because the initial enablement and the subsequent disclosure result in
+        // updates to safety center
+        verify(mSafetyCenterManagerWrapper, times(2)).setSafetySourceData(data.capture());
+        // When we're enabled, enabling again should not clear our issue list.
+        assertThat(data.getAllValues().get(1).getStatus()).isNotNull();
+        assertThat(data.getAllValues().get(1).getIssues()).hasSize(1);
     }
 
     @Test
