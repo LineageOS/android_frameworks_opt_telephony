@@ -1069,6 +1069,16 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * @return Time threshold in ms to define a internet connection performance status to be stable
+     * (e.g. LTE + 4 signal strength, UMTS + 2 signal strength), while -1 indicates
+     * auto switch feature based on RAT/SS is disabled.
+     */
+    public long getAutoDataSwitchPerformanceStabilityTimeThreshold() {
+        return mResources.getInteger(com.android.internal.R.integer
+                .auto_data_switch_performance_stability_time_threshold_millis);
+    }
+
+    /**
      * Get the TCP config string, used by {@link LinkProperties#setTcpBufferSizes(String)}.
      * The config string will have the following form, with values in bytes:
      * "read_min,read_default,read_max,write_min,write_default,write_max"
@@ -1477,6 +1487,8 @@ public class DataConfigManager extends Handler {
                 + Arrays.toString(value)));
         pw.println("getAutoDataSwitchAvailabilityStabilityTimeThreshold="
                 + getAutoDataSwitchAvailabilityStabilityTimeThreshold());
+        pw.println("getAutoDataSwitchPerformanceStabilityTimeThreshold="
+                + getAutoDataSwitchPerformanceStabilityTimeThreshold());
         pw.println("getAutoDataSwitchValidationMaxRetry=" + getAutoDataSwitchValidationMaxRetry());
         pw.decreaseIndent();
         pw.println("Metered APN types=" + mMeteredApnTypes.stream()

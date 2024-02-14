@@ -128,6 +128,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
             SubscriptionManager.SERVICE_CAPABILITY_DATA_BITMASK;
     static final int FAKE_SERVICE_CAPABILITIES_2 =
             SubscriptionManager.SERVICE_CAPABILITY_SMS_BITMASK;
+    static final int FAKE_SATELLITE_ENTITLEMENT_STATUS_ENABLED = 1;
+    static final int FAKE_SATELLITE_ENTITLEMENT_STATUS_DISABLED = 0;
+    static final String FAKE_SATELLITE_ENTITLEMENT_PLMNS1 = "123123,12310";
+    static final String FAKE_SATELLITE_ENTITLEMENT_PLMNS2 = "";
 
     static final String FAKE_MAC_ADDRESS1 = "DC:E5:5B:38:7D:40";
     static final String FAKE_MAC_ADDRESS2 = "DC:B5:4F:47:F3:4C";
@@ -208,6 +212,8 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                     .setGroupDisabled(false)
                     .setServiceCapabilities(FAKE_SERVICE_CAPABILITIES_1)
                     .setTransferStatus(FAKE_TRANSFER_STATUS_TRANSFERRED_OUT)
+                    .setSatelliteEntitlementStatus(FAKE_SATELLITE_ENTITLEMENT_STATUS_DISABLED)
+                    .setSatelliteEntitlementPlmns(FAKE_SATELLITE_ENTITLEMENT_PLMNS2)
                     .build();
 
     static final SubscriptionInfoInternal FAKE_SUBSCRIPTION_INFO2 =
@@ -281,6 +287,8 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                     .setGroupDisabled(false)
                     .setServiceCapabilities(FAKE_SERVICE_CAPABILITIES_2)
                     .setTransferStatus(FAKE_TRANSFER_STATUS_CONVERTED)
+                    .setSatelliteEntitlementStatus(FAKE_SATELLITE_ENTITLEMENT_STATUS_ENABLED)
+                    .setSatelliteEntitlementPlmns(FAKE_SATELLITE_ENTITLEMENT_PLMNS1)
                     .build();
 
     private SubscriptionDatabaseManager mDatabaseManagerUT;
@@ -2277,5 +2285,73 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(
                 FAKE_SUBSCRIPTION_INFO1.getSubscriptionId()).getTransferStatus())
                 .isNotEqualTo(FAKE_TRANSFER_STATUS_TRANSFERRED_OUT);
+    }
+
+    @Test
+    public void testUpdateSatelliteEntitlementStatus() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setSatelliteEntitlementStatus(
+                        FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                        FAKE_SATELLITE_ENTITLEMENT_STATUS_ENABLED));
+
+        SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
+        mDatabaseManagerUT.setSatelliteEntitlementStatus(
+                FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                FAKE_SATELLITE_ENTITLEMENT_STATUS_ENABLED);
+        processAllMessages();
+
+        subInfo = new SubscriptionInfoInternal.Builder(subInfo)
+                .setSatelliteEntitlementStatus(FAKE_SATELLITE_ENTITLEMENT_STATUS_ENABLED)
+                .build();
+        verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                SimInfo.COLUMN_SATELLITE_ENTITLEMENT_STATUS))
+                .isEqualTo(FAKE_SATELLITE_ENTITLEMENT_STATUS_ENABLED);
+
+        mDatabaseManagerUT.setSubscriptionProperty(FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                SimInfo.COLUMN_SATELLITE_ENTITLEMENT_STATUS,
+                FAKE_SATELLITE_ENTITLEMENT_STATUS_DISABLED);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(
+                        FAKE_SUBSCRIPTION_INFO1.getSubscriptionId())
+                .getSatelliteEntitlementStatus())
+                .isEqualTo(FAKE_SATELLITE_ENTITLEMENT_STATUS_DISABLED);
+    }
+
+    @Test
+    public void testUpdateSatelliteEntitlementPlmns() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setSatelliteEntitlementPlmns(
+                        FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                        FAKE_SATELLITE_ENTITLEMENT_PLMNS1));
+
+        SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
+        mDatabaseManagerUT.setSatelliteEntitlementPlmns(
+                FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                FAKE_SATELLITE_ENTITLEMENT_PLMNS1);
+        processAllMessages();
+
+        subInfo = new SubscriptionInfoInternal.Builder(subInfo)
+                .setSatelliteEntitlementPlmns(FAKE_SATELLITE_ENTITLEMENT_PLMNS1)
+                .build();
+        verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                SimInfo.COLUMN_SATELLITE_ENTITLEMENT_PLMNS))
+                .isEqualTo(FAKE_SATELLITE_ENTITLEMENT_PLMNS1);
+
+        mDatabaseManagerUT.setSubscriptionProperty(FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                SimInfo.COLUMN_SATELLITE_ENTITLEMENT_PLMNS,
+                FAKE_SATELLITE_ENTITLEMENT_PLMNS2);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(
+                        FAKE_SUBSCRIPTION_INFO1.getSubscriptionId())
+                .getSatelliteEntitlementPlmns())
+                .isEqualTo(FAKE_SATELLITE_ENTITLEMENT_PLMNS2);
     }
 }

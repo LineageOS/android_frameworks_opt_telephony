@@ -20,7 +20,9 @@ import static android.provider.Settings.ACTION_SATELLITE_SETTING;
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE;
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL;
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_CONNECTION_HYSTERESIS_SEC_INT;
+import static android.telephony.CarrierConfigManager.KEY_SATELLITE_ENTITLEMENT_SUPPORTED_BOOL;
 import static android.telephony.SubscriptionManager.SATELLITE_ATTACH_ENABLED_FOR_CARRIER;
+import static android.telephony.SubscriptionManager.SATELLITE_ENTITLEMENT_STATUS;
 import static android.telephony.SubscriptionManager.isValidSubscriptionId;
 import static android.telephony.satellite.NtnSignalStrength.NTN_SIGNAL_STRENGTH_NONE;
 import static android.telephony.satellite.SatelliteManager.EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_SOS;
@@ -113,6 +115,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -2598,19 +2601,28 @@ public class SatelliteController extends Handler {
                 }
             };
         }
+        logd("onSatelliteEntitlementStatusUpdated subId=" + subId + " , entitlementEnabled="
+                + entitlementEnabled + ", allowedPlmnList=" + (Objects.equals(null, allowedPlmnList)
+                ? "" : allowedPlmnList + ""));
 
         synchronized (mSupportedSatelliteServicesLock) {
             if (mSatelliteEntitlementStatusPerCarrier.get(subId, false) != entitlementEnabled) {
                 logd("update the carrier satellite enabled to " + entitlementEnabled);
                 mSatelliteEntitlementStatusPerCarrier.put(subId, entitlementEnabled);
+                try {
+                    mSubscriptionManagerService.setSubscriptionProperty(subId,
+                            SATELLITE_ENTITLEMENT_STATUS, entitlementEnabled ? "1" : "0");
+                } catch (IllegalArgumentException | SecurityException e) {
+                    loge("onSatelliteEntitlementStatusUpdated: setSubscriptionProperty, e=" + e);
+                }
             }
             mMergedPlmnListPerCarrier.remove(subId);
 
             mEntitlementPlmnListPerCarrier.put(subId, allowedPlmnList);
             updatePlmnListPerCarrier(subId);
             configureSatellitePlmnForCarrier(subId);
+            mSubscriptionManagerService.setSatelliteEntitlementPlmnList(subId, allowedPlmnList);
 
-            // TODO b/322143408 store entitlement status in telephony db.
             if (mSatelliteEntitlementStatusPerCarrier.get(subId, false)) {
                 removeAttachRestrictionForCarrier(subId,
                         SATELLITE_COMMUNICATION_RESTRICTION_REASON_ENTITLEMENT, callback);
@@ -3230,7 +3242,8 @@ public class SatelliteController extends Handler {
         PersistableBundle config = mCarrierConfigManager.getConfigForSubId(subId,
                 KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE,
                 KEY_SATELLITE_ATTACH_SUPPORTED_BOOL,
-                KEY_SATELLITE_CONNECTION_HYSTERESIS_SEC_INT);
+                KEY_SATELLITE_CONNECTION_HYSTERESIS_SEC_INT,
+                KEY_SATELLITE_ENTITLEMENT_SUPPORTED_BOOL);
         if (config == null || config.isEmpty()) {
             config = CarrierConfigManager.getDefaultConfig();
         }
@@ -3247,8 +3260,7 @@ public class SatelliteController extends Handler {
         }
 
         updateCarrierConfig(subId);
-        // TODO b/322143408 read the telephony db to get the entitlementStatus and update the
-        //  restriction
+        updateEntitlementPlmnListPerCarrier(subId);
         updateSupportedSatelliteServicesForActiveSubscriptions();
         configureSatellitePlmnForCarrier(subId);
 
@@ -3258,12 +3270,38 @@ public class SatelliteController extends Handler {
         }
 
         setSatelliteAttachEnabledForCarrierOnSimLoaded(subId);
+        updateRestrictReasonForEntitlementPerCarrier(subId);
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected void updateCarrierConfig(int subId) {
         synchronized (mCarrierConfigArrayLock) {
             mCarrierConfigArray.put(subId, getConfigForSubId(subId));
+        }
+    }
+
+    /** If there is no cached entitlement plmn list, read it from the db and use it if it is not an
+     * empty list. */
+    private void updateEntitlementPlmnListPerCarrier(int subId) {
+        if (!getConfigForSubId(subId).getBoolean(KEY_SATELLITE_ENTITLEMENT_SUPPORTED_BOOL, false)) {
+            logd("don't support entitlement");
+            return;
+        }
+
+        synchronized (mSupportedSatelliteServicesLock) {
+            if (mEntitlementPlmnListPerCarrier.indexOfKey(subId) < 0) {
+                logd("updateEntitlementPlmnListPerCarrier: no correspondent cache, load from "
+                        + "persist storage");
+                List<String> entitlementPlmnList =
+                        mSubscriptionManagerService.getSatelliteEntitlementPlmnList(subId);
+                if (entitlementPlmnList.isEmpty()) {
+                    loge("updateEntitlementPlmnListPerCarrier: no data for subId(" + subId + ")");
+                    return;
+                }
+                logd("updateEntitlementPlmnListPerCarrier: entitlementPlmnList="
+                        + entitlementPlmnList);
+                mEntitlementPlmnListPerCarrier.put(subId, entitlementPlmnList);
+            }
         }
     }
 
@@ -3368,6 +3406,54 @@ public class SatelliteController extends Handler {
         synchronized (mIsSatelliteEnabledLock) {
             return !mSatelliteAttachRestrictionForCarrierArray
                     .getOrDefault(subId, Collections.emptySet()).isEmpty();
+        }
+    }
+
+    private void updateRestrictReasonForEntitlementPerCarrier(int subId) {
+        if (!getConfigForSubId(subId).getBoolean(KEY_SATELLITE_ENTITLEMENT_SUPPORTED_BOOL, false)) {
+            logd("don't support entitlement");
+            return;
+        }
+
+        IIntegerConsumer callback = new IIntegerConsumer.Stub() {
+            @Override
+            public void accept(int result) {
+                logd("updateRestrictReasonForEntitlementPerCarrier:" + result);
+            }
+        };
+        synchronized (mSupportedSatelliteServicesLock) {
+            if (mSatelliteEntitlementStatusPerCarrier.indexOfKey(subId) < 0) {
+                logd("updateRestrictReasonForEntitlementPerCarrier: no correspondent cache, "
+                        + "load from persist storage");
+                String entitlementStatus = null;
+                try {
+                    entitlementStatus =
+                            mSubscriptionManagerService.getSubscriptionProperty(subId,
+                                    SATELLITE_ENTITLEMENT_STATUS, mContext.getOpPackageName(),
+                                    mContext.getAttributionTag());
+                } catch (IllegalArgumentException | SecurityException e) {
+                    loge("updateRestrictReasonForEntitlementPerCarrier, e=" + e);
+                }
+
+                if (entitlementStatus == null) {
+                    loge("updateRestrictReasonForEntitlementPerCarrier: invalid subId, subId="
+                            + subId + " set to default value");
+                    entitlementStatus = "0";
+                }
+
+                if (entitlementStatus.isEmpty()) {
+                    loge("updateRestrictReasonForEntitlementPerCarrier: no data for subId(" + subId
+                            + "). set to default value");
+                    entitlementStatus = "0";
+                }
+                boolean result = entitlementStatus.equals("1");
+                mSatelliteEntitlementStatusPerCarrier.put(subId, result);
+            }
+
+            if (!mSatelliteEntitlementStatusPerCarrier.get(subId, false)) {
+                addAttachRestrictionForCarrier(subId,
+                        SATELLITE_COMMUNICATION_RESTRICTION_REASON_ENTITLEMENT, callback);
+            }
         }
     }
 

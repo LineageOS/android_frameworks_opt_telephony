@@ -1776,6 +1776,38 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         assertTrue(mNetworkTypeController.areAnyTimersActive());
     }
 
+    @Test
+    public void testNrTimerResetWhenPlmnChanged() throws Exception {
+        testTransitionToCurrentStateNrConnectedMmwave();
+        mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
+                "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
+        mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_SECONDARY_GRACE_PERIOD_STRING,
+                "connected_mmwave,any,30");
+        sendCarrierConfigChanged();
+
+        // should trigger 10 second primary timer
+        doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
+        doReturn(ServiceState.FREQUENCY_RANGE_UNKNOWN).when(mServiceState).getNrFrequencyRange();
+        mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
+        processAllMessages();
+
+        assertEquals("legacy", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
+                mNetworkTypeController.getOverrideNetworkType());
+        assertTrue(mNetworkTypeController.areAnyTimersActive());
+
+        // PLMN changed, should cancel any active timers
+        ServiceState newSS = mock(ServiceState.class);
+        doReturn("different plmn").when(newSS).getOperatorAlpha();
+        doReturn(newSS).when(mSST).getServiceState();
+        mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
+        processAllMessages();
+
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                mNetworkTypeController.getOverrideNetworkType());
+        assertFalse(mNetworkTypeController.areAnyTimersActive());
+    }
+
     private void setPhysicalLinkStatus(boolean state) {
         List<PhysicalChannelConfig> lastPhysicalChannelConfigList = new ArrayList<>();
         // If PhysicalChannelConfigList is empty, PhysicalLinkStatus is
