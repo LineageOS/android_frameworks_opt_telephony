@@ -138,25 +138,41 @@ public class DomainSelectionConnection {
                 if (mWwanSelectorCallback == null) {
                     mWwanSelectorCallback = new WwanSelectorCallbackAdaptor();
                 }
-                initHandler();
-                mHandler.post(() -> {
-                    synchronized (mLock) {
-                        if (checkState(STATUS_DISPOSED)) {
-                            return;
+                if (mIsTestMode || !mIsEmergency
+                        || (mSelectorType != DomainSelectionService.SELECTOR_TYPE_CALLING)) {
+                    initHandler();
+                    mHandler.post(() -> {
+                        onWwanSelectedAsyncInternal(cb);
+                    });
+                } else {
+                    Thread workerThread = new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            onWwanSelectedAsyncInternal(cb);
                         }
-                        DomainSelectionConnection.this.onWwanSelected();
-                    }
-                    try {
-                        cb.onCompleted(mWwanSelectorCallback);
-                    } catch (RemoteException e) {
-                        loge("onWwanSelectedAsync executor exception=" + e);
-                        synchronized (mLock) {
-                            // Since remote service is not available,
-                            // wait for binding or timeout.
-                            waitForServiceBinding(null);
-                        }
-                    }
-                });
+                    });
+                    workerThread.start();
+                }
+            }
+        }
+
+        private void onWwanSelectedAsyncInternal(
+                @NonNull final ITransportSelectorResultCallback cb) {
+            synchronized (mLock) {
+                if (checkState(STATUS_DISPOSED)) {
+                    return;
+                }
+            }
+            DomainSelectionConnection.this.onWwanSelected();
+            try {
+                cb.onCompleted(mWwanSelectorCallback);
+            } catch (RemoteException e) {
+                loge("onWwanSelectedAsync executor exception=" + e);
+                synchronized (mLock) {
+                    // Since remote service is not available,
+                    // wait for binding or timeout.
+                    waitForServiceBinding(null);
+                }
             }
         }
 
@@ -332,6 +348,8 @@ public class DomainSelectionConnection {
     private @NonNull AndroidFuture<Integer> mOnComplete;
 
     private @Nullable ScanRequest mPendingScanRequest;
+
+    private boolean mIsTestMode = false;
 
     /**
      * Creates an instance.
@@ -758,6 +776,16 @@ public class DomainSelectionConnection {
 
     private boolean checkState(int stateBit) {
         return (mStatus & stateBit) == stateBit;
+    }
+
+    /**
+     * Set whether it is unit test or not.
+     *
+     * @param testMode Indicates whether it is unit test or not.
+     */
+    @VisibleForTesting
+    public void setTestMode(boolean testMode) {
+        mIsTestMode = testMode;
     }
 
     /**

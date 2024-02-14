@@ -655,6 +655,27 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
     }
 
     /**
+     * Test that onEmergencyTransportChangedAndWait sets the new emergency mode.
+     */
+    @Test
+    @SmallTest
+    public void onEmergencyTransportChangedAndWait_setEmergencyMode() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        // Create test Phones
+        Phone testPhone = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        // Call startEmergencyCall() to set testPhone
+        CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                mTestConnection1, false);
+
+        emergencyStateTracker.onEmergencyTransportChangedAndWait(
+                EmergencyStateTracker.EMERGENCY_TYPE_CALL, MODE_EMERGENCY_WWAN);
+
+        verify(testPhone).setEmergencyMode(eq(MODE_EMERGENCY_WWAN), any());
+    }
+
+    /**
      * Test that after endCall() is called, EmergencyStateTracker will enter ECM if the call was
      * ACTIVE and send related intents.
      */
