@@ -1779,6 +1779,8 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testNrTimerResetWhenPlmnChanged() throws Exception {
         testTransitionToCurrentStateNrConnectedMmwave();
+        mBundle.putBoolean(CarrierConfigManager.KEY_NR_TIMERS_RESET_ON_PLMN_CHANGE_BOOL,
+                true);
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
                 "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_SECONDARY_GRACE_PERIOD_STRING,
@@ -1798,7 +1800,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
         // PLMN changed, should cancel any active timers
         ServiceState newSS = mock(ServiceState.class);
-        doReturn("different plmn").when(newSS).getOperatorAlpha();
+        doReturn("different plmn").when(newSS).getOperatorNumeric();
         doReturn(newSS).when(mSST).getServiceState();
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();

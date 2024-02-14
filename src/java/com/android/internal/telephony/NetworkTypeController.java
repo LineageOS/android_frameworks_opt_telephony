@@ -165,6 +165,7 @@ public class NetworkTypeController extends StateMachine {
     private boolean mIsPrimaryTimerActive;
     private boolean mIsSecondaryTimerActive;
     private boolean mIsTimerResetEnabledForLegacyStateRrcIdle;
+    private boolean mIsTimerResetEnabledOnPlmnChanges;
     private int mLtePlusThresholdBandwidth;
     private int mNrAdvancedThresholdBandwidth;
     private boolean mIncludeLteForNrAdvancedThresholdBandwidth;
@@ -304,6 +305,8 @@ public class NetworkTypeController extends StateMachine {
                 CarrierConfigManager.KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING);
         mIsTimerResetEnabledForLegacyStateRrcIdle = config.getBoolean(
                 CarrierConfigManager.KEY_NR_TIMERS_RESET_IF_NON_ENDC_AND_RRC_IDLE_BOOL);
+        mIsTimerResetEnabledOnPlmnChanges = config.getBoolean(
+                CarrierConfigManager.KEY_NR_TIMERS_RESET_ON_PLMN_CHANGE_BOOL);
         mLtePlusThresholdBandwidth = config.getInt(
                 CarrierConfigManager.KEY_LTE_PLUS_THRESHOLD_BANDWIDTH_KHZ_INT);
         mNrAdvancedThresholdBandwidth = config.getInt(
@@ -1206,12 +1209,13 @@ public class NetworkTypeController extends StateMachine {
 
     /** On service state changed. */
     private void onServiceStateChanged() {
-        ServiceState newSS = mPhone.getServiceStateTracker().getServiceState();
-        if (!TextUtils.equals(mServiceState.getOperatorAlpha(), newSS.getOperatorAlpha())) {
-            log("PLMN changed, reset any timers");
+        ServiceState ss = mPhone.getServiceStateTracker().getServiceState();
+        if (mIsTimerResetEnabledOnPlmnChanges
+                && !TextUtils.equals(mServiceState.getOperatorNumeric(), ss.getOperatorNumeric())) {
+            log("Reset any timers due to nr_timers_reset_on_plmn_change_bool");
             resetAllTimers();
         }
-        mServiceState = newSS;
+        mServiceState = ss;
         if (DBG) log("ServiceState updated: " + mServiceState);
     }
 
