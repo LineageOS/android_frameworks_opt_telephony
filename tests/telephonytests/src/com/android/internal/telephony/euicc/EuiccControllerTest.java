@@ -283,7 +283,8 @@ public class EuiccControllerTest extends TelephonyTest {
                 false /* hasPhoneState */,
                 false /* hasPhoneStatePrivileged */,
                 false /* hasCarrierPrivileges */);
-        callGetAvailableMemoryInBytes(true /* success */, AVAILABLE_MEMORY, CARD_ID);
+        callGetAvailableMemoryInBytes(AvailableMemoryCallbackStatus.SUCCESS,
+                AVAILABLE_MEMORY, CARD_ID);
     }
 
     @Test
@@ -294,7 +295,8 @@ public class EuiccControllerTest extends TelephonyTest {
                 false /* hasCarrierPrivileges */);
         assertEquals(
                 AVAILABLE_MEMORY,
-                callGetAvailableMemoryInBytes(true /* success */, AVAILABLE_MEMORY, CARD_ID));
+                callGetAvailableMemoryInBytes(AvailableMemoryCallbackStatus.SUCCESS,
+                        AVAILABLE_MEMORY, CARD_ID));
     }
 
     @Test
@@ -305,7 +307,8 @@ public class EuiccControllerTest extends TelephonyTest {
                 false /* hasCarrierPrivileges */);
         assertEquals(
                 AVAILABLE_MEMORY,
-                callGetAvailableMemoryInBytes(true /* success */, AVAILABLE_MEMORY, CARD_ID));
+                callGetAvailableMemoryInBytes(AvailableMemoryCallbackStatus.SUCCESS,
+                        AVAILABLE_MEMORY, CARD_ID));
     }
 
     @Test
@@ -316,7 +319,8 @@ public class EuiccControllerTest extends TelephonyTest {
                 true /* hasCarrierPrivileges */);
         assertEquals(
                 AVAILABLE_MEMORY,
-                callGetAvailableMemoryInBytes(true /* success */, AVAILABLE_MEMORY, CARD_ID));
+                callGetAvailableMemoryInBytes(AvailableMemoryCallbackStatus.SUCCESS,
+                        AVAILABLE_MEMORY, CARD_ID));
     }
 
     @Test
@@ -327,7 +331,19 @@ public class EuiccControllerTest extends TelephonyTest {
                 false /* hasCarrierPrivileges */);
         assertEquals(
                 EuiccManager.EUICC_MEMORY_FIELD_UNAVAILABLE,
-                callGetAvailableMemoryInBytes(false /* success */, AVAILABLE_MEMORY, CARD_ID));
+                callGetAvailableMemoryInBytes(AvailableMemoryCallbackStatus.UNAVAILABLE,
+                        AVAILABLE_MEMORY, CARD_ID));
+    }
+
+    @Test
+    public void testGetAvailableMemoryInBytes_exception() throws Exception {
+        setGetAvailableMemoryInBytesPermissions(
+                true /* hasPhoneState */,
+                false /* hasPhoneStatePrivileged */,
+                false /* hasCarrierPrivileges */);
+        assertThrows(UnsupportedOperationException.class, () -> callGetAvailableMemoryInBytes(
+                AvailableMemoryCallbackStatus.EXCEPTION,
+                AVAILABLE_MEMORY, CARD_ID));
     }
 
     @Test
@@ -339,7 +355,7 @@ public class EuiccControllerTest extends TelephonyTest {
         assertEquals(
                 AVAILABLE_MEMORY,
                 callGetAvailableMemoryInBytes(
-                        true /* success */,
+                        AvailableMemoryCallbackStatus.SUCCESS,
                         AVAILABLE_MEMORY,
                         TelephonyManager.UNSUPPORTED_CARD_ID));
     }
@@ -1937,17 +1953,21 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     private long callGetAvailableMemoryInBytes(
-            final boolean success, final long availableMemoryInBytes, int cardId) {
+            final AvailableMemoryCallbackStatus status,
+            final long availableMemoryInBytes,
+            int cardId) {
         doAnswer(
                 new Answer<Void>() {
                     @Override
                     public Void answer(InvocationOnMock invocation) throws Exception {
                         EuiccConnector.GetAvailableMemoryInBytesCommandCallback cb =
                                 invocation.getArgument(1 /* resultCallback */);
-                        if (success) {
+                        if (status == AvailableMemoryCallbackStatus.SUCCESS) {
                             cb.onGetAvailableMemoryInBytesComplete(availableMemoryInBytes);
-                        } else {
+                        } else if (status == AvailableMemoryCallbackStatus.UNAVAILABLE) {
                             cb.onEuiccServiceUnavailable();
+                        } else if (status == AvailableMemoryCallbackStatus.EXCEPTION) {
+                            cb.onUnsupportedOperationExceptionComplete("exception message");
                         }
                         return null;
                     }
@@ -2228,5 +2248,11 @@ public class EuiccControllerTest extends TelephonyTest {
                             EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE, 0));
         }
         return mController.mExtrasIntent;
+    }
+
+    public enum AvailableMemoryCallbackStatus {
+        SUCCESS,
+        EXCEPTION,
+        UNAVAILABLE
     }
 }
