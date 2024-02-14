@@ -69,6 +69,7 @@ import android.telephony.data.DataCallResponse.HandoverFailureMode;
 import android.telephony.data.DataCallResponse.LinkStatus;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataServiceCallback;
+import android.telephony.data.QosBearerSession;
 import android.telephony.ims.ImsException;
 import android.telephony.ims.ImsManager;
 import android.telephony.ims.ImsReasonInfo;
@@ -647,6 +648,13 @@ public class DataNetworkController extends Handler {
          * @param simState The current SIM state
          */
         public void onSimStateChanged(@SimState int simState) {}
+
+        /**
+         * Called when QosBearerSessions changed.
+         *
+         * @param qosBearerSessions The latest QOS bearer sessions.
+         */
+        public void onQosSessionsChanged(@NonNull List<QosBearerSession> qosBearerSessions) {}
     }
 
     /**
@@ -2785,6 +2793,14 @@ public class DataNetworkController extends Handler {
                             @NonNull TelephonyNetworkRequest networkRequest) {
                         DataNetworkController.this.onRetryUnsatisfiedNetworkRequest(
                                 networkRequest);
+                    }
+
+                    @Override
+                    public void onQosSessionsChanged(
+                            @NonNull List<QosBearerSession> qosBearerSessions) {
+                        mDataNetworkControllerCallbacks.forEach(
+                                callback -> callback.invokeFromExecutor(() ->
+                                        callback.onQosSessionsChanged(qosBearerSessions)));
                     }
                 }
         ));

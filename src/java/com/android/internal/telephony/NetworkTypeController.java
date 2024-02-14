@@ -37,6 +37,9 @@ import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataCallResponse.LinkStatus;
+import android.telephony.data.EpsQos;
+import android.telephony.data.NrQos;
+import android.telephony.data.QosBearerSession;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
@@ -112,8 +115,10 @@ public class NetworkTypeController extends StateMachine {
     private static final int EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED = 11;
     /** Event for device idle mode changed, when device goes to deep sleep and pauses all timers. */
     private static final int EVENT_DEVICE_IDLE_MODE_CHANGED = 12;
+    /** Event for qos sessions changed. */
+    private static final int EVENT_QOS_SESSION_CHANGED = 13;
 
-    private static final String[] sEvents = new String[EVENT_DEVICE_IDLE_MODE_CHANGED + 1];
+    private static final String[] sEvents = new String[EVENT_QOS_SESSION_CHANGED + 1];
     static {
         sEvents[EVENT_UPDATE] = "EVENT_UPDATE";
         sEvents[EVENT_QUIT] = "EVENT_QUIT";
@@ -129,6 +134,7 @@ public class NetworkTypeController extends StateMachine {
         sEvents[EVENT_INITIALIZE] = "EVENT_INITIALIZE";
         sEvents[EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED] = "EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED";
         sEvents[EVENT_DEVICE_IDLE_MODE_CHANGED] = "EVENT_DEVICE_IDLE_MODE_CHANGED";
+        sEvents[EVENT_QOS_SESSION_CHANGED] = "EVENT_QOS_SESSION_CHANGED";
     }
 
     @NonNull private final Phone mPhone;
@@ -158,6 +164,31 @@ public class NetworkTypeController extends StateMachine {
                 }
             };
 
+    @NonNull private final DataNetworkControllerCallback mDataNetworkControllerCallback =
+            new DataNetworkControllerCallback(getHandler()::post) {
+                @Override
+                public void onQosSessionsChanged(
+                        @NonNull List<QosBearerSession> qosBearerSessions) {
+                    if (!mIsTimerResetEnabledOnVoiceQos) return;
+                    sendMessage(obtainMessage(EVENT_QOS_SESSION_CHANGED, qosBearerSessions));
+                }
+
+                @Override
+                public void onNrAdvancedCapableByPcoChanged(boolean nrAdvancedCapable) {
+                    if (mNrAdvancedCapablePcoId <= 0) return;
+                    log("mIsNrAdvancedAllowedByPco=" + nrAdvancedCapable);
+                    mIsNrAdvancedAllowedByPco = nrAdvancedCapable;
+                    sendMessage(EVENT_UPDATE);
+                }
+
+                @Override
+                public void onPhysicalLinkStatusChanged(@LinkStatus int status) {
+                    if (isUsingPhysicalChannelConfigForRrcDetection()) return;
+                    sendMessage(obtainMessage(EVENT_PHYSICAL_LINK_STATUS_CHANGED,
+                            new AsyncResult(null, status, null)));
+                }
+            };
+
     @NonNull private Map<String, OverrideTimerRule> mOverrideTimerRules = new HashMap<>();
     @NonNull private String mLteEnhancedPattern = "";
     @Annotation.OverrideNetworkType private int mOverrideNetworkType;
@@ -165,7 +196,10 @@ public class NetworkTypeController extends StateMachine {
     private boolean mIsPrimaryTimerActive;
     private boolean mIsSecondaryTimerActive;
     private boolean mIsTimerResetEnabledForLegacyStateRrcIdle;
+    /** Carrier config to reset timers when mccmnc changes */
     private boolean mIsTimerResetEnabledOnPlmnChanges;
+    /** Carrier config to reset timers when QCI(LTE) or 5QI(NR) is 1(conversational voice) */
+    private boolean mIsTimerResetEnabledOnVoiceQos;
     private int mLtePlusThresholdBandwidth;
     private int mNrAdvancedThresholdBandwidth;
     private boolean mIncludeLteForNrAdvancedThresholdBandwidth;
@@ -184,9 +218,6 @@ public class NetworkTypeController extends StateMachine {
     private boolean mEnableNrAdvancedWhileRoaming = true;
     private boolean mIsDeviceIdleMode = false;
     private boolean mPrimaryCellChangedWhileIdle = false;
-
-    @Nullable private DataNetworkControllerCallback mNrAdvancedCapableByPcoChangedCallback = null;
-    @Nullable private DataNetworkControllerCallback mNrPhysicalLinkStatusChangedCallback = null;
 
     // Cached copies below to prevent race conditions
     @NonNull private ServiceState mServiceState;
@@ -276,6 +307,8 @@ public class NetworkTypeController extends StateMachine {
                 TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
         mPhone.getDeviceStateMonitor().registerForPhysicalChannelConfigNotifChanged(getHandler(),
                 EVENT_PHYSICAL_CHANNEL_CONFIG_NOTIF_CHANGED, null);
+        mPhone.getDataNetworkController().registerDataNetworkControllerCallback(
+                mDataNetworkControllerCallback);
         IntentFilter filter = new IntentFilter();
         filter.addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED);
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
@@ -288,6 +321,8 @@ public class NetworkTypeController extends StateMachine {
         mPhone.unregisterForPreferredNetworkTypeChanged(getHandler());
         mPhone.getServiceStateTracker().unregisterForServiceStateChanged(getHandler());
         mPhone.getDeviceStateMonitor().unregisterForPhysicalChannelConfigNotifChanged(getHandler());
+        mPhone.getDataNetworkController().unregisterDataNetworkControllerCallback(
+                mDataNetworkControllerCallback);
         mPhone.getContext().unregisterReceiver(mIntentReceiver);
         CarrierConfigManager ccm = mPhone.getContext().getSystemService(CarrierConfigManager.class);
         if (mCarrierConfigChangeListener != null) {
@@ -311,6 +346,8 @@ public class NetworkTypeController extends StateMachine {
                 CarrierConfigManager.KEY_NR_TIMERS_RESET_IF_NON_ENDC_AND_RRC_IDLE_BOOL);
         mIsTimerResetEnabledOnPlmnChanges = config.getBoolean(
                 CarrierConfigManager.KEY_NR_TIMERS_RESET_ON_PLMN_CHANGE_BOOL);
+        mIsTimerResetEnabledOnVoiceQos = config.getBoolean(
+                CarrierConfigManager.KEY_NR_TIMERS_RESET_ON_VOICE_QOS_BOOL);
         mLtePlusThresholdBandwidth = config.getInt(
                 CarrierConfigManager.KEY_LTE_PLUS_THRESHOLD_BANDWIDTH_KHZ_INT);
         mNrAdvancedThresholdBandwidth = config.getInt(
@@ -329,43 +366,8 @@ public class NetworkTypeController extends StateMachine {
         }
         mNrAdvancedCapablePcoId = config.getInt(
                 CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT);
-        if (mNrAdvancedCapablePcoId > 0 && mNrAdvancedCapableByPcoChangedCallback == null) {
-            mNrAdvancedCapableByPcoChangedCallback =
-                    new DataNetworkControllerCallback(getHandler()::post) {
-                        @Override
-                        public void onNrAdvancedCapableByPcoChanged(boolean nrAdvancedCapable) {
-                            log("mIsNrAdvancedAllowedByPco=" + nrAdvancedCapable);
-                            mIsNrAdvancedAllowedByPco = nrAdvancedCapable;
-                            sendMessage(EVENT_UPDATE);
-                        }
-                    };
-            mPhone.getDataNetworkController().registerDataNetworkControllerCallback(
-                    mNrAdvancedCapableByPcoChangedCallback);
-        } else if (mNrAdvancedCapablePcoId == 0 && mNrAdvancedCapableByPcoChangedCallback != null) {
-            mPhone.getDataNetworkController().unregisterDataNetworkControllerCallback(
-                    mNrAdvancedCapableByPcoChangedCallback);
-            mNrAdvancedCapableByPcoChangedCallback = null;
-        }
         mIsUsingUserDataForRrcDetection = config.getBoolean(
                 CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL);
-        if (!isUsingPhysicalChannelConfigForRrcDetection()) {
-            if (mNrPhysicalLinkStatusChangedCallback == null) {
-                mNrPhysicalLinkStatusChangedCallback =
-                        new DataNetworkControllerCallback(getHandler()::post) {
-                            @Override
-                            public void onPhysicalLinkStatusChanged(@LinkStatus int status) {
-                                sendMessage(obtainMessage(EVENT_PHYSICAL_LINK_STATUS_CHANGED,
-                                        new AsyncResult(null, status, null)));
-                            }
-                        };
-                mPhone.getDataNetworkController().registerDataNetworkControllerCallback(
-                        mNrPhysicalLinkStatusChangedCallback);
-            }
-        } else if (mNrPhysicalLinkStatusChangedCallback != null) {
-            mPhone.getDataNetworkController().unregisterDataNetworkControllerCallback(
-                    mNrPhysicalLinkStatusChangedCallback);
-            mNrPhysicalLinkStatusChangedCallback = null;
-        }
         mNrAdvancedBandsSecondaryTimer = config.getInt(
                 CarrierConfigManager.KEY_NR_ADVANCED_BANDS_SECONDARY_TIMER_SECONDS_INT);
         String nrIconConfiguration = config.getString(
@@ -703,6 +705,24 @@ public class NetworkTypeController extends StateMachine {
                     }
                     transitionToCurrentState();
                     break;
+                case EVENT_QOS_SESSION_CHANGED:
+                    List<QosBearerSession> qosBearerSessions = (List<QosBearerSession>) msg.obj;
+                    boolean inVoiceCall = false;
+                    for (QosBearerSession session : qosBearerSessions) {
+                        // TS 23.203 23.501 - 1 means conversational voice
+                        if (session.getQos() instanceof EpsQos qos) {
+                            inVoiceCall = qos.getQci() == 1;
+                        } else if (session.getQos() instanceof NrQos qos) {
+                            inVoiceCall = qos.get5Qi() == 1;
+                        }
+                        if (inVoiceCall) {
+                            if (DBG) log("Device in voice call, reset all timers");
+                            resetAllTimers();
+                            transitionToCurrentState();
+                            break;
+                        }
+                    }
+                    break;
                 default:
                     throw new RuntimeException("Received invalid event: " + msg.what);
             }
@@ -772,6 +792,7 @@ public class NetworkTypeController extends StateMachine {
                         if (mIsTimerResetEnabledForLegacyStateRrcIdle && !isPhysicalLinkActive()) {
                             if (DBG) log("Reset timers since timer reset is enabled for RRC idle.");
                             resetAllTimers();
+                            updateOverrideNetworkType();
                         }
                     }
                     break;
@@ -1338,7 +1359,7 @@ public class NetworkTypeController extends StateMachine {
             int duration = rule.getSecondaryTimer(currentName);
             if (mLastShownNrDueToAdvancedBand && mNrAdvancedBandsSecondaryTimer > 0) {
                 duration = mNrAdvancedBandsSecondaryTimer;
-                if (DBG) log("secondary timer adjusted by nr_advanced_bands_secondary_timer_long");
+                if (DBG) log("timer adjusted by nr_advanced_bands_secondary_timer_seconds_int");
             }
             if (DBG) log(duration + "s secondary timer started for state: " + currentName);
             mSecondaryTimerState = currentName;
