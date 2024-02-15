@@ -173,6 +173,8 @@ public class NetworkTypeController extends StateMachine {
     @NonNull private final Set<Integer> mAdditionalNrAdvancedBands = new HashSet<>();
     @NonNull private String mPrimaryTimerState;
     @NonNull private String mSecondaryTimerState;
+    // TODO(b/316425811 remove the workaround)
+    private int mNrAdvancedBandsSecondaryTimer;
     @NonNull private String mPreviousState;
     @LinkStatus private int mPhysicalLinkStatus;
     private boolean mIsPhysicalChannelConfig16Supported;
@@ -192,6 +194,8 @@ public class NetworkTypeController extends StateMachine {
 
     // Ratchet physical channel config fields to prevent 5G/5G+ flickering
     @NonNull private Set<Integer> mRatchetedNrBands = new HashSet<>();
+    // TODO(b/316425811 remove the workaround)
+    private boolean mLastShownNrDueToAdvancedBand = false;
     private int mRatchetedNrBandwidths = 0;
     private int mLastAnchorNrCellId = PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN;
     private boolean mDoesPccListIndicateIdle = false;
@@ -362,6 +366,8 @@ public class NetworkTypeController extends StateMachine {
                     mNrPhysicalLinkStatusChangedCallback);
             mNrPhysicalLinkStatusChangedCallback = null;
         }
+        mNrAdvancedBandsSecondaryTimer = config.getInt(
+                CarrierConfigManager.KEY_NR_ADVANCED_BANDS_SECONDARY_TIMER_SECONDS_INT);
         String nrIconConfiguration = config.getString(
                 CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING);
         String overrideTimerRule = config.getString(
@@ -659,6 +665,7 @@ public class NetworkTypeController extends StateMachine {
                     mIsSecondaryTimerActive = false;
                     mSecondaryTimerState = "";
                     updateTimers();
+                    mLastShownNrDueToAdvancedBand = false;
                     updateOverrideNetworkType();
                     break;
                 case EVENT_RADIO_OFF_OR_UNAVAILABLE:
@@ -1139,7 +1146,11 @@ public class NetworkTypeController extends StateMachine {
 
         @Override
         public boolean processMessage(Message msg) {
-            if (DBG) log("NrConnectedAdvancedState: process " + getEventName(msg.what));
+            mLastShownNrDueToAdvancedBand = isAdditionalNrAdvancedBand(mRatchetedNrBands);
+            if (DBG) {
+                log("NrConnectedAdvancedState: process " + getEventName(msg.what)
+                        + ", been using advanced band is " + mLastShownNrDueToAdvancedBand);
+            }
             updateTimers();
             AsyncResult ar;
             switch (msg.what) {
@@ -1325,6 +1336,10 @@ public class NetworkTypeController extends StateMachine {
         }
         if (!mIsDeviceIdleMode && rule != null && rule.getSecondaryTimer(currentName) > 0) {
             int duration = rule.getSecondaryTimer(currentName);
+            if (mLastShownNrDueToAdvancedBand && mNrAdvancedBandsSecondaryTimer > 0) {
+                duration = mNrAdvancedBandsSecondaryTimer;
+                if (DBG) log("secondary timer adjusted by nr_advanced_bands_secondary_timer_long");
+            }
             if (DBG) log(duration + "s secondary timer started for state: " + currentName);
             mSecondaryTimerState = currentName;
             mPreviousState = currentName;
@@ -1429,6 +1444,8 @@ public class NetworkTypeController extends StateMachine {
         mIsSecondaryTimerActive = false;
         mPrimaryTimerState = "";
         mSecondaryTimerState = "";
+
+        mLastShownNrDueToAdvancedBand = false;
     }
 
     private boolean isTimerActiveForRrcIdle() {
