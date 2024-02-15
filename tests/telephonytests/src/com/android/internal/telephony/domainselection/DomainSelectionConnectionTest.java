@@ -777,6 +777,7 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
             boolean isEmergency, DomainSelectionController controller) throws Exception {
         DomainSelectionConnection dsc = new DomainSelectionConnection(phone,
                 selectorType, isEmergency, controller);
+        dsc.setTestMode(true);
         replaceInstance(DomainSelectionConnection.class, "mLooper",
                 dsc, mTestableLooper.getLooper());
         return dsc;
