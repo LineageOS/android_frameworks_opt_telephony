@@ -95,6 +95,7 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
         doReturn(mAnm).when(mPhone).getAccessNetworksManager();
         mEcDsc = new EmergencyCallDomainSelectionConnection(mPhone,
                 mDomainSelectionController, mEmergencyStateTracker);
+        mEcDsc.setTestMode(true);
         replaceInstance(DomainSelectionConnection.class, "mLooper",
                 mEcDsc, mTestableLooper.getLooper());
         mTransportCallback = mEcDsc.getTransportSelectorCallback();
@@ -184,7 +185,7 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
         IWwanSelectorCallback wwanCallback = onWwanSelected(mTransportCallback);
 
         assertFalse(future.isDone());
-        verify(mEmergencyStateTracker).onEmergencyTransportChanged(
+        verify(mEmergencyStateTracker).onEmergencyTransportChangedAndWait(
                 eq(EmergencyStateTracker.EMERGENCY_TYPE_CALL), eq(MODE_EMERGENCY_WWAN));
 
         wwanCallback.onDomainSelected(DOMAIN_CS, false);
@@ -222,7 +223,7 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
         IWwanSelectorCallback wwanCallback = onWwanSelected(mTransportCallback);
 
         assertFalse(future.isDone());
-        verify(mEmergencyStateTracker).onEmergencyTransportChanged(
+        verify(mEmergencyStateTracker).onEmergencyTransportChangedAndWait(
                 eq(EmergencyStateTracker.EMERGENCY_TYPE_CALL), eq(MODE_EMERGENCY_WWAN));
 
         wwanCallback.onDomainSelected(DOMAIN_PS, true);

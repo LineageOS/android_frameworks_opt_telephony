@@ -35,6 +35,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.PowerManager;
+import android.os.SystemClock;
 import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
@@ -93,6 +94,8 @@ public class EmergencyStateTracker {
     private static final long DEFAULT_ECM_EXIT_TIMEOUT_MS = 300000;
     private static final int DEFAULT_EPDN_DISCONNECTION_TIMEOUT_MS = 500;
 
+    private static final int DEFAULT_TRANSPORT_CHANGE_TIMEOUT_MS = 1 * 1000;
+
     /** The emergency types used when setting the emergency mode on modem. */
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(prefix = "EMERGENCY_TYPE_",
@@ -149,6 +152,8 @@ public class EmergencyStateTracker {
     private Phone mSmsPhone;
     private CompletableFuture<Integer> mSmsEmergencyModeFuture;
     private boolean mIsTestEmergencyNumberForSms;
+
+    private CompletableFuture<Boolean> mEmergencyTransportChangedFuture;
 
     private final android.util.ArrayMap<Integer, Boolean> mNoSimEcbmSupported =
             new android.util.ArrayMap<>();
@@ -296,6 +301,9 @@ public class EmergencyStateTracker {
                                 + ar.exception);
                     }
                     setEmergencyModeInProgress(false);
+
+                    // Transport changed from WLAN to WWAN or CALLBACK to WWAN
+                    maybeNotifyTransportChangeCompleted(emergencyType, false);
 
                     if (emergencyType == EMERGENCY_TYPE_CALL) {
                         setIsInEmergencyCall(true);
@@ -600,6 +608,9 @@ public class EmergencyStateTracker {
                 clearEmergencyCallInfo();
             }
         }
+
+        // Release any blocked thread immediately
+        maybeNotifyTransportChangeCompleted(EMERGENCY_TYPE_CALL, true);
     }
 
     private void clearEmergencyCallInfo() {
@@ -643,6 +654,8 @@ public class EmergencyStateTracker {
                 + emergencyTypeToString(emergencyType));
 
         if (mEmergencyMode == mode) {
+            // Initial transport selection of DomainSelector
+            maybeNotifyTransportChangeCompleted(emergencyType, false);
             return;
         }
         mEmergencyMode = mode;
@@ -814,6 +827,69 @@ public class EmergencyStateTracker {
     /** Returns last {@link EmergencyRegistrationResult} as set by {@code setEmergencyMode()}. */
     public EmergencyRegistrationResult getEmergencyRegistrationResult() {
         return mLastEmergencyRegistrationResult;
+    }
+
+    private void waitForTransportChangeCompleted(CompletableFuture<Boolean> future) {
+        if (future != null) {
+            synchronized (future) {
+                if ((mEmergencyMode == MODE_EMERGENCY_NONE)
+                        || mHandler.getLooper().isCurrentThread()) {
+                    // Do not block the Handler's thread
+                    return;
+                }
+                long now = SystemClock.elapsedRealtime();
+                long deadline = now + DEFAULT_TRANSPORT_CHANGE_TIMEOUT_MS;
+                // Guard with while loop to handle spurious wakeups
+                while (!future.isDone() && now < deadline) {
+                    try {
+                        future.wait(deadline - now);
+                    } catch (Exception e) {
+                        Rlog.e(TAG, "waitForTransportChangeCompleted wait e=" + e);
+                    }
+                    now = SystemClock.elapsedRealtime();
+                }
+            }
+        }
+    }
+
+    private void maybeNotifyTransportChangeCompleted(@EmergencyType int emergencyType,
+            boolean enforced) {
+        if (emergencyType != EMERGENCY_TYPE_CALL) {
+            // It's not for the emergency call
+            return;
+        }
+        CompletableFuture<Boolean> future = mEmergencyTransportChangedFuture;
+        if (future != null) {
+            synchronized (future) {
+                if (!future.isDone()
+                        && ((!isEmergencyModeInProgress() && mEmergencyMode == MODE_EMERGENCY_WWAN)
+                                || enforced)) {
+                    future.complete(Boolean.TRUE);
+                    future.notifyAll();
+                }
+            }
+        }
+    }
+
+    /**
+     * Handles emergency transport change by setting new emergency mode.
+     *
+     * @param emergencyType the emergency type to identify an emergency call or SMS
+     * @param mode the new emergency mode
+     */
+    public void onEmergencyTransportChangedAndWait(@EmergencyType int emergencyType,
+            @EmergencyConstants.EmergencyMode int mode) {
+        // Wait for the completion of setting MODE_EMERGENCY_WWAN only for emergency calls
+        if (emergencyType == EMERGENCY_TYPE_CALL && mode == MODE_EMERGENCY_WWAN) {
+            CompletableFuture<Boolean> future = new CompletableFuture<>();
+            synchronized (future) {
+                mEmergencyTransportChangedFuture = future;
+                onEmergencyTransportChanged(emergencyType, mode);
+                waitForTransportChangeCompleted(future);
+            }
+            return;
+        }
+        onEmergencyTransportChanged(emergencyType, mode);
     }
 
     /**
