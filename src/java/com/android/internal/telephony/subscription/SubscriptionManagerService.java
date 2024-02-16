@@ -3944,12 +3944,31 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
+     * Returns whether the given subscription is associated with the calling user.
+     *
+     * @param subscriptionId the subscription ID of the subscription
+     * @return {@code true} if the subscription is associated with the user that the calling process
+     *         is running in; {@code false} otherwise.
+     *
+     * @throws IllegalArgumentException if subscription doesn't exist.
+     * @throws SecurityException if the caller doesn't have permissions required.
+     */
+    @Override
+    public boolean isSubscriptionAssociatedWithCallingUser(int subscriptionId) {
+        enforcePermissions("isSubscriptionAssociatedWithCallingUser",
+                Manifest.permission.READ_PHONE_STATE);
+
+        UserHandle myUserHandle = UserHandle.of(UserHandle.getCallingUserId());
+        return mFeatureFlags.subscriptionUserAssociationQuery()
+            && isSubscriptionAssociatedWithUserNoCheck(subscriptionId, myUserHandle);
+    }
+
+    /**
      * Check if subscription and user are associated with each other.
      *
      * @param subscriptionId the subId of the subscription
      * @param userHandle user handle of the user
      * @return {@code true} if subscription is associated with user
-     * {@code true} if there are no subscriptions on device
      * else {@code false} if subscription is not associated with user.
      *
      * @throws SecurityException if the caller doesn't have permissions required.
@@ -3960,6 +3979,12 @@ public class SubscriptionManagerService extends ISub.Stub {
             @NonNull UserHandle userHandle) {
         enforcePermissions("isSubscriptionAssociatedWithUser",
                 Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
+
+        return isSubscriptionAssociatedWithUserNoCheck(subscriptionId, userHandle);
+    }
+
+    private boolean isSubscriptionAssociatedWithUserNoCheck(int subscriptionId,
+            @NonNull UserHandle userHandle) {
         SubscriptionInfoInternal subInfoInternal = mSubscriptionDatabaseManager
                 .getSubscriptionInfoInternal(subscriptionId);
         // Throw IAE if no record of the sub's association state.
