@@ -34,3 +34,10 @@ flag {
   description: "Support the psim to esim conversion."
   bug: "315073761"
 }
+
+flag {
+  name: "subscription_user_association_query"
+  namespace: "telephony"
+  description: "Supports querying if a subscription is associated with the caller"
+  bug: "325045841"
+}
