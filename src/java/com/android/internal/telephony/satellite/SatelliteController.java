@@ -175,8 +175,6 @@ public class SatelliteController extends Handler {
     private static final int EVENT_IS_SATELLITE_SUPPORTED_DONE = 16;
     private static final int CMD_GET_SATELLITE_CAPABILITIES = 17;
     private static final int EVENT_GET_SATELLITE_CAPABILITIES_DONE = 18;
-    private static final int CMD_IS_SATELLITE_COMMUNICATION_ALLOWED = 19;
-    private static final int EVENT_IS_SATELLITE_COMMUNICATION_ALLOWED_DONE = 20;
     private static final int CMD_GET_TIME_SATELLITE_NEXT_VISIBLE = 21;
     private static final int EVENT_GET_TIME_SATELLITE_NEXT_VISIBLE_DONE = 22;
     private static final int EVENT_RADIO_STATE_CHANGED = 23;
@@ -1073,39 +1071,6 @@ public class SatelliteController extends Handler {
                 break;
             }
 
-            case CMD_IS_SATELLITE_COMMUNICATION_ALLOWED: {
-                request = (SatelliteControllerHandlerRequest) msg.obj;
-                onCompleted =
-                        obtainMessage(EVENT_IS_SATELLITE_COMMUNICATION_ALLOWED_DONE, request);
-                mSatelliteModemInterface
-                        .requestIsSatelliteCommunicationAllowedForCurrentLocation(onCompleted);
-                break;
-            }
-
-            case EVENT_IS_SATELLITE_COMMUNICATION_ALLOWED_DONE: {
-                ar = (AsyncResult) msg.obj;
-                request = (SatelliteControllerHandlerRequest) ar.userObj;
-                int error =  SatelliteServiceUtils.getSatelliteError(ar,
-                        "isSatelliteCommunicationAllowedForCurrentLocation");
-                Bundle bundle = new Bundle();
-                if (error == SATELLITE_RESULT_SUCCESS) {
-                    if (ar.result == null) {
-                        loge("isSatelliteCommunicationAllowedForCurrentLocation: result is null");
-                        error = SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE;
-                    } else {
-                        boolean communicationAllowed = (boolean) ar.result;
-                        if (DBG) {
-                            logd("isSatelliteCommunicationAllowedForCurrentLocation: "
-                                    + communicationAllowed);
-                        }
-                        bundle.putBoolean(SatelliteManager.KEY_SATELLITE_COMMUNICATION_ALLOWED,
-                                communicationAllowed);
-                    }
-                }
-                ((ResultReceiver) request.argument).send(error, bundle);
-                break;
-            }
-
             case CMD_GET_TIME_SATELLITE_NEXT_VISIBLE: {
                 request = (SatelliteControllerHandlerRequest) msg.obj;
                 onCompleted = obtainMessage(EVENT_GET_TIME_SATELLITE_NEXT_VISIBLE_DONE,
@@ -1953,26 +1918,6 @@ public class SatelliteController extends Handler {
         final int validSubId = SatelliteServiceUtils.getValidSatelliteSubId(subId, mContext);
         mDatagramController.sendSatelliteDatagram(validSubId, datagramType, datagram,
                 needFullScreenPointingUI, result);
-    }
-
-    /**
-     * Request to get whether satellite communication is allowed for the current location.
-     *
-     * @param subId The subId of the subscription to check whether satellite communication is
-     *              allowed for the current location for.
-     * @param result The result receiver that returns whether satellite communication is allowed
-     *               for the current location if the request is successful or an error code
-     *               if the request failed.
-     */
-    public void requestIsSatelliteCommunicationAllowedForCurrentLocation(int subId,
-            @NonNull ResultReceiver result) {
-        int error = evaluateOemSatelliteRequestAllowed(false);
-        if (error != SATELLITE_RESULT_SUCCESS) {
-            result.send(error, null);
-            return;
-        }
-
-        sendRequestAsync(CMD_IS_SATELLITE_COMMUNICATION_ALLOWED, result, null);
     }
 
     /**

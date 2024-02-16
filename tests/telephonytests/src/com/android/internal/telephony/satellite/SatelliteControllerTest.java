@@ -557,58 +557,6 @@ public class SatelliteControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testRequestIsSatelliteCommunicationAllowedForCurrentLocation() {
-        mSatelliteAllowedSemaphore.drainPermits();
-        setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_RESULT_SUCCESS);
-        verifySatelliteSupported(false, SATELLITE_RESULT_SUCCESS);
-        mSatelliteControllerUT.requestIsSatelliteCommunicationAllowedForCurrentLocation(SUB_ID,
-                mSatelliteAllowedReceiver);
-        processAllMessages();
-        assertTrue(waitForRequestIsSatelliteAllowedForCurrentLocationResult(1));
-        assertEquals(SATELLITE_RESULT_NOT_SUPPORTED, mQueriedSatelliteAllowedResultCode);
-
-        resetSatelliteControllerUT();
-        mSatelliteControllerUT.requestIsSatelliteCommunicationAllowedForCurrentLocation(SUB_ID,
-                mSatelliteAllowedReceiver);
-        processAllMessages();
-        assertTrue(waitForRequestIsSatelliteAllowedForCurrentLocationResult(1));
-        assertEquals(SATELLITE_RESULT_INVALID_TELEPHONY_STATE, mQueriedSatelliteAllowedResultCode);
-
-        resetSatelliteControllerUT();
-        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
-        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
-        setUpResponseForRequestIsSatelliteAllowedForCurrentLocation(true,
-                SATELLITE_RESULT_SUCCESS);
-        mSatelliteControllerUT.requestIsSatelliteCommunicationAllowedForCurrentLocation(SUB_ID,
-                mSatelliteAllowedReceiver);
-        processAllMessages();
-        assertTrue(waitForRequestIsSatelliteAllowedForCurrentLocationResult(1));
-        assertEquals(SATELLITE_RESULT_SUCCESS, mQueriedSatelliteAllowedResultCode);
-        assertTrue(mQueriedSatelliteAllowed);
-
-        resetSatelliteControllerUT();
-        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
-        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
-        setUpNullResponseForRequestIsSatelliteAllowedForCurrentLocation(SATELLITE_RESULT_SUCCESS);
-        mSatelliteControllerUT.requestIsSatelliteCommunicationAllowedForCurrentLocation(SUB_ID,
-                mSatelliteAllowedReceiver);
-        processAllMessages();
-        assertTrue(waitForRequestIsSatelliteAllowedForCurrentLocationResult(1));
-        assertEquals(SATELLITE_RESULT_INVALID_TELEPHONY_STATE, mQueriedSatelliteAllowedResultCode);
-
-        resetSatelliteControllerUT();
-        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
-        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
-        setUpNullResponseForRequestIsSatelliteAllowedForCurrentLocation(
-                SATELLITE_RESULT_INVALID_MODEM_STATE);
-        mSatelliteControllerUT.requestIsSatelliteCommunicationAllowedForCurrentLocation(SUB_ID,
-                mSatelliteAllowedReceiver);
-        processAllMessages();
-        assertTrue(waitForRequestIsSatelliteAllowedForCurrentLocationResult(1));
-        assertEquals(SATELLITE_RESULT_INVALID_MODEM_STATE, mQueriedSatelliteAllowedResultCode);
-    }
-
-    @Test
     public void testRequestTimeForNextSatelliteVisibility() {
         mSatelliteVisibilityTimeSemaphore.drainPermits();
         setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_RESULT_SUCCESS);
@@ -3296,32 +3244,6 @@ public class SatelliteControllerTest extends TelephonyTest {
         }).when(mMockSatelliteModemInterface).requestIsSatelliteSupported(any(Message.class));
     }
 
-    private void setUpResponseForRequestIsSatelliteAllowedForCurrentLocation(
-            boolean isSatelliteAllowed, @SatelliteManager.SatelliteResult int error) {
-        SatelliteException exception = (error == SATELLITE_RESULT_SUCCESS)
-                ? null : new SatelliteException(error);
-        doAnswer(invocation -> {
-            Message message = (Message) invocation.getArguments()[0];
-            AsyncResult.forMessage(message, isSatelliteAllowed, exception);
-            message.sendToTarget();
-            return null;
-        }).when(mMockSatelliteModemInterface)
-                .requestIsSatelliteCommunicationAllowedForCurrentLocation(any(Message.class));
-    }
-
-    private void setUpNullResponseForRequestIsSatelliteAllowedForCurrentLocation(
-            @SatelliteManager.SatelliteResult int error) {
-        SatelliteException exception = (error == SATELLITE_RESULT_SUCCESS)
-                ? null : new SatelliteException(error);
-        doAnswer(invocation -> {
-            Message message = (Message) invocation.getArguments()[0];
-            AsyncResult.forMessage(message, null, exception);
-            message.sendToTarget();
-            return null;
-        }).when(mMockSatelliteModemInterface)
-                .requestIsSatelliteCommunicationAllowedForCurrentLocation(any(Message.class));
-    }
-
     private void setUpResponseForRequestTimeForNextSatelliteVisibility(
             int satelliteVisibilityTime, @SatelliteManager.SatelliteResult int error) {
         SatelliteException exception = (error == SATELLITE_RESULT_SUCCESS)
@@ -3535,24 +3457,6 @@ public class SatelliteControllerTest extends TelephonyTest {
             try {
                 if (!mSatelliteSupportSemaphore.tryAcquire(TIMEOUT, TimeUnit.MILLISECONDS)) {
                     loge("Timeout to receive requestIsSatelliteSupported() callback");
-                    return false;
-                }
-            } catch (Exception ex) {
-                loge("waitForRequestIsSatelliteSupportedResult: Got exception=" + ex);
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean waitForRequestIsSatelliteAllowedForCurrentLocationResult(
-            int expectedNumberOfEvents) {
-        for (int i = 0; i < expectedNumberOfEvents; i++) {
-            try {
-                if (!mSatelliteAllowedSemaphore.tryAcquire(TIMEOUT, TimeUnit.MILLISECONDS)) {
-                    loge("Timeout to receive "
-                            + "requestIsCommunicationAllowedForCurrentLocation()"
-                            + " callback");
                     return false;
                 }
             } catch (Exception ex) {
