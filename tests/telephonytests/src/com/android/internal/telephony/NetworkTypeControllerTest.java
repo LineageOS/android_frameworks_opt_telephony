@@ -273,7 +273,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         assertEquals("DefaultState", getCurrentState().getName());
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_DORMANT, null));
+                DataCallResponse.LINK_STATUS_DORMANT);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
@@ -312,7 +312,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_DORMANT, null));
+                DataCallResponse.LINK_STATUS_DORMANT);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
@@ -323,7 +323,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         assertEquals("DefaultState", getCurrentState().getName());
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
+                DataCallResponse.LINK_STATUS_ACTIVE);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("not_restricted_rrc_con", getCurrentState().getName());
@@ -365,7 +365,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
+                DataCallResponse.LINK_STATUS_ACTIVE);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("not_restricted_rrc_con", getCurrentState().getName());
@@ -772,7 +772,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
 
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
+                DataCallResponse.LINK_STATUS_ACTIVE);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("not_restricted_rrc_con", getCurrentState().getName());
@@ -812,7 +812,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         testTransitionToCurrentStateNrConnectedMmwave();
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
+                DataCallResponse.LINK_STATUS_ACTIVE);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
 
         processAllMessages();
@@ -848,7 +848,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         // Transition to LTE connected state
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
+                DataCallResponse.LINK_STATUS_ACTIVE);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("not_restricted_rrc_con", getCurrentState().getName());
@@ -878,7 +878,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         // Transition to idle state
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_DORMANT, null));
+                DataCallResponse.LINK_STATUS_DORMANT);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
@@ -902,7 +902,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         testTransitionToCurrentStateLteConnected();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_DORMANT, null));
+                DataCallResponse.LINK_STATUS_DORMANT);
 
         processAllMessages();
         assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
@@ -941,7 +941,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         testTransitionToCurrentStateLteConnected_usingUserDataForRrcDetection();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_DORMANT, null));
+                DataCallResponse.LINK_STATUS_DORMANT);
 
         processAllMessages();
         assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
@@ -1797,7 +1797,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
+                DataCallResponse.LINK_STATUS_ACTIVE);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
 

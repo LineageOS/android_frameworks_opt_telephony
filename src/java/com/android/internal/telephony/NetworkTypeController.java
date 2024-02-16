@@ -184,8 +184,7 @@ public class NetworkTypeController extends StateMachine {
                 @Override
                 public void onPhysicalLinkStatusChanged(@LinkStatus int status) {
                     if (isUsingPhysicalChannelConfigForRrcDetection()) return;
-                    sendMessage(obtainMessage(EVENT_PHYSICAL_LINK_STATUS_CHANGED,
-                            new AsyncResult(null, status, null)));
+                    sendMessage(obtainMessage(EVENT_PHYSICAL_LINK_STATUS_CHANGED, status));
                 }
             };
 
@@ -635,8 +634,7 @@ public class NetworkTypeController extends StateMachine {
                     transitionToCurrentState();
                     break;
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
-                    ar = (AsyncResult) msg.obj;
-                    mPhysicalLinkStatus = (int) ar.result;
+                    mPhysicalLinkStatus = msg.arg1;
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIG_NOTIF_CHANGED:
                     ar = (AsyncResult) msg.obj;
@@ -797,8 +795,7 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
-                    ar = (AsyncResult) msg.obj;
-                    mPhysicalLinkStatus = (int) ar.result;
+                    mPhysicalLinkStatus = msg.arg1;
                     if (mIsTimerResetEnabledForLegacyStateRrcIdle && !isPhysicalLinkActive()) {
                         if (DBG) log("Reset timers since timer reset is enabled for RRC idle.");
                         resetAllTimers();
@@ -881,8 +878,7 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
-                    ar = (AsyncResult) msg.obj;
-                    mPhysicalLinkStatus = (int) ar.result;
+                    mPhysicalLinkStatus = msg.arg1;
                     if (isPhysicalLinkActive()) {
                         transitionWithTimerTo(mLteConnectedState);
                     } else {
@@ -966,8 +962,7 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
-                    ar = (AsyncResult) msg.obj;
-                    mPhysicalLinkStatus = (int) ar.result;
+                    mPhysicalLinkStatus = msg.arg1;
                     if (!isPhysicalLinkActive()) {
                         transitionWithTimerTo(mIdleState);
                     } else {
@@ -1048,8 +1043,7 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
-                    ar = (AsyncResult) msg.obj;
-                    mPhysicalLinkStatus = (int) ar.result;
+                    mPhysicalLinkStatus = msg.arg1;
                     if (isPhysicalLinkActive()) {
                         transitionWithTimerTo(mNrConnectedState);
                     }
@@ -1127,8 +1121,7 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
-                    ar = (AsyncResult) msg.obj;
-                    mPhysicalLinkStatus = (int) ar.result;
+                    mPhysicalLinkStatus = msg.arg1;
                     if (!isPhysicalLinkActive() && mFeatureFlags.supportNrSaRrcIdle()) {
                         transitionWithTimerTo(mNrIdleState);
                     }
@@ -1218,8 +1211,7 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
-                    ar = (AsyncResult) msg.obj;
-                    mPhysicalLinkStatus = (int) ar.result;
+                    mPhysicalLinkStatus = msg.arg1;
                     break;
                 default:
                     return NOT_HANDLED;
