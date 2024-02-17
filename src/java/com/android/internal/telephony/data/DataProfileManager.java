@@ -287,7 +287,8 @@ public class DataProfileManager extends Handler {
                     log("Added " + dataProfile);
 
                     isInternetSupported |= apn.canHandleType(ApnSetting.TYPE_DEFAULT);
-                    if (mDataConfigManager.isApnConfigAnomalyReportEnabled()) {
+                    if (mDataConfigManager.isApnConfigAnomalyReportEnabled()
+                            && apn.getEditedStatus() == Telephony.Carriers.UNEDITED) {
                         checkApnSetting(apn);
                     }
                 }
