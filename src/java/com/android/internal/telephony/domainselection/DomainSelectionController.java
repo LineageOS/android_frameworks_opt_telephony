@@ -101,6 +101,7 @@ public class DomainSelectionController {
 
     private ExponentialBackoff mBackoff;
     private boolean mBackoffStarted = false;
+    private boolean mUnbind = false;
 
     // Retry the bind to the DomainSelectionService that has died after mBindRetry timeout.
     private Runnable mRestartBindingRunnable = new Runnable() {
@@ -470,12 +471,14 @@ public class DomainSelectionController {
      */
     public boolean bind(@NonNull ComponentName componentName) {
         mComponentName = componentName;
+        mUnbind = false;
         return bind();
     }
 
     private boolean bind() {
         logd("bind isBindingOrBound=" + mIsBound);
         synchronized (mLock) {
+            if (mUnbind) return false;
             if (!mIsBound) {
                 mIsBound = true;
                 Intent serviceIntent = new Intent(DomainSelectionService.SERVICE_INTERFACE)
@@ -512,6 +515,7 @@ public class DomainSelectionController {
      */
     public void unbind() {
         synchronized (mLock) {
+            mUnbind = true;
             stopBackoffTimer();
             mIsBound = false;
             setServiceController(null);
@@ -548,7 +552,8 @@ public class DomainSelectionController {
     }
 
     private void notifyBindFailure() {
-        logi("notifyBindFailure " + mBackoffStarted);
+        logi("notifyBindFailure started=" + mBackoffStarted + ", unbind=" + mUnbind);
+        if (mUnbind) return;
         if (mBackoffStarted) {
             mBackoff.notifyFailed();
         } else {
