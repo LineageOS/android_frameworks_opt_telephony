@@ -1394,7 +1394,14 @@ public class DataNetwork extends StateMachine {
                     } else {
                         loge("Failed to allocate PDU session id. e=" + ar.exception);
                     }
-                    setupData();
+                    //Check whether all network requests were removed before setupData.
+                    if (!mAttachedNetworkRequestList.isEmpty()) {
+                        setupData();
+                    } else {
+                        mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
+                        mFailCause = DataFailCause.NO_RETRY_FAILURE;
+                        transitionTo(mDisconnectedState);
+                    }
                     break;
                 case EVENT_SETUP_DATA_NETWORK_RESPONSE:
                     int resultCode = msg.arg1;
@@ -1523,7 +1530,7 @@ public class DataNetwork extends StateMachine {
                 //  For requests that can't be satisfied anymore, we need to put them back to the
                 //  unsatisfied pool. If none of network requests can be satisfied, then there is no
                 //  need to mark network agent connected. Just silently deactivate the data network.
-                if (mAttachedNetworkRequestList.size() == 0) {
+                if (mAttachedNetworkRequestList.isEmpty()) {
                     log("Tear down the network since there is no live network request.");
                     // Directly call onTearDown here. Calling tearDown will cause deadlock because
                     // EVENT_TEAR_DOWN_NETWORK is deferred until state machine enters connected
