@@ -1430,6 +1430,89 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testSecondaryTimerAdvanceBand() throws Exception {
+        doReturn(true).when(mFeatureFlags).supportNrSaRrcIdle();
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+        doReturn(ServiceState.FREQUENCY_RANGE_HIGH).when(mServiceState).getNrFrequencyRange();
+        ArrayList<PhysicalChannelConfig> physicalChannelConfigs = new ArrayList<>();
+        // use advanced band
+        physicalChannelConfigs.add(new PhysicalChannelConfig.Builder()
+                .setPhysicalCellId(1)
+                .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
+                .setCellConnectionStatus(CellInfo.CONNECTION_PRIMARY_SERVING)
+                .setBand(41)
+                .build());
+        doReturn(physicalChannelConfigs).when(mSST).getPhysicalChannelConfigList();
+        mBundle.putIntArray(CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY,
+                new int[]{41});
+        mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
+                "connected_mmwave,any,10");
+        mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_SECONDARY_GRACE_PERIOD_STRING,
+                "connected_mmwave,any,5");
+        mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_BANDS_SECONDARY_TIMER_SECONDS_INT,
+                20);
+        sendCarrierConfigChanged();
+
+        assertEquals("connected_mmwave", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
+                mNetworkTypeController.getOverrideNetworkType());
+
+        // lost the advance band, trigger 10 second connected_mmwave -> connected primary timer
+        physicalChannelConfigs.clear();
+        physicalChannelConfigs.add(new PhysicalChannelConfig.Builder()
+                .setPhysicalCellId(1)
+                .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
+                .setCellConnectionStatus(CellInfo.CONNECTION_PRIMARY_SERVING)
+                .build());
+        mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED */,
+                new AsyncResult(null, physicalChannelConfigs, null));
+        processAllMessages();
+
+        assertEquals("connected", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
+                mNetworkTypeController.getOverrideNetworkType());
+        assertTrue(mNetworkTypeController.areAnyTimersActive());
+
+        // switch to connected_rrc_idle before primary timer expires
+        physicalChannelConfigs.clear();
+        mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED */,
+                new AsyncResult(null, physicalChannelConfigs, null));
+        processAllMessages();
+
+        assertEquals("connected_rrc_idle", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
+                mNetworkTypeController.getOverrideNetworkType());
+        assertTrue(mNetworkTypeController.areAnyTimersActive());
+
+        // primary timer expires
+        moveTimeForward(10 * 1000);
+        processAllMessages();
+
+        // should trigger 20(not 5) seconds connected_mmwave -> connected_rrc_idle secondary timer
+        assertEquals("connected_rrc_idle", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
+                mNetworkTypeController.getOverrideNetworkType());
+        assertTrue(mNetworkTypeController.areAnyTimersActive());
+
+        // 5 seconds passed during connected_mmwave -> connected_rrc_idle secondary timer
+        moveTimeForward(5 * 1000);
+        processAllMessages();
+        assertEquals("connected_rrc_idle", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
+                mNetworkTypeController.getOverrideNetworkType());
+        assertTrue(mNetworkTypeController.areAnyTimersActive());
+
+        // secondary timer expired
+        moveTimeForward(15 * 1000);
+        processAllMessages();
+
+        assertEquals("connected_rrc_idle", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA,
+                mNetworkTypeController.getOverrideNetworkType());
+        assertFalse(mNetworkTypeController.areAnyTimersActive());
+    }
+
+    @Test
     public void testSecondaryTimerExpireNrIdle() throws Exception {
         doReturn(true).when(mFeatureFlags).supportNrSaRrcIdle();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
@@ -1779,6 +1862,8 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testNrTimerResetWhenPlmnChanged() throws Exception {
         testTransitionToCurrentStateNrConnectedMmwave();
+        mBundle.putBoolean(CarrierConfigManager.KEY_NR_TIMERS_RESET_ON_PLMN_CHANGE_BOOL,
+                true);
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
                 "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_SECONDARY_GRACE_PERIOD_STRING,
@@ -1798,7 +1883,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
         // PLMN changed, should cancel any active timers
         ServiceState newSS = mock(ServiceState.class);
-        doReturn("different plmn").when(newSS).getOperatorAlpha();
+        doReturn("different plmn").when(newSS).getOperatorNumeric();
         doReturn(newSS).when(mSST).getServiceState();
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();

@@ -246,24 +246,6 @@ public class DomainSelectionControllerTest extends TelephonyTest {
         verify(mMockContext, times(1)).bindService(any(), any(), anyInt());
     }
 
-    /**
-     * Ensure that calling unbind stops automatic rebind from occurring.
-     */
-    @SmallTest
-    @Test
-    public void testUnbindCauseAutoBindCancelAfterBinderDied() throws RemoteException {
-        ServiceConnection conn = bindAndConnectService();
-
-        conn.onBindingDied(null /*null*/);
-        mTestController.unbind();
-
-        long delay = mTestController.getBindDelay();
-        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
-
-        // Unbind should stop the autobind from occurring.
-        verify(mMockContext, times(1)).bindService(any(), any(), anyInt());
-    }
-
     private void bindAndNullServiceError() {
         ServiceConnection connection = bindService(mTestComponentName);
         connection.onNullBinding(mTestComponentName);

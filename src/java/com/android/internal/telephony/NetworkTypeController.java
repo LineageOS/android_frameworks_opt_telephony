@@ -165,6 +165,7 @@ public class NetworkTypeController extends StateMachine {
     private boolean mIsPrimaryTimerActive;
     private boolean mIsSecondaryTimerActive;
     private boolean mIsTimerResetEnabledForLegacyStateRrcIdle;
+    private boolean mIsTimerResetEnabledOnPlmnChanges;
     private int mLtePlusThresholdBandwidth;
     private int mNrAdvancedThresholdBandwidth;
     private boolean mIncludeLteForNrAdvancedThresholdBandwidth;
@@ -172,6 +173,8 @@ public class NetworkTypeController extends StateMachine {
     @NonNull private final Set<Integer> mAdditionalNrAdvancedBands = new HashSet<>();
     @NonNull private String mPrimaryTimerState;
     @NonNull private String mSecondaryTimerState;
+    // TODO(b/316425811 remove the workaround)
+    private int mNrAdvancedBandsSecondaryTimer;
     @NonNull private String mPreviousState;
     @LinkStatus private int mPhysicalLinkStatus;
     private boolean mIsPhysicalChannelConfig16Supported;
@@ -191,6 +194,8 @@ public class NetworkTypeController extends StateMachine {
 
     // Ratchet physical channel config fields to prevent 5G/5G+ flickering
     @NonNull private Set<Integer> mRatchetedNrBands = new HashSet<>();
+    // TODO(b/316425811 remove the workaround)
+    private boolean mLastShownNrDueToAdvancedBand = false;
     private int mRatchetedNrBandwidths = 0;
     private int mLastAnchorNrCellId = PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN;
     private boolean mDoesPccListIndicateIdle = false;
@@ -304,6 +309,8 @@ public class NetworkTypeController extends StateMachine {
                 CarrierConfigManager.KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING);
         mIsTimerResetEnabledForLegacyStateRrcIdle = config.getBoolean(
                 CarrierConfigManager.KEY_NR_TIMERS_RESET_IF_NON_ENDC_AND_RRC_IDLE_BOOL);
+        mIsTimerResetEnabledOnPlmnChanges = config.getBoolean(
+                CarrierConfigManager.KEY_NR_TIMERS_RESET_ON_PLMN_CHANGE_BOOL);
         mLtePlusThresholdBandwidth = config.getInt(
                 CarrierConfigManager.KEY_LTE_PLUS_THRESHOLD_BANDWIDTH_KHZ_INT);
         mNrAdvancedThresholdBandwidth = config.getInt(
@@ -359,6 +366,8 @@ public class NetworkTypeController extends StateMachine {
                     mNrPhysicalLinkStatusChangedCallback);
             mNrPhysicalLinkStatusChangedCallback = null;
         }
+        mNrAdvancedBandsSecondaryTimer = config.getInt(
+                CarrierConfigManager.KEY_NR_ADVANCED_BANDS_SECONDARY_TIMER_SECONDS_INT);
         String nrIconConfiguration = config.getString(
                 CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING);
         String overrideTimerRule = config.getString(
@@ -656,6 +665,7 @@ public class NetworkTypeController extends StateMachine {
                     mIsSecondaryTimerActive = false;
                     mSecondaryTimerState = "";
                     updateTimers();
+                    mLastShownNrDueToAdvancedBand = false;
                     updateOverrideNetworkType();
                     break;
                 case EVENT_RADIO_OFF_OR_UNAVAILABLE:
@@ -1136,7 +1146,11 @@ public class NetworkTypeController extends StateMachine {
 
         @Override
         public boolean processMessage(Message msg) {
-            if (DBG) log("NrConnectedAdvancedState: process " + getEventName(msg.what));
+            mLastShownNrDueToAdvancedBand = isAdditionalNrAdvancedBand(mRatchetedNrBands);
+            if (DBG) {
+                log("NrConnectedAdvancedState: process " + getEventName(msg.what)
+                        + ", been using advanced band is " + mLastShownNrDueToAdvancedBand);
+            }
             updateTimers();
             AsyncResult ar;
             switch (msg.what) {
@@ -1206,12 +1220,13 @@ public class NetworkTypeController extends StateMachine {
 
     /** On service state changed. */
     private void onServiceStateChanged() {
-        ServiceState newSS = mPhone.getServiceStateTracker().getServiceState();
-        if (!TextUtils.equals(mServiceState.getOperatorAlpha(), newSS.getOperatorAlpha())) {
-            log("PLMN changed, reset any timers");
+        ServiceState ss = mPhone.getServiceStateTracker().getServiceState();
+        if (mIsTimerResetEnabledOnPlmnChanges
+                && !TextUtils.equals(mServiceState.getOperatorNumeric(), ss.getOperatorNumeric())) {
+            log("Reset any timers due to nr_timers_reset_on_plmn_change_bool");
             resetAllTimers();
         }
-        mServiceState = newSS;
+        mServiceState = ss;
         if (DBG) log("ServiceState updated: " + mServiceState);
     }
 
@@ -1321,6 +1336,10 @@ public class NetworkTypeController extends StateMachine {
         }
         if (!mIsDeviceIdleMode && rule != null && rule.getSecondaryTimer(currentName) > 0) {
             int duration = rule.getSecondaryTimer(currentName);
+            if (mLastShownNrDueToAdvancedBand && mNrAdvancedBandsSecondaryTimer > 0) {
+                duration = mNrAdvancedBandsSecondaryTimer;
+                if (DBG) log("secondary timer adjusted by nr_advanced_bands_secondary_timer_long");
+            }
             if (DBG) log(duration + "s secondary timer started for state: " + currentName);
             mSecondaryTimerState = currentName;
             mPreviousState = currentName;
@@ -1425,6 +1444,8 @@ public class NetworkTypeController extends StateMachine {
         mIsSecondaryTimerActive = false;
         mPrimaryTimerState = "";
         mSecondaryTimerState = "";
+
+        mLastShownNrDueToAdvancedBand = false;
     }
 
     private boolean isTimerActiveForRrcIdle() {
