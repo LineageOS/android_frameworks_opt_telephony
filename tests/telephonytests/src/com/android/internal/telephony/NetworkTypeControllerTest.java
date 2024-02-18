@@ -43,6 +43,9 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
+import android.telephony.data.EpsQos;
+import android.telephony.data.Qos;
+import android.telephony.data.QosBearerSession;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -58,6 +61,7 @@ import org.mockito.ArgumentCaptor;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @RunWith(AndroidTestingRunner.class)
@@ -269,7 +273,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         assertEquals("DefaultState", getCurrentState().getName());
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_DORMANT, null));
+                DataCallResponse.LINK_STATUS_DORMANT);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
@@ -308,7 +312,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_DORMANT, null));
+                DataCallResponse.LINK_STATUS_DORMANT);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
@@ -319,7 +323,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         assertEquals("DefaultState", getCurrentState().getName());
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
+                DataCallResponse.LINK_STATUS_ACTIVE);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("not_restricted_rrc_con", getCurrentState().getName());
@@ -361,7 +365,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
+                DataCallResponse.LINK_STATUS_ACTIVE);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("not_restricted_rrc_con", getCurrentState().getName());
@@ -768,7 +772,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
 
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
+                DataCallResponse.LINK_STATUS_ACTIVE);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("not_restricted_rrc_con", getCurrentState().getName());
@@ -808,7 +812,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         testTransitionToCurrentStateNrConnectedMmwave();
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
+                DataCallResponse.LINK_STATUS_ACTIVE);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
 
         processAllMessages();
@@ -844,7 +848,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         // Transition to LTE connected state
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
+                DataCallResponse.LINK_STATUS_ACTIVE);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("not_restricted_rrc_con", getCurrentState().getName());
@@ -874,7 +878,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         // Transition to idle state
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_DORMANT, null));
+                DataCallResponse.LINK_STATUS_DORMANT);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
@@ -898,7 +902,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         testTransitionToCurrentStateLteConnected();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_DORMANT, null));
+                DataCallResponse.LINK_STATUS_DORMANT);
 
         processAllMessages();
         assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
@@ -937,7 +941,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         testTransitionToCurrentStateLteConnected_usingUserDataForRrcDetection();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_DORMANT, null));
+                DataCallResponse.LINK_STATUS_DORMANT);
 
         processAllMessages();
         assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
@@ -1793,7 +1797,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
-                new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
+                DataCallResponse.LINK_STATUS_ACTIVE);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
 
@@ -1886,6 +1890,57 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         doReturn("different plmn").when(newSS).getOperatorNumeric();
         doReturn(newSS).when(mSST).getServiceState();
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
+        processAllMessages();
+
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                mNetworkTypeController.getOverrideNetworkType());
+        assertFalse(mNetworkTypeController.areAnyTimersActive());
+    }
+
+    @Test
+    public void testNrTimerResetWhenVoiceQos() throws Exception {
+        testTransitionToCurrentStateNrConnectedMmwave();
+        mBundle.putBoolean(CarrierConfigManager.KEY_NR_TIMERS_RESET_ON_VOICE_QOS_BOOL,
+                true);
+        mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
+                "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
+        mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_SECONDARY_GRACE_PERIOD_STRING,
+                "connected_mmwave,any,30");
+        sendCarrierConfigChanged();
+
+        // should trigger 10 second primary timer
+        doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
+        doReturn(ServiceState.FREQUENCY_RANGE_UNKNOWN).when(mServiceState).getNrFrequencyRange();
+        mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
+        processAllMessages();
+
+        assertEquals("legacy", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
+                mNetworkTypeController.getOverrideNetworkType());
+        assertTrue(mNetworkTypeController.areAnyTimersActive());
+
+        // Qos changed, but not in call, so no thing happens.
+        ArgumentCaptor<DataNetworkControllerCallback> dataNetworkControllerCallbackCaptor =
+                ArgumentCaptor.forClass(DataNetworkControllerCallback.class);
+        verify(mDataNetworkController).registerDataNetworkControllerCallback(
+                dataNetworkControllerCallbackCaptor.capture());
+        DataNetworkControllerCallback callback = dataNetworkControllerCallbackCaptor.getValue();
+        callback.onQosSessionsChanged(List.of(
+                new QosBearerSession(1, new EpsQos(
+                        new Qos.QosBandwidth(1000, 1),
+                        new Qos.QosBandwidth(1000, 0),
+                        9 /* QCI */), Collections.emptyList())));
+        processAllMessages();
+
+        // Confirm if QCI not 1, timers are still active.
+        assertTrue(mNetworkTypeController.areAnyTimersActive());
+
+        // Send Voice QOS where QCI is 1, confirm timers are cancelled.
+        callback.onQosSessionsChanged(List.of(
+                new QosBearerSession(1, new EpsQos(
+                        new Qos.QosBandwidth(1000, 1),
+                        new Qos.QosBandwidth(1000, 0),
+                        1 /* QCI */), Collections.emptyList())));
         processAllMessages();
 
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,

@@ -122,6 +122,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -921,6 +922,14 @@ public class DataNetwork extends StateMachine {
          */
         public abstract void onRetryUnsatisfiedNetworkRequest(
                 @NonNull TelephonyNetworkRequest networkRequest);
+
+        /**
+         * Called when QosBearerSessions bearer changed, which indicates VoNr or VoLte calls.
+         *
+         * @param qosBearerSessions The current qosBearerSessions.
+         */
+        public abstract void onQosSessionsChanged(
+                @NonNull List<QosBearerSession> qosBearerSessions);
     }
 
     /**
@@ -2676,6 +2685,12 @@ public class DataNetwork extends StateMachine {
 
         mDefaultQos = response.getDefaultQos();
 
+
+        Set<QosBearerSession> newSessions = new HashSet<>(response.getQosBearerSessions());
+        if (newSessions.size() != mQosBearerSessions.size()
+                || !newSessions.containsAll(mQosBearerSessions)) {
+            mDataNetworkCallback.onQosSessionsChanged(response.getQosBearerSessions());
+        }
         mQosBearerSessions.clear();
         mQosBearerSessions.addAll(response.getQosBearerSessions());
         if (mQosCallbackTracker != null) {
