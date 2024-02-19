@@ -118,3 +118,10 @@ flag {
   description: "This flag is for internal implementation to handle reconnect request from QNS in telephony FWK."
   bug: "319520561"
 }
+
+flag {
+  name: "dsrs_diagnostics_enabled"
+  namespace: "telephony"
+  description: "Enable DSRS diagnostics."
+  bug: "319601607"
+}

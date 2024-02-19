@@ -58,6 +58,8 @@ import java.util.Set;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class DataStallRecoveryManagerTest extends TelephonyTest {
+    private static final String KEY_IS_DSRS_DIAGNOSTICS_ENABLED =
+            "is_dsrs_diagnostics_enabled";
     private FakeContentResolver mFakeContentResolver;
 
     // Mocked classes
@@ -429,6 +431,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
     @Test
     public void testSendDSRMData() throws Exception {
         ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
+        boolean isDsrsDiagnosticsEnabled = mFeatureFlags.dsrsDiagnosticsEnabled();
 
         logd("Set phone status to normal status.");
         sendOnInternetDataNetworkCallback(true);
@@ -460,8 +463,13 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
             logd(bundle.toString());
             int size = bundle.size();
             logd("bundle size is " + size);
-            // Check if bundle size is 19
-            assertThat(size).isEqualTo(19);
+            if (isDsrsDiagnosticsEnabled) {
+                // Check if bundle size is 27
+                assertThat(size).isEqualTo(27);
+            } else {
+                // Check if bundle size is 19
+                assertThat(size).isEqualTo(19);
+            }
         }
     }
 
