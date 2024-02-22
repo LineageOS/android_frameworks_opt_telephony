@@ -98,6 +98,7 @@ public class PhoneFactory {
     @UnsupportedAppUsage
     static private Context sContext;
     static private PhoneConfigurationManager sPhoneConfigurationManager;
+    static private SimultaneousCallingTracker sSimultaneousCallingTracker;
     static private PhoneSwitcher sPhoneSwitcher;
     static private TelephonyNetworkFactory[] sTelephonyNetworkFactories;
     static private NotificationChannelController sNotificationChannelController;
@@ -257,6 +258,10 @@ public class PhoneFactory {
                 }
 
                 sPhoneConfigurationManager = PhoneConfigurationManager.init(sContext, featureFlags);
+                if (featureFlags.simultaneousCallingIndications()) {
+                    sSimultaneousCallingTracker =
+                            SimultaneousCallingTracker.init(sContext, featureFlags);
+                }
 
                 sCellularNetworkValidator = CellularNetworkValidator.make(sContext);
 

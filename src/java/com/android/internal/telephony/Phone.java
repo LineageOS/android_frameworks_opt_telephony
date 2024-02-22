@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.telephony.TelephonyManager.HAL_SERVICE_RADIO;
+import static android.telephony.ims.ImsService.CAPABILITY_SUPPORTS_SIMULTANEOUS_CALLING;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -4618,6 +4619,20 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                         "WFC Wi-Fi Only Mode: IMS not registered");
             }
         }
+    }
+
+    public boolean isImsServiceSimultaneousCallingSupportCapable(Context context) {
+        if (!mFeatureFlags.simultaneousCallingIndications()) return false;
+        boolean capable = false;
+        ImsManager imsManager = ImsManager.getInstance(context, mPhoneId);
+        if (imsManager != null) {
+            try {
+                capable = imsManager.isCapable(CAPABILITY_SUPPORTS_SIMULTANEOUS_CALLING);
+            } catch (ImsException e) {
+                loge("initializeTerminalBasedCallWaiting : exception " + e);
+            }
+        }
+        return capable;
     }
 
     public void startRingbackTone() {
