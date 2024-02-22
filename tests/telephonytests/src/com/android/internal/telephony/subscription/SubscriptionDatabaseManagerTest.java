@@ -720,7 +720,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         assertThrows(IllegalArgumentException.class,
                 () -> mDatabaseManagerUT.setNumber(1, FAKE_PHONE_NUMBER2));
 
-        SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
+        // Prevent the carrier number from overriding the display number
+        SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(
+                new SubscriptionInfoInternal.Builder(FAKE_SUBSCRIPTION_INFO1)
+                        .setNumberFromCarrier("").build());
         mDatabaseManagerUT.setNumber(subInfo.getSubscriptionId(), FAKE_PHONE_NUMBER2);
         processAllMessages();
 
