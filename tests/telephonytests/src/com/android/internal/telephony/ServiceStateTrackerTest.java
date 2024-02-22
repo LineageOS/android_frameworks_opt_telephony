@@ -3373,7 +3373,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertFalse(sst.mSS.isIwlanPreferred());
 
         when(mAccessNetworksManager.isAnyApnOnIwlan()).thenReturn(true);
-        accessNetworksManagerCallback.onPreferredTransportChanged(0);
+        accessNetworksManagerCallback.onPreferredTransportChanged(0, false);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
 
         assertTrue(sst.mSS.isIwlanPreferred());
