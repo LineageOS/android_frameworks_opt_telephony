@@ -1611,7 +1611,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testSetDisplayNumber() {
-        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscription(new SubscriptionInfoInternal.Builder(FAKE_SUBSCRIPTION_INFO1)
+                .setNumberFromCarrier("")
+                .build());
 
         // Should fail without MODIFY_PHONE_STATE
         assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
@@ -2165,6 +2167,39 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         assertThrows(IllegalArgumentException.class, () -> mSubscriptionManagerServiceUT
                 .setSubscriptionProperty(1, "hahahaha", "0"));
+    }
+
+    @Test
+    public void testGetNumberWithCarrierNumber() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        // Should fail without MODIFY_PHONE_STATE
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setDisplayNumber(FAKE_PHONE_NUMBER2, 1));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        mSubscriptionManagerServiceUT.setDisplayNumber(FAKE_PHONE_NUMBER2, 1);
+        processAllMessages();
+        verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1);
+        assertThat(subInfo).isNotNull();
+        assertThat(subInfo.getNumber()).isEqualTo(FAKE_PHONE_NUMBER1);
+        Mockito.clearInvocations(mMockedSubscriptionManagerServiceCallback);
+
+        setCarrierPrivilegesForSubId(true, 1);
+        mSubscriptionManagerServiceUT.setPhoneNumber(1,
+                SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER, "",
+                CALLING_PACKAGE, CALLING_FEATURE);
+        processAllMessages();
+        verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
+        setCarrierPrivilegesForSubId(false, 1);
+
+        subInfo = mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1);
+        assertThat(subInfo).isNotNull();
+        assertThat(subInfo.getNumber()).isEqualTo(FAKE_PHONE_NUMBER2);
     }
 
     @Test
