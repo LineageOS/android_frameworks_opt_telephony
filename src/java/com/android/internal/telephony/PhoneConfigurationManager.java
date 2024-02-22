@@ -560,7 +560,8 @@ public class PhoneConfigurationManager {
     }
 
     public int getNumberOfModemsWithSimultaneousVoiceConnections() {
-        return getStaticPhoneCapability().getMaxActiveVoiceSubscriptions();
+        return maybeOverrideMaxActiveVoiceSubscriptions(mStaticCapability)
+                .getMaxActiveVoiceSubscriptions();
     }
 
     public boolean isVirtualDsdaEnabled() {
