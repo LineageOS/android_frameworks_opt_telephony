@@ -753,7 +753,14 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private void updateTransport(@NetCapability int capability, @TransportType int transport) {
         doReturn(transport).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(capability);
-        mAccessNetworksManagerCallback.onPreferredTransportChanged(capability);
+        mAccessNetworksManagerCallback.onPreferredTransportChanged(capability, false);
+        processAllMessages();
+    }
+
+    private void reconnectTransport(@NetCapability int capability, @TransportType int transport) {
+        doReturn(transport).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(capability);
+        mAccessNetworksManagerCallback.onPreferredTransportChanged(capability, true);
         processAllMessages();
     }
 
@@ -2958,7 +2965,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
         mAccessNetworksManagerCallback.onPreferredTransportChanged(
-                NetworkCapabilities.NET_CAPABILITY_IMS);
+                NetworkCapabilities.NET_CAPABILITY_IMS, false);
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_UMTS,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         processAllMessages();
@@ -5116,5 +5123,74 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
         assertThat(waitForIntegerConsumerResponse(1 /*numOfEvents*/)).isTrue();
         assertThat(mIntegerConsumerResult).isEqualTo(DataServiceCallback.RESULT_ERROR_INVALID_ARG);
+    }
+
+    @Test
+    public void testForceReconnectToPreferredTransportType() throws Exception {
+        testSetupImsDataNetwork();
+        reconnectTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+
+        // Verify IMS network was torn down on source first.
+        verify(mMockedWwanDataServiceManager).deactivateDataCall(anyInt(),
+                eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
+
+        // Verify that IWLAN is brought up again on IWLAN.
+        verify(mMockedWlanDataServiceManager).setupDataCall(anyInt(),
+                any(DataProfile.class), anyBoolean(), anyBoolean(),
+                eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), any(), anyBoolean(),
+                any(Message.class));
+
+        DataNetwork dataNetwork = getDataNetworks().get(0);
+        assertThat(dataNetwork.getTransport()).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+    }
+
+    @Test
+    public void testForceReconnectIgnored() throws Exception {
+        mCarrierConfig.putStringArray(
+                CarrierConfigManager.KEY_IWLAN_HANDOVER_POLICY_STRING_ARRAY,
+                new String[]{
+                        "source=EUTRAN|NGRAN|IWLAN|UNKNOWN, target=EUTRAN|NGRAN|IWLAN, "
+                                + "type=allowed, capabilities=IMS"
+                });
+        carrierConfigChanged();
+
+        testSetupImsDataNetwork();
+        reconnectTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+        // request reconnection to current transport type, tear down should not happen.
+        verify(mMockedWwanDataServiceManager, never()).deactivateDataCall(anyInt(),
+                eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
+
+        Mockito.reset(mMockedWlanDataServiceManager);
+
+        // Trigger Handover to IWLAN.
+        updateTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+
+        // Capture the message for setup data call response. We want to delay it.
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockedWlanDataServiceManager).setupDataCall(anyInt(), any(DataProfile.class),
+                anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(), any(), any(), anyBoolean(),
+                messageCaptor.capture());
+
+        // Force reconnect to preferred transport type while handover is in progress.
+        reconnectTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+        // Finally handover is completed.
+        Message msg = messageCaptor.getValue();
+        DataCallResponse response = new DataCallResponse.Builder()
+                .setCause(DataFailCause.NONE)
+                .build();
+        msg.getData().putParcelable("data_call_response", response);
+        msg.arg1 = DataServiceCallback.RESULT_SUCCESS;
+        msg.sendToTarget();
+        processAllMessages();
+
+        verify(mMockedWwanDataServiceManager, never()).deactivateDataCall(anyInt(),
+                eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
     }
 }
