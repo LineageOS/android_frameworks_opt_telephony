@@ -1,10 +1,13 @@
 package: "com.android.internal.telephony.flags"
 
 flag {
-  name: "auto_switch_allow_roaming"
+  name: "auto_data_switch_allow_roaming"
   namespace: "telephony"
   description: "Allow using roaming network as target if user allows it from settings."
-  bug: "306488039"
+  bug: "287132491"
+  metadata {
+    purpose: PURPOSE_BUGFIX
+  }
 }
 
 flag {
