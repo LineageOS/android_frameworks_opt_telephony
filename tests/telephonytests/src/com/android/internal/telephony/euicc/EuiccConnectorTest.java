@@ -154,6 +154,11 @@ public class EuiccConnectorTest extends TelephonyTest {
                     }
 
                     @Override
+                    public void onUnsupportedOperationExceptionComplete(String message) {
+                        fail("Command should have failed");
+                    }
+
+                    @Override
                     public void onEuiccServiceUnavailable() {
                         assertTrue("Callback called twice", called.compareAndSet(false, true));
                     }
@@ -295,12 +300,65 @@ public class EuiccConnectorTest extends TelephonyTest {
                     }
 
                     @Override
+                    public void onUnsupportedOperationExceptionComplete(String message) {
+                        fail("Command should have failed");
+                    }
+
+                    @Override
                     public void onEuiccServiceUnavailable() {
                         fail("Command should have succeeded");
                     }
                 });
         mLooper.dispatchAll();
         assertEquals(AVAILABLE_MEMORY, availableMemoryInBytesRef.get().longValue());
+    }
+
+    @Test
+    public void testCommandDispatch_forAvailableMemory_unsupportedOperationException()
+            throws Exception {
+        prepareEuiccApp(
+                true /* hasPermission */,
+                true /* requiresBindPermission */,
+                true /* hasPriority */);
+        mConnector = new EuiccConnector(mContext, mLooper.getLooper());
+        doAnswer(
+                new Answer<Void>() {
+                    @Override
+                    public Void answer(InvocationOnMock invocation) throws Exception {
+                        IGetAvailableMemoryInBytesCallback callback =
+                                invocation.getArgument(1);
+                        callback.onUnsupportedOperationException("exception message");
+                        return null;
+                    }
+                })
+                .when(mEuiccService)
+                .getAvailableMemoryInBytes(
+                        anyInt(), Mockito.<IGetAvailableMemoryInBytesCallback>any());
+        final AtomicReference<String> exceptionRef = new AtomicReference<>();
+        mConnector.getAvailableMemoryInBytes(
+                CARD_ID,
+                new EuiccConnector.GetAvailableMemoryInBytesCommandCallback() {
+                    @Override
+                    public void onGetAvailableMemoryInBytesComplete(long availableMemoryInBytes) {
+                        fail("Command should have failed");
+                    }
+
+                    @Override
+                    public void onUnsupportedOperationExceptionComplete(String message) {
+                        if (exceptionRef.get() != null) {
+                            fail("Callback called twice");
+                        }
+                        exceptionRef.set(message);
+                    }
+
+                    @Override
+                    public void onEuiccServiceUnavailable() {
+                        fail("Command should have succeeded");
+                    }
+                });
+        mLooper.dispatchAll();
+        String message = exceptionRef.get();
+        assertTrue(message != null && !message.isEmpty());
     }
 
     @Test
@@ -343,6 +401,11 @@ public class EuiccConnectorTest extends TelephonyTest {
                 new EuiccConnector.GetAvailableMemoryInBytesCommandCallback() {
                     @Override
                     public void onGetAvailableMemoryInBytesComplete(long availableMemoryInBytes) {
+                        fail("Command should have failed");
+                    }
+
+                    @Override
+                    public void onUnsupportedOperationExceptionComplete(String message) {
                         fail("Command should have failed");
                     }
 
@@ -399,6 +462,11 @@ public class EuiccConnectorTest extends TelephonyTest {
                     @Override
                     public void onGetAvailableMemoryInBytesComplete(long availableMemoryInBytes) {
                         fail("Unexpected command success callback");
+                    }
+
+                    @Override
+                    public void onUnsupportedOperationExceptionComplete(String message) {
+                        fail("Command should have failed");
                     }
 
                     @Override
