@@ -70,3 +70,13 @@ flag {
     description: "Allows applications to launch Reset Mobile Network Settings page in Settings app."
     bug:"271921464"
 }
+
+flag {
+    name: "fix_crash_on_getting_config_when_phone_is_gone"
+    namespace: "telephony"
+    description: "Fix VCN crash when calling CarrierConfigManager.getConfigForSubId while phone process has gone."
+    bug:"319791612"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
+}

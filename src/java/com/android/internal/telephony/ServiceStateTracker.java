@@ -739,7 +739,7 @@ public class ServiceStateTracker extends Handler {
 
         mAccessNetworksManagerCallback = new AccessNetworksManagerCallback(this::post) {
             @Override
-            public void onPreferredTransportChanged(int networkCapability) {
+            public void onPreferredTransportChanged(int networkCapability, boolean forceReconnect) {
                 // Check if preferred on IWLAN was changed in ServiceState.
                 boolean isIwlanPreferred = mAccessNetworksManager.isAnyApnOnIwlan();
                 if (mSS.isIwlanPreferred() != isIwlanPreferred) {
