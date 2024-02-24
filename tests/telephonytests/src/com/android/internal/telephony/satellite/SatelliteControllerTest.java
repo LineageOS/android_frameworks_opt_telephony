@@ -124,6 +124,8 @@ import com.android.internal.telephony.IVoidConsumer;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.configupdate.ConfigProviderAdaptor;
+import com.android.internal.telephony.configupdate.TelephonyConfigUpdateInstallReceiver;
 import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 import com.android.internal.telephony.satellite.metrics.ProvisionMetricsStats;
@@ -189,6 +191,10 @@ public class SatelliteControllerTest extends TelephonyTest {
     @Mock private ISatelliteTransmissionUpdateCallback mStartTransmissionUpdateCallback;
     @Mock private ISatelliteTransmissionUpdateCallback mStopTransmissionUpdateCallback;
     @Mock private FeatureFlags mFeatureFlags;
+    @Mock private TelephonyConfigUpdateInstallReceiver mMockTelephonyConfigUpdateInstallReceiver;
+    @Mock private SatelliteConfigParser mMockConfigParser;
+    @Mock private SatelliteConfig mMockConfig;
+
     private Semaphore mIIntegerConsumerSemaphore = new Semaphore(0);
     private IIntegerConsumer mIIntegerConsumer = new IIntegerConsumer.Stub() {
         @Override
@@ -459,6 +465,8 @@ public class SatelliteControllerTest extends TelephonyTest {
         replaceInstance(SubscriptionManagerService.class, "sInstance", null,
                 mMockSubscriptionManagerService);
         replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[]{mPhone, mPhone2});
+        replaceInstance(TelephonyConfigUpdateInstallReceiver.class, "sReceiverAdaptorInstance",
+                null, mMockTelephonyConfigUpdateInstallReceiver);
 
         mServiceState2 = Mockito.mock(ServiceState.class);
         when(mPhone.getServiceState()).thenReturn(mServiceState);
@@ -536,6 +544,9 @@ public class SatelliteControllerTest extends TelephonyTest {
                 any(Handler.class),
                 eq(28) /* EVENT_SATELLITE_MODEM_STATE_CHANGED */,
                 eq(null));
+
+        doReturn(mMockConfigParser).when(mMockTelephonyConfigUpdateInstallReceiver)
+                .getConfigParser(ConfigProviderAdaptor.DOMAIN_SATELLITE);
     }
 
     @After
@@ -2761,100 +2772,178 @@ public class SatelliteControllerTest extends TelephonyTest {
                 eq(plmnListPerCarrier), eq(allSatellitePlmnList), any(Message.class));
     }
 
+    private void setConfigData(List<String> plmnList) {
+        doReturn(plmnList).when(mMockConfig).getAllSatellitePlmnsForCarrier(anyInt());
+        doReturn(mMockConfig).when(mMockConfigParser).getConfig();
+
+        Map<String, List<Integer>> servicePerPlmn = new HashMap<>();
+        List<List<Integer>> serviceLists = Arrays.asList(
+                Arrays.asList(1),
+                Arrays.asList(3),
+                Arrays.asList(5)
+        );
+        for (int i = 0; i < plmnList.size(); i++) {
+            servicePerPlmn.put(plmnList.get(i), serviceLists.get(i));
+        }
+        doReturn(servicePerPlmn).when(mMockConfig).getSupportedSatelliteServices(anyInt());
+        doReturn(mMockConfig).when(mMockConfigParser).getConfig();
+    }
+
+    @Test
+    public void testUpdateSupportedSatelliteServices() throws Exception {
+        logd("testUpdateSupportedSatelliteServices");
+        when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(true);
+        replaceInstance(SatelliteController.class, "mMergedPlmnListPerCarrier",
+                mSatelliteControllerUT, new SparseArray<>());
+        replaceInstance(SatelliteController.class, "mSatelliteServicesSupportedByCarriers",
+                mSatelliteControllerUT, new HashMap<>());
+        List<Integer> servicesPerPlmn;
+
+        // verify whether an empty list is returned with conditions below
+        // the config data plmn list : empty
+        // the carrier config plmn list : empty
+        setConfigData(new ArrayList<>());
+        setCarrierConfigDataPlmnList(new ArrayList<>());
+        invokeCarrierConfigChanged();
+        servicesPerPlmn = mSatelliteControllerUT.getSupportedSatelliteServices(SUB_ID, "31016");
+        assertEquals(new ArrayList<>(), servicesPerPlmn);
+
+        // Verify whether the carrier config plmn list is returned with conditions below
+        // the config data plmn list : empty
+        // the carrier config plmn list : exist with services {{2}, {1, 3}, {2}}
+        setConfigData(new ArrayList<>());
+        setCarrierConfigDataPlmnList(Arrays.asList("00101", "00102", "00104"));
+        invokeCarrierConfigChanged();
+        servicesPerPlmn = mSatelliteControllerUT.getSupportedSatelliteServices(SUB_ID, "00101");
+        assertEquals(Arrays.asList(2).stream().sorted().toList(),
+                servicesPerPlmn.stream().sorted().toList());
+        servicesPerPlmn = mSatelliteControllerUT.getSupportedSatelliteServices(SUB_ID, "00102");
+        assertEquals(Arrays.asList(1, 3).stream().sorted().toList(),
+                servicesPerPlmn.stream().sorted().toList());
+        servicesPerPlmn = mSatelliteControllerUT.getSupportedSatelliteServices(SUB_ID, "00104");
+        assertEquals(Arrays.asList(2).stream().sorted().toList(),
+                servicesPerPlmn.stream().sorted().toList());
+
+        // Verify whether the carrier config plmn list is returned with conditions below
+        // the config data plmn list : exist with services {{1}, {3}, {5}}
+        // the carrier config plmn list : exist with services {{2}, {1, 3}, {2}}
+        setConfigData(Arrays.asList("00101", "00102", "31024"));
+        setCarrierConfigDataPlmnList(Arrays.asList("00101", "00102", "00104"));
+        invokeCarrierConfigChanged();
+        servicesPerPlmn = mSatelliteControllerUT.getSupportedSatelliteServices(SUB_ID, "00101");
+        assertEquals(Arrays.asList(1).stream().sorted().toList(),
+                servicesPerPlmn.stream().sorted().toList());
+        servicesPerPlmn = mSatelliteControllerUT.getSupportedSatelliteServices(SUB_ID, "00102");
+        assertEquals(Arrays.asList(3).stream().sorted().toList(),
+                servicesPerPlmn.stream().sorted().toList());
+        servicesPerPlmn = mSatelliteControllerUT.getSupportedSatelliteServices(SUB_ID, "00104");
+        assertEquals(new ArrayList<>(), servicesPerPlmn.stream().sorted().toList());
+        servicesPerPlmn = mSatelliteControllerUT.getSupportedSatelliteServices(SUB_ID, "31024");
+        assertEquals(Arrays.asList(5).stream().sorted().toList(),
+                servicesPerPlmn.stream().sorted().toList());
+    }
+    private void setEntitlementPlmnList(List<String> plmnList) throws Exception {
+        SparseArray<List<String>> entitlementPlmnListPerCarrier = new SparseArray<>();
+        if (!plmnList.isEmpty()) {
+            entitlementPlmnListPerCarrier.clear();
+            entitlementPlmnListPerCarrier.put(SUB_ID, plmnList);
+        }
+        replaceInstance(SatelliteController.class, "mEntitlementPlmnListPerCarrier",
+                mSatelliteControllerUT, entitlementPlmnListPerCarrier);
+    }
+
+    private void setConfigDataPlmnList(List<String> plmnList) {
+        doReturn(plmnList).when(mMockConfig).getAllSatellitePlmnsForCarrier(anyInt());
+        doReturn(mMockConfig).when(mMockConfigParser).getConfig();
+    }
+
+    private void setCarrierConfigDataPlmnList(List<String> plmnList) {
+        if (!plmnList.isEmpty()) {
+            mCarrierConfigBundle.putBoolean(
+                    CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL,
+                    true);
+            PersistableBundle carrierSupportedSatelliteServicesPerProvider =
+                    new PersistableBundle();
+            List<String> carrierConfigPlmnList = plmnList;
+            carrierSupportedSatelliteServicesPerProvider.putIntArray(
+                    carrierConfigPlmnList.get(0), new int[]{2});
+            carrierSupportedSatelliteServicesPerProvider.putIntArray(
+                    carrierConfigPlmnList.get(1), new int[]{1, 3});
+            carrierSupportedSatelliteServicesPerProvider.putIntArray(
+                    carrierConfigPlmnList.get(2), new int[]{2});
+            mCarrierConfigBundle.putPersistableBundle(CarrierConfigManager
+                            .KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE,
+                    carrierSupportedSatelliteServicesPerProvider);
+        } else {
+            mCarrierConfigBundle.putPersistableBundle(CarrierConfigManager
+                            .KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE,
+                    new PersistableBundle());
+        }
+    }
+
+    private void invokeCarrierConfigChanged() {
+        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
+                : mCarrierConfigChangedListenerList) {
+            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
+                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
+            );
+        }
+        processAllMessages();
+    }
+
     @Test
     public void testUpdatePlmnListPerCarrier() throws Exception {
         logd("testUpdatePlmnListPerCarrier");
         when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(true);
         replaceInstance(SatelliteController.class, "mMergedPlmnListPerCarrier",
                 mSatelliteControllerUT, new SparseArray<>());
-        replaceInstance(SatelliteController.class, "mSatelliteServicesSupportedByCarriers",
-                mSatelliteControllerUT, new HashMap<>());
-        SparseArray<List<String>> entitlementPlmnListPerCarrier = new SparseArray<>();
-        replaceInstance(SatelliteController.class, "mEntitlementPlmnListPerCarrier",
-                mSatelliteControllerUT, entitlementPlmnListPerCarrier);
+        List<String> plmnListPerCarrier;
 
-        // If the carrier config and the entitlement plmn list are empty, verify whether an empty
-        // list is returned.
-        mCarrierConfigBundle.putPersistableBundle(CarrierConfigManager
-                        .KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE,
-                new PersistableBundle());
-        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
-                : mCarrierConfigChangedListenerList) {
-            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
-                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
-            );
-        }
-        processAllMessages();
-
-        List<String> plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(
-                SUB_ID);
-        assertEquals(new ArrayList<>(), plmnListPerCarrier);
-
-        // If the carrier config list is empty and the entitlement plmn list is exists, verify
-        // whether the entitlement list is returned.
-        entitlementPlmnListPerCarrier.clear();
-        List<String> entitlementPlmnList = Arrays.asList("00101", "00102", "00104");
-        entitlementPlmnListPerCarrier.put(SUB_ID, entitlementPlmnList);
-        List<String> expectedPlmnListPerCarrier = entitlementPlmnList;
-        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
-                : mCarrierConfigChangedListenerList) {
-            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
-                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
-            );
-        }
-        processAllMessages();
-
+        // verify whether an empty list is returned with conditions below
+        // the entitlement plmn list : empty
+        // the config data plmn list : empty
+        // the carrier config plmn list : empty
+        setEntitlementPlmnList(new ArrayList<>());
+        setConfigDataPlmnList(new ArrayList<>());
+        setCarrierConfigDataPlmnList(new ArrayList<>());
+        invokeCarrierConfigChanged();
         plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(SUB_ID);
-        assertEquals(expectedPlmnListPerCarrier, plmnListPerCarrier);
+        assertEquals(new ArrayList<>(), plmnListPerCarrier.stream().sorted().toList());
 
-        // If the carrier config list is exists and the entitlement plmn list is empty, verify
-        // whether the carrier config list is returned.
-        entitlementPlmnListPerCarrier.clear();
-        entitlementPlmnList = new ArrayList<>();
-        entitlementPlmnListPerCarrier.put(SUB_ID, entitlementPlmnList);
-        mCarrierConfigBundle.putBoolean(CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL,
-                true);
-        PersistableBundle carrierSupportedSatelliteServicesPerProvider = new PersistableBundle();
-        List<String> carrierConfigPlmnList = Arrays.asList("00102", "00103", "00105");
-        carrierSupportedSatelliteServicesPerProvider.putIntArray(
-                carrierConfigPlmnList.get(0), new int[]{2});
-        carrierSupportedSatelliteServicesPerProvider.putIntArray(
-                carrierConfigPlmnList.get(1), new int[]{1, 3});
-        carrierSupportedSatelliteServicesPerProvider.putIntArray(
-                carrierConfigPlmnList.get(2), new int[]{2});
-        mCarrierConfigBundle.putPersistableBundle(CarrierConfigManager
-                        .KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE,
-                carrierSupportedSatelliteServicesPerProvider);
-        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
-                : mCarrierConfigChangedListenerList) {
-            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
-                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
-            );
-        }
-        processAllMessages();
-
-        expectedPlmnListPerCarrier = carrierConfigPlmnList;
+        // Verify whether the carrier config plmn list is returned with conditions below
+        // the entitlement plmn list : empty
+        // the config data plmn list : empty
+        // the carrier config plmn list : exist
+        setEntitlementPlmnList(new ArrayList<>());
+        setConfigDataPlmnList(new ArrayList<>());
+        setCarrierConfigDataPlmnList(Arrays.asList("00101", "00102", "00104"));
+        invokeCarrierConfigChanged();
         plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(SUB_ID);
-        assertEquals(expectedPlmnListPerCarrier.stream().sorted().toList(),
+        assertEquals(Arrays.asList("00101", "00102", "00104").stream().sorted().toList(),
                 plmnListPerCarrier.stream().sorted().toList());
 
+        // Verify whether config data plmn list is returned with conditions below
+        // the entitlement plmn list : empty
+        // the config data plmn list : exist
+        // the carrier config plmn list : exist
+        setEntitlementPlmnList(new ArrayList<>());
+        setConfigDataPlmnList(Arrays.asList("11111", "22222", "33333"));
+        setCarrierConfigDataPlmnList(Arrays.asList("00101", "00102", "00104"));
+        invokeCarrierConfigChanged();
+        plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(SUB_ID);
+        assertEquals(Arrays.asList("11111", "22222", "33333").stream().sorted().toList(),
+                plmnListPerCarrier.stream().sorted().toList());
 
-        // If the carrier config and the entitlement plmn list are exist, verify whether the
-        // entitlement list is returned.
-        entitlementPlmnList = Arrays.asList("00101", "00102", "00104");
-        entitlementPlmnListPerCarrier.put(SUB_ID, entitlementPlmnList);
-        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
-                : mCarrierConfigChangedListenerList) {
-            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
-                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
-            );
-        }
-        processAllMessages();
-
-        expectedPlmnListPerCarrier = entitlementPlmnList;
-        plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(
-                SUB_ID);
-        assertEquals(expectedPlmnListPerCarrier.stream().sorted().toList(),
+        // Verify whether the entitlement plmn list is returned with conditions below
+        // the entitlement plmn list : exist
+        // the config data plmn list : exist
+        // the carrier config plmn list : exist
+        setEntitlementPlmnList(Arrays.asList("99090", "88080", "77070"));
+        setConfigDataPlmnList(Arrays.asList("11111", "22222", "33333"));
+        setCarrierConfigDataPlmnList(Arrays.asList("00101", "00102", "00104"));
+        invokeCarrierConfigChanged();
+        plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(SUB_ID);
+        assertEquals(Arrays.asList("99090", "88080", "77070").stream().sorted().toList(),
                 plmnListPerCarrier.stream().sorted().toList());
     }
 

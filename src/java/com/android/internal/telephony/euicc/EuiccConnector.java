@@ -215,6 +215,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     public interface GetAvailableMemoryInBytesCommandCallback extends BaseEuiccCommandCallback {
         /** Called when the available memory in bytes lookup has completed. */
         void onGetAvailableMemoryInBytesComplete(long availableMemoryInBytes);
+        /**
+         * Called when the connected LPA does not implement
+         * EuiccService#onGetAvailableMemoryInBytes(int).
+         */
+        void onUnsupportedOperationExceptionComplete(String message);
     }
 
     /** Callback class for {@link #getOtaStatus}. */
@@ -786,6 +791,18 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                                         callback)
                                                         .onGetAvailableMemoryInBytesComplete(
                                                                 availableMemoryInBytes);
+                                                onCommandEnd(callback);
+                                            });
+                                        }
+
+                                        @Override
+                                        public void onUnsupportedOperationException(
+                                                String message) {
+                                            sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
+                                                ((GetAvailableMemoryInBytesCommandCallback)
+                                                        callback)
+                                                        .onUnsupportedOperationExceptionComplete(
+                                                            message);
                                                 onCommandEnd(callback);
                                             });
                                         }
