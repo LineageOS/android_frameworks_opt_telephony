@@ -1888,10 +1888,12 @@ public class EuiccController extends IEuiccController.Stub {
         return awaitResult(latch, eidRef);
     }
 
-    private long blockingGetAvailableMemoryInBytesFromEuiccService(int cardId) {
+    private long blockingGetAvailableMemoryInBytesFromEuiccService(int cardId)
+            throws UnsupportedOperationException {
         CountDownLatch latch = new CountDownLatch(1);
         AtomicReference<Long> memoryRef =
                 new AtomicReference<>(EuiccManager.EUICC_MEMORY_FIELD_UNAVAILABLE);
+        AtomicReference<Exception> exceptionRef = new AtomicReference();
         mConnector.getAvailableMemoryInBytes(
                 cardId,
                 new EuiccConnector.GetAvailableMemoryInBytesCommandCallback() {
@@ -1902,11 +1904,24 @@ public class EuiccController extends IEuiccController.Stub {
                     }
 
                     @Override
+                    public void onUnsupportedOperationExceptionComplete(String message) {
+                        exceptionRef.set(new UnsupportedOperationException(message));
+                        latch.countDown();
+                    }
+
+                    @Override
                     public void onEuiccServiceUnavailable() {
                         latch.countDown();
                     }
                 });
-        return awaitResult(latch, memoryRef);
+        try {
+            return awaitResultOrException(latch, memoryRef, exceptionRef);
+        } catch (UnsupportedOperationException uoe) {
+            throw uoe;
+        } catch (Exception e) {
+            // Other type of exceptions are not expected here but re-throw in case that happens.
+            throw new UnsupportedOperationException(e);
+        }
     }
 
     private @OtaStatus int blockingGetOtaStatusFromEuiccService(int cardId) {
@@ -1953,6 +1968,24 @@ public class EuiccController extends IEuiccController.Stub {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+        return resultRef.get();
+    }
+
+    private static <T> T awaitResultOrException(
+            CountDownLatch latch,
+            AtomicReference<T> resultRef,
+            AtomicReference<Exception> resultException)
+            throws Exception {
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        if (resultException.get() != null) {
+            throw resultException.get();
+        }
+
         return resultRef.get();
     }
 
