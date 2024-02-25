@@ -48,6 +48,8 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
+import com.android.internal.telephony.flags.FeatureFlags;
+import com.android.internal.telephony.flags.FeatureFlagsImpl;
 import com.android.internal.telephony.metrics.DataStallRecoveryStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.telephony.Rlog;
@@ -153,6 +155,7 @@ public class DataStallRecoveryManager extends Handler {
     private final @NonNull Phone mPhone;
     private final @NonNull String mLogTag;
     private final @NonNull LocalLog mLocalLog = new LocalLog(128);
+    private final @NonNull FeatureFlags mFeatureFlags = new FeatureFlagsImpl();
 
     /** Data network controller */
     private final @NonNull DataNetworkController mDataNetworkController;
@@ -196,7 +199,10 @@ public class DataStallRecoveryManager extends Handler {
     private boolean mIsInternetNetworkConnected;
     /** The durations for current recovery action */
     private @ElapsedRealtimeLong long mTimeElapsedOfCurrentAction;
-
+    /** Tracks the total number of validation duration a data stall */
+    private int mValidationCount;
+    /** Tracks the number of validation for current action during a data stall */
+    private int mActionValidationCount;
     /** The array for the timers between recovery actions. */
     private @NonNull long[] mDataStallRecoveryDelayMillisArray;
     /** The boolean array for the flags. They are used to skip the recovery actions if needed. */
@@ -546,6 +552,8 @@ public class DataStallRecoveryManager extends Handler {
         mTimeLastRecoveryStartMs = 0;
         mLastAction = RECOVERY_ACTION_GET_DATA_CALL_LIST;
         mRecoveryAction = RECOVERY_ACTION_GET_DATA_CALL_LIST;
+        mValidationCount = 0;
+        mActionValidationCount = 0;
     }
 
     /**
@@ -556,8 +564,16 @@ public class DataStallRecoveryManager extends Handler {
     private void onInternetValidationStatusChanged(@ValidationStatus int status) {
         logl("onInternetValidationStatusChanged: " + DataUtils.validationStatusToString(status));
         final boolean isValid = status == NetworkAgent.VALIDATION_STATUS_VALID;
+        if (mFeatureFlags.dsrsDiagnosticsEnabled()) {
+            mValidationCount += 1;
+            mActionValidationCount += 1;
+        }
         setNetworkValidationState(isValid);
         if (isValid) {
+            if (mFeatureFlags.dsrsDiagnosticsEnabled()) {
+                // Broadcast intent that data stall recovered.
+                broadcastDataStallDetected(getRecoveryAction());
+            }
             reset();
         } else if (isRecoveryNeeded(true)) {
             // Set the network as invalid, because recovery is needed
@@ -596,6 +612,10 @@ public class DataStallRecoveryManager extends Handler {
      */
     @VisibleForTesting
     public void setRecoveryAction(@RecoveryAction int action) {
+        // Reset the validation count for action change
+        if (mFeatureFlags.dsrsDiagnosticsEnabled() && mRecoveryAction != action) {
+            mActionValidationCount = 0;
+        }
         mRecoveryAction = action;
 
         // Check if the mobile data enabled is TRUE, it means that the mobile data setting changed
@@ -674,13 +694,16 @@ public class DataStallRecoveryManager extends Handler {
         final boolean isRecovered = !mDataStalled;
         final int duration = (int) (SystemClock.elapsedRealtime() - mDataStallStartMs);
         final @RecoveredReason int reason = getRecoveredReason(mIsValidNetwork);
-        final boolean isFirstValidationOfAction = false;
         final int durationOfAction = (int) getDurationOfCurrentRecoveryMs();
+        if (mFeatureFlags.dsrsDiagnosticsEnabled()) {
+            log("mValidationCount=" + mValidationCount
+                    + ", mActionValidationCount=" + mActionValidationCount);
+        }
 
         // Get the bundled DSRS stats.
         Bundle bundle = mStats.getDataStallRecoveryMetricsData(
-                recoveryAction, isRecovered, duration, reason, isFirstValidationOfAction,
-                durationOfAction);
+                recoveryAction, isRecovered, duration, reason, mValidationCount,
+                mActionValidationCount, durationOfAction);
 
         // Put the bundled stats extras on the intent.
         intent.putExtra("EXTRA_DSRS_STATS_BUNDLE", bundle);
