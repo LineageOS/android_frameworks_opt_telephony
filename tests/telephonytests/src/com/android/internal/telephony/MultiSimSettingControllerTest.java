@@ -1007,4 +1007,57 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         // Default data is set to sub1
         verify(mSubscriptionManagerService).syncGroupedSetting(1);
     }
+
+    @Test
+    public void testDailogsAndWarnings_WithBootstrapSim() {
+        doReturn(true).when(mFeatureFlags).esimBootstrapProvisioningFlag();
+
+        // Mark sub 2 as inactive.
+        markSubscriptionInactive(2);
+        mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
+        sendCarrierConfigChanged(0, 1);
+        processAllMessages();
+
+        // Sub 1 should be default sub silently.
+        verify(mSubscriptionManagerService).setDefaultDataSubId(1);
+        verify(mSubscriptionManagerService).setDefaultVoiceSubId(1);
+        verify(mSubscriptionManagerService).setDefaultSmsSubId(1);
+        verifyDismissIntentSent();
+
+        // Mark sub 2 bootstrap sim as active in phone[1].
+        doReturn(true).when(mSubscriptionManagerService).isEsimBootStrapProvisioningActivated();
+        setSimSlotIndex(2, 1);
+        clearInvocations(mSubscriptionManagerService);
+        clearInvocations(mContext);
+        mSubInfo[2] = new SubscriptionInfoInternal.Builder().setId(2).setSimSlotIndex(1)
+                .setProfileClass(SubscriptionManager.PROFILE_CLASS_PROVISIONING).build();
+        mMultiSimSettingControllerUT.notifySubscriptionInfoChanged();
+        sendCarrierConfigChanged(1, 2);
+        processAllMessages();
+
+        // Taking out SIM 1.
+        clearInvocations(mSubscriptionManagerService);
+        markSubscriptionInactive(1/*subid*/);
+        mMultiSimSettingControllerUT.notifySubscriptionInfoChanged();
+        sendCarrierConfigChanged(0/*phoneid*/, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        processAllMessages();
+
+        // No user selection needed, no intent should be sent for notification
+        verify(mContext, never()).sendBroadcast(any());
+
+        //Insert back sim1 and switch from sub 1 to sub 3 in phone[0].
+        clearInvocations(mSubscriptionManagerService);
+        markSubscriptionInactive(1);
+        setSimSlotIndex(3, 0);
+        mMultiSimSettingControllerUT.notifySubscriptionInfoChanged();
+        sendCarrierConfigChanged(0/*phoneid*/, 3/*subid*/);
+        processAllMessages();
+
+        // Sub 3 should be default sub.
+        verify(mSubscriptionManagerService).setDefaultDataSubId(3);
+        verify(mSubscriptionManagerService).setDefaultVoiceSubId(3);
+        verify(mSubscriptionManagerService).setDefaultSmsSubId(3);
+        verify(mContext, never()).sendBroadcast(any());
+    }
+
 }
