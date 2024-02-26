@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+import static android.telephony.SubscriptionManager.PROFILE_CLASS_PROVISIONING;
 import static android.telephony.TelephonyManager.ACTION_PRIMARY_SUBSCRIPTION_LIST_CHANGED;
 import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE;
 import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL;
@@ -632,7 +633,9 @@ public class MultiSimSettingController extends Handler {
             if (hasData()) mSubscriptionManagerService.setDefaultDataSubId(subId);
             if (hasCalling()) mSubscriptionManagerService.setDefaultVoiceSubId(subId);
             if (hasMessaging()) mSubscriptionManagerService.setDefaultSmsSubId(subId);
-            sendDefaultSubConfirmedNotification(subId);
+            if (!mSubscriptionManagerService.isEsimBootStrapProvisioningActivated()) {
+                sendDefaultSubConfirmedNotification(subId);
+            }
             return;
         }
 
@@ -685,7 +688,9 @@ public class MultiSimSettingController extends Handler {
         // Update mPrimarySubList. Opportunistic subscriptions can't be default
         // data / voice / sms subscription.
         List<Integer> prevPrimarySubList = mPrimarySubList;
-        mPrimarySubList = activeSubList.stream().filter(info -> !info.isOpportunistic())
+        mPrimarySubList = activeSubList.stream()
+                .filter(info -> !info.isOpportunistic())
+                .filter(info -> info.getProfileClass() != PROFILE_CLASS_PROVISIONING)
                 .map(info -> info.getSubscriptionId())
                 .collect(Collectors.toList());
 
@@ -751,6 +756,12 @@ public class MultiSimSettingController extends Handler {
 
     private void sendSubChangeNotificationIfNeeded(int change, boolean dataSelected,
             boolean voiceSelected, boolean smsSelected) {
+
+        if (mSubscriptionManagerService.isEsimBootStrapProvisioningActivated()) {
+            log("esim bootstrap activation in progress, skip notification");
+            return;
+        }
+
         @TelephonyManager.DefaultSubscriptionSelectType
         int simSelectDialogType = getSimSelectDialogType(
                 change, dataSelected, voiceSelected, smsSelected);
