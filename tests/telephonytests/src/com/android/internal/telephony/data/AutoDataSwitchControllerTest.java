@@ -156,6 +156,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
         // Change data config
         doReturn(true).when(mDataConfigManager).isPingTestBeforeAutoDataSwitchRequired();
+        doReturn(true).when(mDataConfigManager).doesAutoDataSwitchAllowRoaming();
         doReturn(10000L).when(mDataConfigManager)
                 .getAutoDataSwitchAvailabilityStabilityTimeThreshold();
         doReturn(120000L).when(mDataConfigManager)
@@ -184,7 +185,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         mEventsToAlarmListener = getPrivateField(mAutoDataSwitchControllerUT,
                 "mEventsToAlarmListener", Map.class);
 
-        doReturn(true).when(mFeatureFlags).autoSwitchAllowRoaming();
+        doReturn(true).when(mFeatureFlags).autoDataSwitchAllowRoaming();
         doReturn(true).when(mFeatureFlags).carrierEnabledSatelliteFlag();
     }
 

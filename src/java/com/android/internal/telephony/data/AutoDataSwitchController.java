@@ -188,6 +188,12 @@ public class AutoDataSwitchController extends Handler {
      * even if ping test fails.
      */
     private boolean mRequirePingTestBeforeSwitch = true;
+    /**
+     * TODO: remove after V.
+     * To indicate whether allow using roaming nDDS if user enabled its roaming when the DDS is not
+     * usable(OOS or disabled roaming)
+     */
+    private boolean mAllowNddsRoamning = true;
     /** The count of consecutive auto switch validation failure **/
     private int mAutoSwitchValidationFailedCount = 0;
     /**
@@ -444,6 +450,7 @@ public class AutoDataSwitchController extends Handler {
         DataConfigManager dataConfig = phone.getDataNetworkController().getDataConfigManager();
         mScoreTolerance =  dataConfig.getAutoDataSwitchScoreTolerance();
         mRequirePingTestBeforeSwitch = dataConfig.isPingTestBeforeAutoDataSwitchRequired();
+        mAllowNddsRoamning = dataConfig.doesAutoDataSwitchAllowRoaming();
         mAutoDataSwitchAvailabilityStabilityTimeThreshold =
                 dataConfig.getAutoDataSwitchAvailabilityStabilityTimeThreshold();
         mAutoDataSwitchPerformanceStabilityTimeThreshold =
@@ -694,7 +701,7 @@ public class AutoDataSwitchController extends Handler {
             boolean isForPerformance = false;
             boolean needValidation = true;
 
-            if (sFeatureFlags.autoSwitchAllowRoaming()) {
+            if (isNddsRoamingEnabled()) {
                 if (mDefaultNetworkIsOnNonCellular) {
                     debugMessage.append(", back to default as default network")
                             .append(" is active on nonCellular transport");
@@ -820,7 +827,7 @@ public class AutoDataSwitchController extends Handler {
             return invalidResult;
         }
 
-        if (sFeatureFlags.autoSwitchAllowRoaming()) {
+        if (isNddsRoamingEnabled()) {
             // check whether primary and secondary signal status are worth switching
             if (!isRatSignalStrengthBasedSwitchEnabled()
                     && isHomeService(mPhonesSignalStatus[defaultPhoneId].mDataRegState)) {
@@ -842,7 +849,7 @@ public class AutoDataSwitchController extends Handler {
 
             Phone secondaryDataPhone = null;
             PhoneSignalStatus candidatePhoneStatus = mPhonesSignalStatus[phoneId];
-            if (sFeatureFlags.autoSwitchAllowRoaming()) {
+            if (isNddsRoamingEnabled()) {
                 PhoneSignalStatus.UsableState currentUsableState =
                         mPhonesSignalStatus[defaultPhoneId].getUsableState();
                 PhoneSignalStatus.UsableState candidateUsableState =
@@ -916,6 +923,13 @@ public class AutoDataSwitchController extends Handler {
     private boolean isRatSignalStrengthBasedSwitchEnabled() {
         return sFeatureFlags.autoDataSwitchRatSs() && mScoreTolerance >= 0
                 && mAutoDataSwitchPerformanceStabilityTimeThreshold >= 0;
+    }
+
+    /**
+     * @return {@code true} If the feature of switching to roaming non DDS is enabled.
+     */
+    private boolean isNddsRoamingEnabled() {
+        return sFeatureFlags.autoDataSwitchAllowRoaming() && mAllowNddsRoamning;
     }
 
     /**
