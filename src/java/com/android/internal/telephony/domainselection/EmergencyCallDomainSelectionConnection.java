@@ -37,10 +37,12 @@ import android.telephony.Annotation.NetCapability;
 import android.telephony.DomainSelectionService;
 import android.telephony.EmergencyRegistrationResult;
 import android.telephony.NetworkRegistrationInfo;
+import android.telephony.PreciseDisconnectCause;
 import android.telephony.data.ApnSetting;
 import android.telephony.ims.ImsReasonInfo;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.CallFailCause;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.data.AccessNetworksManager;
 import com.android.internal.telephony.data.AccessNetworksManager.QualifiedNetworks;
@@ -215,6 +217,19 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
             @NonNull String callId, @NonNull String number, boolean isTest,
             int callFailCause, @Nullable ImsReasonInfo imsReasonInfo,
             @Nullable EmergencyRegistrationResult emergencyRegResult) {
+
+        int preciseDisconnectCause = callFailCause;
+        switch (callFailCause) {
+            case CallFailCause.IMS_EMERGENCY_TEMP_FAILURE:
+                preciseDisconnectCause = PreciseDisconnectCause.EMERGENCY_TEMP_FAILURE;
+                break;
+            case CallFailCause.IMS_EMERGENCY_PERM_FAILURE:
+                preciseDisconnectCause = PreciseDisconnectCause.EMERGENCY_PERM_FAILURE;
+                break;
+            default:
+                break;
+        }
+
         DomainSelectionService.SelectionAttributes.Builder builder =
                 new DomainSelectionService.SelectionAttributes.Builder(
                         slotId, subId, SELECTOR_TYPE_CALLING)
@@ -223,7 +238,7 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
                 .setExitedFromAirplaneMode(exited)
                 .setCallId(callId)
                 .setAddress(Uri.fromParts(PhoneAccount.SCHEME_TEL, number, null))
-                .setCsDisconnectCause(callFailCause);
+                .setCsDisconnectCause(preciseDisconnectCause);
 
         if (imsReasonInfo != null) builder.setPsDisconnectCause(imsReasonInfo);
         if (emergencyRegResult != null) builder.setEmergencyRegistrationResult(emergencyRegResult);

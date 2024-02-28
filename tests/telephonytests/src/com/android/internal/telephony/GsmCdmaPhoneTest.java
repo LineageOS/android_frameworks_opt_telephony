@@ -3014,7 +3014,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                         new AsyncResult(null, update, null)));
         processAllMessages();
 
-        verify(mNullCipherNotifier, times(1)).onSecurityAlgorithmUpdate(eq(0), eq(update));
+        verify(mNullCipherNotifier, times(1))
+                .onSecurityAlgorithmUpdate(eq(mContext), eq(0), eq(update));
     }
 
     @Test
@@ -3067,7 +3068,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         setNullCipherNotificationPreferenceEnabled(true);
         phoneUT.handleNullCipherNotificationPreferenceChanged();
 
-        verify(mNullCipherNotifier, times(1)).enable();
+        verify(mNullCipherNotifier, times(1)).enable(eq(mContext));
         verify(mMockCi, times(1)).setSecurityAlgorithmsUpdatedEnabled(eq(true),
                 any(Message.class));
     }
@@ -3081,7 +3082,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         setNullCipherNotificationPreferenceEnabled(false);
         phoneUT.handleNullCipherNotificationPreferenceChanged();
 
-        verify(mNullCipherNotifier, times(1)).disable();
+        verify(mNullCipherNotifier, times(1)).disable(eq(mContext));
         verify(mMockCi, times(1)).setSecurityAlgorithmsUpdatedEnabled(eq(false),
                 any(Message.class));
     }

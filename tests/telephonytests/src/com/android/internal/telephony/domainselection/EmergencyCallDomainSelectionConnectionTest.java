@@ -44,12 +44,14 @@ import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.DomainSelectionService;
 import android.telephony.EmergencyRegistrationResult;
 import android.telephony.NetworkRegistrationInfo;
+import android.telephony.PreciseDisconnectCause;
 import android.telephony.data.ApnSetting;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.internal.telephony.CallFailCause;
 import com.android.internal.telephony.ITransportSelectorCallback;
 import com.android.internal.telephony.ITransportSelectorResultCallback;
 import com.android.internal.telephony.IWwanSelectorCallback;
@@ -256,6 +258,39 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
     public void testCancelSelection() throws Exception {
         mEcDsc.cancelSelection();
         verify(mAnm).unregisterForQualifiedNetworksChanged(any());
+    }
+
+    @Test
+    @SmallTest
+    public void testGetSelectionAttributesEmergencyTempOrPermFailure() {
+        DomainSelectionService.SelectionAttributes attr =
+                EmergencyCallDomainSelectionConnection.getSelectionAttributes(
+                        mPhone.getPhoneId(), mPhone.getSubId(), false,
+                        TELECOM_CALL_ID1, "911", false,
+                        CallFailCause.IMS_EMERGENCY_TEMP_FAILURE, null, null);
+
+        assertEquals(PreciseDisconnectCause.EMERGENCY_TEMP_FAILURE, attr.getCsDisconnectCause());
+
+        attr = EmergencyCallDomainSelectionConnection.getSelectionAttributes(
+                        mPhone.getPhoneId(), mPhone.getSubId(), false,
+                        TELECOM_CALL_ID1, "911", false,
+                        CallFailCause.IMS_EMERGENCY_PERM_FAILURE, null, null);
+
+        assertEquals(PreciseDisconnectCause.EMERGENCY_PERM_FAILURE, attr.getCsDisconnectCause());
+
+        attr = EmergencyCallDomainSelectionConnection.getSelectionAttributes(
+                        mPhone.getPhoneId(), mPhone.getSubId(), false,
+                        TELECOM_CALL_ID1, "911", false,
+                        CallFailCause.EMERGENCY_TEMP_FAILURE, null, null);
+
+        assertEquals(PreciseDisconnectCause.EMERGENCY_TEMP_FAILURE, attr.getCsDisconnectCause());
+
+        attr = EmergencyCallDomainSelectionConnection.getSelectionAttributes(
+                        mPhone.getPhoneId(), mPhone.getSubId(), false,
+                        TELECOM_CALL_ID1, "911", false,
+                        CallFailCause.EMERGENCY_PERM_FAILURE, null, null);
+
+        assertEquals(PreciseDisconnectCause.EMERGENCY_PERM_FAILURE, attr.getCsDisconnectCause());
     }
 
     private IWwanSelectorCallback onWwanSelected(ITransportSelectorCallback transportCallback)
