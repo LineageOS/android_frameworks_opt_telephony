@@ -41,3 +41,10 @@ flag {
     description: "This flag enables checking for telephony features before initializing corresponding managers"
     bug: "310710841"
 }
+
+flag {
+    name: "set_no_reply_timer_for_cfnry"
+    namespace: "telephony"
+    description: "This flag supports setting the no reply timer for CFNRy based on carrier config"
+    bug:"314732435"
+}
