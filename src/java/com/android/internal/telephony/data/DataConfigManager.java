@@ -1051,6 +1051,15 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * TODO: remove after V.
+     * @return To indicate whether allow using roaming nDDS if user enabled its roaming when the DDS
+     * is not usable(OOS or disabled roaming)
+     */
+    public boolean doesAutoDataSwitchAllowRoaming() {
+        return mResources.getBoolean(com.android.internal.R.bool.auto_data_switch_allow_roaming);
+    }
+
+    /**
      * @return The maximum number of retries when a validation for switching failed.
      */
     public int getAutoDataSwitchValidationMaxRetry() {
