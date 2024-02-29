@@ -1518,6 +1518,53 @@ public class PhoneSwitcherTest extends TelephonyTest {
     }
 
     @Test
+    public void testSetPreferredDataCallback_voiceCall() throws Exception {
+        doReturn(true).when(mMockRadioConfig).isSetPreferredDataCommandSupported();
+        initialize();
+        setAllPhonesInactive();
+
+        // Phone 0 has sub 1, phone 1 has sub 2.
+        // Sub 1 is default data sub.
+        // Both are active subscriptions are active sub, as they are in both active slots.
+        setSlotIndexToSubId(0, 1);
+        setSlotIndexToSubId(1, 2);
+        setDefaultDataSubId(1);
+        assertEquals(1, mPhoneSwitcherUT.getActiveDataSubId());
+
+        doReturn(new SubscriptionInfoInternal.Builder(mSubscriptionManagerService
+                .getSubscriptionInfoInternal(2)).setOpportunistic(1).build())
+                .when(mSubscriptionManagerService).getSubscriptionInfoInternal(2);
+
+        // First temporarily switched to the opportunistic sub 2
+        mPhoneSwitcherUT.trySetOpportunisticDataSubscription(2, false, mSetOpptDataCallback1);
+        processAllMessages();
+        mPhoneSwitcherUT.mValidationCallback.onNetworkAvailable(null, 2);
+        processAllMessages();
+        verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_SUCCESS);
+
+        // Voice call led back to default sub 1
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
+        doReturn(true).when(mPhone).isUserDataEnabled();
+        doReturn(true).when(mDataSettingsManager).isDataEnabled();
+        mockImsRegTech(0, REGISTRATION_TECH_LTE);
+        notifyPhoneAsInCall(mPhone);
+
+        assertEquals(1, mPhoneSwitcherUT.getActiveDataSubId());
+        assertEquals(2, mPhoneSwitcherUT.getAutoSelectedDataSubId());
+
+        // CBRS set preferred data back to default during the phone call
+        clearInvocations(mSetOpptDataCallback1);
+        mPhoneSwitcherUT.trySetOpportunisticDataSubscription(SubscriptionManager
+                .DEFAULT_SUBSCRIPTION_ID, false, mSetOpptDataCallback1);
+        processAllMessages();
+
+        verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_SUCCESS);
+        assertEquals(1, mPhoneSwitcherUT.getActiveDataSubId());
+        assertEquals(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                mPhoneSwitcherUT.getAutoSelectedDataSubId());
+    }
+
+    @Test
     @SmallTest
     public void testMultiSimConfigChange() throws Exception {
         doReturn(true).when(mMockRadioConfig).isSetPreferredDataCommandSupported();
