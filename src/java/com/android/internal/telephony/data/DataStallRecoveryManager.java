@@ -49,7 +49,6 @@ import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCa
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.flags.FeatureFlags;
-import com.android.internal.telephony.flags.FeatureFlagsImpl;
 import com.android.internal.telephony.metrics.DataStallRecoveryStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.telephony.Rlog;
@@ -155,7 +154,7 @@ public class DataStallRecoveryManager extends Handler {
     private final @NonNull Phone mPhone;
     private final @NonNull String mLogTag;
     private final @NonNull LocalLog mLocalLog = new LocalLog(128);
-    private final @NonNull FeatureFlags mFeatureFlags = new FeatureFlagsImpl();
+    private final @NonNull FeatureFlags mFeatureFlags;
 
     /** Data network controller */
     private final @NonNull DataNetworkController mDataNetworkController;
@@ -259,6 +258,7 @@ public class DataStallRecoveryManager extends Handler {
      * @param phone The phone instance.
      * @param dataNetworkController Data network controller
      * @param dataServiceManager The WWAN data service manager.
+     * @param featureFlags The feature flag.
      * @param looper The looper to be used by the handler. Currently the handler thread is the phone
      *     process's main thread.
      * @param callback Callback to notify data network controller for data stall events.
@@ -267,6 +267,7 @@ public class DataStallRecoveryManager extends Handler {
             @NonNull Phone phone,
             @NonNull DataNetworkController dataNetworkController,
             @NonNull DataServiceManager dataServiceManager,
+            @NonNull FeatureFlags featureFlags,
             @NonNull Looper looper,
             @NonNull DataStallRecoveryManagerCallback callback) {
         super(looper);
@@ -275,6 +276,7 @@ public class DataStallRecoveryManager extends Handler {
         log("DataStallRecoveryManager created.");
         mDataNetworkController = dataNetworkController;
         mWwanDataServiceManager = dataServiceManager;
+        mFeatureFlags = featureFlags;
         mDataConfigManager = mDataNetworkController.getDataConfigManager();
         mDataNetworkController
                 .getDataSettingsManager()
@@ -294,7 +296,7 @@ public class DataStallRecoveryManager extends Handler {
 
         registerAllEvents();
 
-        mStats = new DataStallRecoveryStats(mPhone, dataNetworkController);
+        mStats = new DataStallRecoveryStats(mPhone, mFeatureFlags, dataNetworkController);
     }
 
     /** Register for all events that data stall monitor is interested. */

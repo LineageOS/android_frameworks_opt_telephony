@@ -921,7 +921,7 @@ public class DataNetworkController extends Handler {
                             }
                         });
         mDataStallRecoveryManager = new DataStallRecoveryManager(mPhone, this, mDataServiceManagers
-                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), looper,
+                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), mFeatureFlags, looper,
                 new DataStallRecoveryManagerCallback(this::post) {
                     @Override
                     public void onDataStallReestablishInternet() {
