@@ -498,17 +498,23 @@ public class EmergencyStateTracker {
                 exitEmergencySmsCallbackMode();
                 mOngoingConnection = c;
                 mIsTestEmergencyNumber = isTestEmergencyNumber;
-                // Ensure that domain selector requests scan.
-                mLastEmergencyRegistrationResult = new EmergencyRegistrationResult(
-                        AccessNetworkConstants.AccessNetworkType.UNKNOWN,
-                        NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN,
-                        NetworkRegistrationInfo.DOMAIN_UNKNOWN, false, false, 0, 0, "", "", "");
                 if (isInEcm()) {
                     // Remove pending exit ECM runnable.
                     mHandler.removeCallbacks(mExitEcmRunnable);
                     releaseWakeLock();
                     ((GsmCdmaPhone) mPhone).notifyEcbmTimerReset(Boolean.TRUE);
+
+                    mOngoingCallProperties = 0;
+                    mCallEmergencyModeFuture = new CompletableFuture<>();
+                    setEmergencyMode(mPhone, EMERGENCY_TYPE_CALL, MODE_EMERGENCY_WWAN,
+                            MSG_SET_EMERGENCY_MODE_DONE);
+                    return mCallEmergencyModeFuture;
                 }
+                // Ensure that domain selector requests scan.
+                mLastEmergencyRegistrationResult = new EmergencyRegistrationResult(
+                        AccessNetworkConstants.AccessNetworkType.UNKNOWN,
+                        NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN,
+                        NetworkRegistrationInfo.DOMAIN_UNKNOWN, false, false, 0, 0, "", "", "");
                 return CompletableFuture.completedFuture(DisconnectCause.NOT_DISCONNECTED);
             }
 

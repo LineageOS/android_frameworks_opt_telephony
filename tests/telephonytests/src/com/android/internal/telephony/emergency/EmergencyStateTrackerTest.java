@@ -951,14 +951,16 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         processAllMessages();
 
         assertTrue(emergencyStateTracker.isInEcm());
+        verify(phone0, times(1)).setEmergencyMode(eq(MODE_EMERGENCY_WWAN), any(Message.class));
+        verify(phone0, times(1)).setEmergencyMode(eq(MODE_EMERGENCY_CALLBACK), any(Message.class));
 
         // Second emergency call started.
         CompletableFuture<Integer> future = emergencyStateTracker.startEmergencyCall(phone0,
                 mTestConnection2, false);
 
-        // Returns DisconnectCause#NOT_DISCONNECTED immediately.
-        assertEquals(future.getNow(DisconnectCause.ERROR_UNSPECIFIED),
-                Integer.valueOf(DisconnectCause.NOT_DISCONNECTED));
+        assertFalse(future.isDone());
+        verify(phone0, times(2)).setEmergencyMode(eq(MODE_EMERGENCY_WWAN), any(Message.class));
+        verify(phone0, times(1)).setEmergencyMode(eq(MODE_EMERGENCY_CALLBACK), any(Message.class));
     }
 
     @Test
@@ -1021,9 +1023,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         future = emergencyStateTracker.startEmergencyCall(phone0, mTestConnection2, false);
 
         assertTrue(emergencyStateTracker.isInEmergencyMode());
-        // Returns DisconnectCause#NOT_DISCONNECTED immediately.
-        assertEquals(future.getNow(DisconnectCause.ERROR_UNSPECIFIED),
-                Integer.valueOf(DisconnectCause.NOT_DISCONNECTED));
+        assertFalse(future.isDone());
 
         emergencyStateTracker.onEmergencyTransportChanged(
                 EmergencyStateTracker.EMERGENCY_TYPE_CALL, MODE_EMERGENCY_WLAN);
