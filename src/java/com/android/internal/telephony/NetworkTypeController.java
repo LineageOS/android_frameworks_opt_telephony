@@ -26,6 +26,7 @@ import android.os.AsyncResult;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.PowerManager;
+import android.os.SystemClock;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
 import android.telephony.CarrierConfigManager;
@@ -194,6 +195,7 @@ public class NetworkTypeController extends StateMachine {
     private boolean mIsPhysicalChannelConfigOn;
     private boolean mIsPrimaryTimerActive;
     private boolean mIsSecondaryTimerActive;
+    private long mSecondaryTimerExpireTimestamp;
     private boolean mIsTimerResetEnabledForLegacyStateRrcIdle;
     /** Carrier config to reset timers when mccmnc changes */
     private boolean mIsTimerResetEnabledOnPlmnChanges;
@@ -220,6 +222,7 @@ public class NetworkTypeController extends StateMachine {
 
     // Cached copies below to prevent race conditions
     @NonNull private ServiceState mServiceState;
+    /** Used to track link status to be DORMANT or ACTIVE */
     @Nullable private List<PhysicalChannelConfig> mPhysicalChannelConfigs;
 
     // Ratchet physical channel config fields to prevent 5G/5G+ flickering
@@ -666,6 +669,7 @@ public class NetworkTypeController extends StateMachine {
                 case EVENT_SECONDARY_TIMER_EXPIRED:
                     if (DBG) log("Secondary timer expired for state: " + mSecondaryTimerState);
                     mIsSecondaryTimerActive = false;
+                    mSecondaryTimerExpireTimestamp = 0;
                     mSecondaryTimerState = "";
                     updateTimers();
                     mLastShownNrDueToAdvancedBand = false;
@@ -1251,6 +1255,8 @@ public class NetworkTypeController extends StateMachine {
     private void updatePhysicalChannelConfigs(List<PhysicalChannelConfig> physicalChannelConfigs) {
         boolean isPccListEmpty = physicalChannelConfigs == null || physicalChannelConfigs.isEmpty();
         if (isPccListEmpty && isUsingPhysicalChannelConfigForRrcDetection()) {
+            // Clear mPrimaryCellChangedWhileIdle to allow later potential one-off PCI change.
+            // Update link status to be DORMANT, but keep ratcheted bands.
             log("Physical channel configs updated: not updating PCC fields for empty PCC list "
                     + "indicating RRC idle.");
             mPrimaryCellChangedWhileIdle = false;
@@ -1310,6 +1316,7 @@ public class NetworkTypeController extends StateMachine {
                         + mLastAnchorNrCellId + " -> " + anchorNrCellId);
                 mPrimaryCellChangedWhileIdle = true;
                 mLastAnchorNrCellId = anchorNrCellId;
+                reduceSecondaryTimerIfNeeded();
                 return;
             }
             if (mRatchetPccFieldsForSameAnchorNrCell) {
@@ -1327,6 +1334,27 @@ public class NetworkTypeController extends StateMachine {
             log("Physical channel configs updated: anchorNrCell=" + mLastAnchorNrCellId
                     + ", nrBandwidths=" + mRatchetedNrBandwidths + ", nrBands=" +  mRatchetedNrBands
                     + ", configs=" + mPhysicalChannelConfigs);
+        }
+    }
+
+    /**
+     * Called when PCI change, specifically during idle state.
+     */
+    private void reduceSecondaryTimerIfNeeded() {
+        if (!mIsSecondaryTimerActive || mNrAdvancedBandsSecondaryTimer <= 0) return;
+        // Secondary timer is active, so we must have a valid secondary rule right now.
+        OverrideTimerRule secondaryRule = mOverrideTimerRules.get(mPrimaryTimerState);
+        if (secondaryRule != null) {
+            int secondaryDuration = secondaryRule.getSecondaryTimer(mSecondaryTimerState);
+            long durationMillis = secondaryDuration * 1000L;
+            if ((mSecondaryTimerExpireTimestamp - SystemClock.uptimeMillis()) > durationMillis) {
+                if (DBG) log("Due to PCI change, reduce the secondary timer to " + durationMillis);
+                removeMessages(EVENT_SECONDARY_TIMER_EXPIRED);
+                sendMessageDelayed(EVENT_SECONDARY_TIMER_EXPIRED, mSecondaryTimerState,
+                        durationMillis);
+            }
+        } else {
+            loge("!! Secondary timer is active, but found no rule for " + mPrimaryTimerState);
         }
     }
 
@@ -1369,7 +1397,9 @@ public class NetworkTypeController extends StateMachine {
             mSecondaryTimerState = currentName;
             mPreviousState = currentName;
             mIsSecondaryTimerActive = true;
-            sendMessageDelayed(EVENT_SECONDARY_TIMER_EXPIRED, destState, duration * 1000L);
+            long durationMillis = duration * 1000L;
+            mSecondaryTimerExpireTimestamp = SystemClock.uptimeMillis() + durationMillis;
+            sendMessageDelayed(EVENT_SECONDARY_TIMER_EXPIRED, destState, durationMillis);
         }
         mIsPrimaryTimerActive = false;
         transitionTo(getCurrentState());
@@ -1434,6 +1464,7 @@ public class NetworkTypeController extends StateMachine {
             }
             removeMessages(EVENT_SECONDARY_TIMER_EXPIRED);
             mIsSecondaryTimerActive = false;
+            mSecondaryTimerExpireTimestamp = 0;
             mSecondaryTimerState = "";
             transitionToCurrentState();
             return;
@@ -1464,6 +1495,7 @@ public class NetworkTypeController extends StateMachine {
         removeMessages(EVENT_SECONDARY_TIMER_EXPIRED);
         mIsPrimaryTimerActive = false;
         mIsSecondaryTimerActive = false;
+        mSecondaryTimerExpireTimestamp = 0;
         mPrimaryTimerState = "";
         mSecondaryTimerState = "";
 
