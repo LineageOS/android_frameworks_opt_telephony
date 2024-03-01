@@ -2872,6 +2872,7 @@ public class SatelliteController extends Handler {
      * @return true if satellite is provisioned on the given subscription else return false.
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
+    @Nullable
     protected Boolean isSatelliteViaOemProvisioned() {
         synchronized (mSatelliteViaOemProvisionLock) {
             if (mOverriddenIsSatelliteViaOemProvisioned != null) {
