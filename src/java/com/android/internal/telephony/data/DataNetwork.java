@@ -1180,12 +1180,14 @@ public class DataNetwork extends StateMachine {
 
             mPhone.getServiceStateTracker().registerForCssIndicatorChanged(
                     getHandler(), EVENT_CSS_INDICATOR_CHANGED, null);
-            mPhone.getCallTracker().registerForVoiceCallStarted(
-                    getHandler(), EVENT_VOICE_CALL_STARTED, null);
-            mPhone.getCallTracker().registerForVoiceCallEnded(
-                    getHandler(), EVENT_VOICE_CALL_ENDED, null);
+            if (mPhone.getCallTracker() != null) {
+                mPhone.getCallTracker().registerForVoiceCallStarted(
+                        getHandler(), EVENT_VOICE_CALL_STARTED, null);
+                mPhone.getCallTracker().registerForVoiceCallEnded(
+                        getHandler(), EVENT_VOICE_CALL_ENDED, null);
+            }
             // Check null for devices not supporting FEATURE_TELEPHONY_IMS.
-            if (mPhone.getImsPhone() != null) {
+            if (mPhone.getImsPhone() != null && mPhone.getImsPhone().getCallTracker() != null) {
                 mPhone.getImsPhone().getCallTracker().registerForVoiceCallStarted(
                         getHandler(), EVENT_VOICE_CALL_STARTED, null);
                 mPhone.getImsPhone().getCallTracker().registerForVoiceCallEnded(
@@ -1223,12 +1225,14 @@ public class DataNetwork extends StateMachine {
             }
 
             // Check null for devices not supporting FEATURE_TELEPHONY_IMS.
-            if (mPhone.getImsPhone() != null) {
+            if (mPhone.getImsPhone() != null && mPhone.getImsPhone().getCallTracker() != null) {
                 mPhone.getImsPhone().getCallTracker().unregisterForVoiceCallStarted(getHandler());
                 mPhone.getImsPhone().getCallTracker().unregisterForVoiceCallEnded(getHandler());
             }
-            mPhone.getCallTracker().unregisterForVoiceCallStarted(getHandler());
-            mPhone.getCallTracker().unregisterForVoiceCallEnded(getHandler());
+            if (mPhone.getCallTracker() != null) {
+                mPhone.getCallTracker().unregisterForVoiceCallStarted(getHandler());
+                mPhone.getCallTracker().unregisterForVoiceCallEnded(getHandler());
+            }
 
             mPhone.getServiceStateTracker().unregisterForCssIndicatorChanged(getHandler());
             TelephonyManager tm = mPhone.getContext().getSystemService(TelephonyManager.class);
@@ -2514,7 +2518,8 @@ public class DataNetwork extends StateMachine {
             newSuspendedState = true;
             // Check voice/data concurrency.
         } else if (!mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()
-                && mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+                && mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
+                && mPhone.getCallTracker() != null) {
             newSuspendedState = mPhone.getCallTracker().getState() != PhoneConstants.State.IDLE;
         }
 

@@ -872,7 +872,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mMockSubInfo = Mockito.mock(SubscriptionInfo.class);
         mFeatureFlags = Mockito.mock(FeatureFlags.class);
         when(mTelephonyComponentFactory.makeDataSettingsManager(any(Phone.class),
-                any(DataNetworkController.class), any(Looper.class),
+                any(DataNetworkController.class), any(FeatureFlags.class), any(Looper.class),
                 any(DataSettingsManager.DataSettingsManagerCallback.class))).thenCallRealMethod();
         doReturn(mMockedImsMmTelManager).when(mMockedImsManager).getImsMmTelManager(anyInt());
         doReturn(mMockedImsRcsManager).when(mMockedImsManager).getImsRcsManager(anyInt());
@@ -1857,7 +1857,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         boolean isDataEnabled = mDataNetworkControllerUT.getDataSettingsManager().isDataEnabled();
         doReturn(mDataNetworkControllerUT.getDataSettingsManager())
                 .when(mPhone).getDataSettingsManager();
-        MultiSimSettingController controller = Mockito.spy(new MultiSimSettingController(mContext));
+        MultiSimSettingController controller = Mockito.spy(new MultiSimSettingController(mContext,
+                mFeatureFlags));
         doReturn(true).when(controller).isCarrierConfigLoadedForAllSub();
         replaceInstance(MultiSimSettingController.class, "sInstance", null, controller);
 
