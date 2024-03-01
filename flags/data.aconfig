@@ -61,6 +61,7 @@ flag {
 
 flag {
   name: "slicing_additional_error_codes"
+  is_exported: true
   namespace: "telephony"
   description: "Support additional slicing error codes and functionality."
   bug: "307378699"
@@ -68,6 +69,7 @@ flag {
 
 flag {
   name: "apn_setting_field_support_flag"
+  is_exported: true
   namespace: "telephony"
   description: "Expose apn setting supporting field"
   bug: "307038091"
@@ -75,6 +77,7 @@ flag {
 
 flag {
   name: "network_validation"
+  is_exported: true
   namespace: "telephony"
   description: "Request network validation for data networks and response status."
   bug:"286171724"
