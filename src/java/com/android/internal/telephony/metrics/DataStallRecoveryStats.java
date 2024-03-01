@@ -55,7 +55,6 @@ import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.data.DataStallRecoveryManager;
 import com.android.internal.telephony.flags.FeatureFlags;
-import com.android.internal.telephony.flags.FeatureFlagsImpl;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.telephony.Rlog;
@@ -87,7 +86,7 @@ public class DataStallRecoveryStats {
     private final @NonNull String mTag;
     private final @NonNull Phone mPhone;
     private final @NonNull TelephonyManager mTelephonyManager;
-    private final @NonNull FeatureFlags mFeatureFlags = new FeatureFlagsImpl();
+    private final @NonNull FeatureFlags mFeatureFlags;
 
     // Flag to control the DSRS diagnostics
     private final boolean mIsDsrsDiagnosticsEnabled;
@@ -136,10 +135,13 @@ public class DataStallRecoveryStats {
     /**
      * Constructs a new instance of {@link DataStallRecoveryStats}.
      */
-    public DataStallRecoveryStats(@NonNull final Phone phone,
+    public DataStallRecoveryStats(
+            @NonNull final Phone phone,
+            @NonNull FeatureFlags featureFlags,
             @NonNull final DataNetworkController dataNetworkController) {
         mTag = TAG + phone.getPhoneId();
         mPhone = phone;
+        mFeatureFlags = featureFlags;
 
         HandlerThread handlerThread = new HandlerThread(mTag + "-thread");
         handlerThread.start();

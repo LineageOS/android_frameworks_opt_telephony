@@ -514,6 +514,24 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         assertEquals(0, testSOSMessageRecommender.getCountOfTimerStarted());
     }
 
+    @Test
+    public void testIsSatelliteViaOemAvailable() {
+        Boolean originalIsSatelliteViaOemProvisioned =
+                mTestSatelliteController.mIsSatelliteViaOemProvisioned;
+
+        mTestSatelliteController.mIsSatelliteViaOemProvisioned = null;
+        assertFalse(mTestSOSMessageRecommender.isSatelliteViaOemAvailable());
+
+        mTestSatelliteController.mIsSatelliteViaOemProvisioned = true;
+        assertTrue(mTestSOSMessageRecommender.isSatelliteViaOemAvailable());
+
+        mTestSatelliteController.mIsSatelliteViaOemProvisioned = false;
+        assertFalse(mTestSOSMessageRecommender.isSatelliteViaOemAvailable());
+
+        mTestSatelliteController.mIsSatelliteViaOemProvisioned =
+                originalIsSatelliteViaOemProvisioned;
+    }
+
     private void testStopTrackingCallBeforeTimeout(
             @Connection.ConnectionState int connectionState) {
         mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
@@ -614,7 +632,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
                 mProvisionStateChangedCallbacks;
         private int mRegisterForSatelliteProvisionStateChangedCalls = 0;
         private int mUnregisterForSatelliteProvisionStateChangedCalls = 0;
-        private boolean mIsSatelliteViaOemProvisioned = true;
+        private Boolean mIsSatelliteViaOemProvisioned = true;
         private boolean mIsSatelliteConnectedViaCarrierWithinHysteresisTime = true;
         public boolean isOemEnabledSatelliteSupported = true;
         public boolean isCarrierEnabledSatelliteSupported = true;

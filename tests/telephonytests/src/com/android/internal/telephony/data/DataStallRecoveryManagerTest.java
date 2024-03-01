@@ -91,6 +91,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         Field field = DataStallRecoveryManager.class.getDeclaredField("mPredictWaitingMillis");
         field.setAccessible(true);
 
+        doReturn(true).when(mFeatureFlags).dsrsDiagnosticsEnabled();
         mFakeContentResolver = new FakeContentResolver();
         doReturn(mFakeContentResolver).when(mContext).getContentResolver();
         // Set the global settings for action enabled state and duration to
@@ -122,6 +123,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
                         mPhone,
                         mDataNetworkController,
                         mMockedWwanDataServiceManager,
+                        mFeatureFlags,
                         mTestableLooper.getLooper(),
                         mDataStallRecoveryManagerCallback);
 

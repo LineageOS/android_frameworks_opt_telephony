@@ -309,8 +309,14 @@ public class SatelliteSOSMessageRecommender extends Handler {
         }
     }
 
-    private boolean isSatelliteViaOemAvailable() {
-        return mSatelliteController.isSatelliteViaOemProvisioned();
+    /**
+     * Check if satellite is available via OEM
+     * @return {@code true} if satellite is provisioned via OEM else return {@code false}
+     */
+    @VisibleForTesting
+    public boolean isSatelliteViaOemAvailable() {
+        Boolean satelliteProvisioned = mSatelliteController.isSatelliteViaOemProvisioned();
+        return satelliteProvisioned != null ? satelliteProvisioned : false;
     }
 
     private boolean isSatelliteViaCarrierAvailable() {
