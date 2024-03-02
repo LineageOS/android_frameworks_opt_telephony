@@ -1550,7 +1550,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
                 mNetworkTypeController.getOverrideNetworkType());
         assertTrue(mNetworkTypeController.areAnyTimersActive());
 
-        // switch to connected_rrc_idle before primary timer expires
+        // empty PCC, switch to connected_rrc_idle before primary timer expires
         physicalChannelConfigs.clear();
         mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED */,
                 new AsyncResult(null, physicalChannelConfigs, null));
@@ -1571,16 +1571,40 @@ public class NetworkTypeControllerTest extends TelephonyTest {
                 mNetworkTypeController.getOverrideNetworkType());
         assertTrue(mNetworkTypeController.areAnyTimersActive());
 
-        // 5 seconds passed during connected_mmwave -> connected_rrc_idle secondary timer
-        moveTimeForward(5 * 1000);
+        // Verify secondary timer is still active after 6 seconds passed during
+        // connected_mmwave -> connected_rrc_idle secondary timer, should still keep the primary
+        // state icon.
+        moveTimeForward((5 + 1) * 1000);
         processAllMessages();
         assertEquals("connected_rrc_idle", getCurrentState().getName());
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
         assertTrue(mNetworkTypeController.areAnyTimersActive());
+    }
 
-        // secondary timer expired
-        moveTimeForward(15 * 1000);
+    @Test
+    public void testSecondaryTimerAdvanceBandReduceOnPciChange() throws Exception {
+        // The advance band secondary timer has been running for 6 seconds, 20 - 6 seconds are left.
+        testSecondaryTimerAdvanceBand();
+
+        // PCI changed from 1 to 2 for the first while the timer is running.
+        mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED */,
+                new AsyncResult(null, List.of(
+                        new PhysicalChannelConfig.Builder()
+                                .setPhysicalCellId(2)
+                                .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
+                                .setCellConnectionStatus(CellInfo.CONNECTION_PRIMARY_SERVING)
+                                .build()), null));
+        processAllMessages();
+
+        // Verify the first PCI change is exempted from triggering state change.
+        assertEquals("connected_rrc_idle", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
+                mNetworkTypeController.getOverrideNetworkType());
+        assertTrue(mNetworkTypeController.areAnyTimersActive());
+
+        // Verify the timer has been reduced from 20 - 6s(advance band) to 5s(regular).
+        moveTimeForward(5 * 1000);
         processAllMessages();
 
         assertEquals("connected_rrc_idle", getCurrentState().getName());

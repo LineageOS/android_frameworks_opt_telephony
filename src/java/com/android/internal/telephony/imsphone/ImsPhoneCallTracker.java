@@ -3580,14 +3580,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 ImsPhoneConnection conn = findConnection(imsCall);
                 // Since onCallInitiating and onCallProgressing reset mPendingMO,
                 // we can't depend on mPendingMO.
-                if ((reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
-                        || reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_NOT_REGISTERED
-                        || reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED)
-                        && conn != null) {
+                if (conn != null) {
                     logi("onCallStartFailed eccCategory=" + eccCategory);
-                    if (reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
-                            || reasonInfo.getExtraCode()
-                                    == ImsReasonInfo.EXTRA_CODE_CALL_RETRY_EMERGENCY) {
+                    int reason = reasonInfo.getCode();
+                    int extraCode = reasonInfo.getExtraCode();
+                    if ((reason == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED
+                            && extraCode == ImsReasonInfo.EXTRA_CODE_CALL_RETRY_EMERGENCY)
+                            || (reason == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL)) {
                         conn.setNonDetectableEmergencyCallInfo(eccCategory);
                     }
                     conn.setImsReasonInfo(reasonInfo);

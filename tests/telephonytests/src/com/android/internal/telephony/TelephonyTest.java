@@ -577,6 +577,8 @@ public abstract class TelephonyTest {
         mDomainSelectionResolver = Mockito.mock(DomainSelectionResolver.class);
         mNullCipherNotifier = Mockito.mock(NullCipherNotifier.class);
 
+        doReturn(true).when(mFeatureFlags).minimalTelephonyCdmCheck();
+
         TelephonyManager.disableServiceHandleCaching();
         PropertyInvalidatedCache.disableForTestMode();
         // For testing do not allow Log.WTF as it can cause test process to crash
@@ -640,7 +642,7 @@ public abstract class TelephonyTest {
                         nullable(CommandsInterface.class), nullable(FeatureFlags.class));
         doReturn(mEmergencyNumberTracker).when(mTelephonyComponentFactory)
                 .makeEmergencyNumberTracker(nullable(Phone.class),
-                        nullable(CommandsInterface.class));
+                        nullable(CommandsInterface.class), any(FeatureFlags.class));
         doReturn(getTestEmergencyNumber()).when(mEmergencyNumberTracker)
                 .getEmergencyNumber(any());
         doReturn(mUiccProfile).when(mTelephonyComponentFactory)
@@ -820,6 +822,12 @@ public abstract class TelephonyTest {
                 nullable(String[].class), anyInt(), nullable(Bundle.class), anyInt());
         doReturn(mTelephonyManager).when(mTelephonyManager).createForSubscriptionId(anyInt());
         doReturn(true).when(mTelephonyManager).isDataCapable();
+
+        mContextFixture.addSystemFeature(PackageManager.FEATURE_TELECOM);
+        mContextFixture.addSystemFeature(PackageManager.FEATURE_TELEPHONY_CALLING);
+        mContextFixture.addSystemFeature(PackageManager.FEATURE_TELEPHONY_DATA);
+        mContextFixture.addSystemFeature(PackageManager.FEATURE_TELEPHONY_EUICC);
+        mContextFixture.addSystemFeature(PackageManager.FEATURE_TELEPHONY_MESSAGING);
 
         doReturn(TelephonyManager.PHONE_TYPE_GSM).when(mTelephonyManager).getPhoneType();
         doReturn(mServiceState).when(mSST).getServiceState();

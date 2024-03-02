@@ -93,6 +93,7 @@ import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
 import android.util.Log;
+import android.util.Pair;
 import android.util.SparseArray;
 import android.util.SparseBooleanArray;
 import android.uwb.UwbManager;
@@ -2596,21 +2597,21 @@ public class SatelliteController extends Handler {
     }
 
     /**
-     * @return {@code true} if any subscription on the device is connected to satellite,
-     * {@code false} otherwise.
+     * @return {@code Pair<true, subscription ID>} if any subscription on the device is connected to
+     * satellite, {@code Pair<false, null>} otherwise.
      */
-    private boolean isUsingNonTerrestrialNetworkViaCarrier() {
+    private Pair<Boolean, Integer> isUsingNonTerrestrialNetworkViaCarrier() {
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
             logd("isUsingNonTerrestrialNetwork: carrierEnabledSatelliteFlag is disabled");
-            return false;
+            return new Pair<>(false, null);
         }
         for (Phone phone : PhoneFactory.getPhones()) {
             ServiceState serviceState = phone.getServiceState();
             if (serviceState != null && serviceState.isUsingNonTerrestrialNetwork()) {
-                return true;
+                return new Pair<>(true, phone.getSubId());
             }
         }
-        return false;
+        return new Pair<>(false, null);
     }
 
     /**
@@ -2624,7 +2625,7 @@ public class SatelliteController extends Handler {
                     + " is disabled");
             return false;
         }
-        if (isUsingNonTerrestrialNetworkViaCarrier()) {
+        if (isUsingNonTerrestrialNetworkViaCarrier().first) {
             return true;
         }
         for (Phone phone : PhoneFactory.getPhones()) {
@@ -3996,7 +3997,13 @@ public class SatelliteController extends Handler {
     }
 
     private void determineSystemNotification() {
-        if (isUsingNonTerrestrialNetworkViaCarrier()) {
+        if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
+            logd("determineSystemNotification: carrierEnabledSatelliteFlag is disabled");
+            return;
+        }
+
+        Pair<Boolean, Integer> isNtn = isUsingNonTerrestrialNetworkViaCarrier();
+        if (isNtn.first) {
             if (mSharedPreferences == null) {
                 try {
                     mSharedPreferences = mContext.getSharedPreferences(SATELLITE_SHARED_PREF,
@@ -4006,18 +4013,18 @@ public class SatelliteController extends Handler {
                 }
             }
             if (mSharedPreferences == null) {
-                loge("handleEventServiceStateChanged: Cannot get default shared preferences");
+                loge("determineSystemNotification: Cannot get default shared preferences");
                 return;
             }
             if (!mSharedPreferences.getBoolean(SATELLITE_SYSTEM_NOTIFICATION_DONE_KEY, false)) {
-                showSatelliteSystemNotification();
+                showSatelliteSystemNotification(isNtn.second);
                 mSharedPreferences.edit().putBoolean(SATELLITE_SYSTEM_NOTIFICATION_DONE_KEY,
                         true).apply();
             }
         }
     }
 
-    private void showSatelliteSystemNotification() {
+    private void showSatelliteSystemNotification(int subId) {
         logd("showSatelliteSystemNotification");
         final NotificationChannel notificationChannel = new NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
@@ -4055,6 +4062,7 @@ public class SatelliteController extends Handler {
 
         // Add action to invoke Satellite setting activity in Settings.
         Intent intentSatelliteSetting = new Intent(ACTION_SATELLITE_SETTING);
+        intentSatelliteSetting.putExtra("sub_id", subId);
         PendingIntent pendingIntentSatelliteSetting = PendingIntent.getActivity(mContext, 0,
                 intentSatelliteSetting, PendingIntent.FLAG_IMMUTABLE);
 

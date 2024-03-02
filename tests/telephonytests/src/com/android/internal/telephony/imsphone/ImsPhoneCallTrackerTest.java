@@ -2497,6 +2497,34 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     }
 
     @Test
+    @SmallTest
+    public void testDomainSelectionEmergencyPermFailure() {
+        doReturn(true).when(mDomainSelectionResolver).isDomainSelectionSupported();
+        startOutgoingCall();
+        ImsPhoneConnection c = mCTUT.mForegroundCall.getFirstConnection();
+        mImsCallListener.onCallStartFailed(mSecondImsCall,
+                new ImsReasonInfo(ImsReasonInfo.CODE_EMERGENCY_PERM_FAILURE, -1));
+        processAllMessages();
+        assertNotNull(c.getImsReasonInfo());
+        assertEquals(ImsReasonInfo.CODE_EMERGENCY_PERM_FAILURE,
+                c.getImsReasonInfo().getCode());
+    }
+
+    @Test
+    @SmallTest
+    public void testDomainSelectionEmergencyTempFailure() {
+        doReturn(true).when(mDomainSelectionResolver).isDomainSelectionSupported();
+        startOutgoingCall();
+        ImsPhoneConnection c = mCTUT.mForegroundCall.getFirstConnection();
+        mImsCallListener.onCallStartFailed(mSecondImsCall,
+                new ImsReasonInfo(ImsReasonInfo.CODE_EMERGENCY_TEMP_FAILURE, -1));
+        processAllMessages();
+        assertNotNull(c.getImsReasonInfo());
+        assertEquals(ImsReasonInfo.CODE_EMERGENCY_TEMP_FAILURE,
+                c.getImsReasonInfo().getCode());
+    }
+
+    @Test
     public void testUpdateImsCallStatusIncoming() throws Exception {
         // Incoming call
         ImsPhoneConnection connection = setupRingingConnection();
