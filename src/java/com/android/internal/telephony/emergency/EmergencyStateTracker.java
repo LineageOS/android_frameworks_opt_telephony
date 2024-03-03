@@ -19,7 +19,9 @@ package com.android.internal.telephony.emergency;
 import static android.telecom.Connection.STATE_ACTIVE;
 import static android.telecom.Connection.STATE_DISCONNECTED;
 import static android.telephony.CarrierConfigManager.ImsEmergency.KEY_EMERGENCY_CALLBACK_MODE_SUPPORTED_BOOL;
+import static android.telephony.CarrierConfigManager.KEY_BROADCAST_EMERGENCY_CALL_STATE_CHANGES_BOOL;
 
+import static com.android.internal.telephony.TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED;
 import static com.android.internal.telephony.emergency.EmergencyConstants.MODE_EMERGENCY_CALLBACK;
 import static com.android.internal.telephony.emergency.EmergencyConstants.MODE_EMERGENCY_NONE;
 import static com.android.internal.telephony.emergency.EmergencyConstants.MODE_EMERGENCY_WWAN;
@@ -159,6 +161,7 @@ public class EmergencyStateTracker {
     private boolean mIsTestEmergencyNumber;
     private Runnable mOnEcmExitCompleteRunnable;
     private int mOngoingCallProperties;
+    private boolean mSentEmergencyCallState;
 
     /** For emergency SMS */
     private final Set<String> mOngoingEmergencySmsIds = new ArraySet<>();
@@ -173,6 +176,8 @@ public class EmergencyStateTracker {
     private final Object mRegistrantidentifier = new Object();
 
     private final android.util.ArrayMap<Integer, Boolean> mNoSimEcbmSupported =
+            new android.util.ArrayMap<>();
+    private final android.util.ArrayMap<Integer, Boolean> mBroadcastEmergencyCallStateChanges =
             new android.util.ArrayMap<>();
     private final CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener =
             (slotIndex, subId, carrierId, specificCarrierId) -> onCarrierConfigurationChanged(
@@ -466,6 +471,9 @@ public class EmergencyStateTracker {
         mTelephonyManagerProxy = new TelephonyManagerProxyImpl(context);
 
         registerForNewRingingConnection();
+
+        // To recover the abnormal state after crash of com.android.phone process
+        maybeResetEmergencyCallStateChangedIntent();
     }
 
     /**
@@ -581,6 +589,7 @@ public class EmergencyStateTracker {
                 mPhone = phone;
                 mOngoingConnection = c;
                 mIsTestEmergencyNumber = isTestEmergencyNumber;
+                sendEmergencyCallStateChange(mPhone, true);
                 maybeRejectIncomingCall(null);
                 return mCallEmergencyModeFuture;
             }
@@ -589,6 +598,7 @@ public class EmergencyStateTracker {
         mPhone = phone;
         mOngoingConnection = c;
         mIsTestEmergencyNumber = isTestEmergencyNumber;
+        sendEmergencyCallStateChange(mPhone, true);
         maybeRejectIncomingCall(result -> {
             Rlog.i(TAG, "maybeRejectIncomingCall : result = " + result);
             turnOnRadioAndSwitchDds(mPhone, EMERGENCY_TYPE_CALL, mIsTestEmergencyNumber);
@@ -611,6 +621,7 @@ public class EmergencyStateTracker {
         if (Objects.equals(mOngoingConnection, c)) {
             mOngoingConnection = null;
             mOngoingCallProperties = 0;
+            sendEmergencyCallStateChange(mPhone, false);
         }
 
         if (wasActive && mActiveEmergencyCalls.isEmpty()
@@ -1199,6 +1210,18 @@ public class EmergencyStateTracker {
                 && mEmergencyCallDomain == NetworkRegistrationInfo.DOMAIN_CS && isInEcm();
     }
 
+    private void sendEmergencyCallStateChange(Phone phone, boolean isAlive) {
+        if ((isAlive && !mSentEmergencyCallState && getBroadcastEmergencyCallStateChanges(phone))
+                || (!isAlive && mSentEmergencyCallState)) {
+            mSentEmergencyCallState = isAlive;
+            Rlog.i(TAG, "sendEmergencyCallStateChange: " + isAlive);
+            Intent intent = new Intent(ACTION_EMERGENCY_CALL_STATE_CHANGED);
+            intent.putExtra(TelephonyManager.EXTRA_PHONE_IN_EMERGENCY_CALL, isAlive);
+            SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phone.getPhoneId());
+            mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+        }
+    }
+
     /**
      * Starts the process of an emergency SMS.
      *
@@ -1654,9 +1677,9 @@ public class EmergencyStateTracker {
     private boolean getConfig(int subId, String key, boolean defVal) {
         return getConfigBundle(subId, key).getBoolean(key, defVal);
     }
-    private PersistableBundle getConfigBundle(int subId, String key) {
+    private PersistableBundle getConfigBundle(int subId, String... keys) {
         if (mConfigManager == null) return new PersistableBundle();
-        return mConfigManager.getConfigForSubId(subId, key);
+        return mConfigManager.getConfigForSubId(subId, keys);
     }
 
     /**
@@ -1710,10 +1733,6 @@ public class EmergencyStateTracker {
             return;
         }
 
-        updateNoSimEcbmSupported(slotIndex, subId);
-    }
-
-    private void updateNoSimEcbmSupported(int slotIndex, int subId) {
         SharedPreferences sp = null;
         Boolean savedConfig = mNoSimEcbmSupported.get(Integer.valueOf(slotIndex));
         if (savedConfig == null) {
@@ -1721,8 +1740,8 @@ public class EmergencyStateTracker {
             savedConfig = Boolean.valueOf(
                     sp.getBoolean(KEY_NO_SIM_ECBM_SUPPORT + slotIndex, false));
             mNoSimEcbmSupported.put(Integer.valueOf(slotIndex), savedConfig);
-            Rlog.i(TAG, "updateNoSimEcbmSupported load from preference slotIndex=" + slotIndex
-                    + ", supported=" + savedConfig);
+            Rlog.i(TAG, "onCarrierConfigChanged load from preference slotIndex=" + slotIndex
+                    + ", ecbmSupported=" + savedConfig);
         }
 
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
@@ -1730,17 +1749,28 @@ public class EmergencyStateTracker {
             return;
         }
 
-        PersistableBundle b = getConfigBundle(subId, KEY_EMERGENCY_CALLBACK_MODE_SUPPORTED_BOOL);
+        PersistableBundle b = getConfigBundle(subId,
+                KEY_EMERGENCY_CALLBACK_MODE_SUPPORTED_BOOL,
+                KEY_BROADCAST_EMERGENCY_CALL_STATE_CHANGES_BOOL);
         if (b.isEmpty()) {
-            Rlog.e(TAG, "updateNoSimEcbmSupported empty result");
+            Rlog.e(TAG, "onCarrierConfigChanged empty result");
             return;
         }
 
         if (!CarrierConfigManager.isConfigForIdentifiedCarrier(b)) {
-            Rlog.i(TAG, "updateNoSimEcbmSupported not carrier specific configuration");
+            Rlog.i(TAG, "onCarrierConfigChanged not carrier specific configuration");
             return;
         }
 
+        // KEY_BROADCAST_EMERGENCY_CALL_STATE_CHANGES_BOOL
+        boolean broadcast = b.getBoolean(KEY_BROADCAST_EMERGENCY_CALL_STATE_CHANGES_BOOL);
+        mBroadcastEmergencyCallStateChanges.put(
+                Integer.valueOf(slotIndex), Boolean.valueOf(broadcast));
+
+        Rlog.i(TAG, "onCarrierConfigChanged slotIndex=" + slotIndex
+                + ", broadcastEmergencyCallStateChanges=" + broadcast);
+
+        // KEY_EMERGENCY_CALLBACK_MODE_SUPPORTED_BOOL
         boolean carrierConfig = b.getBoolean(KEY_EMERGENCY_CALLBACK_MODE_SUPPORTED_BOOL);
         if (carrierConfig == savedConfig) {
             return;
@@ -1755,8 +1785,34 @@ public class EmergencyStateTracker {
         editor.putBoolean(KEY_NO_SIM_ECBM_SUPPORT + slotIndex, carrierConfig);
         editor.apply();
 
-        Rlog.i(TAG, "updateNoSimEcbmSupported preference updated slotIndex=" + slotIndex
-                + ", supported=" + carrierConfig);
+        Rlog.i(TAG, "onCarrierConfigChanged preference updated slotIndex=" + slotIndex
+                + ", ecbmSupported=" + carrierConfig);
+    }
+
+    private boolean getBroadcastEmergencyCallStateChanges(Phone phone) {
+        Boolean broadcast = mBroadcastEmergencyCallStateChanges.get(
+                Integer.valueOf(phone.getPhoneId()));
+        return (broadcast == null) ? false : broadcast;
+    }
+
+    /**
+     * Resets the emergency call state if it's in alive state.
+     */
+    @VisibleForTesting
+    public void maybeResetEmergencyCallStateChangedIntent() {
+        Intent intent = mContext.registerReceiver(null,
+            new IntentFilter(ACTION_EMERGENCY_CALL_STATE_CHANGED), Context.RECEIVER_NOT_EXPORTED);
+        if (intent != null
+                && ACTION_EMERGENCY_CALL_STATE_CHANGED.equals(intent.getAction())) {
+            boolean isAlive = intent.getBooleanExtra(
+                    TelephonyManager.EXTRA_PHONE_IN_EMERGENCY_CALL, false);
+            Rlog.i(TAG, "maybeResetEmergencyCallStateChangedIntent isAlive=" + isAlive);
+            if (isAlive) {
+                intent = new Intent(ACTION_EMERGENCY_CALL_STATE_CHANGED);
+                intent.putExtra(TelephonyManager.EXTRA_PHONE_IN_EMERGENCY_CALL, false);
+                mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+            }
+        }
     }
 
     /**

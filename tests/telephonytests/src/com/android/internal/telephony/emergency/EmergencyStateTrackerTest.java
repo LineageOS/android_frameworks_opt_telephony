@@ -36,6 +36,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyVararg;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
@@ -49,10 +50,12 @@ import static org.mockito.Mockito.when;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.telephony.AccessNetworkConstants;
@@ -74,6 +77,7 @@ import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.PhoneSwitcher;
 
@@ -2326,6 +2330,8 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
                 false /* isRadioOn */);
         when(phone.getSubId()).thenReturn(1);
         setEcmSupportedConfig(phone, true);
+        PersistableBundle bundle = mCarrierConfigManager.getConfigForSubId(phone.getSubId());
+        doReturn(bundle).when(mCarrierConfigManager).getConfigForSubId(anyInt(), anyVararg());
 
         EmergencyStateTracker testEst = setupEmergencyStateTracker(
                 false /* isSuplDdsSwitchRequiredForEmergencyCall */);
@@ -2673,6 +2679,162 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
             verify(call, never()).hangup();
         } catch (CallStateException e) {
         }
+    }
+
+    /**
+     * Test that emergency call state changes are sent.
+     */
+    @Test
+    @SmallTest
+    public void testSendEmergencyCallStateChanges() {
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL, true);
+        // Setup EmergencyStateTracker
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        // Create test Phone
+        Phone testPhone = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        when(testPhone.getSubId()).thenReturn(1);
+        ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
+                ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
+        CarrierConfigManager cfgManager = (CarrierConfigManager) mContext
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+
+        verify(cfgManager).registerCarrierConfigChangeListener(any(),
+                listenerArgumentCaptor.capture());
+
+        CarrierConfigManager.CarrierConfigChangeListener carrierConfigChangeListener =
+                listenerArgumentCaptor.getAllValues().get(0);
+
+        assertNotNull(carrierConfigChangeListener);
+
+        PersistableBundle bundle = mCarrierConfigManager.getConfigForSubId(testPhone.getSubId());
+        bundle.putBoolean(CarrierConfigManager.KEY_BROADCAST_EMERGENCY_CALL_STATE_CHANGES_BOOL,
+                true);
+        doReturn(bundle).when(mCarrierConfigManager).getConfigForSubId(anyInt(), anyVararg());
+        // onCarrierConfigChanged with valid subscription
+        carrierConfigChangeListener.onCarrierConfigChanged(
+                testPhone.getPhoneId(), testPhone.getSubId(),
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
+
+        // Start emergency call
+        CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                mTestConnection1, false);
+
+        // Verify intent is sent that emergency call state is changed
+        ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, times(1)).sendStickyBroadcastAsUser(
+                intentCaptor.capture(), eq(UserHandle.ALL));
+        Intent intent = intentCaptor.getValue();
+        assertNotNull(intent);
+        assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED, intent.getAction());
+        assertTrue(intent.getBooleanExtra(TelephonyManager.EXTRA_PHONE_IN_EMERGENCY_CALL, true));
+
+        // End emergency call
+        emergencyStateTracker.endCall(mTestConnection1);
+
+        // Verify intent is sent that emergency call state is changed
+        verify(mContext, times(2)).sendStickyBroadcastAsUser(
+                intentCaptor.capture(), eq(UserHandle.ALL));
+        intent = intentCaptor.getValue();
+        assertNotNull(intent);
+        assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED, intent.getAction());
+        assertFalse(intent.getBooleanExtra(TelephonyManager.EXTRA_PHONE_IN_EMERGENCY_CALL, false));
+    }
+
+    /**
+     * Test that emergency call state change is reset after crash.
+     */
+    @Test
+    @SmallTest
+    public void testResetEmergencyCallStateChanges() {
+        Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED);
+        intent.putExtra(TelephonyManager.EXTRA_PHONE_IN_EMERGENCY_CALL, true);
+        doReturn(intent).when(mContext).registerReceiver(eq(null), any(),
+                eq(Context.RECEIVER_NOT_EXPORTED));
+        // Setup EmergencyStateTracker
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        emergencyStateTracker.maybeResetEmergencyCallStateChangedIntent();
+
+        ArgumentCaptor<IntentFilter> filterCaptor = ArgumentCaptor.forClass(IntentFilter.class);
+
+        verify(mContext).registerReceiver(eq(null), filterCaptor.capture(),
+                eq(Context.RECEIVER_NOT_EXPORTED));
+
+        IntentFilter filter = filterCaptor.getValue();
+
+        assertNotNull(filter);
+        assertTrue(filter.hasAction(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED));
+
+        ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
+
+        // Verify intent is sent that emergency call state is changed
+        verify(mContext).sendStickyBroadcastAsUser(
+                intentCaptor.capture(), eq(UserHandle.ALL));
+        intent = intentCaptor.getValue();
+        assertNotNull(intent);
+        assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED, intent.getAction());
+        assertFalse(intent.getBooleanExtra(TelephonyManager.EXTRA_PHONE_IN_EMERGENCY_CALL, false));
+    }
+
+    /**
+     * Test that emergency call state is not reset after crash
+     * if it's already reset.
+     */
+    @Test
+    @SmallTest
+    public void testResetEmergencyCallStateChangesAlreadyReset() {
+        Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED);
+        intent.putExtra(TelephonyManager.EXTRA_PHONE_IN_EMERGENCY_CALL, false);
+        doReturn(intent).when(mContext).registerReceiver(eq(null), any(),
+                eq(Context.RECEIVER_NOT_EXPORTED));
+        // Setup EmergencyStateTracker
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        emergencyStateTracker.maybeResetEmergencyCallStateChangedIntent();
+
+        ArgumentCaptor<IntentFilter> filterCaptor = ArgumentCaptor.forClass(IntentFilter.class);
+
+        verify(mContext).registerReceiver(eq(null), filterCaptor.capture(),
+                eq(Context.RECEIVER_NOT_EXPORTED));
+
+        IntentFilter filter = filterCaptor.getValue();
+
+        assertNotNull(filter);
+        assertTrue(filter.hasAction(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED));
+
+        // Verify intent is not sent.
+        verify(mContext, never()).sendStickyBroadcastAsUser(any(), any());
+    }
+
+    /**
+     * Test that emergency call state is not reset after crash
+     * if it has never been sent.
+     */
+    @Test
+    @SmallTest
+    public void testResetEmergencyCallStateChangesNotSent() {
+        doReturn(null).when(mContext).registerReceiver(eq(null), any(),
+                eq(Context.RECEIVER_NOT_EXPORTED));
+        // Setup EmergencyStateTracker
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        emergencyStateTracker.maybeResetEmergencyCallStateChangedIntent();
+
+        ArgumentCaptor<IntentFilter> filterCaptor = ArgumentCaptor.forClass(IntentFilter.class);
+
+        verify(mContext).registerReceiver(eq(null), filterCaptor.capture(),
+                eq(Context.RECEIVER_NOT_EXPORTED));
+
+        IntentFilter filter = filterCaptor.getValue();
+
+        assertNotNull(filter);
+        assertTrue(filter.hasAction(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED));
+
+        // Verify intent is not sent.
+        verify(mContext, never()).sendStickyBroadcastAsUser(any(), any());
     }
 
     private EmergencyStateTracker setupEmergencyStateTracker(
