@@ -899,7 +899,7 @@ public class DataProfileManager extends Handler {
         TelephonyNetworkRequest networkRequest = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_DUN)
-                        .build(), mPhone, mFeatureFlags);
+                        .build(), mPhone);
         return getDataProfileForNetworkRequest(networkRequest, networkType,
                 mPhone.getServiceState().isUsingNonTerrestrialNetwork(),
                 mDataNetworkController.isEsimBootStrapProvisioningActivated(),
