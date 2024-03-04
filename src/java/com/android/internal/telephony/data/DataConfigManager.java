@@ -1436,6 +1436,18 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * @return The capabilities that network will be forced to mark as cellular transport.
+     */
+    public @NetCapability Set<Integer> getForcedCellularTransportCapabilities() {
+        String[] forcedCellularTransportCapabilities = mResources.getStringArray(
+                com.android.internal.R.array.config_force_cellular_transport_capabilities);
+
+        return Arrays.stream(forcedCellularTransportCapabilities)
+                .map(DataUtils::getNetworkCapabilityFromString)
+                .collect(Collectors.toSet());
+    }
+
+    /**
      * Log debug messages.
      * @param s debug messages
      */
@@ -1543,6 +1555,9 @@ public class DataConfigManager extends Handler {
         pw.println("isTetheringProfileDisabledForRoaming="
                 + isTetheringProfileDisabledForRoaming());
         pw.println("allowClearInitialAttachDataProfile=" + allowClearInitialAttachDataProfile());
+        pw.println("forcedCellularTransportCapabilities=" + getForcedCellularTransportCapabilities()
+                .stream().map(DataUtils::networkCapabilityToString)
+                .collect(Collectors.joining(",")));
         pw.decreaseIndent();
     }
 }
