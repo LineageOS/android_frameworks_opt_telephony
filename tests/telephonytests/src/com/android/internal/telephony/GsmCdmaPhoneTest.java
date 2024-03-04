@@ -2712,6 +2712,9 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         doReturn(true).when(dsResolver).isDomainSelectionSupported();
         DomainSelectionResolver.setDomainSelectionResolver(dsResolver);
 
+        EmergencyStateTracker est = Mockito.mock(EmergencyStateTracker.class);
+        replaceInstance(EmergencyStateTracker.class, "INSTANCE", null, est);
+
         mPhoneUT.handleMessage(mPhoneUT.obtainMessage(
                 GsmCdmaPhone.EVENT_EMERGENCY_CALLBACK_MODE_ENTER));
 
@@ -2721,7 +2724,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mPhoneUT.exitEmergencyCallbackMode();
         processAllMessages();
 
-        verify(mContext, never()).sendStickyBroadcastAsUser(any(), any());
+        // Verify that the request is routed to EmergencyStateTracker.
+        verify(est).exitEmergencyCallbackMode();
     }
 
     @Test

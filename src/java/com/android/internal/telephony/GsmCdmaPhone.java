@@ -4175,6 +4175,10 @@ public class GsmCdmaPhone extends Phone {
             Rlog.d(LOG_TAG, "exitEmergencyCallbackMode: mImsPhone=" + mImsPhone
                     + " isPhoneTypeGsm=" + isPhoneTypeGsm());
         }
+        if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+            EmergencyStateTracker.getInstance().exitEmergencyCallbackMode();
+            return;
+        }
         if (mImsPhone != null && mImsPhone.isInImsEcm()) {
             mImsPhone.exitEmergencyCallbackMode();
         } else {
