@@ -3019,7 +3019,63 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         processAllMessages();
 
         verify(mNullCipherNotifier, times(1))
-                .onSecurityAlgorithmUpdate(eq(mContext), eq(0), eq(update));
+                .onSecurityAlgorithmUpdate(eq(mContext), eq(0), eq(0), eq(update));
+    }
+
+    @Test
+    public void testUpdateNullCipherNotifier_flagDisabled() {
+        when(mFeatureFlags.enableModemCipherTransparencyUnsolEvents()).thenReturn(false);
+        Phone phoneUT = makeNewPhoneUT();
+        phoneUT.sendMessage(
+                mPhoneUT.obtainMessage(
+                        Phone.EVENT_SUBSCRIPTIONS_CHANGED,
+                        new AsyncResult(null, null, null)));
+        processAllMessages();
+
+        verify(mNullCipherNotifier, never()).setSubscriptionMapping(any(), anyInt(), anyInt());
+    }
+
+    @Test
+    public void testUpdateNullCipherNotifier_activeSubscription() {
+        when(mFeatureFlags.enableModemCipherTransparencyUnsolEvents()).thenReturn(true);
+
+        int subId = 10;
+        SubscriptionInfoInternal subInfo = new SubscriptionInfoInternal.Builder().setSimSlotIndex(
+                0).setId(subId).build();
+        when(mSubscriptionManagerService.getSubscriptionInfoInternal(subId)).thenReturn(
+                subInfo);
+        doReturn(subId).when(mSubscriptionManagerService)
+                .getSubId(anyInt());
+        Phone phoneUT = makeNewPhoneUT();
+
+        phoneUT.sendMessage(
+                mPhoneUT.obtainMessage(
+                        Phone.EVENT_SUBSCRIPTIONS_CHANGED,
+                        new AsyncResult(null, null, null)));
+        processAllMessages();
+
+        verify(mNullCipherNotifier, times(1)).setSubscriptionMapping(eq(mContext), eq(0), eq(10));
+    }
+
+    @Test
+    public void testUpdateNullCipherNotifier_inactiveSubscription() {
+        when(mFeatureFlags.enableModemCipherTransparencyUnsolEvents()).thenReturn(true);
+        int subId = 1;
+        SubscriptionInfoInternal subInfo = new SubscriptionInfoInternal.Builder().setSimSlotIndex(
+                -1).setId(subId).build();
+        when(mSubscriptionManagerService.getSubscriptionInfoInternal(subId)).thenReturn(
+                subInfo);
+        doReturn(subId).when(mSubscriptionManagerService)
+                .getSubId(anyInt());
+        Phone phoneUT = makeNewPhoneUT();
+
+        phoneUT.sendMessage(
+                mPhoneUT.obtainMessage(
+                        Phone.EVENT_SUBSCRIPTIONS_CHANGED,
+                        new AsyncResult(null, null, null)));
+        processAllMessages();
+
+        verify(mNullCipherNotifier, times(1)).setSubscriptionMapping(eq(mContext), eq(0), eq(-1));
     }
 
     @Test

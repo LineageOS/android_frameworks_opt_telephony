@@ -123,6 +123,13 @@ public class CellularNetworkSecuritySafetySource {
     }
 
     /**
+     * Clears issue state for the identified subscription
+     */
+    public synchronized  void clearNullCipherState(Context context, int subId) {
+        mNullCipherStates.remove(subId);
+        updateSafetyCenter(context);
+    }
+    /**
      * Enables or disables the identifier disclosure issue and clears any current issues if the
      * enable state is changed.
      */

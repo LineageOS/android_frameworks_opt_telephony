@@ -172,6 +172,26 @@ public final class CellularNetworkSecuritySafetySourceTest extends TelephonyTest
     }
 
     @Test
+    public void clearNullCipherState() {
+        ArgumentCaptor<SafetySourceData> data = ArgumentCaptor.forClass(SafetySourceData.class);
+
+        mSafetySource.setNullCipherIssueEnabled(mContext, true);
+        mSafetySource.setNullCipherState(mContext, 0, NULL_CIPHER_STATE_NOTIFY_ENCRYPTED);
+        mSafetySource.clearNullCipherState(mContext, 0);
+
+        // Once for enable, once for encrypted state, and once for clearing state
+        verify(mSafetyCenterManagerWrapper, times(3)).setSafetySourceData(data.capture());
+
+        // initial check that our encrypted state update created an issue
+        assertThat(data.getAllValues().get(1).getStatus()).isNotNull();
+        assertThat(data.getAllValues().get(1).getIssues()).hasSize(1);
+
+        // assert that our last call to clear state results in no issues sent to SC
+        assertThat(data.getAllValues().get(2).getStatus()).isNotNull();
+        assertThat(data.getAllValues().get(2).getIssues()).isEmpty();
+    }
+
+    @Test
     public void disableIdentifierDisclosueIssue_nullData() {
         // We must first enable before disabling, since a standalone call to disable may result in
         // a no-op when the default for a new notifier is to be disabled.
