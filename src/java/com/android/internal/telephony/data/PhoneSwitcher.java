@@ -17,7 +17,6 @@
 package com.android.internal.telephony.data;
 
 import static android.net.NetworkCapabilities.TRANSPORT_CELLULAR;
-import static android.net.NetworkCapabilities.TRANSPORT_SATELLITE;
 import static android.telephony.CarrierConfigManager.KEY_DATA_SWITCH_VALIDATION_TIMEOUT_LONG;
 import static android.telephony.SubscriptionManager.DEFAULT_PHONE_INDEX;
 import static android.telephony.SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
@@ -571,7 +570,6 @@ public class PhoneSwitcher extends Handler {
 
         final NetworkCapabilities.Builder builder = new NetworkCapabilities.Builder()
                 .addTransportType(TRANSPORT_CELLULAR)
-                .addTransportType(TRANSPORT_SATELLITE)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_DUN)
@@ -989,7 +987,7 @@ public class PhoneSwitcher extends Handler {
 
     private void onRequestNetwork(NetworkRequest networkRequest) {
         TelephonyNetworkRequest telephonyNetworkRequest = new TelephonyNetworkRequest(
-                networkRequest, PhoneFactory.getDefaultPhone(), mFlags);
+                networkRequest, PhoneFactory.getDefaultPhone());
         if (!mNetworkRequestList.contains(telephonyNetworkRequest)) {
             mNetworkRequestList.add(telephonyNetworkRequest);
             onEvaluate(REQUESTS_CHANGED, "netRequest");
@@ -998,7 +996,7 @@ public class PhoneSwitcher extends Handler {
 
     private void onReleaseNetwork(NetworkRequest networkRequest) {
         TelephonyNetworkRequest telephonyNetworkRequest = new TelephonyNetworkRequest(
-                networkRequest, PhoneFactory.getDefaultPhone(), mFlags);
+                networkRequest, PhoneFactory.getDefaultPhone());
         if (mNetworkRequestList.remove(telephonyNetworkRequest)) {
             onEvaluate(REQUESTS_CHANGED, "netReleased");
             collectReleaseNetworkMetrics(networkRequest);

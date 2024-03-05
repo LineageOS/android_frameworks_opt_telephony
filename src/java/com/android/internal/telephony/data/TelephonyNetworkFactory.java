@@ -138,7 +138,6 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     public NetworkCapabilities makeNetworkFilter(int subscriptionId) {
         final NetworkCapabilities.Builder builder = new NetworkCapabilities.Builder()
                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                .addTransportType(NetworkCapabilities.TRANSPORT_SATELLITE)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_DUN)
@@ -264,7 +263,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
 
     private void onNeedNetworkFor(Message msg) {
         TelephonyNetworkRequest networkRequest =
-                new TelephonyNetworkRequest((NetworkRequest) msg.obj, mPhone, mFlags);
+                new TelephonyNetworkRequest((NetworkRequest) msg.obj, mPhone);
         boolean shouldApply = mPhoneSwitcher.shouldApplyNetworkRequest(
                 networkRequest, mPhone.getPhoneId());
 
@@ -290,7 +289,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
 
     private void onReleaseNetworkFor(Message msg) {
         TelephonyNetworkRequest networkRequest =
-                new TelephonyNetworkRequest((NetworkRequest) msg.obj, mPhone, mFlags);
+                new TelephonyNetworkRequest((NetworkRequest) msg.obj, mPhone);
         boolean applied = mNetworkRequests.get(networkRequest)
                 != AccessNetworkConstants.TRANSPORT_TYPE_INVALID;
 
