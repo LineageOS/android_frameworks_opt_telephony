@@ -320,13 +320,13 @@ public class DataNetworkTest extends TelephonyTest {
     }
 
     private void serviceStateChanged(@Annotation.NetworkType int networkType,
-            @NetworkRegistrationInfo.RegistrationState int regState) {
-        serviceStateChanged(networkType, regState, null);
+            @NetworkRegistrationInfo.RegistrationState int regState, boolean isNtn) {
+        serviceStateChanged(networkType, regState, null, isNtn);
     }
 
     private void serviceStateChanged(@Annotation.NetworkType int networkType,
             @NetworkRegistrationInfo.RegistrationState int regState,
-            DataSpecificRegistrationInfo dsri) {
+            DataSpecificRegistrationInfo dsri, boolean isNtn) {
         ServiceState ss = new ServiceState();
         ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
                 .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
@@ -334,6 +334,7 @@ public class DataNetworkTest extends TelephonyTest {
                 .setRegistrationState(regState)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
                 .setDataSpecificInfo(dsri)
+                .setIsNonTerrestrialNetwork(isNtn)
                 .build());
 
         ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
@@ -410,9 +411,13 @@ public class DataNetworkTest extends TelephonyTest {
         doReturn(FAKE_IMSI).when(mPhone).getSubscriberId();
         doReturn(true).when(mDataNetworkController)
                 .isNetworkRequestExisting(any(TelephonyNetworkRequest.class));
+        doReturn(Set.of(NetworkCapabilities.NET_CAPABILITY_IMS,
+                NetworkCapabilities.NET_CAPABILITY_EIMS, NetworkCapabilities.NET_CAPABILITY_XCAP))
+                .when(mDataConfigManager).getForcedCellularTransportCapabilities();
+        doReturn(true).when(mFeatureFlags).carrierEnabledSatelliteFlag();
 
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, false/*isNtn*/);
     }
 
     @After
@@ -446,7 +451,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
 
         setSuccessfulSetupDataResponse(
                 mMockedWwanDataServiceManager, 123, Collections.emptyList(), mDefaultQos);
@@ -551,12 +556,13 @@ public class DataNetworkTest extends TelephonyTest {
                 .build();
         // Out of service
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING, dsri);
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING, dsri,
+                false/*isNtn*/);
 
         NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
 
         setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
 
@@ -597,7 +603,8 @@ public class DataNetworkTest extends TelephonyTest {
                 .build();
         // Out of service
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING, dsri);
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING, dsri,
+                false/*isNtn*/);
 
         DataCallResponse response = new DataCallResponse.Builder()
                 .setCause(0)
@@ -653,7 +660,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
         setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
 
         mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
@@ -742,7 +749,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
 
         List<TrafficDescriptor> tds = List.of(
                 new TrafficDescriptor(null, new TrafficDescriptor.OsAppId(
@@ -777,7 +784,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
 
         List<TrafficDescriptor> tds = List.of(
                 new TrafficDescriptor(null, new TrafficDescriptor.OsAppId(
@@ -810,7 +817,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
 
         List<TrafficDescriptor> tds = List.of(
                 new TrafficDescriptor(null, new TrafficDescriptor.OsAppId(
@@ -843,7 +850,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_CBS)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
 
         List<TrafficDescriptor> tds = List.of(
                 new TrafficDescriptor(null, new TrafficDescriptor.OsAppId(
@@ -877,7 +884,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_CBS)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
 
         List<TrafficDescriptor> tds = List.of(
                 new TrafficDescriptor(null, new TrafficDescriptor.OsAppId(
@@ -962,7 +969,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
 
         setSuccessfulSetupDataResponse(mMockedWlanDataServiceManager, 123);
 
@@ -1183,7 +1190,7 @@ public class DataNetworkTest extends TelephonyTest {
         TelephonyNetworkRequest networkRequest = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                .build(), mPhone);
+                .build(), mPhone, mFeatureFlags);
         networkRequestList.add(networkRequest);
 
         SimulatedCommands simulatedCommands2 = mock(SimulatedCommands.class);
@@ -1238,7 +1245,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
 
         setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
 
@@ -1335,7 +1342,7 @@ public class DataNetworkTest extends TelephonyTest {
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
 
         // Data disabled
         doReturn(false).when(mDataSettingsManager).isDataEnabled();
@@ -1371,14 +1378,14 @@ public class DataNetworkTest extends TelephonyTest {
     @Test
     public void testRestrictedNetworkDataRoamingEnabled() throws Exception {
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+                NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING, false/*isNtn*/);
 
         NetworkRequestList networkRequestList = new NetworkRequestList();
         // Restricted network request
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
 
         // Data roaming disabled
         doReturn(false).when(mDataSettingsManager).isDataRoamingEnabled();
@@ -1516,7 +1523,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
         mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
                 mDataServiceManagers, mInternetDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
@@ -1620,7 +1627,7 @@ public class DataNetworkTest extends TelephonyTest {
                         LteVopsSupportInfo.LTE_STATUS_SUPPORTED))
                 .build();
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri, false/*isNtn*/);
 
         assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_MMTEL)).isTrue();
@@ -1634,7 +1641,7 @@ public class DataNetworkTest extends TelephonyTest {
                 .build();
         logd("Trigger non VoPS");
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri, false/*isNtn*/);
         // MMTEL should not be removed.
         assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_MMTEL)).isTrue();
@@ -1651,7 +1658,7 @@ public class DataNetworkTest extends TelephonyTest {
                         LteVopsSupportInfo.LTE_STATUS_SUPPORTED))
                 .build();
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri, false/*isNtn*/);
 
         assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_MMTEL)).isTrue();
@@ -1665,7 +1672,7 @@ public class DataNetworkTest extends TelephonyTest {
                 .build();
         logd("Trigger non VoPS");
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri, false/*isNtn*/);
         // MMTEL should be removed to reflect the actual Vops status.
         assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_MMTEL)).isFalse();
@@ -1724,7 +1731,7 @@ public class DataNetworkTest extends TelephonyTest {
 
         TelephonyNetworkRequest networkRequest = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder().addCapability(
-                        NetworkCapabilities.NET_CAPABILITY_SUPL).build(), mPhone);
+                        NetworkCapabilities.NET_CAPABILITY_SUPL).build(), mPhone, mFeatureFlags);
         mDataNetworkUT.attachNetworkRequests(new NetworkRequestList(networkRequest));
         processAllMessages();
 
@@ -1747,7 +1754,7 @@ public class DataNetworkTest extends TelephonyTest {
 
         TelephonyNetworkRequest networkRequest = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder().addCapability(
-                        NetworkCapabilities.NET_CAPABILITY_SUPL).build(), mPhone);
+                        NetworkCapabilities.NET_CAPABILITY_SUPL).build(), mPhone, mFeatureFlags);
         mDataNetworkUT.attachNetworkRequests(new NetworkRequestList(networkRequest));
         processAllMessages();
 
@@ -1900,7 +1907,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
 
         mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
                 mDataServiceManagers, mInternetDataProfile, networkRequestList,
@@ -2044,7 +2051,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
         mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
                 mDataServiceManagers, m5gDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, DataAllowedReason.NORMAL,
@@ -2141,7 +2148,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkRequest.Builder builder = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
-        networkRequestList.add(new TelephonyNetworkRequest(builder.build(), mPhone));
+        networkRequestList.add(new TelephonyNetworkRequest(builder.build(), mPhone, mFeatureFlags));
         mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
                 mDataServiceManagers, mImsDataProfile, networkRequestList,
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
@@ -2248,7 +2255,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                .build(), mPhone));
+                .build(), mPhone, mFeatureFlags));
         setSuccessfulSetupDataResponse(mMockedWlanDataServiceManager, 123);
         mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
                 mDataServiceManagers, mImsDataProfile, networkRequestList,
@@ -2264,7 +2271,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkRequest.Builder builder = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
         if (isMmtel) builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
-        networkRequestList.add(new TelephonyNetworkRequest(builder.build(), mPhone));
+        networkRequestList.add(new TelephonyNetworkRequest(builder.build(), mPhone, mFeatureFlags));
 
         setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
 
@@ -2274,6 +2281,37 @@ public class DataNetworkTest extends TelephonyTest {
                 DataAllowedReason.NORMAL, mDataNetworkCallback);
         replaceInstance(DataNetwork.class, "mDataCallSessionStats",
                 mDataNetworkUT, mDataCallSessionStats);
+        processAllMessages();
+    }
+
+    private void setupNonTerrestrialDataNetwork() {
+        NetworkRequestList networkRequestList = new NetworkRequestList();
+
+        networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_SATELLITE)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                .build(), mPhone, mFeatureFlags));
+        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
+
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mInternetDataProfile, networkRequestList,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                DataAllowedReason.NORMAL, mDataNetworkCallback);
+        processAllMessages();
+    }
+
+    private void setupTerrestrialDataNetwork() {
+        NetworkRequestList networkRequestList = new NetworkRequestList();
+        networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build(), mPhone, mFeatureFlags));
+        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
+
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mInternetDataProfile, networkRequestList,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                DataAllowedReason.NORMAL, mDataNetworkCallback);
         processAllMessages();
     }
 
@@ -2354,5 +2392,105 @@ public class DataNetworkTest extends TelephonyTest {
         processAllMessages();
 
         verify(mDataNetworkCallback).onQosSessionsChanged(newQosSessions);
+    }
+
+    @Test
+    public void testIsTransportSatelliteSupportNonImsNonTerrestrialNetwork() throws Exception {
+        // Service state at Non-terrestrial network
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, true/*isNtn*/);
+
+        // set up data network with transport type satellite + Internet
+        setupNonTerrestrialDataNetwork();
+
+        //Check now transport type for the data network is satellite
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasTransport(NetworkCapabilities.TRANSPORT_SATELLITE)).isTrue();
+    }
+
+    @Test
+    public void testIsTransportSatelliteSupportWithImsNonTerrestrialNetwork() throws Exception {
+        // Service state at Non-terrestrial network
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, true/*isNtn*/);
+
+        // set up data network with transport type satellite + IMS
+        createImsDataNetwork(false/*isMmtel*/);
+
+        //Check transport type for the data network is Cellular for Ims at non-terrestrial network
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)).isTrue();
+    }
+
+    @Test
+    public void testSatelliteTransportSupportedNonImsTerrestrialToNonTerrestrial()
+            throws Exception {
+        // Service state at terrestrial network
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, false/*isNtn*/);
+
+        // set up data network with transport type cellular + Internet
+        setupTerrestrialDataNetwork();
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)).isTrue();
+
+        // Service State change terrestrial to non-terrestrial
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, true/*isNtn*/);
+
+        // Make sure transport type for the data network is still Cellular
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)).isTrue();
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasTransport(NetworkCapabilities.TRANSPORT_SATELLITE)).isFalse();
+
+        // Disconnect the Data call
+        mDataNetworkUT.sendMessage(19/*EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE*/, 0/*Success*/);
+        processAllMessages();
+
+        // set up data network with transport type satellite + Internet
+        setupNonTerrestrialDataNetwork();
+
+        //Check now transport type for the data network is satellite
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasTransport(NetworkCapabilities.TRANSPORT_SATELLITE)).isTrue();
+    }
+
+    @Test
+    public void testSatelliteTransportSupportedNonImsNonTerrestrialToTerrestrial()
+            throws Exception {
+        // Service state at non-terrestrial network
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, true/*isNtn*/);
+
+        // set up data network with transport type satellite + Internet
+        setupNonTerrestrialDataNetwork();
+
+        //Check now transport type for the data network is satellite
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasTransport(NetworkCapabilities.TRANSPORT_SATELLITE)).isTrue();
+
+        // Service State change non-terrestrial to terrestrial
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, false/*isNtn*/);
+
+        // Make sure transport type for the data network is still satellite
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasTransport(NetworkCapabilities.TRANSPORT_SATELLITE)).isTrue();
+
+        // Make sure transport type for the data network is not cellular
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)).isFalse();
+
+        // Disconnect the Data call
+        mDataNetworkUT.sendMessage(19/*EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE*/, 0/*Success*/);
+        processAllMessages();
+
+        // set up data network with transport type cellular + Internet
+        setupTerrestrialDataNetwork();
+
+        //Check now transport type for the data network is cellular
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)).isTrue();
     }
 }
