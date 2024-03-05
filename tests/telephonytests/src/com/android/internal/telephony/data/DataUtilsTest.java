@@ -18,24 +18,32 @@ package com.android.internal.telephony.data;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.mockito.Mockito.doReturn;
+
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
+import com.android.internal.telephony.flags.FeatureFlags;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.List;
 
 public class DataUtilsTest extends TelephonyTest {
 
+    private FeatureFlags mFeatureFlags;
+
     @Before
     public void setUp() throws Exception {
         logd("DataUtilsTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        mFeatureFlags = Mockito.mock(FeatureFlags.class);
+        doReturn(true).when(mFeatureFlags).carrierEnabledSatelliteFlag();
         logd("DataUtilsTest -Setup!");
     }
 
@@ -57,10 +65,13 @@ public class DataUtilsTest extends TelephonyTest {
                 NetworkCapabilities.NET_CAPABILITY_ENTERPRISE,
                 NetworkCapabilities.NET_CAPABILITY_ENTERPRISE,
                 NetworkCapabilities.NET_CAPABILITY_ENTERPRISE,
+                NetworkCapabilities.NET_CAPABILITY_IMS,
+                NetworkCapabilities.NET_CAPABILITY_IMS,
         };
 
         int requestId = 0;
         int enterpriseId = 1;
+        int transportType = NetworkCapabilities.TRANSPORT_CELLULAR;
         TelephonyNetworkRequest networkRequest;
         for (int netCap : netCaps) {
             if (netCap == NetworkCapabilities.NET_CAPABILITY_ENTERPRISE) {
@@ -69,24 +80,31 @@ public class DataUtilsTest extends TelephonyTest {
                                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
                                 .addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)
                                 .addEnterpriseId(enterpriseId).build(), -1, requestId++,
-                        NetworkRequest.Type.REQUEST), mPhone);
+                        NetworkRequest.Type.REQUEST), mPhone, mFeatureFlags);
                 if (enterpriseId == 1) enterpriseId++;
+            } else if (netCap == NetworkCapabilities.NET_CAPABILITY_IMS) {
+                networkRequest = new TelephonyNetworkRequest(new NetworkRequest(
+                        new NetworkCapabilities.Builder()
+                                .addTransportType(transportType)
+                                .addCapability(netCap).build(), -1, requestId++,
+                        NetworkRequest.Type.REQUEST), mPhone, mFeatureFlags);
+                transportType = NetworkCapabilities.TRANSPORT_SATELLITE;
             } else {
                 networkRequest = new TelephonyNetworkRequest(new NetworkRequest(
                         new NetworkCapabilities.Builder()
                                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
                                 .addCapability(netCap).build(), -1, requestId++,
-                        NetworkRequest.Type.REQUEST), mPhone);
+                        NetworkRequest.Type.REQUEST), mPhone, mFeatureFlags);
             }
             requestList.add(networkRequest);
         }
 
-        assertThat(requestList).hasSize(8);
+        assertThat(requestList).hasSize(10);
 
         List<NetworkRequestList> requestListList =
-                DataUtils.getGroupedNetworkRequestList(requestList);
+                DataUtils.getGroupedNetworkRequestList(requestList, mFeatureFlags);
 
-        assertThat(requestListList).hasSize(5);
+        assertThat(requestListList).hasSize(7);
         requestList = requestListList.get(0);
         assertThat(requestList).hasSize(1);
         assertThat(requestList.get(0).hasCapability(
@@ -100,26 +118,40 @@ public class DataUtilsTest extends TelephonyTest {
                 NetworkCapabilities.NET_CAPABILITY_MMS)).isTrue();
 
         requestList = requestListList.get(2);
-        assertThat(requestList).hasSize(2);
+        assertThat(requestList).hasSize(1);
         assertThat(requestList.get(0).hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
-        assertThat(requestList.get(1).hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
+                NetworkCapabilities.NET_CAPABILITY_IMS)).isTrue();
+        assertThat(requestList.get(0).getNativeNetworkRequest().hasTransport(
+                NetworkCapabilities.TRANSPORT_CELLULAR)).isTrue();
 
         requestList = requestListList.get(3);
         assertThat(requestList).hasSize(1);
         assertThat(requestList.get(0).hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)).isTrue();
-        assertThat(requestList.get(0).getCapabilityDifferentiator() == 1).isTrue();
+                NetworkCapabilities.NET_CAPABILITY_IMS)).isTrue();
+        assertThat(requestList.get(0).getNativeNetworkRequest().hasTransport(
+                NetworkCapabilities.TRANSPORT_SATELLITE)).isTrue();
 
         requestList = requestListList.get(4);
         assertThat(requestList).hasSize(2);
         assertThat(requestList.get(0).hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
+        assertThat(requestList.get(1).hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
+
+        requestList = requestListList.get(5);
+        assertThat(requestList).hasSize(1);
+        assertThat(requestList.get(0).hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)).isTrue();
-        assertThat(requestList.get(0).getCapabilityDifferentiator() == 2).isTrue();
+        assertThat(requestList.get(0).getCapabilityDifferentiator()).isEqualTo(1);
+
+        requestList = requestListList.get(6);
+        assertThat(requestList).hasSize(2);
+        assertThat(requestList.get(0).hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)).isTrue();
+        assertThat(requestList.get(0).getCapabilityDifferentiator()).isEqualTo(2);
         assertThat(requestList.get(1).hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)).isTrue();
-        assertThat(requestList.get(1).getCapabilityDifferentiator() == 2).isTrue();
+        assertThat(requestList.get(1).getCapabilityDifferentiator()).isEqualTo(2);
     }
 
     @Test

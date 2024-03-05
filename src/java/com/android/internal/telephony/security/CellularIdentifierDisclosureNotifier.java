@@ -21,6 +21,9 @@ import android.telephony.CellularIdentifierDisclosure;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.metrics.CellularSecurityTransparencyStats;
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.telephony.Rlog;
 
 import java.time.Instant;
@@ -62,13 +65,13 @@ public class CellularIdentifierDisclosureNotifier {
     // This object should only be accessed from within the thread of mSerializedWorkQueue. Access
     // outside of that thread would require additional synchronization.
     private Map<Integer, DisclosureWindow> mWindows;
+    private SubscriptionManagerService mSubscriptionManagerService;
+    private CellularSecurityTransparencyStats mCellularSecurityTransparencyStats;
 
     public CellularIdentifierDisclosureNotifier(CellularNetworkSecuritySafetySource safetySource) {
-        this(
-                Executors.newSingleThreadScheduledExecutor(),
-                DEFAULT_WINDOW_CLOSE_DURATION_IN_MINUTES,
-                TimeUnit.MINUTES,
-                safetySource);
+        this(Executors.newSingleThreadScheduledExecutor(), DEFAULT_WINDOW_CLOSE_DURATION_IN_MINUTES,
+                TimeUnit.MINUTES, safetySource, SubscriptionManagerService.getInstance(),
+                new CellularSecurityTransparencyStats());
     }
 
     /**
@@ -83,12 +86,16 @@ public class CellularIdentifierDisclosureNotifier {
             ScheduledExecutorService notificationQueue,
             long windowCloseDuration,
             TimeUnit windowCloseUnit,
-            CellularNetworkSecuritySafetySource safetySource) {
+            CellularNetworkSecuritySafetySource safetySource,
+            SubscriptionManagerService subscriptionManagerService,
+            CellularSecurityTransparencyStats cellularSecurityTransparencyStats) {
         mSerializedWorkQueue = notificationQueue;
         mWindowCloseDuration = windowCloseDuration;
         mWindowCloseUnit = windowCloseUnit;
         mWindows = new HashMap<>();
         mSafetySource = safetySource;
+        mSubscriptionManagerService = subscriptionManagerService;
+        mCellularSecurityTransparencyStats = cellularSecurityTransparencyStats;
     }
 
     /**
@@ -97,6 +104,8 @@ public class CellularIdentifierDisclosureNotifier {
      */
     public void addDisclosure(Context context, int subId, CellularIdentifierDisclosure disclosure) {
         Rlog.d(TAG, "Identifier disclosure reported: " + disclosure);
+
+        logDisclosure(subId, disclosure);
 
         synchronized (mEnabledLock) {
             if (!mEnabled) {
@@ -121,6 +130,31 @@ public class CellularIdentifierDisclosureNotifier {
                 Rlog.e(TAG, "Failed to schedule incrementAndNotify: " + e.getMessage());
             }
         } // end mEnabledLock
+    }
+
+    private void logDisclosure(int subId, CellularIdentifierDisclosure disclosure) {
+        try {
+            mSerializedWorkQueue.execute(runLogDisclosure(subId, disclosure));
+        } catch (RejectedExecutionException e) {
+            Rlog.e(TAG, "Failed to schedule runLogDisclosure: " + e.getMessage());
+        }
+    }
+
+    private Runnable runLogDisclosure(int subId,
+            CellularIdentifierDisclosure disclosure) {
+        return () -> {
+            SubscriptionInfoInternal subInfo =
+                    mSubscriptionManagerService.getSubscriptionInfoInternal(subId);
+            String mcc = null;
+            String mnc = null;
+            if (subInfo != null) {
+                mcc = subInfo.getMcc();
+                mnc = subInfo.getMnc();
+            }
+
+            mCellularSecurityTransparencyStats.logIdentifierDisclosure(disclosure, mcc, mnc,
+                    isEnabled());
+        };
     }
 
     /**

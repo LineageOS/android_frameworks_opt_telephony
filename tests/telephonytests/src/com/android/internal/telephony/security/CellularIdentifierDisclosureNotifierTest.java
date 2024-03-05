@@ -29,12 +29,17 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.content.Context;
 import android.telephony.CellularIdentifierDisclosure;
 
 import com.android.internal.telephony.TestExecutorService;
+import com.android.internal.telephony.metrics.CellularSecurityTransparencyStats;
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -50,6 +55,9 @@ public class CellularIdentifierDisclosureNotifierTest {
     private static final int SUB_ID_2 = 2;
     private CellularIdentifierDisclosure mDislosure;
     private CellularNetworkSecuritySafetySource mSafetySource;
+    private CellularSecurityTransparencyStats mStats;
+    private TestExecutorService mExecutor;
+    private SubscriptionManagerService mSubscriptionManagerService;
     private Context mContext;
     private InOrder mInOrder;
 
@@ -62,15 +70,16 @@ public class CellularIdentifierDisclosureNotifierTest {
                         "001001",
                         false);
         mSafetySource = mock(CellularNetworkSecuritySafetySource.class);
+        mStats = mock(CellularSecurityTransparencyStats.class);
+        mExecutor = new TestExecutorService();
+        mSubscriptionManagerService = mock(SubscriptionManagerService.class);
+        mContext = mock(Context.class);
         mInOrder = inOrder(mSafetySource);
     }
 
     @Test
     public void testInitializeDisabled() {
-        TestExecutorService executor = new TestExecutorService();
-        CellularIdentifierDisclosureNotifier notifier =
-                new CellularIdentifierDisclosureNotifier(
-                        executor, 15, TimeUnit.MINUTES, mSafetySource);
+        CellularIdentifierDisclosureNotifier notifier = getNotifier();
 
         assertFalse(notifier.isEnabled());
         verify(mSafetySource, never()).setIdentifierDisclosureIssueEnabled(any(), anyBoolean());
@@ -78,10 +87,7 @@ public class CellularIdentifierDisclosureNotifierTest {
 
     @Test
     public void testDisableAddDisclosureNop() {
-        TestExecutorService executor = new TestExecutorService();
-        CellularIdentifierDisclosureNotifier notifier =
-                new CellularIdentifierDisclosureNotifier(
-                        executor, 15, TimeUnit.MINUTES, mSafetySource);
+        CellularIdentifierDisclosureNotifier notifier = getNotifier();
 
         assertFalse(notifier.isEnabled());
         notifier.addDisclosure(mContext, SUB_ID_1, mDislosure);
@@ -92,10 +98,8 @@ public class CellularIdentifierDisclosureNotifierTest {
 
     @Test
     public void testAddDisclosureEmergencyNop() {
-        TestExecutorService executor = new TestExecutorService();
-        CellularIdentifierDisclosureNotifier notifier =
-                new CellularIdentifierDisclosureNotifier(
-                        executor, 15, TimeUnit.MINUTES, mSafetySource);
+        CellularIdentifierDisclosureNotifier notifier = getNotifier();
+
         CellularIdentifierDisclosure emergencyDisclosure =
                 new CellularIdentifierDisclosure(
                         CellularIdentifierDisclosure.NAS_PROTOCOL_MESSAGE_ATTACH_REQUEST,
@@ -113,11 +117,7 @@ public class CellularIdentifierDisclosureNotifierTest {
 
     @Test
     public void testAddDisclosureCountIncrements() {
-        TestExecutorService executor = new TestExecutorService();
-        CellularIdentifierDisclosureNotifier notifier =
-                new CellularIdentifierDisclosureNotifier(
-                        executor, 15, TimeUnit.MINUTES, mSafetySource);
-
+        CellularIdentifierDisclosureNotifier notifier = getNotifier();
         notifier.enable(mContext);
 
         for (int i = 0; i < 3; i++) {
@@ -135,28 +135,20 @@ public class CellularIdentifierDisclosureNotifierTest {
 
     @Test
     public void testSingleDisclosureStartAndEndTimesAreEqual() {
-        TestExecutorService executor = new TestExecutorService();
-        CellularIdentifierDisclosureNotifier notifier =
-                new CellularIdentifierDisclosureNotifier(
-                        executor, 15, TimeUnit.MINUTES, mSafetySource);
-
+        CellularIdentifierDisclosureNotifier notifier = getNotifier();
         notifier.enable(mContext);
 
         notifier.addDisclosure(mContext, SUB_ID_1, mDislosure);
 
         assertEquals(1, notifier.getCurrentDisclosureCount(SUB_ID_1));
-        assertTrue(notifier.getFirstOpen(SUB_ID_1).equals(notifier.getCurrentEnd(SUB_ID_1)));
+        Assert.assertEquals(notifier.getFirstOpen(SUB_ID_1), notifier.getCurrentEnd(SUB_ID_1));
         mInOrder.verify(mSafetySource, times(1))
                 .setIdentifierDisclosure(any(), eq(SUB_ID_1), eq(1), any(), any());
     }
 
     @Test
     public void testMultipleDisclosuresTimeWindows() {
-        TestExecutorService executor = new TestExecutorService();
-        CellularIdentifierDisclosureNotifier notifier =
-                new CellularIdentifierDisclosureNotifier(
-                        executor, 15, TimeUnit.MINUTES, mSafetySource);
-
+        CellularIdentifierDisclosureNotifier notifier = getNotifier();
         notifier.enable(mContext);
 
         notifier.addDisclosure(mContext, SUB_ID_1, mDislosure);
@@ -175,10 +167,7 @@ public class CellularIdentifierDisclosureNotifierTest {
 
     @Test
     public void testAddDisclosureThenWindowClose() {
-        TestExecutorService executor = new TestExecutorService();
-        CellularIdentifierDisclosureNotifier notifier =
-                new CellularIdentifierDisclosureNotifier(
-                        executor, 15, TimeUnit.MINUTES, mSafetySource);
+        CellularIdentifierDisclosureNotifier notifier = getNotifier();
 
         // One round of disclosures
         notifier.enable(mContext);
@@ -191,7 +180,7 @@ public class CellularIdentifierDisclosureNotifierTest {
                 .setIdentifierDisclosure(any(), eq(SUB_ID_1), eq(2), any(), any());
 
         // Window close should reset the counter
-        executor.advanceTime(WINDOW_CLOSE_ADVANCE_MILLIS);
+        mExecutor.advanceTime(WINDOW_CLOSE_ADVANCE_MILLIS);
         assertEquals(0, notifier.getCurrentDisclosureCount(SUB_ID_1));
 
         // A new disclosure should increment as normal
@@ -203,10 +192,7 @@ public class CellularIdentifierDisclosureNotifierTest {
 
     @Test
     public void testDisableClosesWindow() {
-        TestExecutorService executor = new TestExecutorService();
-        CellularIdentifierDisclosureNotifier notifier =
-                new CellularIdentifierDisclosureNotifier(
-                        executor, 15, TimeUnit.MINUTES, mSafetySource);
+        CellularIdentifierDisclosureNotifier notifier = getNotifier();
 
         // One round of disclosures
         notifier.enable(mContext);
@@ -231,10 +217,7 @@ public class CellularIdentifierDisclosureNotifierTest {
 
     @Test
     public void testMultipleSubIdsTrackedIndependently() {
-        TestExecutorService executor = new TestExecutorService();
-        CellularIdentifierDisclosureNotifier notifier =
-                new CellularIdentifierDisclosureNotifier(
-                        executor, 15, TimeUnit.MINUTES, mSafetySource);
+        CellularIdentifierDisclosureNotifier notifier = getNotifier();
 
         notifier.enable(mContext);
         for (int i = 0; i < 3; i++) {
@@ -261,5 +244,28 @@ public class CellularIdentifierDisclosureNotifierTest {
 
         assertEquals(3, notifier.getCurrentDisclosureCount(SUB_ID_1));
         assertEquals(4, notifier.getCurrentDisclosureCount(SUB_ID_2));
+    }
+
+    @Test
+    public void testLogDisclsoure() {
+        String mcc = "100";
+        String mnc = "200";
+
+        CellularIdentifierDisclosureNotifier notifier = getNotifier();
+        SubscriptionInfoInternal subInfoMock = mock(SubscriptionInfoInternal.class);
+        when(mSubscriptionManagerService.getSubscriptionInfoInternal(SUB_ID_1)).thenReturn(
+                subInfoMock);
+        when(subInfoMock.getMcc()).thenReturn(mcc);
+        when(subInfoMock.getMnc()).thenReturn(mnc);
+
+        notifier.addDisclosure(mContext, SUB_ID_1, mDislosure);
+
+        verify(mStats, times(1)).logIdentifierDisclosure(mDislosure, mcc, mnc,
+                mDislosure.isEmergency());
+    }
+
+    private CellularIdentifierDisclosureNotifier getNotifier() {
+        return new CellularIdentifierDisclosureNotifier(mExecutor, 15, TimeUnit.MINUTES,
+                mSafetySource, mSubscriptionManagerService, mStats);
     }
 }

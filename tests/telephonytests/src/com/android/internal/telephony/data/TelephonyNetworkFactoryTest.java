@@ -135,7 +135,8 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
     }
 
     private void activatePhoneInPhoneSwitcher(int phoneId, NetworkRequest nr, boolean active) {
-        TelephonyNetworkRequest networkRequest = new TelephonyNetworkRequest(nr, mPhone);
+        TelephonyNetworkRequest networkRequest =
+                new TelephonyNetworkRequest(nr, mPhone, mFeatureFlags);
         doReturn(active).when(mPhoneSwitcher).shouldApplyNetworkRequest(
                 eq(networkRequest), eq(phoneId));
         mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
