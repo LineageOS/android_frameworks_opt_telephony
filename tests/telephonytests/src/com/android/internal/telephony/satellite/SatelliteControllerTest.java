@@ -1736,6 +1736,8 @@ public class SatelliteControllerTest extends TelephonyTest {
 
         // Trigger carrier config changed with carrierEnabledSatelliteFlag enabled
         when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(true);
+        mCarrierConfigBundle.putBoolean(CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL,
+                true);
         for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
                 : mCarrierConfigChangedListenerList) {
             pair.first.execute(() -> pair.second.onCarrierConfigChanged(
@@ -2723,13 +2725,29 @@ public class SatelliteControllerTest extends TelephonyTest {
         verify(mMockSatelliteModemInterface, times(1)).setSatellitePlmn(anyInt(),
                 eq(plmnListPerCarrier), eq(allSatellitePlmnList), any(Message.class));
 
-        // If the PlmnListPerCarrier and the overlay config plmn list are exist verify passing
-        // the modem.
+        // If the PlmnListPerCarrier and the overlay config plmn list are exist but
+        // KEY_SATELLITE_ATTACH_SUPPORTED_BOOL is false, verify passing to the modem.
         entitlementPlmnList = Arrays.stream(new String[]{"00101", "00102", "00103"}).toList();
         overlayConfigPlmnList =
                 Arrays.stream(new String[]{"00101", "00102", "00104"}).toList();
         replaceInstance(SatelliteController.class, "mSatellitePlmnListFromOverlayConfig",
                 mSatelliteControllerUT, overlayConfigPlmnList);
+
+        mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, true,
+                entitlementPlmnList, mIIntegerConsumer);
+
+        plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(SUB_ID);
+        assertEquals(new ArrayList<>(), plmnListPerCarrier);
+        allSatellitePlmnList = SatelliteServiceUtils.mergeStrLists(
+                entitlementPlmnList, overlayConfigPlmnList);
+        verify(mMockSatelliteModemInterface, times(1)).setSatellitePlmn(anyInt(),
+                eq(entitlementPlmnList), eq(allSatellitePlmnList), any(Message.class));
+
+        // If the PlmnListPerCarrier and the overlay config plmn list are exist and
+        // KEY_SATELLITE_ATTACH_SUPPORTED_BOOL is true verify passing the modem.
+        reset(mMockSatelliteModemInterface);
+        mCarrierConfigBundle.putBoolean(CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL,
+                true);
 
         mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, true,
                 entitlementPlmnList, mIIntegerConsumer);
