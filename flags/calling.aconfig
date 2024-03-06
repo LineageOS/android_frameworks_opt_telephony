@@ -5,6 +5,7 @@ flag {
   namespace: "telephony"
   description: "APIs that are used to notify simultaneous calling changes to other applications."
   bug: "297446980"
+  is_exported: true
 }
 
 flag {
