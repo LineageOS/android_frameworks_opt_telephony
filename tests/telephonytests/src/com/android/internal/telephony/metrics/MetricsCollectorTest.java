@@ -70,8 +70,8 @@ public class MetricsCollectorTest extends TelephonyTest {
                     .setCoolDownMillis(24L * 3600L * 1000L)
                     .build();
     private static final long MIN_COOLDOWN_MILLIS = 23L * 3600L * 1000L;
-    private static final long CELL_SERVICE_MIN_COOLDOWN_MILLIS =
-            IS_DEBUGGABLE ? 4L *  60L * 1000L : MIN_COOLDOWN_MILLIS;
+    private static final long POWER_CORRELATED_MIN_COOLDOWN_MILLIS =
+            IS_DEBUGGABLE ? 4L *  60L * 1000L : 5L * 3600L * 1000L;
     private static final long MIN_CALLS_PER_BUCKET = 5L;
 
     // NOTE: these fields are currently 32-bit internally and padded to 64-bit by TelephonyManager
@@ -402,6 +402,9 @@ public class MetricsCollectorTest extends TelephonyTest {
     @SmallTest
     public void onPullAtom_cellularServiceState_tooFrequent() throws Exception {
         doReturn(null).when(mPersistAtomsStorage).getCellularServiceStates(anyLong());
+        mContextFixture.putIntResource(
+                com.android.internal.R.integer.config_metrics_pull_cooldown_millis,
+                (int) POWER_CORRELATED_MIN_COOLDOWN_MILLIS);
         List<StatsEvent> actualAtoms = new ArrayList<>();
 
         int result = mMetricsCollector.onPullAtom(CELLULAR_SERVICE_STATE, actualAtoms);
@@ -409,7 +412,7 @@ public class MetricsCollectorTest extends TelephonyTest {
         assertThat(actualAtoms).hasSize(0);
         assertThat(result).isEqualTo(StatsManager.PULL_SKIP);
         verify(mPersistAtomsStorage, times(1)).getCellularServiceStates(
-                eq(CELL_SERVICE_MIN_COOLDOWN_MILLIS));
+                eq(POWER_CORRELATED_MIN_COOLDOWN_MILLIS));
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
