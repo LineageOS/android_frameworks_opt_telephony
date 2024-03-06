@@ -155,6 +155,21 @@ public class DataEvaluation {
     }
 
     /**
+     * Check if all the disallowed reasons are a subset of the given reason.
+     *
+     * @param reasons The given reason to check
+     * @return {@code true} if it doesn't contain any disallowed reasons other than the given
+     * reasons.
+     */
+    public boolean isSubsetOf(DataDisallowedReason... reasons) {
+        int matched = 0;
+        for (DataDisallowedReason requestedReason : reasons) {
+            if (mDataDisallowedReasons.contains(requestedReason)) matched++;
+        }
+        return matched == mDataDisallowedReasons.size();
+    }
+
+    /**
      * Check if the any of the disallowed reasons match one of the provided reason.
      *
      * @param reasons The given reasons to check.
@@ -290,6 +305,8 @@ public class DataEvaluation {
         SIM_NOT_READY(true),
         /** Concurrent voice and data is not allowed. */
         CONCURRENT_VOICE_DATA_NOT_ALLOWED(true),
+        /** Service option not supported. */
+        SERVICE_OPTION_NOT_SUPPORTED(true),
         /** Carrier notified data should be restricted. */
         DATA_RESTRICTED_BY_NETWORK(true),
         /** Radio power is off (i.e. airplane mode on) */

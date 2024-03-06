@@ -32,6 +32,7 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.ServiceState.RoamingType;
 import android.telephony.TelephonyManager;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
@@ -45,7 +46,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataService
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.telephony.Rlog;
 
-import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -59,6 +60,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
     private final Phone mPhone;
     private final PersistAtomsStorage mStorage;
     private final DeviceStateHelper mDeviceStateHelper;
+    private boolean mExistAnyConnectedInternetPdn;
 
     public ServiceStateStats(Phone phone) {
         super(Runnable::run);
@@ -88,6 +90,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
                             CellularServiceState newServiceState = copyOf(state.mServiceState);
                             newServiceState.voiceRat =
                                     getVoiceRat(mPhone, getServiceStateForPhone(mPhone));
+                            newServiceState.isIwlanCrossSim = isCrossSimCallingRegistered(mPhone);
                             return new TimestampedServiceState(newServiceState, now);
                         });
         addServiceState(lastState, now);
@@ -98,14 +101,14 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
         mPhone.getDataNetworkController().registerDataNetworkControllerCallback(this);
     }
 
-    /** Updates service state when internet pdn gets connected. */
-    public void onInternetDataNetworkConnected(@NonNull List<DataNetwork> internetNetworks) {
-        onInternetDataNetworkChanged(true);
-    }
-
-    /** Updates service state when internet pdn gets disconnected. */
-    public void onInternetDataNetworkDisconnected() {
-        onInternetDataNetworkChanged(false);
+    /** Updates service state when internet pdn changed. */
+    @Override
+    public void onConnectedInternetDataNetworksChanged(@NonNull Set<DataNetwork> internetNetworks) {
+        boolean existAnyConnectedInternetPdn = !internetNetworks.isEmpty();
+        if (mExistAnyConnectedInternetPdn != existAnyConnectedInternetPdn) {
+            mExistAnyConnectedInternetPdn = existAnyConnectedInternetPdn;
+            onInternetDataNetworkChanged(mExistAnyConnectedInternetPdn);
+        }
     }
 
     /** Updates the current service state. */
@@ -131,6 +134,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
             newState.foldState = mDeviceStateHelper.getFoldState();
             newState.overrideVoiceService = mOverrideVoiceService.get();
             newState.isDataEnabled = mPhone.getDataSettingsManager().isDataEnabled();
+            newState.isIwlanCrossSim = isCrossSimCallingRegistered(mPhone);
             TimestampedServiceState prevState =
                     mLastState.getAndSet(new TimestampedServiceState(newState, now));
             addServiceStateAndSwitch(
@@ -301,6 +305,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
         copy.foldState = state.foldState;
         copy.overrideVoiceService = state.overrideVoiceService;
         copy.isDataEnabled = state.isDataEnabled;
+        copy.isIwlanCrossSim = state.isIwlanCrossSim;
         return copy;
     }
 
@@ -357,6 +362,14 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
         } else {
             return getRat(state, NetworkRegistrationInfo.DOMAIN_CS);
         }
+    }
+
+    private boolean isCrossSimCallingRegistered(Phone phone) {
+        if (phone.getImsPhone() != null) {
+            return phone.getImsPhone().getImsRegistrationTech()
+                    == ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM;
+        }
+        return false;
     }
 
     /** Returns RAT used by WWAN if WWAN is in service. */

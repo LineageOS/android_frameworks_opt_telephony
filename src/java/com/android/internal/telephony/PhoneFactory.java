@@ -23,6 +23,7 @@ import static com.android.internal.telephony.PhoneConstants.PHONE_TYPE_CDMA_LTE;
 
 import static java.util.Arrays.copyOf;
 
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.ComponentName;
@@ -47,6 +48,8 @@ import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.data.TelephonyNetworkFactory;
 import com.android.internal.telephony.euicc.EuiccCardController;
 import com.android.internal.telephony.euicc.EuiccController;
+import com.android.internal.telephony.flags.FeatureFlags;
+import com.android.internal.telephony.flags.FeatureFlagsImpl;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
 import com.android.internal.telephony.metrics.MetricsCollector;
@@ -59,6 +62,7 @@ import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -102,11 +106,17 @@ public class PhoneFactory {
     static private final HashMap<String, LocalLog>sLocalLogs = new HashMap<String, LocalLog>();
     private static MetricsCollector sMetricsCollector;
     private static RadioInterfaceCapabilityController sRadioHalCapabilities;
+    private static @NonNull FeatureFlags sFeatureFlags = new FeatureFlagsImpl();
 
     //***** Class Methods
 
-    public static void makeDefaultPhones(Context context) {
-        makeDefaultPhone(context);
+    /**
+     * @param context The context.
+     * @param featureFlags The feature flag.
+     */
+    public static void makeDefaultPhones(Context context, @NonNull FeatureFlags featureFlags) {
+        sFeatureFlags = featureFlags;
+        makeDefaultPhone(context, featureFlags);
     }
 
     /**
@@ -114,7 +124,7 @@ public class PhoneFactory {
      * instances
      */
     @UnsupportedAppUsage
-    public static void makeDefaultPhone(Context context) {
+    public static void makeDefaultPhone(Context context, @NonNull FeatureFlags featureFlags) {
         synchronized (sLockProxyPhones) {
             if (!sMadeDefaults) {
                 sContext = context;
@@ -151,9 +161,9 @@ public class PhoneFactory {
                 }
 
                 // register statsd pullers.
-                sMetricsCollector = new MetricsCollector(context);
+                sMetricsCollector = new MetricsCollector(context, sFeatureFlags);
 
-                sPhoneNotifier = new DefaultPhoneNotifier(context);
+                sPhoneNotifier = new DefaultPhoneNotifier(context, featureFlags);
 
                 int cdmaSubscription = CdmaSubscriptionSourceManager.getDefault(context);
                 Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
@@ -198,7 +208,7 @@ public class PhoneFactory {
 
                 Rlog.i(LOG_TAG, "Creating SubscriptionManagerService");
                 sSubscriptionManagerService = new SubscriptionManagerService(context,
-                        Looper.myLooper());
+                        Looper.myLooper(), featureFlags);
 
                 TelephonyComponentFactory.getInstance().inject(MultiSimSettingController.class.
                         getName()).initMultiSimSettingController(context);
@@ -246,7 +256,7 @@ public class PhoneFactory {
                     Rlog.i(LOG_TAG, "IMS is not supported on this device, skipping ImsResolver.");
                 }
 
-                sPhoneConfigurationManager = PhoneConfigurationManager.init(sContext);
+                sPhoneConfigurationManager = PhoneConfigurationManager.init(sContext, featureFlags);
 
                 sCellularNetworkValidator = CellularNetworkValidator.make(sContext);
 
@@ -255,7 +265,8 @@ public class PhoneFactory {
 
                 sPhoneSwitcher = TelephonyComponentFactory.getInstance().inject(
                         PhoneSwitcher.class.getName()).
-                        makePhoneSwitcher(maxActivePhones, sContext, Looper.myLooper());
+                        makePhoneSwitcher(maxActivePhones, sContext, Looper.myLooper(),
+                                featureFlags);
 
                 sProxyController = ProxyController.getInstance(context);
 
@@ -318,7 +329,7 @@ public class PhoneFactory {
 
         return injectedComponentFactory.makePhone(context,
                 sCommandsInterfaces[phoneId], sPhoneNotifier, phoneId, phoneType,
-                TelephonyComponentFactory.getInstance());
+                TelephonyComponentFactory.getInstance(), sFeatureFlags);
     }
 
     @UnsupportedAppUsage
@@ -446,7 +457,7 @@ public class PhoneFactory {
      * @return the {@code ImsPhone} object or null if the exception occured
      */
     public static Phone makeImsPhone(PhoneNotifier phoneNotifier, Phone defaultPhone) {
-        return ImsPhoneFactory.makePhone(sContext, phoneNotifier, defaultPhone);
+        return ImsPhoneFactory.makePhone(sContext, phoneNotifier, defaultPhone, sFeatureFlags);
     }
 
     /**
@@ -510,6 +521,27 @@ public class PhoneFactory {
     /** Returns the MetricsCollector instance. */
     public static MetricsCollector getMetricsCollector() {
         return sMetricsCollector;
+    }
+
+    /**
+     * Print all feature flag configurations that Telephony is using for debugging purposes.
+     */
+    private static void reflectAndPrintFlagConfigs(IndentingPrintWriter pw) {
+
+        try {
+            // Look away, a forbidden technique (reflection) is being used to allow us to get
+            // all flag configs without having to add them manually to this method.
+            Method[] methods = FeatureFlags.class.getMethods();
+            if (methods.length == 0) {
+                pw.println("NONE");
+                return;
+            }
+            for (Method m : methods) {
+                pw.println(m.getName() + "-> " + m.invoke(sFeatureFlags));
+            }
+        } catch (Exception e) {
+            pw.println("[ERROR]");
+        }
     }
 
     public static void dump(FileDescriptor fd, PrintWriter printwriter, String[] args) {
@@ -604,8 +636,15 @@ public class PhoneFactory {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
         pw.flush();
         pw.decreaseIndent();
+
+        pw.println("++++++++++++++++++++++++++++++++");
+        pw.println("Flag Configurations:");
+        pw.increaseIndent();
+        reflectAndPrintFlagConfigs(pw);
+        pw.flush();
+        pw.decreaseIndent();
+        pw.println("++++++++++++++++++++++++++++++++");
     }
 }

@@ -23,6 +23,8 @@ import static android.telephony.ims.RegistrationManager.REGISTRATION_STATE_REGIS
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_NONE;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_RAT_BLOCK;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCK;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
 
 import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAIC;
@@ -47,6 +49,7 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDI
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_NONE;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 
+import android.annotation.FlaggedApi;
 import android.annotation.NonNull;
 import android.app.Activity;
 import android.app.Notification;
@@ -120,6 +123,8 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.emergency.EmergencyStateTracker;
+import com.android.internal.telephony.flags.FeatureFlags;
+import com.android.internal.telephony.flags.Flags;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.metrics.ImsStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
@@ -454,14 +459,15 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     // Constructors
-    public ImsPhone(Context context, PhoneNotifier notifier, Phone defaultPhone) {
-        this(context, notifier, defaultPhone, ImsManager::getInstance, false);
+    public ImsPhone(Context context, PhoneNotifier notifier,
+            Phone defaultPhone, FeatureFlags featureFlags) {
+        this(context, notifier, defaultPhone, ImsManager::getInstance, false, featureFlags);
     }
 
     @VisibleForTesting
     public ImsPhone(Context context, PhoneNotifier notifier, Phone defaultPhone,
-            ImsManagerFactory imsManagerFactory, boolean unitTestMode) {
-        super("ImsPhone", context, notifier, unitTestMode);
+            ImsManagerFactory imsManagerFactory, boolean unitTestMode, FeatureFlags featureFlags) {
+        super("ImsPhone", context, notifier, unitTestMode, featureFlags);
 
         mDefaultPhone = defaultPhone;
         mImsManagerFactory = imsManagerFactory;
@@ -480,7 +486,7 @@ public class ImsPhone extends ImsPhoneBase {
                         .inject(ImsNrSaModeHandler.class.getName())
                         .makeImsNrSaModeHandler(this);
         mCT = TelephonyComponentFactory.getInstance().inject(ImsPhoneCallTracker.class.getName())
-                .makeImsPhoneCallTracker(this);
+                .makeImsPhoneCallTracker(this, featureFlags);
         mCT.registerPhoneStateListener(mExternalCallTracker);
         mExternalCallTracker.setCallPuller(mCT);
 
@@ -2477,7 +2483,7 @@ public class ImsPhone extends ImsPhoneBase {
             setServiceState(ServiceState.STATE_IN_SERVICE);
             getDefaultPhone().setImsRegistrationState(true);
             mMetrics.writeOnImsConnectionState(mPhoneId, ImsConnectionState.State.CONNECTED, null);
-            mImsStats.onImsRegistered(imsRadioTech);
+            mImsStats.onImsRegistered(attributes);
             mImsNrSaModeHandler.onImsRegistered(
                     attributes.getRegistrationTechnology(), attributes.getFeatureTags());
             updateImsRegistrationInfo(REGISTRATION_STATE_REGISTERED,
@@ -2523,10 +2529,21 @@ public class ImsPhone extends ImsPhoneBase {
                 if ((suggestedAction == SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK)
                         || (suggestedAction == SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT)) {
                     suggestedModemAction = suggestedAction;
+                } else if (mFeatureFlags.addRatRelatedSuggestedActionToImsRegistration()) {
+                    if ((suggestedAction == SUGGESTED_ACTION_TRIGGER_RAT_BLOCK)
+                            || (suggestedAction == SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCK)) {
+                        suggestedModemAction = suggestedAction;
+                    }
                 }
             }
             updateImsRegistrationInfo(REGISTRATION_STATE_NOT_REGISTERED,
                     imsRadioTech, suggestedModemAction);
+
+            if (mFeatureFlags.clearCachedImsPhoneNumberWhenDeviceLostImsRegistration()) {
+                // Clear the phone number from P-Associated-Uri
+                setCurrentSubscriberUris(null);
+                clearPhoneNumberForSourceIms();
+            }
         }
 
         @Override
@@ -2536,6 +2553,19 @@ public class ImsPhone extends ImsPhoneBase {
             setPhoneNumberForSourceIms(uris);
         }
     };
+
+    /** Clear the IMS phone number from IMS associated Uris when IMS registration is lost. */
+    @VisibleForTesting
+    @FlaggedApi(Flags.FLAG_CLEAR_CACHED_IMS_PHONE_NUMBER_WHEN_DEVICE_LOST_IMS_REGISTRATION)
+    public void clearPhoneNumberForSourceIms() {
+        int subId = getSubId();
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+            return;
+        }
+
+        if (DBG) logd("clearPhoneNumberForSourceIms");
+        mSubscriptionManagerService.setNumberFromIms(subId, new String(""));
+    }
 
     /** Sets the IMS phone number from IMS associated URIs, if any found. */
     @VisibleForTesting
@@ -2706,9 +2736,13 @@ public class ImsPhone extends ImsPhoneBase {
             @RegistrationManager.SuggestedAction int suggestedAction) {
 
         if (regState == mImsRegistrationState) {
+            // In NOT_REGISTERED state, the current PLMN can be blocked with a suggested action.
+            // But in this case, the same behavior is able to occur in different PLMNs with
+            // same radio tech and suggested action.
             if ((regState == REGISTRATION_STATE_REGISTERED && imsRadioTech == mImsRegistrationTech)
                     || (regState == REGISTRATION_STATE_NOT_REGISTERED
-                            && suggestedAction == mImsRegistrationSuggestedAction
+                            && suggestedAction == SUGGESTED_ACTION_NONE
+                            && mImsRegistrationSuggestedAction == SUGGESTED_ACTION_NONE
                             && imsRadioTech == mImsDeregistrationTech)) {
                 // Filter duplicate notification.
                 return;

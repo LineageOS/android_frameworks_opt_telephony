@@ -40,8 +40,10 @@ import android.telephony.ims.ImsReasonInfo;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.data.AccessNetworksManager;
+import com.android.internal.telephony.data.AccessNetworksManager.QualifiedNetworks;
 import com.android.internal.telephony.emergency.EmergencyStateTracker;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -163,9 +165,8 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
 
     /** {@inheritDoc} */
     @Override
-    protected void onQualifiedNetworksChanged() {
-        AccessNetworksManager anm = mPhone.getAccessNetworksManager();
-        int preferredTransport = anm.getPreferredTransport(ApnSetting.TYPE_EMERGENCY);
+    protected void onQualifiedNetworksChanged(List<QualifiedNetworks> networksList) {
+        int preferredTransport = getPreferredTransport(ApnSetting.TYPE_EMERGENCY, networksList);
         logi("onQualifiedNetworksChanged preferred=" + mPreferredTransportType
                 + ", current=" + preferredTransport);
         if (preferredTransport == mPreferredTransportType) {
@@ -177,6 +178,7 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
                     future.complete(DOMAIN_PS);
                 }
             }
+            AccessNetworksManager anm = mPhone.getAccessNetworksManager();
             anm.unregisterForQualifiedNetworksChanged(mHandler);
         }
     }

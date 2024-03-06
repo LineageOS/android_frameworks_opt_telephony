@@ -41,6 +41,7 @@ import android.telephony.Annotation.NetCapability;
 import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.data.ApnSetting;
+import android.telephony.data.DataServiceCallback;
 import android.telephony.data.IQualifiedNetworksService;
 import android.telephony.data.IQualifiedNetworksServiceCallback;
 import android.telephony.data.QualifiedNetworksService;
@@ -51,8 +52,11 @@ import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 import android.util.SparseArray;
 
+import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.SlidingWindowEventCounter;
+import com.android.internal.telephony.flags.FeatureFlags;
+import com.android.internal.util.FunctionalUtils;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -65,6 +69,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -132,6 +137,8 @@ public class AccessNetworksManager extends Handler {
      */
     private final @NonNull Set<AccessNetworksManagerCallback> mAccessNetworksManagerCallbacks =
             new ArraySet<>();
+
+    private final FeatureFlags mFeatureFlags;
 
     /**
      * Represents qualified network types list on a specific APN type.
@@ -294,6 +301,43 @@ public class AccessNetworksManager extends Handler {
                 mQualifiedNetworksChangedRegistrants.notifyResult(qualifiedNetworksList);
             }
         }
+
+        /**
+         * Called when QualifiedNetworksService requests network validation.
+         *
+         * Since the data network in the connected state corresponding to the given network
+         * capability must be validated, a request is tossed to the data network controller.
+         * @param networkCapability network capability
+         */
+        @Override
+        public void onNetworkValidationRequested(@NetCapability int networkCapability,
+                @NonNull IIntegerConsumer resultCodeCallback) {
+            DataNetworkController dnc = mPhone.getDataNetworkController();
+            if (!mFeatureFlags.networkValidation()) {
+                FunctionalUtils.ignoreRemoteException(resultCodeCallback::accept)
+                        .accept(DataServiceCallback.RESULT_ERROR_UNSUPPORTED);
+                return;
+            }
+
+            log("onNetworkValidationRequested: networkCapability = ["
+                    + DataUtils.networkCapabilityToString(networkCapability) + "]");
+
+            dnc.requestNetworkValidation(networkCapability, new Consumer<Integer>() {
+                @Override
+                public void accept(Integer result) {
+                    post(() -> {
+                        try {
+                            log("onNetworkValidationRequestDone:"
+                                    + DataServiceCallback.resultCodeToString(result));
+                            resultCodeCallback.accept(result.intValue());
+                        } catch (RemoteException e) {
+                            // Ignore if the remote process is no longer available to call back.
+                            loge("onNetworkValidationRequestDone RemoteException" + e);
+                        }
+                    });
+                }
+            });
+        }
     }
 
     private void onEmergencyDataNetworkPreferredTransportChanged(
@@ -337,7 +381,8 @@ public class AccessNetworksManager extends Handler {
      * @param phone The phone object.
      * @param looper Looper for the handler.
      */
-    public AccessNetworksManager(@NonNull Phone phone, @NonNull Looper looper) {
+    public AccessNetworksManager(@NonNull Phone phone, @NonNull Looper looper,
+            @NonNull FeatureFlags featureFlags) {
         super(looper);
         mPhone = phone;
         mCarrierConfigManager = (CarrierConfigManager) phone.getContext().getSystemService(
@@ -346,6 +391,7 @@ public class AccessNetworksManager extends Handler {
         mApnTypeToQnsChangeNetworkCounter = new SparseArray<>();
         mAvailableTransports = new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN};
+        mFeatureFlags = featureFlags;
 
         // bindQualifiedNetworksService posts real work to handler thread. So here we can
         // let the callback execute in binder thread to avoid post twice.

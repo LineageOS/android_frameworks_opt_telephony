@@ -1,0 +1,72 @@
+package: "com.android.internal.telephony.flags"
+
+flag {
+  name: "do_not_override_precise_label"
+  namespace: "telephony"
+  description: "When set, Telecom will not override the precise label for certain disconnect causes."
+  bug: "296968778"
+  is_fixed_read_only: true
+}
+
+flag {
+  name: "log_mms_sms_database_access_info"
+  namespace: "telephony"
+  description: "Whether to log MMS/SMS database access info and report anomaly when getting exception."
+  bug: "275225402"
+}
+
+flag {
+  name: "stop_spamming_emergency_notification"
+  namespace: "telephony"
+  description: "When set, the no wifi emergency calling availability notif will have a do not ask again button"
+  bug: "275225402"
+}
+
+flag {
+  name: "enable_wps_check_api_flag"
+  namespace: "telephony"
+  description: "Enable system api isWpsCallNumber. Its an utility api to check if the dialed number is for Wireless Priority Service call."
+  bug: "304272356"
+}
+
+flag {
+  name: "ensure_access_to_call_settings_is_restricted"
+  namespace: "telephony"
+  description: "Check if access to mobile network configs restricted before displaying call options"
+  bug: "309655251"
+}
+
+flag {
+  name: "reorganize_roaming_notification"
+  namespace: "telephony"
+  description: "Reorganize conditions to show and dismiss roaming notifications."
+  bug: "310594087"
+}
+
+flag {
+  name: "dismiss_network_selection_notification_on_sim_disable"
+  namespace: "telephony"
+  description: "Fix to dismiss network selection notification when disable sim."
+  bug: "310594186"
+}
+
+flag {
+  name: "enable_telephony_analytics"
+  namespace: "telephony"
+  description: "Enable Telephony Analytics information of Service State , Sms and Call scenarios"
+  bug: "309896524"
+}
+
+flag {
+  name: "show_call_id_and_call_waiting_in_additional_settings_menu"
+  namespace: "telephony"
+  description: "Expose carrier config KEY_ADDITIONAL_SETTINGS_CALLER_ID_VISIBILITY_BOOL and KEY_ADDITIONAL_SETTINGS_CALL_WAITING_VISIBILITY_BOOL."
+  bug: "310264981"
+}
+
+flag {
+  name: "radio_info_is_radio_on"
+  namespace: "telephony"
+  description: "change method to show mobile radio power from service state to radio power"
+  bug: "306084899"
+}

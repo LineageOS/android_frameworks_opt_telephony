@@ -21,6 +21,8 @@ import android.os.Parcel;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 
+import com.android.internal.telephony.flags.Flags;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,6 +54,7 @@ public class SubscriptionInfoTest {
                 .setEhplmns(EHPLMNS)
                 .setHplmns(HPLMNS)
                 .setCountryIso("us")
+                .setOnlyNonTerrestrialNetwork(true)
                 .build();
     }
 
@@ -71,6 +74,9 @@ public class SubscriptionInfoTest {
         assertThat(mSubscriptionInfoUT.getSubscriptionId()).isEqualTo(1);
         assertThat(mSubscriptionInfoUT.getSimSlotIndex()).isEqualTo(0);
         assertThat(mSubscriptionInfoUT.getIccId()).isEqualTo("890126042XXXXXXXXXXX");
+        if (Flags.oemEnabledSatelliteFlag()) {
+            assertThat(mSubscriptionInfoUT.isOnlyNonTerrestrialNetwork()).isTrue();
+        }
     }
 
     @Test

@@ -25,6 +25,7 @@ import android.annotation.NonNull;
 import android.content.Intent;
 import android.database.ContentObserver;
 import android.net.NetworkAgent;
+import android.net.NetworkCapabilities;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -56,7 +57,7 @@ import java.io.PrintWriter;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executor;
 
 /**
@@ -191,7 +192,7 @@ public class DataStallRecoveryManager extends Handler {
     private boolean mMobileDataChangedToEnabledDuringDataStall;
     /** Whether attempted all recovery steps. */
     private boolean mIsAttemptedAllSteps;
-    /** Whether internet network connected. */
+    /** Whether internet network that require validation is connected. */
     private boolean mIsInternetNetworkConnected;
     /** The durations for current recovery action */
     private @ElapsedRealtimeLong long mTimeElapsedOfCurrentAction;
@@ -307,16 +308,26 @@ public class DataStallRecoveryManager extends Handler {
                     }
 
                     @Override
-                    public void onInternetDataNetworkConnected(
-                            @NonNull List<DataNetwork> internetNetworks) {
-                        mIsInternetNetworkConnected = true;
-                        logl("onInternetDataNetworkConnected");
-                    }
-
-                    @Override
-                    public void onInternetDataNetworkDisconnected() {
-                        mIsInternetNetworkConnected = false;
-                        logl("onInternetDataNetworkDisconnected");
+                    public void onConnectedInternetDataNetworksChanged(
+                            @NonNull Set<DataNetwork> internetNetworks) {
+                        boolean anyInternetRequireValidatedConnected = internetNetworks.stream()
+                                .anyMatch(nw -> {
+                                    NetworkCapabilities capabilities = nw.getNetworkCapabilities();
+                                    // Only track the networks that require validation.
+                                    // The criteria is base on NetworkMonitorUtils.java.
+                                    return capabilities.hasCapability(
+                                            NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                                            && capabilities.hasCapability(
+                                            NetworkCapabilities.NET_CAPABILITY_TRUSTED)
+                                            && capabilities.hasCapability(
+                                            NetworkCapabilities.NET_CAPABILITY_NOT_VPN);
+                                });
+                        if (mIsInternetNetworkConnected != anyInternetRequireValidatedConnected) {
+                            mIsInternetNetworkConnected = anyInternetRequireValidatedConnected;
+                            logl(mIsInternetNetworkConnected
+                                    ? "At Least One InternetDataNetwork Connected"
+                                    : "All InternetDataNetwork Disconnected");
+                        }
                     }
                 });
         mPhone.mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);

@@ -1,0 +1,14 @@
+package: "com.android.internal.telephony.flags"
+
+flag {
+    name: "enable_aead_algorithms"
+    namespace: "telephony"
+    description: "Add AEAD algorithms AES-GCM-8, AES-GCM-12 and AES-GCM-16 to IWLAN"
+    bug:"306119890"
+}
+flag {
+    name: "enable_multiple_sa_proposals"
+    namespace: "telephony"
+    description: "Add multiple proposals of cipher suites in IKE SA and Child SA"
+    bug:"287296642"
+}

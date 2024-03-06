@@ -16,9 +16,9 @@
 
 package com.android.internal.telephony.data;
 
-import com.android.internal.telephony.TelephonyTest;
-
 import static com.google.common.truth.Truth.assertThat;
+
+import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
 import org.junit.Before;
@@ -59,4 +59,32 @@ public class DataEvaluationTest extends TelephonyTest {
                 DataEvaluation.DataDisallowedReason.DATA_DISABLED);
         assertThat(mDataEvaluationUT.getDataDisallowedReasons().size()).isEqualTo(1);
     }
+
+
+    @Test
+    public void testIsSubsetOf() {
+        mDataEvaluationUT = new DataEvaluation(DataEvaluation.DataEvaluationReason.DATA_RETRY);
+        assertThat(mDataEvaluationUT.isSubsetOf(
+                DataEvaluation.DataDisallowedReason.ROAMING_DISABLED)).isTrue();
+        mDataEvaluationUT.addDataDisallowedReason(
+                DataEvaluation.DataDisallowedReason.DATA_DISABLED);
+        assertThat(mDataEvaluationUT.isSubsetOf(
+                DataEvaluation.DataDisallowedReason.DATA_DISABLED)).isTrue();
+        assertThat(mDataEvaluationUT.isSubsetOf(
+                DataEvaluation.DataDisallowedReason.ROAMING_DISABLED)).isFalse();
+    }
+
+    @Test
+    public void testContainsOnly() {
+        mDataEvaluationUT = new DataEvaluation(DataEvaluation.DataEvaluationReason.DATA_RETRY);
+        assertThat(mDataEvaluationUT.containsOnly(
+                DataEvaluation.DataDisallowedReason.ROAMING_DISABLED)).isFalse();
+        mDataEvaluationUT.addDataDisallowedReason(
+                DataEvaluation.DataDisallowedReason.DATA_DISABLED);
+        assertThat(mDataEvaluationUT.containsOnly(
+                DataEvaluation.DataDisallowedReason.DATA_DISABLED)).isTrue();
+        assertThat(mDataEvaluationUT.containsOnly(
+                DataEvaluation.DataDisallowedReason.ROAMING_DISABLED)).isFalse();
+    }
+
 }

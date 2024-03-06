@@ -16,9 +16,12 @@
 
 package com.android.internal.telephony.data;
 
+import static org.junit.Assert.assertNotEquals;
+
 import android.net.InetAddresses;
 import android.net.LinkAddress;
 import android.os.Parcel;
+import android.telephony.PreciseDataConnectionState;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.EpsQos;
@@ -71,6 +74,8 @@ public class DataCallResponseTest extends AndroidTestCase {
                 .setQosBearerSessions(new ArrayList<>())
                 .setTrafficDescriptors(
                         Arrays.asList(new TrafficDescriptor(FAKE_DNN, FAKE_OS_APP_ID)))
+                .setNetworkValidationStatus(
+                        PreciseDataConnectionState.NETWORK_VALIDATION_UNSUPPORTED)
                 .build();
 
         Parcel p = Parcel.obtain();
@@ -100,6 +105,8 @@ public class DataCallResponseTest extends AndroidTestCase {
                 .setMtuV6(1400)
                 .setTrafficDescriptors(
                         Arrays.asList(new TrafficDescriptor(FAKE_DNN, FAKE_OS_APP_ID)))
+                .setNetworkValidationStatus(
+                        PreciseDataConnectionState.NETWORK_VALIDATION_IN_PROGRESS)
                 .build();
 
         DataCallResponse response1 = new DataCallResponse.Builder()
@@ -119,6 +126,8 @@ public class DataCallResponseTest extends AndroidTestCase {
                 .setMtuV6(1400)
                 .setTrafficDescriptors(
                         Arrays.asList(new TrafficDescriptor(FAKE_DNN, FAKE_OS_APP_ID)))
+                .setNetworkValidationStatus(
+                        PreciseDataConnectionState.NETWORK_VALIDATION_IN_PROGRESS)
                 .build();
 
         assertEquals(response, response);
@@ -145,11 +154,14 @@ public class DataCallResponseTest extends AndroidTestCase {
                 .setTrafficDescriptors(Arrays.asList(
                         new TrafficDescriptor(FAKE_DNN, FAKE_OS_APP_ID),
                         new TrafficDescriptor(FAKE_DNN_2, FAKE_OS_APP_ID_2)))
+                .setNetworkValidationStatus(PreciseDataConnectionState.NETWORK_VALIDATION_SUCCESS)
                 .build();
 
         assertNotSame(response1, response2);
         assertNotSame(response1, null);
         assertNotSame(response1, new String[1]);
+        assertNotEquals(response1.getNetworkValidationStatus(),
+                response2.getNetworkValidationStatus());
         assertNotSame(response1.hashCode(), response2.hashCode());
 
         DataCallResponse response3 = new DataCallResponse.Builder()
@@ -172,9 +184,12 @@ public class DataCallResponseTest extends AndroidTestCase {
                 .setTrafficDescriptors(Arrays.asList(
                         new TrafficDescriptor(FAKE_DNN_2, FAKE_OS_APP_ID_2),
                         new TrafficDescriptor(FAKE_DNN, FAKE_OS_APP_ID)))
+                .setNetworkValidationStatus(PreciseDataConnectionState.NETWORK_VALIDATION_SUCCESS)
                 .build();
 
         assertEquals(response2, response3);
+        assertEquals(response2.getNetworkValidationStatus(),
+                response3.getNetworkValidationStatus());
         assertEquals(response2.hashCode(), response3.hashCode());
     }
 }

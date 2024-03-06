@@ -37,6 +37,7 @@ import android.os.Message;
 import android.provider.Settings;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.NetworkRegistrationInfo;
+import android.telephony.NetworkRegistrationInfo.RegistrationState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -46,6 +47,7 @@ import android.util.LocalLog;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.util.NotificationChannelController;
@@ -57,6 +59,8 @@ import java.io.PrintWriter;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Recommend a data phone to use based on its availability.
@@ -102,6 +106,8 @@ public class AutoDataSwitchController extends Handler {
     private static final int EVENT_SIGNAL_STRENGTH_CHANGED = 4;
     /** Event indicates the switch state is stable, proceed to validation as the next step. */
     private static final int EVENT_MEETS_AUTO_DATA_SWITCH_STATE = 5;
+    /** Event when subscriptions changed. */
+    private static final int EVENT_SUBSCRIPTIONS_CHANGED = 6;
 
     /** Fragment "key" argument passed thru {@link #SETTINGS_EXTRA_SHOW_FRAGMENT_ARGUMENTS} */
     private static final String SETTINGS_EXTRA_FRAGMENT_ARG_KEY = ":settings:fragment_args_key";
@@ -120,6 +126,7 @@ public class AutoDataSwitchController extends Handler {
 
     private final @NonNull LocalLog mLocalLog = new LocalLog(128);
     private final @NonNull Context mContext;
+    private final @NonNull FeatureFlags mFlags;
     private final @NonNull SubscriptionManagerService mSubscriptionManagerService;
     private final @NonNull PhoneSwitcher mPhoneSwitcher;
     private final @NonNull AutoDataSwitchControllerCallback mPhoneSwitcherCallback;
@@ -133,6 +140,12 @@ public class AutoDataSwitchController extends Handler {
      */
     private long mAutoDataSwitchAvailabilityStabilityTimeThreshold = -1;
     /**
+     * The tolerated gap of score for auto data switch decision, larger than which the device will
+     * switch to the SIM with higher score. If 0, the device will always switch to the higher score
+     * SIM. If < 0, the network type and signal strength based auto switch is disabled.
+     */
+    private int mScoreTolerance = -1;
+    /**
      * {@code true} if requires ping test before switching preferred data modem; otherwise, switch
      * even if ping test fails.
      */
@@ -144,36 +157,82 @@ public class AutoDataSwitchController extends Handler {
      */
     private int mAutoDataSwitchValidationMaxRetry;
 
+    /** The signal status of phones, where index corresponds to phone Id. */
     private @NonNull PhoneSignalStatus[] mPhonesSignalStatus;
+    /**
+     * The phone Id of the pending switching phone. Used for pruning frequent switch evaluation.
+     */
+    private int mSelectedTargetPhoneId = INVALID_PHONE_INDEX;
 
     /**
      * To track the signal status of a phone in order to evaluate whether it's a good candidate to
      * switch to.
      */
     private static class PhoneSignalStatus {
-        private @NonNull Phone mPhone;
-        private @NetworkRegistrationInfo.RegistrationState int mDataRegState =
-                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
-        private @NonNull TelephonyDisplayInfo mDisplayInfo;
-        private @NonNull SignalStrength mSignalStrength;
-
-        private int mScore;
-
+        /**
+         * How preferred the current phone is.
+         */
+        enum UsableState {
+            HOME(1), ROAMING_ENABLED(0), NOT_USABLE(-1);
+            /**
+             * The higher the score, the more preferred.
+             * HOME is preferred over ROAMING assuming roaming is metered.
+             */
+            final int mScore;
+            UsableState(int score) {
+                this.mScore = score;
+            }
+        }
+        /** The phone */
+        @NonNull private final Phone mPhone;
+        /** Data registration state of the phone */
+        @RegistrationState private int mDataRegState = NetworkRegistrationInfo
+                .REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
+        /** Current Telephony display info of the phone */
+        @NonNull private TelephonyDisplayInfo mDisplayInfo;
+        /** Signal strength of the phone */
+        @NonNull private SignalStrength mSignalStrength;
+        /** {@code true} if this slot is listening for events. */
+        private boolean mListeningForEvents;
         private PhoneSignalStatus(@NonNull Phone phone) {
             this.mPhone = phone;
             this.mDisplayInfo = phone.getDisplayInfoController().getTelephonyDisplayInfo();
             this.mSignalStrength = phone.getSignalStrength();
         }
-        private int updateScore() {
-            // TODO: score = inservice? dcm.getscore() : 0
-            return mScore;
+
+        /**
+         * @return the current score of this phone. 0 indicates out of service and it will never be
+         * selected as the secondary data candidate.
+         */
+        private int getRatSignalScore() {
+            return isInService(mDataRegState)
+                    ? mPhone.getDataNetworkController().getDataConfigManager()
+                            .getAutoDataSwitchScore(mDisplayInfo, mSignalStrength) : 0;
         }
+
+        /**
+         * @return The current usable state of the phone.
+         */
+        private UsableState getUsableState() {
+            switch (mDataRegState) {
+                case NetworkRegistrationInfo.REGISTRATION_STATE_HOME:
+                    return UsableState.HOME;
+                case NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING:
+                    return mPhone.getDataRoamingEnabled()
+                            ? UsableState.ROAMING_ENABLED : UsableState.NOT_USABLE;
+                default:
+                    return UsableState.NOT_USABLE;
+            }
+        }
+
         @Override
         public String toString() {
-            return "{phoneId=" + mPhone.getPhoneId()
-                    + " score=" + mScore + " dataRegState="
+            return "{phone " + mPhone.getPhoneId()
+                    + " score=" + getRatSignalScore() + " dataRegState="
                     + NetworkRegistrationInfo.registrationStateToString(mDataRegState)
+                    + " " + getUsableState()
                     + " display=" + mDisplayInfo + " signalStrength=" + mSignalStrength.getLevel()
+                    + " listeningForEvents=" + mListeningForEvents
                     + "}";
 
         }
@@ -212,16 +271,19 @@ public class AutoDataSwitchController extends Handler {
      * @param phoneSwitcherCallback Callback for phone switcher to execute.
      */
     public AutoDataSwitchController(@NonNull Context context, @NonNull Looper looper,
-            @NonNull PhoneSwitcher phoneSwitcher,
+            @NonNull PhoneSwitcher phoneSwitcher, @NonNull FeatureFlags featureFlags,
             @NonNull AutoDataSwitchControllerCallback phoneSwitcherCallback) {
         super(looper);
         mContext = context;
+        mFlags = featureFlags;
         mSubscriptionManagerService = SubscriptionManagerService.getInstance();
         mPhoneSwitcher = phoneSwitcher;
         mPhoneSwitcherCallback = phoneSwitcherCallback;
         readDeviceResourceConfig();
         int numActiveModems = PhoneFactory.getPhones().length;
         mPhonesSignalStatus = new PhoneSignalStatus[numActiveModems];
+        // Listening on all slots on boot up to make sure nothing missed. Later the tracking is
+        // pruned upon subscriptions changed.
         for (int phoneId = 0; phoneId < numActiveModems; phoneId++) {
             registerAllEventsForPhone(phoneId);
         }
@@ -236,16 +298,46 @@ public class AutoDataSwitchController extends Handler {
         if (oldActiveModems == numActiveModems) return;
         // Dual -> Single
         for (int phoneId = numActiveModems; phoneId < oldActiveModems; phoneId++) {
-            Phone phone = mPhonesSignalStatus[phoneId].mPhone;
-            phone.getDisplayInfoController().unregisterForTelephonyDisplayInfoChanged(this);
-            phone.getSignalStrengthController().unregisterForSignalStrengthChanged(this);
-            phone.getServiceStateTracker().unregisterForServiceStateChanged(this);
+            unregisterAllEventsForPhone(phoneId);
         }
         mPhonesSignalStatus = Arrays.copyOf(mPhonesSignalStatus, numActiveModems);
         // Signal -> Dual
         for (int phoneId = oldActiveModems; phoneId < numActiveModems; phoneId++) {
             registerAllEventsForPhone(phoneId);
         }
+        logl("onMultiSimConfigChanged: " + Arrays.toString(mPhonesSignalStatus));
+    }
+
+    /** Notify subscriptions changed. */
+    public void notifySubscriptionsMappingChanged() {
+        sendEmptyMessage(EVENT_SUBSCRIPTIONS_CHANGED);
+    }
+
+    /**
+     * On subscription changed, register/unregister events on phone Id slot that has active/inactive
+     * sub to reduce unnecessary tracking.
+     */
+    private void onSubscriptionsChanged() {
+        Set<Integer> activePhoneIds = Arrays.stream(mSubscriptionManagerService
+                .getActiveSubIdList(true /*visibleOnly*/))
+                .map(mSubscriptionManagerService::getPhoneId)
+                .boxed()
+                .collect(Collectors.toSet());
+        // Track events only if there are at least two active visible subscriptions.
+        if (activePhoneIds.size() < 2) activePhoneIds.clear();
+        boolean changed = false;
+        for (int phoneId = 0; phoneId < mPhonesSignalStatus.length; phoneId++) {
+            if (activePhoneIds.contains(phoneId)
+                    && !mPhonesSignalStatus[phoneId].mListeningForEvents) {
+                registerAllEventsForPhone(phoneId);
+                changed = true;
+            } else if (!activePhoneIds.contains(phoneId)
+                    && mPhonesSignalStatus[phoneId].mListeningForEvents) {
+                unregisterAllEventsForPhone(phoneId);
+                changed = true;
+            }
+        }
+        if (changed) logl("onSubscriptionChanged: " + Arrays.toString(mPhonesSignalStatus));
     }
 
     /**
@@ -254,7 +346,7 @@ public class AutoDataSwitchController extends Handler {
      */
     private void registerAllEventsForPhone(int phoneId) {
         Phone phone = PhoneFactory.getPhone(phoneId);
-        if (phone != null) {
+        if (phone != null && isActiveModemPhone(phoneId)) {
             mPhonesSignalStatus[phoneId] = new PhoneSignalStatus(phone);
             phone.getDisplayInfoController().registerForTelephonyDisplayInfoChanged(
                     this, EVENT_DISPLAY_INFO_CHANGED, phoneId);
@@ -262,8 +354,25 @@ public class AutoDataSwitchController extends Handler {
                     this, EVENT_SIGNAL_STRENGTH_CHANGED, phoneId);
             phone.getServiceStateTracker().registerForServiceStateChanged(this,
                     EVENT_SERVICE_STATE_CHANGED, phoneId);
+            mPhonesSignalStatus[phoneId].mListeningForEvents = true;
         } else {
             loge("Unexpected null phone " + phoneId + " when register all events");
+        }
+    }
+
+    /**
+     * Unregister all tracking events for a phone.
+     * @param phoneId The phone to unregister for all events.
+     */
+    private void unregisterAllEventsForPhone(int phoneId) {
+        if (isActiveModemPhone(phoneId)) {
+            Phone phone = mPhonesSignalStatus[phoneId].mPhone;
+            phone.getDisplayInfoController().unregisterForTelephonyDisplayInfoChanged(this);
+            phone.getSignalStrengthController().unregisterForSignalStrengthChanged(this);
+            phone.getServiceStateTracker().unregisterForServiceStateChanged(this);
+            mPhonesSignalStatus[phoneId].mListeningForEvents = false;
+        } else {
+            loge("Unexpected out of bound phone " + phoneId + " when unregister all events");
         }
     }
 
@@ -274,6 +383,7 @@ public class AutoDataSwitchController extends Handler {
     private void readDeviceResourceConfig() {
         Phone phone = PhoneFactory.getDefaultPhone();
         DataConfigManager dataConfig = phone.getDataNetworkController().getDataConfigManager();
+        mScoreTolerance =  dataConfig.getAutoDataSwitchScoreTolerance();
         mRequirePingTestBeforeSwitch = dataConfig.isPingTestBeforeAutoDataSwitchRequired();
         mAutoDataSwitchAvailabilityStabilityTimeThreshold =
                 dataConfig.getAutoDataSwitchAvailabilityStabilityTimeThreshold();
@@ -289,12 +399,17 @@ public class AutoDataSwitchController extends Handler {
             case EVENT_SERVICE_STATE_CHANGED:
                 ar = (AsyncResult) msg.obj;
                 phoneId = (int) ar.userObj;
-                onRegistrationStateChanged(phoneId);
+                onServiceStateChanged(phoneId);
                 break;
             case EVENT_DISPLAY_INFO_CHANGED:
                 ar = (AsyncResult) msg.obj;
                 phoneId = (int) ar.userObj;
                 onDisplayInfoChanged(phoneId);
+                break;
+            case EVENT_SIGNAL_STRENGTH_CHANGED:
+                ar = (AsyncResult) msg.obj;
+                phoneId = (int) ar.userObj;
+                onSignalStrengthChanged(phoneId);
                 break;
             case EVENT_EVALUATE_AUTO_SWITCH:
                 int reason = (int) msg.obj;
@@ -302,10 +417,13 @@ public class AutoDataSwitchController extends Handler {
                 break;
             case EVENT_MEETS_AUTO_DATA_SWITCH_STATE:
                 int targetPhoneId = msg.arg1;
-                boolean needValidation = (boolean) msg.obj;
+                boolean needValidation = msg.arg2 == 1;
                 log("require validation on phone " + targetPhoneId
                         + (needValidation ? "" : " no") + " need to pass");
                 mPhoneSwitcherCallback.onRequireValidation(targetPhoneId, needValidation);
+                break;
+            case EVENT_SUBSCRIPTIONS_CHANGED:
+                onSubscriptionsChanged();
                 break;
             default:
                 loge("Unexpected event " + msg.what);
@@ -315,9 +433,9 @@ public class AutoDataSwitchController extends Handler {
     /**
      * Called when registration state changed.
      */
-    private void onRegistrationStateChanged(int phoneId) {
+    private void onServiceStateChanged(int phoneId) {
         Phone phone = PhoneFactory.getPhone(phoneId);
-        if (phone != null) {
+        if (phone != null && isActiveModemPhone(phoneId)) {
             int oldRegState = mPhonesSignalStatus[phoneId].mDataRegState;
             int newRegState = phone.getServiceState()
                     .getNetworkRegistrationInfo(
@@ -326,41 +444,90 @@ public class AutoDataSwitchController extends Handler {
                     .getRegistrationState();
             if (newRegState != oldRegState) {
                 mPhonesSignalStatus[phoneId].mDataRegState = newRegState;
-                log("onRegistrationStateChanged: phone " + phoneId + " "
-                        + NetworkRegistrationInfo.registrationStateToString(oldRegState)
-                        + " -> "
-                        + NetworkRegistrationInfo.registrationStateToString(newRegState));
-                evaluateAutoDataSwitch(EVALUATION_REASON_REGISTRATION_STATE_CHANGED);
-            } else {
-                log("onRegistrationStateChanged: no change.");
+                if (isInService(oldRegState) != isInService(newRegState)
+                        || isHomeService(oldRegState) != isHomeService(newRegState)) {
+                    log("onServiceStateChanged: phone " + phoneId + " "
+                            + NetworkRegistrationInfo.registrationStateToString(oldRegState)
+                            + " -> "
+                            + NetworkRegistrationInfo.registrationStateToString(newRegState));
+                    evaluateAutoDataSwitch(EVALUATION_REASON_REGISTRATION_STATE_CHANGED);
+                }
             }
         } else {
             loge("Unexpected null phone " + phoneId + " upon its registration state changed");
         }
     }
 
-    /**
-     * @return {@code true} if the phone state is considered in service.
-     */
-    private boolean isInService(@NetworkRegistrationInfo.RegistrationState int dataRegState) {
+    /** @return {@code true} if the phone state is considered in service. */
+    private static boolean isInService(@RegistrationState int dataRegState) {
         return dataRegState == NetworkRegistrationInfo.REGISTRATION_STATE_HOME
                 || dataRegState == NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING;
+    }
+
+    /** @return {@code true} if the phone state is in home service. */
+    private static boolean isHomeService(@RegistrationState int dataRegState) {
+        return dataRegState == NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
     }
 
     /**
      * Called when {@link TelephonyDisplayInfo} changed. This can happen when network types or
      * override network types (5G NSA, 5G MMWAVE) change.
+     * @param phoneId The phone that changed.
      */
     private void onDisplayInfoChanged(int phoneId) {
         Phone phone = PhoneFactory.getPhone(phoneId);
-        if (phone != null) {
+        if (phone != null && isActiveModemPhone(phoneId)) {
             TelephonyDisplayInfo displayInfo = phone.getDisplayInfoController()
                     .getTelephonyDisplayInfo();
-            //TODO(b/260928808)
-            log("onDisplayInfoChanged:" + displayInfo);
+            mPhonesSignalStatus[phoneId].mDisplayInfo = displayInfo;
+            if (getHigherScoreCandidatePhoneId() != mSelectedTargetPhoneId) {
+                log("onDisplayInfoChanged: phone " + phoneId + " " + displayInfo);
+                evaluateAutoDataSwitch(EVALUATION_REASON_DISPLAY_INFO_CHANGED);
+            }
         } else {
             loge("Unexpected null phone " + phoneId + " upon its display info changed");
         }
+    }
+
+    /**
+     * Called when {@link SignalStrength} changed.
+     * @param phoneId The phone that changed.
+     */
+    private void onSignalStrengthChanged(int phoneId) {
+        Phone phone = PhoneFactory.getPhone(phoneId);
+        if (phone != null && isActiveModemPhone(phoneId)) {
+            SignalStrength newSignalStrength = phone.getSignalStrength();
+            SignalStrength oldSignalStrength = mPhonesSignalStatus[phoneId].mSignalStrength;
+            if (oldSignalStrength.getLevel() != newSignalStrength.getLevel()) {
+                mPhonesSignalStatus[phoneId].mSignalStrength = newSignalStrength;
+                if (getHigherScoreCandidatePhoneId() != mSelectedTargetPhoneId) {
+                    log("onSignalStrengthChanged: phone " + phoneId + " "
+                            + oldSignalStrength.getLevel() + "->" + newSignalStrength.getLevel());
+                    evaluateAutoDataSwitch(EVALUATION_REASON_SIGNAL_STRENGTH_CHANGED);
+                }
+            }
+        } else {
+            loge("Unexpected null phone " + phoneId + " upon its signal strength changed");
+        }
+    }
+
+    /**
+     * Called as a preliminary check for the frequent signal/display info change.
+     * @return The phone Id if found a candidate phone with higher signal score.
+     */
+    private int getHigherScoreCandidatePhoneId() {
+        int preferredPhoneId = mPhoneSwitcher.getPreferredDataPhoneId();
+        if (isActiveModemPhone(preferredPhoneId)) {
+            int currentScore = mPhonesSignalStatus[preferredPhoneId].getRatSignalScore();
+            for (int phoneId = 0; phoneId < mPhonesSignalStatus.length; phoneId++) {
+                int candidateScore = mPhonesSignalStatus[phoneId].getRatSignalScore();
+                if (phoneId != preferredPhoneId
+                        && (candidateScore - currentScore) > mScoreTolerance) {
+                    return phoneId;
+                }
+            }
+        }
+        return INVALID_PHONE_INDEX;
     }
 
     /**
@@ -388,10 +555,7 @@ public class AutoDataSwitchController extends Handler {
         if (mAutoDataSwitchAvailabilityStabilityTimeThreshold < 0) return;
         int defaultDataSubId = mSubscriptionManagerService.getDefaultDataSubId();
         // check is valid DSDS
-        if (!isActiveSubId(defaultDataSubId) || mSubscriptionManagerService
-                .getActiveSubIdList(true).length <= 1) {
-            return;
-        }
+        if (mSubscriptionManagerService.getActiveSubIdList(true).length < 2) return;
         Phone defaultDataPhone = PhoneFactory.getPhone(mSubscriptionManagerService.getPhoneId(
                 defaultDataSubId));
         if (defaultDataPhone == null) {
@@ -401,13 +565,16 @@ public class AutoDataSwitchController extends Handler {
         }
         int defaultDataPhoneId = defaultDataPhone.getPhoneId();
         int preferredPhoneId = mPhoneSwitcher.getPreferredDataPhoneId();
-        log("onEvaluateAutoDataSwitch: defaultPhoneId: " + defaultDataPhoneId
-                + " preferredPhoneId: " + preferredPhoneId
-                + " reason: " + evaluationReasonToString(reason));
+        StringBuilder debugMessage = new StringBuilder("onEvaluateAutoDataSwitch:");
+        debugMessage.append(" defaultPhoneId: ").append(defaultDataPhoneId)
+                .append(" preferredPhoneId: ").append(preferredPhoneId)
+                .append(", reason: ").append(evaluationReasonToString(reason));
         if (preferredPhoneId == defaultDataPhoneId) {
             // on default data sub
-            int candidatePhoneId = getSwitchCandidatePhoneId(defaultDataPhoneId);
+            int candidatePhoneId = getSwitchCandidatePhoneId(defaultDataPhoneId, debugMessage);
+            log(debugMessage.toString());
             if (candidatePhoneId != INVALID_PHONE_INDEX) {
+                mSelectedTargetPhoneId = candidatePhoneId;
                 startStabilityCheck(candidatePhoneId, mRequirePingTestBeforeSwitch);
             } else {
                 cancelAnyPendingSwitch();
@@ -415,87 +582,236 @@ public class AutoDataSwitchController extends Handler {
         } else {
             // on backup data sub
             Phone backupDataPhone = PhoneFactory.getPhone(preferredPhoneId);
-            if (backupDataPhone == null) {
-                loge("onEvaluateAutoDataSwitch: Unexpected null phone " + preferredPhoneId
-                        + " as the current active data phone");
+            if (backupDataPhone == null || !isActiveModemPhone(preferredPhoneId)) {
+                loge(debugMessage.append(" Unexpected null phone ").append(preferredPhoneId)
+                        .append(" as the current active data phone").toString());
                 return;
             }
 
             if (!defaultDataPhone.isUserDataEnabled() || !backupDataPhone.isDataAllowed()) {
-                // immediately switch back if user disabled setting changes
                 mPhoneSwitcherCallback.onRequireImmediatelySwitchToPhone(DEFAULT_PHONE_INDEX,
                         EVALUATION_REASON_DATA_SETTINGS_CHANGED);
+                log(debugMessage.append(", immediately back to default as user turns off settings")
+                        .toString());
                 return;
             }
 
-            if (mDefaultNetworkIsOnNonCellular) {
-                log("onEvaluateAutoDataSwitch: Default network is active on nonCellular transport");
-                startStabilityCheck(DEFAULT_PHONE_INDEX, false);
-                return;
+            boolean backToDefault = false;
+            boolean needValidation = true;
+
+            if (mFlags.autoSwitchAllowRoaming()) {
+                if (mDefaultNetworkIsOnNonCellular) {
+                    debugMessage.append(", back to default as default network")
+                            .append(" is active on nonCellular transport");
+                    backToDefault = true;
+                    needValidation = false;
+                } else {
+                    PhoneSignalStatus.UsableState defaultUsableState =
+                            mPhonesSignalStatus[defaultDataPhoneId].getUsableState();
+                    PhoneSignalStatus.UsableState currentUsableState =
+                            mPhonesSignalStatus[preferredPhoneId].getUsableState();
+
+                    boolean isCurrentUsable = currentUsableState.mScore
+                            > PhoneSignalStatus.UsableState.NOT_USABLE.mScore;
+
+                    if (currentUsableState.mScore < defaultUsableState.mScore) {
+                        debugMessage.append(", back to default phone ").append(preferredPhoneId)
+                                .append(" : ").append(defaultUsableState)
+                                .append(" , backup phone: ").append(currentUsableState);
+
+                        backToDefault = true;
+                        // Require validation if the current preferred phone is usable.
+                        needValidation = isCurrentUsable && mRequirePingTestBeforeSwitch;
+                    } else if (defaultUsableState.mScore == currentUsableState.mScore) {
+                        debugMessage.append(", default phone ").append(preferredPhoneId)
+                                .append(" : ").append(defaultUsableState)
+                                .append(" , backup phone: ").append(currentUsableState);
+
+                        if (isCurrentUsable) {
+                            // Both phones are usable.
+                            if (isRatSignalStrengthBasedSwitchEnabled()) {
+                                int defaultScore = mPhonesSignalStatus[defaultDataPhoneId]
+                                        .getRatSignalScore();
+                                int currentScore = mPhonesSignalStatus[preferredPhoneId]
+                                        .getRatSignalScore();
+                                if ((defaultScore - currentScore) > mScoreTolerance) {
+                                    debugMessage
+                                            .append(", back to default for higher score ")
+                                            .append(defaultScore).append(" versus current ")
+                                            .append(currentScore);
+                                    backToDefault = true;
+                                    needValidation = mRequirePingTestBeforeSwitch;
+                                }
+                            } else {
+                                // Only OOS/in service switch is enabled, switch back.
+                                debugMessage.append(", back to default as it's usable. ");
+                                backToDefault = true;
+                                needValidation = mRequirePingTestBeforeSwitch;
+                            }
+                        } else {
+                            debugMessage.append(", back to default as both phones are unusable.");
+                            backToDefault = true;
+                            needValidation = false;
+                        }
+                    }
+                }
+            } else {
+                if (mDefaultNetworkIsOnNonCellular) {
+                    debugMessage.append(", back to default as default network")
+                            .append(" is active on nonCellular transport");
+                    backToDefault = true;
+                    needValidation = false;
+                } else if (!isHomeService(mPhonesSignalStatus[preferredPhoneId].mDataRegState)) {
+                    debugMessage.append(", back to default as backup phone lost HOME registration");
+                    backToDefault = true;
+                    needValidation = false;
+                } else if (isRatSignalStrengthBasedSwitchEnabled()) {
+                    int defaultScore = mPhonesSignalStatus[defaultDataPhoneId].getRatSignalScore();
+                    int currentScore = mPhonesSignalStatus[preferredPhoneId].getRatSignalScore();
+                    if ((defaultScore - currentScore) > mScoreTolerance) {
+                        debugMessage
+                                .append(", back to default as default phone has higher score ")
+                                .append(defaultScore).append(" versus current ")
+                                .append(currentScore);
+                        backToDefault = true;
+                        needValidation = mRequirePingTestBeforeSwitch;
+                    }
+                } else if (isInService(mPhonesSignalStatus[defaultDataPhoneId].mDataRegState)) {
+                    debugMessage.append(", back to default as the default is back to service ");
+                    backToDefault = true;
+                    needValidation = mRequirePingTestBeforeSwitch;
+                }
             }
 
-            if (mPhonesSignalStatus[preferredPhoneId].mDataRegState
-                    != NetworkRegistrationInfo.REGISTRATION_STATE_HOME) {
-                // backup phone lost its HOME registration
-                startStabilityCheck(DEFAULT_PHONE_INDEX, false);
-                return;
+            if (backToDefault) {
+                log(debugMessage.toString());
+                mSelectedTargetPhoneId = defaultDataPhoneId;
+                startStabilityCheck(DEFAULT_PHONE_INDEX, needValidation);
+            } else {
+                // cancel any previous attempts of switching back to default phone
+                cancelAnyPendingSwitch();
             }
-
-            if (isInService(mPhonesSignalStatus[defaultDataPhoneId].mDataRegState)) {
-                // default phone is back to service
-                startStabilityCheck(DEFAULT_PHONE_INDEX, mRequirePingTestBeforeSwitch);
-                return;
-            }
-
-            // cancel any previous attempts of switching back to default phone
-            cancelAnyPendingSwitch();
         }
     }
 
     /**
      * Called when consider switching from primary default data sub to another data sub.
+     * @param defaultPhoneId The default data phone
+     * @param debugMessage Debug message.
      * @return the target subId if a suitable candidate is found, otherwise return
      * {@link SubscriptionManager#INVALID_PHONE_INDEX}
      */
-    private int getSwitchCandidatePhoneId(int defaultPhoneId) {
+    private int getSwitchCandidatePhoneId(int defaultPhoneId, @NonNull StringBuilder debugMessage) {
         Phone defaultDataPhone = PhoneFactory.getPhone(defaultPhoneId);
         if (defaultDataPhone == null) {
-            log("getSwitchCandidatePhoneId: no sim loaded");
+            debugMessage.append(", no candidate as no sim loaded");
             return INVALID_PHONE_INDEX;
         }
 
         if (!defaultDataPhone.isUserDataEnabled()) {
-            log("getSwitchCandidatePhoneId: user disabled data");
+            debugMessage.append(", no candidate as user disabled mobile data");
             return INVALID_PHONE_INDEX;
         }
 
         if (mDefaultNetworkIsOnNonCellular) {
-            // Exists other active default transport
-            log("getSwitchCandidatePhoneId: Default network is active on non-cellular transport");
+            debugMessage.append(", no candidate as default network is active")
+                    .append(" on non-cellular transport");
             return INVALID_PHONE_INDEX;
         }
 
-        // check whether primary and secondary signal status are worth switching
-        if (isInService(mPhonesSignalStatus[defaultPhoneId].mDataRegState)) {
-            log("getSwitchCandidatePhoneId: DDS is in service");
-            return INVALID_PHONE_INDEX;
+        if (mFlags.autoSwitchAllowRoaming()) {
+            // check whether primary and secondary signal status are worth switching
+            if (!isRatSignalStrengthBasedSwitchEnabled()
+                    && isHomeService(mPhonesSignalStatus[defaultPhoneId].mDataRegState)) {
+                debugMessage.append(", no candidate as default phone is in HOME service");
+                return INVALID_PHONE_INDEX;
+            }
+        } else {
+            // check whether primary and secondary signal status are worth switching
+            if (!isRatSignalStrengthBasedSwitchEnabled()
+                    && isInService(mPhonesSignalStatus[defaultPhoneId].mDataRegState)) {
+                debugMessage.append(", no candidate as default phone is in service");
+                return INVALID_PHONE_INDEX;
+            }
         }
+
+        PhoneSignalStatus defaultPhoneStatus = mPhonesSignalStatus[defaultPhoneId];
         for (int phoneId = 0; phoneId < mPhonesSignalStatus.length; phoneId++) {
-            if (phoneId != defaultPhoneId) {
-                // the alternative phone must have HOME availability
-                if (mPhonesSignalStatus[phoneId].mDataRegState
-                        == NetworkRegistrationInfo.REGISTRATION_STATE_HOME) {
-                    log("getSwitchCandidatePhoneId: found phone " + phoneId
-                            + " in HOME service");
-                    Phone secondaryDataPhone = PhoneFactory.getPhone(phoneId);
-                    if (secondaryDataPhone != null && // check auto switch feature enabled
-                            secondaryDataPhone.isDataAllowed()) {
-                        return phoneId;
+            if (phoneId == defaultPhoneId) continue;
+
+            Phone secondaryDataPhone = null;
+            PhoneSignalStatus candidatePhoneStatus = mPhonesSignalStatus[phoneId];
+            if (mFlags.autoSwitchAllowRoaming()) {
+                PhoneSignalStatus.UsableState currentUsableState =
+                        mPhonesSignalStatus[defaultPhoneId].getUsableState();
+                PhoneSignalStatus.UsableState candidatePhoneUsableRank =
+                        mPhonesSignalStatus[phoneId].getUsableState();
+                debugMessage.append(", found phone ").append(phoneId).append(" is ").append(
+                        candidatePhoneUsableRank)
+                        .append(", current is ").append(currentUsableState);
+                if (candidatePhoneUsableRank.mScore > currentUsableState.mScore) {
+                    secondaryDataPhone = PhoneFactory.getPhone(phoneId);
+                } else if (isRatSignalStrengthBasedSwitchEnabled()
+                        && currentUsableState.mScore == candidatePhoneUsableRank.mScore) {
+                    // Both phones are home or both roaming enabled, so compare RAT/signal score.
+
+                    int defaultScore = defaultPhoneStatus.getRatSignalScore();
+                    int candidateScore = candidatePhoneStatus.getRatSignalScore();
+                    if ((candidateScore - defaultScore) > mScoreTolerance) {
+                        debugMessage.append(" with higher score ").append(
+                                        candidateScore)
+                                .append(" versus current ").append(defaultScore);
+                        secondaryDataPhone = PhoneFactory.getPhone(phoneId);
+                    } else {
+                        debugMessage.append(", but its score ").append(candidateScore)
+                                .append(" doesn't meet the bar to switch given the current ")
+                                .append(defaultScore);
                     }
+                }
+            } else if (isHomeService(candidatePhoneStatus.mDataRegState)) {
+                // the alternative phone must have HOME availability
+                debugMessage.append(", found phone ").append(phoneId).append(" in HOME service");
+
+                if (isInService(defaultPhoneStatus.mDataRegState)) {
+                    // Use score if RAT/signal strength based switch is enabled and both phone are
+                    // in service.
+                    if (isRatSignalStrengthBasedSwitchEnabled()) {
+                        int defaultScore = mPhonesSignalStatus[defaultPhoneId].getRatSignalScore();
+                        int candidateScore = mPhonesSignalStatus[phoneId].getRatSignalScore();
+                        if ((candidateScore - defaultScore) > mScoreTolerance) {
+                            debugMessage.append(" with higher score ").append(candidateScore)
+                                    .append(" versus current ").append(defaultScore);
+                            secondaryDataPhone = PhoneFactory.getPhone(phoneId);
+                        } else {
+                            debugMessage.append(", but its score ").append(candidateScore)
+                                    .append(" doesn't meet the bar to switch given the current ")
+                                    .append(defaultScore);
+                        }
+                    }
+                } else {
+                    // Only OOS/in service switch is enabled.
+                    secondaryDataPhone = PhoneFactory.getPhone(phoneId);
+                }
+            }
+
+            if (secondaryDataPhone != null) {
+                // check auto switch feature enabled
+                if (secondaryDataPhone.isDataAllowed()) {
+                    return phoneId;
+                } else {
+                    debugMessage.append(", but its data is not allowed");
                 }
             }
         }
+        debugMessage.append(", found no qualified candidate.");
         return INVALID_PHONE_INDEX;
+    }
+
+    /**
+     * @return {@code true} If the feature of switching base on RAT and signal strength is enabled.
+     */
+    private boolean isRatSignalStrengthBasedSwitchEnabled() {
+        return mFlags.autoDataSwitchRatSs() && mScoreTolerance >= 0;
     }
 
     /**
@@ -508,10 +824,12 @@ public class AutoDataSwitchController extends Handler {
     private void startStabilityCheck(int targetPhoneId, boolean needValidation) {
         log("startAutoDataSwitchStabilityCheck: targetPhoneId=" + targetPhoneId
                 + " needValidation=" + needValidation);
-        if (!hasMessages(EVENT_MEETS_AUTO_DATA_SWITCH_STATE, needValidation)) {
+        String combinationIdentifier = targetPhoneId + "" + needValidation;
+        if (!hasEqualMessages(EVENT_MEETS_AUTO_DATA_SWITCH_STATE, combinationIdentifier)) {
+            removeMessages(EVENT_MEETS_AUTO_DATA_SWITCH_STATE);
             sendMessageDelayed(obtainMessage(EVENT_MEETS_AUTO_DATA_SWITCH_STATE, targetPhoneId,
-                            0/*placeholder*/,
-                            needValidation),
+                            needValidation ? 1 : 0,
+                            combinationIdentifier),
                     mAutoDataSwitchAvailabilityStabilityTimeThreshold);
         }
     }
@@ -566,6 +884,7 @@ public class AutoDataSwitchController extends Handler {
      * Cancel any auto switch attempts when the current environment is not suitable for auto switch.
      */
     private void cancelAnyPendingSwitch() {
+        mSelectedTargetPhoneId = INVALID_PHONE_INDEX;
         resetFailedCount();
         removeMessages(EVENT_MEETS_AUTO_DATA_SWITCH_STATE);
         mPhoneSwitcherCallback.onRequireCancelAnyPendingAutoSwitchValidation();
@@ -651,6 +970,14 @@ public class AutoDataSwitchController extends Handler {
     }
 
     /**
+     * @param phoneId The phone Id to check.
+     * @return {@code true} if the phone Id is an active modem.
+     */
+    private boolean isActiveModemPhone(int phoneId) {
+        return phoneId >= 0 && phoneId < mPhonesSignalStatus.length;
+    }
+
+    /**
      * Log debug messages.
      * @param s debug messages
      */
@@ -686,11 +1013,13 @@ public class AutoDataSwitchController extends Handler {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println("AutoDataSwitchController:");
         pw.increaseIndent();
+        pw.println("mScoreTolerance=" + mScoreTolerance);
         pw.println("mAutoDataSwitchValidationMaxRetry=" + mAutoDataSwitchValidationMaxRetry
                 + " mAutoSwitchValidationFailedCount=" + mAutoSwitchValidationFailedCount);
         pw.println("mRequirePingTestBeforeDataSwitch=" + mRequirePingTestBeforeSwitch);
         pw.println("mAutoDataSwitchAvailabilityStabilityTimeThreshold="
                 + mAutoDataSwitchAvailabilityStabilityTimeThreshold);
+        pw.println("mSelectedTargetPhoneId=" + mSelectedTargetPhoneId);
         pw.increaseIndent();
         for (PhoneSignalStatus status: mPhonesSignalStatus) {
             pw.println(status);

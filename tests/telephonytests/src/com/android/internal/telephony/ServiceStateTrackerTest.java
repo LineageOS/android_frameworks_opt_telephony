@@ -32,6 +32,7 @@ import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
@@ -98,6 +99,7 @@ import com.android.internal.R;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.data.AccessNetworksManager;
 import com.android.internal.telephony.data.DataNetworkController;
+import com.android.internal.telephony.emergency.EmergencyStateTracker;
 import com.android.internal.telephony.metrics.ServiceStateStats;
 import com.android.internal.telephony.satellite.SatelliteController;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
@@ -144,6 +146,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     private ServiceStateTrackerTestHandler mSSTTestHandler;
     private PersistableBundle mBundle;
     private SatelliteController mSatelliteController;
+    private EmergencyStateTracker mEmergencyStateTracker;
 
     private static final int EVENT_REGISTERED_TO_NETWORK = 1;
     private static final int EVENT_SUBSCRIPTION_INFO_READY = 2;
@@ -200,7 +203,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                     listenerArgumentCaptor =
                             ArgumentCaptor.forClass(
                                     CarrierConfigManager.CarrierConfigChangeListener.class);
-            sst = new ServiceStateTracker(mPhone, mSimulatedCommands);
+            sst = new ServiceStateTracker(mPhone, mSimulatedCommands, mFeatureFlags);
             verify(mCarrierConfigManager, atLeast(3)).registerCarrierConfigChangeListener(any(),
                     listenerArgumentCaptor.capture());
             mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(2);
@@ -257,7 +260,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSatelliteController = Mockito.mock(SatelliteController.class);
         replaceInstance(SatelliteController.class, "sInstance", null,
                 mSatelliteController);
-        doReturn(new ArrayList<>()).when(mSatelliteController).getSatellitePlmnList();
+        doReturn(new ArrayList<>()).when(mSatelliteController).getSatellitePlmnList(anyInt());
 
         mContextFixture.putResource(R.string.kg_text_message_separator, " \u2014 ");
 
@@ -268,6 +271,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 "com.android.phone");
         mContextFixture.putResource(R.string.config_wlan_network_service_package,
                 "com.xyz.iwlan.networkservice");
+
         doReturn(mIwlanNetworkServiceStub).when(mIwlanNetworkServiceStub).asBinder();
         addNetworkService();
 
@@ -302,6 +306,10 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(true).when(mPackageManager)
                 .hasSystemFeature(PackageManager.FEATURE_TELEPHONY_CDMA);
 
+        // Set cellular radio on after boot by default
+        mContextFixture.putBooleanResource(
+                R.bool.config_enable_cellular_on_boot_default, true);
+
         mSSTTestHandler = new ServiceStateTrackerTestHandler(getClass().getSimpleName());
         mSSTTestHandler.start();
         waitUntilReady();
@@ -326,6 +334,10 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // Start with power off delay disabled.
         mContextFixture.putIntResource(
                 com.android.internal.R.integer.config_delay_for_ims_dereg_millis, 0);
+
+        // Set 1 as default behavior for enable_cellular_on_boot
+        mContextFixture.putBooleanResource(
+                com.android.internal.R.bool.config_enable_cellular_on_boot_default, true);
 
         mBundle.putBoolean(
                 CarrierConfigManager.KEY_ENABLE_CARRIER_DISPLAY_NAME_RESOLVER_BOOL, true);
@@ -379,6 +391,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         sendCarrierConfigUpdate(PHONE_ID);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        mEmergencyStateTracker = Mockito.mock(EmergencyStateTracker.class);
+        replaceInstance(EmergencyStateTracker.class, "INSTANCE", null, mEmergencyStateTracker);
 
         logd("ServiceStateTrackerTest -Setup!");
     }
@@ -470,6 +485,66 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         verify(mDataNetworkController, times(1)).unregisterDataNetworkControllerCallback(any());
         assertEquals(TelephonyManager.RADIO_POWER_OFF, mSimulatedCommands.getRadioState());
+        verify(mEmergencyStateTracker, never()).onCellularRadioPowerOffRequested();
+    }
+
+    @Test
+    public void testSetRadioPowerExitEmergencyMode() throws Exception {
+        doReturn(true).when(mDomainSelectionResolver).isDomainSelectionSupported();
+
+        // Set up DSDS environment
+        GsmCdmaPhone phone2 = Mockito.mock(GsmCdmaPhone.class);
+        DataNetworkController dataNetworkController_phone2 =
+                Mockito.mock(DataNetworkController.class);
+        mPhones = new Phone[] {mPhone, phone2};
+        replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
+        doReturn(dataNetworkController_phone2).when(phone2).getDataNetworkController();
+        doReturn(mSST).when(phone2).getServiceStateTracker();
+        doReturn(false).when(mDataNetworkController).areAllDataDisconnected();
+        doReturn(false).when(dataNetworkController_phone2).areAllDataDisconnected();
+        doReturn(1).when(mPhone).getSubId();
+        doReturn(2).when(phone2).getSubId();
+
+        // Start with radio on
+        sst.setRadioPower(true);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
+
+        // Turn on APM
+        sst.setRadioPower(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
+
+        // Verify checking emergency mode
+        verify(mEmergencyStateTracker).onCellularRadioPowerOffRequested();
+
+        // Verify that both subs are waiting for all data disconnected
+        verify(mDataNetworkController).tearDownAllDataNetworks(
+                eq(3 /* TEAR_DOWN_REASON_AIRPLANE_MODE_ON */));
+        verify(dataNetworkController_phone2, never()).tearDownAllDataNetworks(anyInt());
+        ArgumentCaptor<DataNetworkController.DataNetworkControllerCallback> callback1 =
+                ArgumentCaptor.forClass(DataNetworkController.DataNetworkControllerCallback.class);
+        ArgumentCaptor<DataNetworkController.DataNetworkControllerCallback> callback2 =
+                ArgumentCaptor.forClass(DataNetworkController.DataNetworkControllerCallback.class);
+        verify(mDataNetworkController, times(1)).registerDataNetworkControllerCallback(
+                callback1.capture());
+        verify(dataNetworkController_phone2, times(1)).registerDataNetworkControllerCallback(
+                callback2.capture());
+
+        // Data disconnected on sub 2, still waiting for data disconnected on sub 1
+        doReturn(true).when(dataNetworkController_phone2).areAllDataDisconnected();
+        callback2.getValue().onAnyDataNetworkExistingChanged(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
+        verify(dataNetworkController_phone2, times(1)).unregisterDataNetworkControllerCallback(
+                any());
+
+        // Data disconnected on sub 1, radio should power off now
+        doReturn(true).when(mDataNetworkController).areAllDataDisconnected();
+        callback1.getValue().onAnyDataNetworkExistingChanged(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        verify(mDataNetworkController, times(1)).unregisterDataNetworkControllerCallback(any());
+        assertEquals(TelephonyManager.RADIO_POWER_OFF, mSimulatedCommands.getRadioState());
     }
 
     @Test
@@ -511,18 +586,22 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     private void testSetRadioPowerForReason(int reason) {
+        clearInvocations(mSatelliteController);
         // Radio does not turn on if off for other reason and not emergency call.
         assertTrue(mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_ON);
         assertTrue(sst.getRadioPowerOffReasons().isEmpty());
         sst.setRadioPowerForReason(false, false, false, false, reason);
         assertTrue(sst.getRadioPowerOffReasons().contains(reason));
         assertTrue(sst.getRadioPowerOffReasons().size() == 1);
+        verify(mSatelliteController).onCellularRadioPowerOffRequested();
+        clearInvocations(mSatelliteController);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertTrue(mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_OFF);
         sst.setRadioPowerForReason(true, false, false, false,
                 TelephonyManager.RADIO_POWER_REASON_USER);
         assertTrue(sst.getRadioPowerOffReasons().contains(reason));
         assertTrue(sst.getRadioPowerOffReasons().size() == 1);
+        verify(mSatelliteController, never()).onCellularRadioPowerOffRequested();
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertTrue(mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_OFF);
 
@@ -530,6 +609,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // had been turned off for.
         sst.setRadioPowerForReason(true, false, false, false, reason);
         assertTrue(sst.getRadioPowerOffReasons().isEmpty());
+        verify(mSatelliteController, never()).onCellularRadioPowerOffRequested();
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertTrue(mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_ON);
 
@@ -2050,6 +2130,79 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @Test
+    public void testPollStateExceptionRadioPowerOn() {
+        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
+        assertEquals(ServiceState.STATE_IN_SERVICE, sst.getServiceState().getState());
+        assertEquals(ServiceState.STATE_IN_SERVICE,
+                sst.getServiceState().getDataRegistrationState());
+
+        sst.mPollingContext[0] = 1;
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_OPERATOR,
+                new AsyncResult(sst.mPollingContext, null,
+                        new CommandException(CommandException.Error.RADIO_NOT_AVAILABLE))));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        assertEquals(ServiceState.STATE_IN_SERVICE, sst.getServiceState().getState());
+        assertEquals(ServiceState.STATE_IN_SERVICE,
+                sst.getServiceState().getDataRegistrationState());
+        assertEquals(0, sst.mPollingContext[0]);
+    }
+
+    @Test
+    public void testPollStateExceptionRadioPowerOff() {
+        // Turn off radio first.
+        sst.setRadioPower(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(TelephonyManager.RADIO_POWER_OFF, mSimulatedCommands.getRadioState());
+        assertEquals(ServiceState.STATE_POWER_OFF, sst.getServiceState().getState());
+        assertEquals(ServiceState.STATE_POWER_OFF,
+                sst.getServiceState().getDataRegistrationState());
+        // Override service state
+        sst.getServiceState().setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        sst.getServiceState().setDataRegState(ServiceState.STATE_IN_SERVICE);
+
+        sst.mPollingContext[0] = 1;
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_OPERATOR,
+                new AsyncResult(sst.mPollingContext, null,
+                        new CommandException(CommandException.Error.RADIO_NOT_AVAILABLE))));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        assertEquals(ServiceState.STATE_POWER_OFF, sst.getServiceState().getVoiceRegState());
+        assertEquals(ServiceState.STATE_POWER_OFF, sst.getServiceState().getDataRegState());
+        assertEquals(1, sst.mPollingContext[0]);
+    }
+
+    @Test
+    public void testPollStateExceptionRadioPowerOffOnIwlan() {
+        // Turn off radio first.
+        sst.setRadioPower(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(TelephonyManager.RADIO_POWER_OFF, mSimulatedCommands.getRadioState());
+        assertEquals(ServiceState.STATE_POWER_OFF, sst.getServiceState().getState());
+        assertEquals(ServiceState.STATE_POWER_OFF,
+                sst.getServiceState().getDataRegistrationState());
+        // Override service state
+        sst.getServiceState().setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        sst.getServiceState().setDataRegState(ServiceState.STATE_IN_SERVICE);
+        // Override to IWLAN
+        sst.mSS.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN);
+
+        sst.mPollingContext[0] = 1;
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_OPERATOR,
+                new AsyncResult(sst.mPollingContext, null,
+                        new CommandException(CommandException.Error.RADIO_NOT_AVAILABLE))));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        assertNull(null, sst.getServiceState().getOperatorAlpha());
+        assertEquals(ServiceState.STATE_POWER_OFF, sst.getServiceState().getVoiceRegState());
+        assertEquals(ServiceState.STATE_POWER_OFF, sst.getServiceState().getDataRegState());
+        assertEquals(1, sst.mPollingContext[0]);
+    }
+
+    @Test
     public void testCSEmergencyRegistrationState() throws Exception {
         CellIdentityGsm cellIdentity =
                 new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst",
@@ -3233,7 +3386,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         CellIdentityGsm cellIdentity =
                 new CellIdentityGsm(0, 1, 900, 5, "101", "23", "test", "tst",
                         Collections.emptyList());
-        doReturn(Arrays.asList("10123")).when(mSatelliteController).getSatellitePlmnList();
+        doReturn(Arrays.asList("10123")).when(mSatelliteController).getSatellitePlmnList(anyInt());
         doReturn(satelliteSupportedServiceList).when(mSatelliteController)
                 .getSupportedSatelliteServices(sst.mSubId, "10123");
 
