@@ -1799,6 +1799,8 @@ public class UiccController extends Handler {
         }
         pw.decreaseIndent();
         pw.println();
+        mCarrierServiceBindHelper.dump(fd, pw, args);
+        pw.println();
         pw.println("sLocalLog= ");
         pw.increaseIndent();
         mPinStorage.dump(fd, pw, args);

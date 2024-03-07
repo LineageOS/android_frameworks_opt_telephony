@@ -62,3 +62,10 @@ flag {
     description: "This flag updates roaming state to set wfc mode"
     bug:"317298331"
 }
+
+flag {
+    name: "enable_sip_subscribe_retry"
+    namespace: "telephony"
+    description: "This flag controls whether framework supports SIP subscribe retry or not"
+    bug:"297023230"
+}
