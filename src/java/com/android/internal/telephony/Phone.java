@@ -779,6 +779,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             case EVENT_SET_NETWORK_MANUAL_COMPLETE:
             case EVENT_SET_NETWORK_AUTOMATIC_COMPLETE:
                 handleSetSelectNetwork((AsyncResult) msg.obj);
+                onSetNetworkSelectionModeCompleted();
                 return;
         }
 
@@ -1533,6 +1534,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         }
 
         updateSavedNetworkOperator(nsm);
+    }
+
+    /**
+     * Called when setting network selection mode is complete.
+     */
+    protected void onSetNetworkSelectionModeCompleted() {
     }
 
     /**

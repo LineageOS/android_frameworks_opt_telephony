@@ -2271,6 +2271,11 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    protected void onSetNetworkSelectionModeCompleted() {
+        mSST.pollState();
+    }
+
+    @Override
     public String getCdmaPrlVersion() {
         return mSST.getPrlVersion();
     }
