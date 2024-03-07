@@ -28,6 +28,7 @@ import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.flags.FeatureFlags;
 
 import org.junit.After;
 import org.junit.Before;
@@ -42,6 +43,8 @@ public class ImsPhoneFactoryTest extends TelephonyTest {
     private ImsPhone mImsPhoneUT;
     private ImsPhoneFactoryHandler mImsPhoneFactoryHandler;
 
+    private FeatureFlags mFeatureFlags;
+
     private final Executor mExecutor = Runnable::run;
 
     private class ImsPhoneFactoryHandler extends HandlerThread {
@@ -51,7 +54,8 @@ public class ImsPhoneFactoryTest extends TelephonyTest {
         }
         @Override
         public void onLooperPrepared() {
-            mImsPhoneUT = ImsPhoneFactory.makePhone(mContext, mPhoneNotifier, mPhone);
+            mImsPhoneUT = ImsPhoneFactory.makePhone(mContext, mPhoneNotifier, mPhone,
+                    mFeatureFlags);
             setReady(true);
         }
     }
@@ -60,6 +64,7 @@ public class ImsPhoneFactoryTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mPhoneNotifier = mock(PhoneNotifier.class);
+        mFeatureFlags = mock(FeatureFlags.class);
         doReturn(mExecutor).when(mContext).getMainExecutor();
 
         mImsPhoneFactoryHandler = new ImsPhoneFactoryHandler(getClass().getSimpleName());

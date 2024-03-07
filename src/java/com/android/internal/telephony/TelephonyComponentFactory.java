@@ -40,11 +40,14 @@ import com.android.internal.telephony.data.DataSettingsManager;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
+import com.android.internal.telephony.flags.FeatureFlags;
+import com.android.internal.telephony.flags.FeatureFlagsImpl;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsNrSaModeHandler;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.nitz.NitzStateMachineImpl;
+import com.android.internal.telephony.security.CellularIdentifierDisclosureNotifier;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccProfile;
@@ -286,8 +289,9 @@ public class TelephonyComponentFactory {
         return new SmsUsageMonitor(context);
     }
 
-    public ServiceStateTracker makeServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci) {
-        return new ServiceStateTracker(phone, ci);
+    public ServiceStateTracker makeServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci,
+            @NonNull FeatureFlags featureFlags) {
+        return new ServiceStateTracker(phone, ci, featureFlags);
     }
 
     /**
@@ -326,8 +330,12 @@ public class TelephonyComponentFactory {
         return new IccPhoneBookInterfaceManager(phone);
     }
 
-    public IccSmsInterfaceManager makeIccSmsInterfaceManager(Phone phone) {
-        return new IccSmsInterfaceManager(phone);
+    /**
+     * Returns a new {@link IccSmsInterfaceManager} instance.
+     */
+    public IccSmsInterfaceManager makeIccSmsInterfaceManager(Phone phone,
+            @NonNull FeatureFlags featureFlags) {
+        return new IccSmsInterfaceManager(phone, featureFlags);
     }
 
     /**
@@ -377,8 +385,27 @@ public class TelephonyComponentFactory {
         return new InboundSmsTracker(context, cursor, isCurrentFormat3gpp2);
     }
 
+    /**
+     * Create an ImsPhoneCallTracker.
+     *
+     * @param imsPhone imsphone
+     * @return ImsPhoneCallTracker newly created ImsPhoneCallTracker
+     * @deprecated Use {@link #makeImsPhoneCallTracker(ImsPhone, FeatureFlags)} instead
+     */
     public ImsPhoneCallTracker makeImsPhoneCallTracker(ImsPhone imsPhone) {
-        return new ImsPhoneCallTracker(imsPhone, ImsManager::getConnector);
+        return makeImsPhoneCallTracker(imsPhone, new FeatureFlagsImpl());
+    }
+
+    /**
+     * Create a ims phone call tracker.
+     *
+     * @param imsPhone imsphone
+     * @param featureFlags feature flags
+     * @return ImsPhoneCallTracker newly created ImsPhoneCallTracker
+     */
+    public ImsPhoneCallTracker makeImsPhoneCallTracker(ImsPhone imsPhone,
+                                                       @NonNull FeatureFlags featureFlags) {
+        return new ImsPhoneCallTracker(imsPhone, ImsManager::getConnector, featureFlags);
     }
 
     public ImsExternalCallTracker makeImsExternalCallTracker(ImsPhone imsPhone) {
@@ -401,8 +428,12 @@ public class TelephonyComponentFactory {
         return new AppSmsManager(context);
     }
 
-    public DeviceStateMonitor makeDeviceStateMonitor(Phone phone) {
-        return new DeviceStateMonitor(phone);
+    /**
+     * Create a DeviceStateMonitor.
+     */
+    public DeviceStateMonitor makeDeviceStateMonitor(Phone phone,
+            @NonNull FeatureFlags featureFlags) {
+        return new DeviceStateMonitor(phone, featureFlags);
     }
 
     /**
@@ -411,9 +442,23 @@ public class TelephonyComponentFactory {
      * @param phone The phone instance
      * @param looper Looper for the handler.
      * @return The access networks manager
+     * @deprecated {@link #makeAccessNetworksManager(Phone, Looper, FeatureFlags)} instead
      */
     public AccessNetworksManager makeAccessNetworksManager(Phone phone, Looper looper) {
-        return new AccessNetworksManager(phone, looper);
+        return new AccessNetworksManager(phone, looper, new FeatureFlagsImpl());
+    }
+
+    /**
+     * Make access networks manager
+     *
+     * @param phone The phone instance
+     * @param looper Looper for the handler.
+     * @param featureFlags feature flags.
+     * @return The access networks manager
+     */
+    public AccessNetworksManager makeAccessNetworksManager(Phone phone, Looper looper,
+            @NonNull FeatureFlags featureFlags) {
+        return new AccessNetworksManager(phone, looper, featureFlags);
     }
 
     public CdmaSubscriptionSourceManager
@@ -429,21 +474,22 @@ public class TelephonyComponentFactory {
 
     public Phone makePhone(Context context, CommandsInterface ci, PhoneNotifier notifier,
             int phoneId, int precisePhoneType,
-            TelephonyComponentFactory telephonyComponentFactory) {
+            TelephonyComponentFactory telephonyComponentFactory,
+            @NonNull FeatureFlags featureFlags) {
         return new GsmCdmaPhone(context, ci, notifier, phoneId, precisePhoneType,
-                telephonyComponentFactory);
+                telephonyComponentFactory, featureFlags);
     }
 
     public PhoneSwitcher makePhoneSwitcher(int maxDataAttachModemCount, Context context,
-            Looper looper) {
-        return PhoneSwitcher.make(maxDataAttachModemCount, context, looper);
+            Looper looper, @NonNull FeatureFlags featureFlags) {
+        return PhoneSwitcher.make(maxDataAttachModemCount, context, looper, featureFlags);
     }
 
     /**
      * Create a new DisplayInfoController.
      */
-    public DisplayInfoController makeDisplayInfoController(Phone phone) {
-        return new DisplayInfoController(phone);
+    public DisplayInfoController makeDisplayInfoController(Phone phone, FeatureFlags featureFlags) {
+        return new DisplayInfoController(phone, featureFlags);
     }
 
     /**
@@ -476,10 +522,12 @@ public class TelephonyComponentFactory {
      *
      * @param phone The phone object
      * @param looper The looper for event handling
+     * @param featureFlags The feature flag.
      * @return The data network controller instance
      */
-    public DataNetworkController makeDataNetworkController(Phone phone, Looper looper) {
-        return new DataNetworkController(phone, looper);
+    public DataNetworkController makeDataNetworkController(Phone phone, Looper looper,
+            @NonNull FeatureFlags featureFlags) {
+        return new DataNetworkController(phone, looper, featureFlags);
     }
 
     /**
@@ -490,15 +538,17 @@ public class TelephonyComponentFactory {
      * @param dataServiceManager Data service manager instance.
      * @param looper The looper to be used by the handler. Currently the handler thread is the phone
      * process's main thread.
+     * @param featureFlags Feature flags controlling which feature is enabled.     *
      * @param callback Callback for passing events back to data network controller.
      * @return The data profile manager instance.
      */
     public @NonNull DataProfileManager makeDataProfileManager(@NonNull Phone phone,
             @NonNull DataNetworkController dataNetworkController,
             @NonNull DataServiceManager dataServiceManager, @NonNull Looper looper,
+            @NonNull FeatureFlags featureFlags,
             @NonNull DataProfileManager.DataProfileManagerCallback callback) {
         return new DataProfileManager(phone, dataNetworkController, dataServiceManager, looper,
-                callback);
+                featureFlags, callback);
     }
 
     /**
@@ -515,5 +565,10 @@ public class TelephonyComponentFactory {
             @NonNull DataNetworkController dataNetworkController, @NonNull Looper looper,
             @NonNull DataSettingsManager.DataSettingsManagerCallback callback) {
         return new DataSettingsManager(phone, dataNetworkController, looper, callback);
+    }
+
+    /** Create CellularIdentifierDisclosureNotifier. */
+    public CellularIdentifierDisclosureNotifier makeIdentifierDisclosureNotifier() {
+        return CellularIdentifierDisclosureNotifier.getInstance();
     }
 }

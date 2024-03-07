@@ -41,12 +41,15 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.util.Pair;
 
+import com.android.internal.telephony.flags.FeatureFlags;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 
 import java.security.PublicKey;
 import java.text.SimpleDateFormat;
@@ -87,7 +90,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
                     + "\"public-key\": \"" + CERT + "\"}]}";
 
     private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
-
+    private FeatureFlags mFeatureFlags;
     @Before
     public void setUp() throws Exception {
         logd("CarrierActionAgentTest +Setup!");
@@ -98,7 +101,8 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         // Capture listener to emulate the carrier config change notification used later
         ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
                 ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
-        mCarrierKeyDM = new CarrierKeyDownloadManager(mPhone);
+        mFeatureFlags = Mockito.mock(FeatureFlags.class);
+        mCarrierKeyDM = new CarrierKeyDownloadManager(mPhone, mFeatureFlags);
         verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
                 listenerArgumentCaptor.capture());
         mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(0);

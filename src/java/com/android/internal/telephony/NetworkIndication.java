@@ -30,9 +30,11 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_REGISTRATION
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESTRICTED_STATE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SECURITY_ALGORITHMS_UPDATED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIGNAL_STRENGTH;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SUPP_SVC_NOTIFICATION;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_VOICE_RADIO_TECH_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CELLULAR_IDENTIFIER_DISCLOSED;
 
 import android.annotation.ElapsedRealtimeLong;
 import android.hardware.radio.network.IRadioNetworkIndication;
@@ -42,6 +44,7 @@ import android.telephony.AnomalyReporter;
 import android.telephony.BarringInfo;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
+import android.telephony.CellularIdentifierDisclosure;
 import android.telephony.EmergencyRegResult;
 import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkRegistrationInfo;
@@ -128,7 +131,7 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
             android.hardware.radio.network.LinkCapacityEstimate lce) {
         mRil.processIndication(HAL_SERVICE_NETWORK, indicationType);
 
-        List<LinkCapacityEstimate> response = RILUtils.convertHalLceData(lce);
+        List<LinkCapacityEstimate> response = RILUtils.convertHalLinkCapacityEstimate(lce);
 
         if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_LCEDATA_RECV, response);
 
@@ -168,7 +171,10 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
                 }
                 if (band == PhysicalChannelConfig.BAND_UNKNOWN) {
                     mRil.riljLoge("Unsupported unknown band.");
-                    return;
+                    // TODO, b/288310456,
+                    //  If the band is unknown, PhysicalChannelConfig can be built without setBand.
+                    //  It should be enforced not to allow "unknown" bands in the near future.
+                    // return;
                 } else {
                     builder.setBand(band);
                 }
@@ -204,9 +210,8 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
             android.hardware.radio.network.SignalStrength signalStrength) {
         mRil.processIndication(HAL_SERVICE_NETWORK, indicationType);
 
-        SignalStrength ssInitial = RILUtils.convertHalSignalStrength(signalStrength);
+        SignalStrength ss = RILUtils.convertHalSignalStrength(signalStrength);
 
-        SignalStrength ss = mRil.fixupSignalStrength10(ssInitial);
         // Note this is set to "verbose" because it happens frequently
         if (mRil.isLogvOrTrace()) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
 
@@ -417,6 +422,40 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
 
         mRil.mEmergencyNetworkScanRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
+    }
+
+    /**
+     * Cellular identifier disclosure events
+     * @param indicationType Type of radio indication
+     * @param identifierDisclsoure the result of the Emergency Network Scan
+     */
+    public void cellularIdentifierDisclosed(int indicationType,
+            android.hardware.radio.network.CellularIdentifierDisclosure identifierDisclsoure) {
+        mRil.processIndication(HAL_SERVICE_NETWORK, indicationType);
+
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(RIL_UNSOL_CELLULAR_IDENTIFIER_DISCLOSED, identifierDisclsoure);
+        }
+
+        CellularIdentifierDisclosure disclosure =
+                RILUtils.convertCellularIdentifierDisclosure(identifierDisclsoure);
+
+        mRil.mCellularIdentifierDisclosedRegistrants.notifyRegistrants(
+                new AsyncResult(null, disclosure, null));
+    }
+
+    /**
+     * Security algorithm update events
+     * @param indicationType Type of radio indication
+     * @param securityAlgorithmUpdate details of what changed
+     */
+    public void securityAlgorithmsUpdated(int indicationType,
+            android.hardware.radio.network.SecurityAlgorithmUpdate securityAlgorithmUpdate) {
+        mRil.processIndication(HAL_SERVICE_NETWORK, indicationType);
+
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(RIL_UNSOL_SECURITY_ALGORITHMS_UPDATED, securityAlgorithmUpdate);
+        }
     }
 
     @Override

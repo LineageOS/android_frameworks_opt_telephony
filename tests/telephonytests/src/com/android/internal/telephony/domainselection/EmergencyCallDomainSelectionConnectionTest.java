@@ -17,7 +17,6 @@ package com.android.internal.telephony.domainselection;
 
 import static android.telephony.AccessNetworkConstants.AccessNetworkType.EUTRAN;
 import static android.telephony.AccessNetworkConstants.AccessNetworkType.UTRAN;
-import static android.telephony.AccessNetworkConstants.TRANSPORT_TYPE_WLAN;
 import static android.telephony.AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
 import static android.telephony.DisconnectCause.ERROR_UNSPECIFIED;
 import static android.telephony.NetworkRegistrationInfo.DOMAIN_CS;
@@ -38,25 +37,34 @@ import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
+import android.os.AsyncResult;
+import android.os.Handler;
+import android.os.Message;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.DomainSelectionService;
 import android.telephony.EmergencyRegResult;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.TransportSelectorCallback;
 import android.telephony.WwanSelectorCallback;
+import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.AccessNetworksManager;
+import com.android.internal.telephony.data.AccessNetworksManager.QualifiedNetworks;
 import com.android.internal.telephony.emergency.EmergencyStateTracker;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 @RunWith(AndroidTestingRunner.class)
@@ -96,7 +104,7 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testSelectDomainWifi() throws Exception {
-        doReturn(TRANSPORT_TYPE_WLAN).when(mAnm).getPreferredTransport(anyInt());
+        doReturn(TRANSPORT_TYPE_WWAN).when(mAnm).getPreferredTransport(anyInt());
         replaceInstance(EmergencyCallDomainSelectionConnection.class,
                 "mEmergencyStateTracker", mEcDsc, mEmergencyStateTracker);
 
@@ -119,6 +127,21 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
         verify(mDomainSelectionController).selectDomain(any(), any());
 
         mTransportCallback.onWlanSelected(true);
+
+        ArgumentCaptor<Handler> handlerCaptor = ArgumentCaptor.forClass(Handler.class);
+        ArgumentCaptor<Integer> msgCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(mAnm).registerForQualifiedNetworksChanged(
+                handlerCaptor.capture(), msgCaptor.capture());
+
+        assertFalse(future.isDone());
+
+        List<QualifiedNetworks> networksList = new ArrayList<>();
+        networksList.add(new QualifiedNetworks(ApnSetting.TYPE_EMERGENCY,
+                new int[]{ AccessNetworkType.IWLAN }));
+        AsyncResult ar = new AsyncResult(null, networksList, null);
+        Handler handler = handlerCaptor.getValue();
+        Integer msg = msgCaptor.getValue();
+        handler.handleMessage(Message.obtain(handler, msg.intValue(), ar));
 
         assertTrue(future.isDone());
         assertEquals((long) DOMAIN_NON_3GPP_PS, (long) future.get());

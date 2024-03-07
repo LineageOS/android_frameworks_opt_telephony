@@ -23,6 +23,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellInfo;
@@ -34,12 +35,14 @@ import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -50,6 +53,8 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
     private static final int SUB_ID = 0;
 
     private DefaultPhoneNotifier mDefaultPhoneNotifierUT;
+
+    private FeatureFlags mFeatureFlags;
 
     // Mocked classes
     SignalStrength mSignalStrength;
@@ -66,13 +71,14 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         mSignalStrength = mock(SignalStrength.class);
         mCellInfo = mock(CellInfo.class);
+        mFeatureFlags = Mockito.mock(FeatureFlags.class);
         mForeGroundCall = mock(GsmCdmaCall.class);
         mBackGroundCall = mock(GsmCdmaCall.class);
         mRingingCall = mock(GsmCdmaCall.class);
         mImsForeGroundCall = mock(ImsPhoneCall.class);
         mImsBackGroundCall = mock(ImsPhoneCall.class);
         mImsRingingCall = mock(ImsPhoneCall.class);
-        mDefaultPhoneNotifierUT = new DefaultPhoneNotifier(mContext);
+        mDefaultPhoneNotifierUT = new DefaultPhoneNotifier(mContext, mFeatureFlags);
     }
 
     @After
@@ -94,6 +100,7 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
 
     @Test @SmallTest
     public void testNotifyDataActivity() throws Exception {
+        when(mFeatureFlags.notifyDataActivityChangedWithSlot()).thenReturn(false);
         //mock data activity state
         doReturn(TelephonyManager.DATA_ACTIVITY_NONE).when(mPhone).getDataActivityState();
         mDefaultPhoneNotifierUT.notifyDataActivity(mPhone);
@@ -105,6 +112,36 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
         mDefaultPhoneNotifierUT.notifyDataActivity(mPhone);
         verify(mTelephonyRegistryManager).notifyDataActivityChanged(eq(1),
                 eq(TelephonyManager.DATA_ACTIVITY_IN));
+    }
+    @Test @SmallTest
+    public void testNotifyDataActivityWithSlot() throws Exception {
+        when(mFeatureFlags.notifyDataActivityChangedWithSlot()).thenReturn(true);
+        //mock data activity state
+        doReturn(TelephonyManager.DATA_ACTIVITY_NONE).when(mPhone).getDataActivityState();
+        doReturn(PHONE_ID).when(mPhone).getPhoneId();
+        mDefaultPhoneNotifierUT.notifyDataActivity(mPhone);
+        verify(mTelephonyRegistryManager).notifyDataActivityChanged(eq(1), eq(0),
+                eq(TelephonyManager.DATA_ACTIVITY_NONE));
+
+        doReturn(1/*subId*/).when(mPhone).getSubId();
+        doReturn(TelephonyManager.DATA_ACTIVITY_IN).when(mPhone).getDataActivityState();
+        mDefaultPhoneNotifierUT.notifyDataActivity(mPhone);
+        verify(mTelephonyRegistryManager).notifyDataActivityChanged(eq(1), eq(1),
+                eq(TelephonyManager.DATA_ACTIVITY_IN));
+
+        doReturn(SUB_ID).when(mPhone).getSubId();
+        doReturn(TelephonyManager.DATA_ACTIVITY_NONE).when(mPhone).getDataActivityState();
+        doReturn(2/*phoneId*/).when(mPhone).getPhoneId();
+        mDefaultPhoneNotifierUT.notifyDataActivity(mPhone);
+        verify(mTelephonyRegistryManager).notifyDataActivityChanged(eq(2), eq(0),
+                eq(TelephonyManager.DATA_ACTIVITY_NONE));
+
+        doReturn(1/*subId*/).when(mPhone).getSubId();
+        doReturn(TelephonyManager.DATA_ACTIVITY_INOUT).when(mPhone).getDataActivityState();
+        mDefaultPhoneNotifierUT.notifyDataActivity(mPhone);
+        verify(mTelephonyRegistryManager).notifyDataActivityChanged(
+                eq(2), eq(1), eq(TelephonyManager.DATA_ACTIVITY_INOUT));
+
     }
 
     @Test @SmallTest

@@ -101,7 +101,13 @@ public class SubscriptionInfoInternalTest {
                             .FAKE_TP_MESSAGE_REFERENCE1)
                     .setUserId(SubscriptionDatabaseManagerTest.FAKE_USER_ID1)
                     .setSatelliteEnabled(1)
+                    .setSatelliteAttachEnabledForCarrier(
+                            SubscriptionDatabaseManagerTest
+                                    .FAKE_SATELLITE_ATTACH_FOR_CARRIER_ENABLED)
+                    .setOnlyNonTerrestrialNetwork(
+                            SubscriptionDatabaseManagerTest.FAKE_SATELLITE_IS_NTN_ENABLED)
                     .setGroupDisabled(false)
+                    .setOnlyNonTerrestrialNetwork(1)
                     .build();
 
     private final SubscriptionInfoInternal mSubInfoNull =
@@ -211,7 +217,13 @@ public class SubscriptionInfoInternalTest {
                 SubscriptionDatabaseManagerTest.FAKE_TP_MESSAGE_REFERENCE1);
         assertThat(mSubInfo.getUserId()).isEqualTo(SubscriptionDatabaseManagerTest.FAKE_USER_ID1);
         assertThat(mSubInfo.getSatelliteEnabled()).isEqualTo(1);
+        assertThat(mSubInfo.getSatelliteAttachEnabledForCarrier())
+                .isEqualTo(SubscriptionDatabaseManagerTest
+                        .FAKE_SATELLITE_ATTACH_FOR_CARRIER_ENABLED);
+        assertThat(mSubInfo.getOnlyNonTerrestrialNetwork()).isEqualTo(
+                SubscriptionDatabaseManagerTest.FAKE_SATELLITE_IS_NTN_ENABLED);
         assertThat(mSubInfo.isGroupDisabled()).isFalse();
+        assertThat(mSubInfo.getOnlyNonTerrestrialNetwork()).isEqualTo(1);
     }
 
     @Test
@@ -274,6 +286,7 @@ public class SubscriptionInfoInternalTest {
         assertThat(subInfo.getPortIndex()).isEqualTo(
                 SubscriptionManager.USAGE_SETTING_DEFAULT);
         assertThat(subInfo.isGroupDisabled()).isFalse();
+        assertThat(subInfo.isOnlyNonTerrestrialNetwork()).isTrue();
     }
 
     @Test

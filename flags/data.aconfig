@@ -1,0 +1,92 @@
+package: "com.android.internal.telephony.flags"
+
+flag {
+  name: "auto_switch_allow_roaming"
+  namespace: "telephony"
+  description: "Allow using roaming network as target if user allows it from settings."
+  bug: "306488039"
+}
+
+flag {
+  name: "auto_data_switch_rat_ss"
+  namespace: "telephony"
+  description: "Whether switch for better rat and signal strength"
+  bug:"260928808"
+}
+
+flag {
+  name: "use_alarm_callback"
+  namespace: "telephony"
+  description: "Use alarm callback instead of broadcast."
+  bug: "311476875"
+}
+
+flag {
+  name: "refine_preferred_data_profile_selection"
+  namespace: "telephony"
+  description: "Upon internet network connect, refine selection of preferred data profile."
+  bug: "311476883"
+}
+
+flag {
+  name: "unthrottle_check_transport"
+  namespace: "telephony"
+  description: "Check transport when unthrottle."
+  bug: "303922311"
+}
+
+flag {
+  name: "relax_ho_teardown"
+  namespace: "telephony"
+  description: "Relax handover tear down if the device is currently in voice call."
+  bug: "270895912"
+}
+
+flag {
+  name: "allow_mmtel_in_non_vops"
+  namespace: "telephony"
+  description: "Allow bring up MMTEL in nonVops area specified by carrier config."
+  bug: "241198464"
+}
+
+flag {
+  name: "metered_embb_urlcc"
+  namespace: "telephony"
+  description: "Force networks that have PRIORITIZE_BANDWIDTH or PRIORITIZE_LATENCY to be metered."
+  bug: "301310451"
+  }
+
+flag {
+  name: "slicing_additional_error_codes"
+  namespace: "telephony"
+  description: "Support additional slicing error codes and functionality."
+  bug: "307378699"
+}
+
+flag {
+  name: "apn_setting_field_support_flag"
+  namespace: "telephony"
+  description: "Expose apn setting supporting field"
+  bug: "307038091"
+}
+
+flag {
+  name: "network_validation"
+  namespace: "telephony"
+  description: "Request network validation for data networks and response status."
+  bug:"286171724"
+}
+
+flag {
+ name: "notify_data_activity_changed_with_slot"
+  namespace: "telephony"
+  description: "notify data activity changed for slot id"
+  bug: "309896936"
+}
+
+flag {
+  name: "vonr_enabled_metric"
+  namespace: "telephony"
+  description: "Collect vonr status in voice call metric"
+  bug:"288449751"
+}

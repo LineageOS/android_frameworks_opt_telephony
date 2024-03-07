@@ -1,0 +1,43 @@
+package: "com.android.internal.telephony.flags"
+
+flag {
+    name: "conference_hold_unhold_changed_to_send_message"
+    namespace: "telephony"
+    description: "This flag controls Conference’s hold & unHold operation changed to send a message"
+    bug:"288002989"
+}
+
+flag {
+    name: "ignore_already_terminated_incoming_call_before_registering_listener"
+    namespace: "telephony"
+    description: "This flag ignores the incoming call by throwing an exception if the call was already terminated before the framework registers the listener for the incoming call"
+    bug:"289461637"
+}
+
+flag {
+    name: "clear_cached_ims_phone_number_when_device_lost_ims_registration"
+    namespace: "telephony"
+    description: "This flag clears cached IMS phone number when device lost IMS registration"
+    bug:"288002989"
+}
+
+flag {
+    name: "update_ims_service_by_gathering_provisioning_changes"
+    namespace: "telephony"
+    description: "This flag is created to prevent unnecessary updates when multiple provisioning items to update ims service are changed."
+    bug:"302281114"
+}
+
+flag {
+    name: "add_rat_related_suggested_action_to_ims_registration"
+    namespace: "telephony"
+    description: "This flag is for adding suggested actions related to RAT to ims registration"
+    bug:"290573256"
+}
+
+flag {
+    name: "terminate_active_video_call_when_accepting_second_video_call_as_audio_only"
+    namespace: "telephony"
+    description: "This flag terminates active video call instead holding when accepting 2nd incoming video call as audio only"
+    bug:"309548300"
+}

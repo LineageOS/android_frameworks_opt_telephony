@@ -1,0 +1,22 @@
+package: "com.android.internal.telephony.flags"
+
+flag {
+    name: "enable_carrier_config_n1_control"
+    namespace: "telephony"
+    description: "enabling this flag allows KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY to control N1 mode enablement"
+    bug:"302033535"
+}
+
+flag {
+  name: "hide_roaming_icon"
+  namespace: "telephony"
+  description: "Allow carriers to hide the roaming (R) icon when roaming."
+  bug: "301467052"
+}
+
+flag {
+  name: "enable_identifier_disclosure_transparency"
+  namespace: "telephony"
+  description: "Allows the framework to register for CellularIdentifierDisclosure events and emit notifications to the user about them"
+  bug: "276752426"
+}

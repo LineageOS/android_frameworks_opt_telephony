@@ -28,6 +28,7 @@ import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.sysprop.TelephonyProperties;
 import android.telephony.CarrierConfigManager;
+import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyManager.MobileDataPolicy;
@@ -208,7 +209,9 @@ public class DataSettingsManager extends Handler {
             case EVENT_SUBSCRIPTIONS_CHANGED: {
                 mSubId = (int) msg.obj;
                 refreshEnabledMobileDataPolicy();
-                updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_USER);
+                updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_USER,
+                        mPhone.getContext().getOpPackageName(),
+                        SubscriptionManager.isValidSubscriptionId(mSubId));
                 mPhone.notifyUserMobileDataStateChanged(isUserDataEnabled());
                 break;
             }
@@ -342,15 +345,15 @@ public class DataSettingsManager extends Handler {
     }
 
     private void updateDataEnabledAndNotify(@TelephonyManager.DataEnabledChangedReason int reason) {
-        updateDataEnabledAndNotify(reason, mPhone.getContext().getOpPackageName());
+        updateDataEnabledAndNotify(reason, mPhone.getContext().getOpPackageName(), false);
     }
 
     private void updateDataEnabledAndNotify(@TelephonyManager.DataEnabledChangedReason int reason,
-            @NonNull String callingPackage) {
+            @NonNull String callingPackage, boolean shouldNotify) {
         boolean prevDataEnabled = mIsDataEnabled;
         mIsDataEnabled = isDataEnabled(ApnSetting.TYPE_ALL);
         log("mIsDataEnabled=" + mIsDataEnabled + ", prevDataEnabled=" + prevDataEnabled);
-        if (!mInitialized || prevDataEnabled != mIsDataEnabled) {
+        if (!mInitialized || shouldNotify || prevDataEnabled != mIsDataEnabled) {
             if (!mInitialized) mInitialized = true;
             notifyDataEnabledChanged(mIsDataEnabled, reason, callingPackage);
         }
@@ -443,7 +446,8 @@ public class DataSettingsManager extends Handler {
             mPhone.notifyUserMobileDataStateChanged(enabled);
             mDataSettingsManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                     () -> callback.onUserDataEnabledChanged(enabled, callingPackage)));
-            updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_USER, callingPackage);
+            updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_USER,
+                    callingPackage, false);
         }
     }
 
@@ -474,7 +478,8 @@ public class DataSettingsManager extends Handler {
         if (mDataEnabledSettings.get(TelephonyManager.DATA_ENABLED_REASON_POLICY) != enabled) {
             logl("PolicyDataEnabled changed to " + enabled + ", callingPackage=" + callingPackage);
             mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_POLICY, enabled);
-            updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_POLICY, callingPackage);
+            updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_POLICY,
+                    callingPackage, false);
         }
     }
 
@@ -488,7 +493,7 @@ public class DataSettingsManager extends Handler {
             logl("CarrierDataEnabled changed to " + enabled + ", callingPackage=" + callingPackage);
             mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_CARRIER, enabled);
             updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_CARRIER,
-                    callingPackage);
+                    callingPackage, false);
         }
     }
 
@@ -502,7 +507,7 @@ public class DataSettingsManager extends Handler {
             logl("ThermalDataEnabled changed to " + enabled + ", callingPackage=" + callingPackage);
             mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_THERMAL, enabled);
             updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_THERMAL,
-                    callingPackage);
+                    callingPackage, false);
         }
     }
 
@@ -750,23 +755,22 @@ public class DataSettingsManager extends Handler {
         boolean isNonDds = mPhone.getSubId() != SubscriptionManagerService.getInstance()
                 .getDefaultDataSubId();
 
+        Phone defaultDataPhone = PhoneFactory.getPhone(SubscriptionManagerService.getInstance()
+                .getPhoneId(SubscriptionManagerService.getInstance()
+                        .getDefaultDataSubId()));
+        boolean isDdsUserEnabled = defaultDataPhone != null && defaultDataPhone.isUserDataEnabled();
+
         // mobile data policy : data during call
         if (isMobileDataPolicyEnabled(TelephonyManager
                 .MOBILE_DATA_POLICY_DATA_ON_NON_DEFAULT_DURING_VOICE_CALL)) {
-            overridden = overridden || isNonDds && mPhone.getState() != PhoneConstants.State.IDLE;
+            overridden |= isNonDds && isDdsUserEnabled
+                    && mPhone.getState() != PhoneConstants.State.IDLE;
         }
 
         // mobile data policy : auto data switch
         if (isMobileDataPolicyEnabled(TelephonyManager.MOBILE_DATA_POLICY_AUTO_DATA_SWITCH)) {
             // check user enabled data on the default data phone
-            Phone defaultDataPhone = PhoneFactory.getPhone(SubscriptionManagerService.getInstance()
-                    .getPhoneId(SubscriptionManagerService.getInstance()
-                            .getDefaultDataSubId()));
-            if (defaultDataPhone == null) {
-                loge("isDataEnabledOverriddenForApn: unexpected defaultDataPhone is null");
-            } else {
-                overridden = overridden || isNonDds && defaultDataPhone.isUserDataEnabled();
-            }
+            overridden |= isNonDds && isDdsUserEnabled;
         }
         return overridden;
     }

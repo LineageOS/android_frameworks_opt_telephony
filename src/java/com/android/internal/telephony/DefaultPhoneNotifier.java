@@ -41,6 +41,7 @@ import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.MediaQualityStatus;
 
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.telephony.Rlog;
 
 import java.util.List;
@@ -55,10 +56,15 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
     private TelephonyRegistryManager mTelephonyRegistryMgr;
 
+    /** Feature flags */
+    @NonNull
+    private final FeatureFlags mFeatureFlags;
 
-    public DefaultPhoneNotifier(Context context) {
+
+    public DefaultPhoneNotifier(Context context, @NonNull FeatureFlags featureFlags) {
         mTelephonyRegistryMgr = (TelephonyRegistryManager) context.getSystemService(
             Context.TELEPHONY_REGISTRY_SERVICE);
+        mFeatureFlags = featureFlags;
     }
 
     @Override
@@ -125,8 +131,16 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
     @Override
     public void notifyDataActivity(Phone sender) {
+
         int subId = sender.getSubId();
-        mTelephonyRegistryMgr.notifyDataActivityChanged(subId, sender.getDataActivityState());
+
+        if (mFeatureFlags.notifyDataActivityChangedWithSlot()) {
+            int phoneId = sender.getPhoneId();
+            mTelephonyRegistryMgr.notifyDataActivityChanged(phoneId, subId,
+                    sender.getDataActivityState());
+        } else {
+            mTelephonyRegistryMgr.notifyDataActivityChanged(subId, sender.getDataActivityState());
+        }
     }
 
     @Override

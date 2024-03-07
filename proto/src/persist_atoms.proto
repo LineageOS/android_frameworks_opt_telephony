@@ -190,6 +190,12 @@ message PersistAtoms {
     /* Number of time the user toggled the data switch feature since the last collection. */
     optional int32 auto_data_switch_toggle_count = 55;
 
+    /* Consolidated emergency numbers list information. */
+    repeated EmergencyNumbersInfo emergency_numbers_info = 56;
+
+    /* Timestamp of last emergency number pull. */
+    optional int64 emergency_number_pull_timestamp_millis = 57;
+
     /** Snapshot of satellite controller. */
     repeated SatelliteController satellite_controller = 58;
 
@@ -225,12 +231,6 @@ message PersistAtoms {
 
     /* Timestamp of last satellite_sos_message_recommender pull. */
     optional int64 satellite_sos_message_recommender_pull_timestamp_millis = 69;
-
-    /* Consolidated emergency numbers list information. */
-    repeated EmergencyNumbersInfo emergency_numbers_info = 56;
-
-    /* Timestamp of last emergency number pull. */
-    optional int64 emergency_number_pull_timestamp_millis = 57;
 }
 
 // The canonical versions of the following enums live in:
@@ -277,6 +277,10 @@ message VoiceCallSession {
     optional int32 fold_state = 34;
     optional int64 rat_switch_count_after_connected = 35;
     optional bool handover_in_progress = 36;
+    optional bool is_iwlan_cross_sim_at_start = 37;
+    optional bool is_iwlan_cross_sim_at_end = 38;
+    optional bool is_iwlan_cross_sim_at_connected = 39;
+    optional bool vonr_enabled = 40;
 
     // Internal use only
     optional int64 setup_begin_millis = 10001;
@@ -365,6 +369,7 @@ message DataCallSession {
     repeated int32 handover_failure_causes = 20;
     repeated int32 handover_failure_rat = 21;
     optional bool is_non_dds = 22;
+    optional bool is_iwlan_cross_sim = 23;
 }
 
 message CellularServiceState {
@@ -382,6 +387,7 @@ message CellularServiceState {
     optional int32 fold_state = 12;
     optional bool override_voice_service = 13;
     optional bool isDataEnabled = 14;
+    optional bool is_iwlan_cross_sim = 15;
 
     // Internal use only
     optional int64 last_used_millis = 10001;
@@ -408,6 +414,7 @@ message ImsRegistrationTermination {
     optional int32 extra_code = 6;
     optional string extra_message = 7;
     optional int32 count = 8;
+    optional bool is_iwlan_cross_sim = 9;
 
     // Internal use only
     optional int64 last_used_millis = 10001;
@@ -427,6 +434,9 @@ message ImsRegistrationStats {
     optional int64 video_available_millis = 10;
     optional int64 ut_capable_millis = 11;
     optional int64 ut_available_millis = 12;
+    optional int64 registering_millis = 13;
+    optional int64 unregistered_millis = 14;
+    optional bool is_iwlan_cross_sim = 15;
 
     // Internal use only
     optional int64 last_used_millis = 10001;
@@ -588,6 +598,41 @@ message OutgoingShortCodeSms {
     optional int32 short_code_sms_count = 3;
 }
 
+message EmergencyNumbersInfo {
+    enum ServiceCategory {
+        EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED = 0;
+        EMERGENCY_SERVICE_CATEGORY_POLICE = 1;
+        EMERGENCY_SERVICE_CATEGORY_AMBULANCE = 2;
+        EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE = 3;
+        EMERGENCY_SERVICE_CATEGORY_MARINE_GUARD = 4;
+        EMERGENCY_SERVICE_CATEGORY_MOUNTAIN_RESCUE = 5;
+        EMERGENCY_SERVICE_CATEGORY_MIEC = 6;
+        EMERGENCY_SERVICE_CATEGORY_AIEC = 7;
+    }
+    enum Source {
+        EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING = 0;
+        EMERGENCY_NUMBER_SOURCE_SIM = 1;
+        EMERGENCY_NUMBER_SOURCE_DATABASE = 2;
+        EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG = 3;
+        EMERGENCY_NUMBER_SOURCE_DEFAULT = 4;
+    }
+    enum CallRoute {
+        EMERGENCY_CALL_ROUTE_UNKNOWN = 0;
+        EMERGENCY_CALL_ROUTE_EMERGENCY = 1;
+        EMERGENCY_CALL_ROUTE_NORMAL = 2;
+    }
+    optional bool is_db_version_ignored = 1;
+    optional int32 asset_version = 2;
+    optional int32 ota_version = 3;
+    optional string number = 4;
+    optional string country_iso = 5;
+    optional string mnc = 6;
+    optional CallRoute route = 7;
+    repeated string urns = 8;
+    repeated ServiceCategory service_categories = 9;
+    repeated Source sources = 10;
+}
+
 message SatelliteController {
     optional int32 count_of_satellite_service_enablements_success = 1;
     optional int32 count_of_satellite_service_enablements_fail = 2;
@@ -640,39 +685,7 @@ message SatelliteSosMessageRecommender {
     optional bool is_ims_registered = 3;
     optional int32 cellular_service_state = 4;
     optional int32 count = 5;
-}
-
-message EmergencyNumbersInfo {
-    enum ServiceCategory {
-        EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED = 0;
-        EMERGENCY_SERVICE_CATEGORY_POLICE = 1;
-        EMERGENCY_SERVICE_CATEGORY_AMBULANCE = 2;
-        EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE = 3;
-        EMERGENCY_SERVICE_CATEGORY_MARINE_GUARD = 4;
-        EMERGENCY_SERVICE_CATEGORY_MOUNTAIN_RESCUE = 5;
-        EMERGENCY_SERVICE_CATEGORY_MIEC = 6;
-        EMERGENCY_SERVICE_CATEGORY_AIEC = 7;
-    }
-    enum Source {
-        EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING = 0;
-        EMERGENCY_NUMBER_SOURCE_SIM = 1;
-        EMERGENCY_NUMBER_SOURCE_DATABASE = 2;
-        EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG = 3;
-        EMERGENCY_NUMBER_SOURCE_DEFAULT = 4;
-    }
-    enum CallRoute {
-        EMERGENCY_CALL_ROUTE_UNKNOWN = 0;
-        EMERGENCY_CALL_ROUTE_EMERGENCY = 1;
-        EMERGENCY_CALL_ROUTE_NORMAL = 2;
-    }
-    optional bool is_db_version_ignored = 1;
-    optional int32 asset_version = 2;
-    optional int32 ota_version = 3;
-    optional string number = 4;
-    optional string country_iso = 5;
-    optional string mnc = 6;
-    optional CallRoute route = 7;
-    repeated string urns = 8;
-    repeated ServiceCategory service_categories = 9;
-    repeated Source sources = 10;
+    optional bool is_multi_sim = 6;
+    optional int32 recommending_handover_type = 7;
+    optional bool is_satellite_allowed_in_current_location = 8;
 }

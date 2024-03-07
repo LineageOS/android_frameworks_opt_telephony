@@ -29,7 +29,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import android.annotation.NonNull;
 import android.os.Looper;
+import android.os.Message;
 import android.os.PersistableBundle;
 import android.telephony.TelephonyManager;
 import android.testing.AndroidTestingRunner;
@@ -49,6 +51,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -177,5 +181,27 @@ public class DataSettingsManagerTest extends TelephonyTest {
         doReturn(true).when(phone2).isUserDataEnabled();
         callback.onUserDataEnabledChanged(true, "callingPackage");
         verify(mPhone).notifyDataEnabled(true, TelephonyManager.DATA_ENABLED_REASON_OVERRIDE);
+    }
+
+    @Test
+    public void testNotifyDataEnabledFromNewValidSubId() throws Exception {
+        final CountDownLatch latch = new CountDownLatch(1);
+        mDataSettingsManagerUT.registerCallback(
+                new DataSettingsManagerCallback(mDataSettingsManagerUT::post) {
+                    @Override
+                    public void onDataEnabledChanged(boolean enabled,
+                            @TelephonyManager.DataEnabledChangedReason int reason,
+                            @NonNull String callingPackage) {
+                        latch.countDown();
+                    }
+                });
+
+        Message.obtain(mDataSettingsManagerUT, 4 /* EVENT_SUBSCRIPTIONS_CHANGED */, -1)
+                .sendToTarget();
+        Message.obtain(mDataSettingsManagerUT, 4 /* EVENT_SUBSCRIPTIONS_CHANGED */, 2)
+                .sendToTarget();
+        processAllMessages();
+
+        assertTrue(latch.await(1000, TimeUnit.MILLISECONDS));
     }
 }

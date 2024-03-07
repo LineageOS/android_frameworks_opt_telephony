@@ -280,7 +280,7 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
     public void testReportIncomingDatagramCount() {
         mTestStats.initializeParams();
 
-        int result = SatelliteManager.SATELLITE_ERROR_NONE;
+        int result = SatelliteManager.SATELLITE_RESULT_SUCCESS;
         for (int i = 0; i < 10; i++) {
             mControllerMetricsStatsUT.reportIncomingDatagramCount(result);
         }
@@ -303,7 +303,7 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
         mTestStats.initializeParams();
 
-        result = SatelliteManager.SATELLITE_SERVER_ERROR;
+        result = SatelliteManager.SATELLITE_RESULT_SERVER_ERROR;
         for (int i = 0; i < 10; i++) {
             mControllerMetricsStatsUT.reportIncomingDatagramCount(result);
         }
@@ -326,7 +326,7 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
         mTestStats.initializeParams();
 
-        result = SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE;
+        result = SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE;
         for (int i = 0; i < 10; i++) {
             mControllerMetricsStatsUT.reportIncomingDatagramCount(result);
         }
@@ -354,7 +354,7 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
     public void testReportProvisionCount() {
         mTestStats.initializeParams();
 
-        int result = SatelliteManager.SATELLITE_ERROR_NONE;
+        int result = SatelliteManager.SATELLITE_RESULT_SUCCESS;
         for (int i = 0; i < 10; i++) {
             mControllerMetricsStatsUT.reportProvisionCount(result);
         }
@@ -377,7 +377,7 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
         mTestStats.initializeParams();
 
-        result = SatelliteManager.SATELLITE_SERVER_ERROR;
+        result = SatelliteManager.SATELLITE_RESULT_SERVER_ERROR;
         for (int i = 0; i < 10; i++) {
             mControllerMetricsStatsUT.reportProvisionCount(result);
         }
@@ -400,7 +400,7 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
         mTestStats.initializeParams();
 
-        result = SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE;
+        result = SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE;
         for (int i = 0; i < 10; i++) {
             mControllerMetricsStatsUT.reportProvisionCount(result);
         }
@@ -428,7 +428,7 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
     public void testReportDeprovisionCount() {
         mTestStats.initializeParams();
 
-        int result = SatelliteManager.SATELLITE_ERROR_NONE;
+        int result = SatelliteManager.SATELLITE_RESULT_SUCCESS;
         for (int i = 0; i < 10; i++) {
             mControllerMetricsStatsUT.reportDeprovisionCount(result);
         }
@@ -451,7 +451,7 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
         mTestStats.initializeParams();
 
-        result = SatelliteManager.SATELLITE_SERVER_ERROR;
+        result = SatelliteManager.SATELLITE_RESULT_SERVER_ERROR;
         for (int i = 0; i < 10; i++) {
             mControllerMetricsStatsUT.reportDeprovisionCount(result);
         }
@@ -474,7 +474,7 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
         mTestStats.initializeParams();
 
-        result = SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE;
+        result = SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE;
         for (int i = 0; i < 10; i++) {
             mControllerMetricsStatsUT.reportDeprovisionCount(result);
         }

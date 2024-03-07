@@ -597,17 +597,17 @@ public class UiccController extends Handler {
                         log("Received EVENT_RADIO_AVAILABLE/EVENT_RADIO_ON, calling "
                                 + "getIccCardStatus");
                     }
-                    mCis[phoneId].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE,
-                            phoneId));
                     // slot status should be the same on all RILs; request it only for phoneId 0
                     if (phoneId == 0) {
                         if (DBG) {
                             log("Received EVENT_RADIO_AVAILABLE/EVENT_RADIO_ON for phoneId 0, "
-                                    + "calling getIccSlotsStatus");
+                                    + "calling getSimSlotsStatus");
                         }
                         mRadioConfig.getSimSlotsStatus(obtainMessage(EVENT_GET_SLOT_STATUS_DONE,
                                 phoneId));
                     }
+                    mCis[phoneId].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE,
+                            phoneId));
                     break;
                 case EVENT_GET_ICC_STATUS_DONE:
                     if (DBG) log("Received EVENT_GET_ICC_STATUS_DONE");
@@ -997,6 +997,12 @@ public class UiccController extends Handler {
                             return;
                         }
 
+                        if (!SubscriptionManager.isValidPhoneId(phoneId)) {
+                            Rlog.e(LOG_TAG, "updateSimState: Cannot update carrier services. "
+                                    + "Invalid phone id " + phoneId);
+                            return;
+                        }
+
                         // At this point, the SIM state must be a final state (meaning we won't
                         // get more SIM state updates). So resolve the carrier id and update the
                         // carrier services.
@@ -1039,11 +1045,6 @@ public class UiccController extends Handler {
             slotId = index;
         }
 
-        if (!mCis[0].supportsEid()) {
-            // we will never get EID from the HAL, so set mDefaultEuiccCardId to UNSUPPORTED_CARD_ID
-            if (DBG) log("eid is not supported");
-            mDefaultEuiccCardId = UNSUPPORTED_CARD_ID;
-        }
         mPhoneIdToSlotId[index] = slotId;
 
         if (VDBG) logPhoneIdToSlotIdMapping();

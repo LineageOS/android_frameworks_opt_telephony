@@ -18,18 +18,17 @@ package com.android.internal.telephony.data;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
+import android.net.NetworkCapabilities;
 import android.os.Looper;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
+import android.telephony.data.ApnSetting;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -51,8 +50,7 @@ public class DataConfigManagerTest extends TelephonyTest {
         logd("DataConfigManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mBundle = mContextFixture.getCarrierConfigBundle();
-        when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(mBundle);
-        mDataConfigManagerUT = new DataConfigManager(mPhone, Looper.myLooper());
+        mDataConfigManagerUT = new DataConfigManager(mPhone, Looper.myLooper(), mFeatureFlags);
         logd("DataConfigManagerTest -Setup!");
     }
 
@@ -130,19 +128,39 @@ public class DataConfigManagerTest extends TelephonyTest {
                         TelephonyManager.NETWORK_TYPE_LTE,
                         TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED, false/*isRoaming*/),
                 signalStrength)).isEqualTo(10227);
-        // Verify if entry contains any invalid negative scores, should yield -1.
+        // Verify if entry contains any invalid negative scores, should yield 0.
         doReturn(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN).when(signalStrength).getLevel();
         assertThat(mDataConfigManagerUT.getAutoDataSwitchScore(new TelephonyDisplayInfo(
                         TelephonyManager.NETWORK_TYPE_LTE,
                         TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false/*isRoaming*/),
                 signalStrength))
-                .isEqualTo(-1/*INVALID_AUTO_DATA_SWITCH_SCORE*/);
+                .isEqualTo(0/*OUT_OF_SERVICE_AUTO_DATA_SWITCH_SCORE*/);
         // Verify non-existent entry should yield -1
         doReturn(SignalStrength.SIGNAL_STRENGTH_POOR).when(signalStrength).getLevel();
         assertThat(mDataConfigManagerUT.getAutoDataSwitchScore(new TelephonyDisplayInfo(
                         TelephonyManager.NETWORK_TYPE_EDGE,
                         TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false/*isRoaming*/),
                 signalStrength))
-                .isEqualTo(-1/*INVALID_AUTO_DATA_SWITCH_SCORE*/);
+                .isEqualTo(0/*OUT_OF_SERVICE_AUTO_DATA_SWITCH_SCORE*/);
+    }
+
+    @Test
+    public void testMeteredNetworkCapabilities() {
+        doReturn(true).when(mFeatureFlags).meteredEmbbUrlcc();
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[] {ApnSetting.TYPE_MMS_STRING, ApnSetting.TYPE_DEFAULT_STRING});
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
+                new String[] {ApnSetting.TYPE_SUPL_STRING, ApnSetting.TYPE_MCX_STRING});
+        mDataConfigManagerUT.sendEmptyMessage(1/*EVENT_CARRIER_CONFIG_CHANGED*/);
+        processAllMessages();
+
+        assertThat(mDataConfigManagerUT.getMeteredNetworkCapabilities(false)).containsExactly(
+                NetworkCapabilities.NET_CAPABILITY_MMS, NetworkCapabilities.NET_CAPABILITY_INTERNET,
+                NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH,
+                NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY);
+        assertThat(mDataConfigManagerUT.getMeteredNetworkCapabilities(true)).containsExactly(
+                NetworkCapabilities.NET_CAPABILITY_SUPL, NetworkCapabilities.NET_CAPABILITY_MCX,
+                NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH,
+                NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY);
     }
 }
