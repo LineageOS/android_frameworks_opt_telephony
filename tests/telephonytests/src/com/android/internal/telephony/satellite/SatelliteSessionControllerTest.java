@@ -53,6 +53,8 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -804,6 +806,93 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
         assertEquals(STATE_IDLE, mTestSatelliteSessionController.getCurrentStateName());
+
+        // Power off the modem.
+        mTestSatelliteSessionController.onSatelliteEnabledStateChanged(false);
+        processAllMessages();
+
+        // SatelliteSessionController should move to POWER_OFF
+        assertSuccessfulModemStateChangedCallback(
+                mTestSatelliteModemStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
+        assertEquals(STATE_POWER_OFF, mTestSatelliteSessionController.getCurrentStateName());
+
+        mTestSatelliteSessionController.onSatelliteModemStateChanged(
+                SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
+        mTestSatelliteSessionController.onSatelliteModemStateChanged(
+                SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
+        mTestSatelliteSessionController.onSatelliteModemStateChanged(
+                SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
+        processAllMessages();
+
+        // The modem state changed events should be deferred
+        assertModemStateChangedCallbackNotCalled(mTestSatelliteModemStateCallback);
+        assertEquals(STATE_POWER_OFF, mTestSatelliteSessionController.getCurrentStateName());
+        assertTrue(mTestSatelliteSessionController.isEventDeferred(
+                4 /* EVENT_SATELLITE_MODEM_STATE_CHANGED */));
+
+        // Power on the modem.
+        mTestSatelliteModemStateCallback.clearModemStates();
+        mTestSatelliteSessionController.onSatelliteEnabledStateChanged(true);
+        processAllMessages();
+
+        // SatelliteSessionController should move to NOT_CONNECTED state after the satellite modem
+        // is powered on. Then, it should move to CONNECTED and then back to NOT_CONNECTED state
+        // because of the above deferred events.
+        assertEquals(3, mTestSatelliteModemStateCallback.getNumberOfModemStates());
+        assertEquals(SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED,
+                mTestSatelliteModemStateCallback.getModemState(0));
+        assertEquals(SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED,
+                mTestSatelliteModemStateCallback.getModemState(1));
+        assertEquals(SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED,
+                mTestSatelliteModemStateCallback.getModemState(2));
+        assertEquals(STATE_NOT_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
+
+        // Power off the modem.
+        mTestSatelliteSessionController.onSatelliteEnabledStateChanged(false);
+        processAllMessages();
+
+        // SatelliteSessionController should move to POWER_OFF
+        assertSuccessfulModemStateChangedCallback(
+                mTestSatelliteModemStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
+        assertEquals(STATE_POWER_OFF, mTestSatelliteSessionController.getCurrentStateName());
+
+        mTestSatelliteModemStateCallback.clearSemaphorePermits();
+        mTestSatelliteSessionController.onSatelliteModemStateChanged(
+                SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
+        mTestSatelliteSessionController.onSatelliteModemStateChanged(
+                SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
+        mTestSatelliteSessionController.onSatelliteModemStateChanged(
+                SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
+        processAllMessages();
+
+        // The modem state changed events should be deferred
+        assertModemStateChangedCallbackNotCalled(mTestSatelliteModemStateCallback);
+        assertEquals(STATE_POWER_OFF, mTestSatelliteSessionController.getCurrentStateName());
+        assertTrue(mTestSatelliteSessionController.isEventDeferred(
+                4 /* EVENT_SATELLITE_MODEM_STATE_CHANGED */));
+
+        // Modem got reset. The deferred messages should be removed.
+        mTestSatelliteModemStateCallback.clearSemaphorePermits();
+        mTestSatelliteSessionController.onSatelliteEnabledStateChanged(false);
+        processAllMessages();
+        assertModemStateChangedCallbackNotCalled(mTestSatelliteModemStateCallback);
+        assertEquals(STATE_POWER_OFF, mTestSatelliteSessionController.getCurrentStateName());
+        assertFalse(mTestSatelliteSessionController.isEventDeferred(
+                4 /* EVENT_SATELLITE_MODEM_STATE_CHANGED */));
+
+        // Power on the modem.
+        mTestSatelliteModemStateCallback.clearModemStates();
+        mTestSatelliteSessionController.onSatelliteEnabledStateChanged(true);
+        processAllMessages();
+
+        // SatelliteSessionController should move to NOT_CONNECTED state after the satellite modem
+        // is powered on.
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
+                SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
+        assertEquals(1, mTestSatelliteModemStateCallback.getNumberOfModemStates());
+        assertEquals(SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED,
+                mTestSatelliteModemStateCallback.getModemState(0));
+        assertEquals(STATE_NOT_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
     }
 
     private void setupDatagramTransferringState(boolean isTransferring) {
@@ -878,17 +967,26 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         boolean isNbIotInactivityTimerStarted() {
             return hasMessages(EVENT_NB_IOT_INACTIVITY_TIMER_TIMED_OUT);
         }
+
+        boolean isEventDeferred(int event) {
+            return hasDeferredMessages(event);
+        }
     }
 
     private static class TestSatelliteModemStateCallback extends ISatelliteModemStateCallback.Stub {
         private final AtomicInteger mModemState = new AtomicInteger(
                 SatelliteManager.SATELLITE_MODEM_STATE_OFF);
         private final Semaphore mSemaphore = new Semaphore(0);
+        private final Object mLock = new Object();
+        private final List<Integer> mModemStates = new ArrayList<>();
 
         @Override
         public void onSatelliteModemStateChanged(int state) {
             logd("onSatelliteModemStateChanged: state=" + state);
             mModemState.set(state);
+            synchronized (mLock) {
+                mModemStates.add(state);
+            }
             try {
                 mSemaphore.release();
             } catch (Exception ex) {
@@ -911,6 +1009,28 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         public int getModemState() {
             return mModemState.get();
+        }
+
+        public int getModemState(int index) {
+            synchronized (mLock) {
+                return mModemStates.get(index);
+            }
+        }
+
+        public void clearModemStates() {
+            synchronized (mLock) {
+                mModemStates.clear();
+            }
+        }
+
+        public int getNumberOfModemStates() {
+            synchronized (mLock) {
+                return mModemStates.size();
+            }
+        }
+
+        public void clearSemaphorePermits() {
+            mSemaphore.drainPermits();
         }
     }
 
