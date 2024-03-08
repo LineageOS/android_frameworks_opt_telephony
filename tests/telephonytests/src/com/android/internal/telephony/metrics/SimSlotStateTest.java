@@ -29,6 +29,7 @@ import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccPort;
+import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
 
 import org.junit.After;
@@ -71,8 +72,12 @@ public class SimSlotStateTest extends TelephonyTest {
         doReturn(CardState.CARDSTATE_PRESENT).when(mEsimSlot).getCardState();
         doReturn(true).when(mEsimSlot).isEuicc();
 
-        doReturn(0).when(mInactivePort).getNumApplications();
-        doReturn(4).when(mActivePort).getNumApplications();
+        UiccProfile inactiveProfile = mock(UiccProfile.class);
+        UiccProfile activeProfile = mock(UiccProfile.class);
+        doReturn(0).when(inactiveProfile).getNumApplications();
+        doReturn(4).when(activeProfile).getNumApplications();
+        doReturn(inactiveProfile).when(mInactivePort).getUiccProfile();
+        doReturn(activeProfile).when(mActivePort).getUiccProfile();
 
         doReturn(new UiccPort[]{mInactivePort}).when(mInactiveCard).getUiccPortList();
         doReturn(new UiccPort[]{mActivePort}).when(mActiveCard).getUiccPortList();
@@ -94,6 +99,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(0, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertEquals(0, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
     }
 
@@ -108,6 +115,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(0, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertEquals(0, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
     }
 
@@ -122,6 +131,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(0, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertEquals(0, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
     }
 
@@ -136,6 +147,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(1, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertEquals(0, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
     }
 
@@ -151,6 +164,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(1, state.numActiveSlots);
         assertEquals(1, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertEquals(0, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
     }
 
@@ -166,6 +181,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(1, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertEquals(0, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
     }
 
@@ -182,6 +199,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(1, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertEquals(0, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
     }
 
@@ -197,6 +216,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(1, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertEquals(1, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
     }
 
@@ -212,6 +233,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(1, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertEquals(1, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
     }
 
@@ -227,7 +250,27 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(1, state.numActiveSlots);
         assertEquals(1, state.numActiveSims);
         assertEquals(1, state.numActiveEsims);
+        assertEquals(1, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
+    }
+
+    @Test
+    @SmallTest
+    public void testSingleSim_esimCardWithMultipleProfiles() {
+        doReturn(mActiveCard).when(mEsimSlot).getUiccCard();
+        doReturn(new UiccPort[]{mActivePort, mActivePort}).when(mActiveCard).getUiccPortList();
+        setupSingleSim(mEsimSlot);
+
+        SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
+
+        assertEquals(1, state.numActiveSlots);
+        assertEquals(2, state.numActiveSims);
+        assertEquals(2, state.numActiveEsims);
+        assertEquals(1, state.numActiveEsimSlots);
+        assertEquals(1, state.numActiveMepSlots);
+        assertTrue(isMultiSim);
     }
 
     @Test
@@ -241,6 +284,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(1, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertEquals(0, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
     }
 
@@ -255,6 +300,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(1, state.numActiveSlots);
         assertEquals(1, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertEquals(0, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
     }
 
@@ -270,6 +317,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(1, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertEquals(1, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
     }
 
@@ -285,6 +334,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(1, state.numActiveSlots);
         assertEquals(1, state.numActiveSims);
         assertEquals(1, state.numActiveEsims);
+        assertEquals(1, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
     }
 
@@ -300,6 +351,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(2, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertEquals(1, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
     }
 
@@ -315,6 +368,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(2, state.numActiveSlots);
         assertEquals(1, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertEquals(1, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
     }
 
@@ -330,7 +385,27 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(2, state.numActiveSlots);
         assertEquals(1, state.numActiveSims);
         assertEquals(1, state.numActiveEsims);
+        assertEquals(1, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim);
+    }
+
+    @Test
+    @SmallTest
+    public void testDsds_esimCardWithMultipleProfiles() {
+        doReturn(mActiveCard).when(mEsimSlot).getUiccCard();
+        doReturn(new UiccPort[]{mActivePort, mActivePort}).when(mActiveCard).getUiccPortList();
+        setupDualSim(mEmptySlot, mEsimSlot);
+
+        SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
+
+        assertEquals(2, state.numActiveSlots);
+        assertEquals(2, state.numActiveSims);
+        assertEquals(2, state.numActiveEsims);
+        assertEquals(1, state.numActiveEsimSlots);
+        assertEquals(1, state.numActiveMepSlots);
+        assertTrue(isMultiSim);
     }
 
     @Test
@@ -345,6 +420,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(2, state.numActiveSlots);
         assertEquals(2, state.numActiveSims);
         assertEquals(1, state.numActiveEsims);
+        assertEquals(1, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertTrue(isMultiSim);
     }
 
@@ -359,6 +436,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(2, state.numActiveSlots);
         assertEquals(2, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertEquals(0, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertTrue(isMultiSim);
     }
 
@@ -382,6 +461,8 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(2, state.numActiveSlots);
         assertEquals(1, state.numActiveSims);
         assertEquals(1, state.numActiveEsims);
+        assertEquals(1, state.numActiveEsimSlots);
+        assertEquals(0, state.numActiveMepSlots);
         assertFalse(isMultiSim); // one Uicc Port does not have active sim profile
     }
 

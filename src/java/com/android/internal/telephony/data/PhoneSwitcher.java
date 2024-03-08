@@ -28,6 +28,7 @@ import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_VALIDATIO
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
+
 import static java.util.Arrays.copyOf;
 
 import android.annotation.NonNull;
@@ -83,6 +84,7 @@ import com.android.internal.telephony.RadioConfig;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwitch;
@@ -184,6 +186,7 @@ public class PhoneSwitcher extends Handler {
     private final @NonNull NetworkRequestList mNetworkRequestList = new NetworkRequestList();
     protected final RegistrantList mActivePhoneRegistrants;
     private final SubscriptionManagerService mSubscriptionManagerService;
+    private final @NonNull FeatureFlags mFlags;
     protected final Context mContext;
     private final LocalLog mLocalLog;
     protected PhoneState[] mPhoneStates;
@@ -194,8 +197,6 @@ public class PhoneSwitcher extends Handler {
     private int mPendingSwitchSubId = INVALID_SUBSCRIPTION_ID;
     /** The reason for the last time changing preferred data sub **/
     private int mLastSwitchPreferredDataReason = -1;
-    /** {@code true} if we've displayed the notification the first time auto switch occurs **/
-    private boolean mDisplayedAutoSwitchNotification = false;
     private boolean mPendingSwitchNeedValidation;
     @VisibleForTesting
     public final CellularNetworkValidator.ValidationCallback mValidationCallback =
@@ -312,14 +313,16 @@ public class PhoneSwitcher extends Handler {
     // Default timeout value of network validation in millisecond.
     private final static int DEFAULT_VALIDATION_EXPIRATION_TIME = 2000;
 
+    /** Controller that tracks {@link TelephonyManager#MOBILE_DATA_POLICY_AUTO_DATA_SWITCH} */
+    @NonNull private final AutoDataSwitchController mAutoDataSwitchController;
+    /** Callback to deal with requests made by the auto data switch controller. */
+    @NonNull private final AutoDataSwitchController.AutoDataSwitchControllerCallback
+            mAutoDataSwitchCallback;
+
     private ConnectivityManager mConnectivityManager;
     private int mImsRegistrationTech = REGISTRATION_TECH_NONE;
 
     private List<Set<CommandException.Error>> mCurrentDdsSwitchFailure;
-
-    private AutoDataSwitchController mAutoDataSwitchController;
-    private AutoDataSwitchController.AutoDataSwitchControllerCallback
-            mAutoDataSwitchCallback;
 
     /** Data settings manager callback. Key is the phone id. */
     private final @NonNull Map<Integer, DataSettingsManagerCallback> mDataSettingsManagerCallbacks =
@@ -397,9 +400,10 @@ public class PhoneSwitcher extends Handler {
     /**
      * Method to create singleton instance.
      */
-    public static PhoneSwitcher make(int maxDataAttachModemCount, Context context, Looper looper) {
+    public static PhoneSwitcher make(int maxDataAttachModemCount, Context context, Looper looper,
+            @NonNull FeatureFlags flags) {
         if (sPhoneSwitcher == null) {
-            sPhoneSwitcher = new PhoneSwitcher(maxDataAttachModemCount, context, looper);
+            sPhoneSwitcher = new PhoneSwitcher(maxDataAttachModemCount, context, looper, flags);
         }
 
         return sPhoneSwitcher;
@@ -457,9 +461,11 @@ public class PhoneSwitcher extends Handler {
     }
 
     @VisibleForTesting
-    public PhoneSwitcher(int maxActivePhones, Context context, Looper looper) {
+    public PhoneSwitcher(int maxActivePhones, Context context, Looper looper,
+            @NonNull FeatureFlags featureFlags) {
         super(looper);
         mContext = context;
+        mFlags = featureFlags;
         mActiveModemCount = getTm().getActiveModemCount();
         mPhoneSubscriptions = new int[mActiveModemCount];
         mPhoneStates = new PhoneState[mActiveModemCount];
@@ -497,6 +503,12 @@ public class PhoneSwitcher extends Handler {
                                     @TelephonyManager.DataEnabledChangedReason int reason,
                                     @NonNull String callingPackage) {
                                 PhoneSwitcher.this.onDataEnabledChanged();
+                            }
+                            @Override
+                            public void onDataRoamingEnabledChanged(boolean enabled) {
+                                PhoneSwitcher.this.mAutoDataSwitchController.evaluateAutoDataSwitch(
+                                        AutoDataSwitchController
+                                                .EVALUATION_REASON_DATA_SETTINGS_CHANGED);
                             }});
                 phone.getDataSettingsManager().registerCallback(
                         mDataSettingsManagerCallbacks.get(phoneId));
@@ -513,7 +525,7 @@ public class PhoneSwitcher extends Handler {
         TelephonyRegistryManager telephonyRegistryManager = (TelephonyRegistryManager)
                 context.getSystemService(Context.TELEPHONY_REGISTRY_SERVICE);
         telephonyRegistryManager.addOnSubscriptionsChangedListener(
-                mSubscriptionsChangedListener, mSubscriptionsChangedListener.getHandlerExecutor());
+                mSubscriptionsChangedListener, this::post);
 
         mConnectivityManager =
             (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -546,7 +558,7 @@ public class PhoneSwitcher extends Handler {
             }
         };
         mAutoDataSwitchController = new AutoDataSwitchController(context, looper, this,
-                mAutoDataSwitchCallback);
+                mFlags, mAutoDataSwitchCallback);
 
         mContext.registerReceiver(mDefaultDataChangedReceiver,
                 new IntentFilter(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED));
@@ -902,6 +914,12 @@ public class PhoneSwitcher extends Handler {
                                 @NonNull String callingPackage) {
                             PhoneSwitcher.this.onDataEnabledChanged();
                         }
+                        @Override
+                        public void onDataRoamingEnabledChanged(boolean enabled) {
+                            PhoneSwitcher.this.mAutoDataSwitchController.evaluateAutoDataSwitch(
+                                    AutoDataSwitchController
+                                            .EVALUATION_REASON_DATA_SETTINGS_CHANGED);
+                        }
                     });
             phone.getDataSettingsManager().registerCallback(
                     mDataSettingsManagerCallbacks.get(phone.getPhoneId()));
@@ -1080,6 +1098,7 @@ public class PhoneSwitcher extends Handler {
                     registerForImsRadioTechChange(mContext, i);
                 }
                 diffDetected = true;
+                mAutoDataSwitchController.notifySubscriptionsMappingChanged();
             }
         }
 
@@ -1388,7 +1407,7 @@ public class PhoneSwitcher extends Handler {
         return defaultDataPhone != null // check user enabled data
                 && defaultDataPhone.isUserDataEnabled()
                 && voicePhone != null // check user enabled voice during call feature
-                && voicePhone.isDataAllowed();
+                && voicePhone.getDataSettingsManager().isDataEnabled();
     }
 
     protected void transitionToEmergencyPhone() {
@@ -1546,7 +1565,7 @@ public class PhoneSwitcher extends Handler {
         // If validation feature is not supported, set it directly. Otherwise,
         // start validation on the subscription first.
         if (!mValidator.isValidationFeatureSupported()) {
-            setAutoSelectedDataSubIdInternal(subIdToValidate);
+            setAutoSelectedDataSubIdInternal(subId);
             sendSetOpptCallbackHelper(callback, SET_OPPORTUNISTIC_SUB_SUCCESS);
             return;
         }
@@ -1839,7 +1858,6 @@ public class PhoneSwitcher extends Handler {
         pw.println("mCurrentDdsSwitchFailure=" + mCurrentDdsSwitchFailure);
         pw.println("mLastSwitchPreferredDataReason="
                 + switchReasonToString(mLastSwitchPreferredDataReason));
-        pw.println("mDisplayedAutoSwitchNotification=" + mDisplayedAutoSwitchNotification);
         pw.println("Local logs:");
         pw.increaseIndent();
         mLocalLog.dump(fd, pw, args);

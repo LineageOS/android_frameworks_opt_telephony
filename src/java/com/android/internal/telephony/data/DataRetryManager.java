@@ -56,6 +56,7 @@ import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCa
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataProfileManager.DataProfileManagerCallback;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -150,6 +151,9 @@ public class DataRetryManager extends Handler {
 
     /** The phone instance. */
     private final @NonNull Phone mPhone;
+
+    /** Featureflags. */
+    private final @NonNull FeatureFlags mFlags;
 
     /** The RIL instance. */
     private final @NonNull CommandsInterface mRil;
@@ -962,10 +966,12 @@ public class DataRetryManager extends Handler {
     public DataRetryManager(@NonNull Phone phone,
             @NonNull DataNetworkController dataNetworkController,
             @NonNull SparseArray<DataServiceManager> dataServiceManagers,
-            @NonNull Looper looper, @NonNull DataRetryManagerCallback dataRetryManagerCallback) {
+            @NonNull Looper looper, @NonNull FeatureFlags flags,
+            @NonNull DataRetryManagerCallback dataRetryManagerCallback) {
         super(looper);
         mPhone = phone;
         mRil = phone.mCi;
+        mFlags = flags;
         mLogTag = "DRM-" + mPhone.getPhoneId();
         mDataRetryManagerCallbacks.add(dataRetryManagerCallback);
 
@@ -1018,18 +1024,21 @@ public class DataRetryManager extends Handler {
         mRil.registerForOn(this, EVENT_RADIO_ON, null);
         mRil.registerForModemReset(this, EVENT_MODEM_RESET, null);
 
-        // Register intent of alarm manager for long retry timer
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(ACTION_RETRY);
-        mPhone.getContext().registerReceiver(new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (ACTION_RETRY.equals(intent.getAction())) {
-                    DataRetryManager.this.onAlarmIntentRetry(
-                            intent.getIntExtra(ACTION_RETRY_EXTRA_HASHCODE, -1 /*Bad hashcode*/));
+        if (!mFlags.useAlarmCallback()) {
+            // Register intent of alarm manager for long retry timer
+            IntentFilter intentFilter = new IntentFilter();
+            intentFilter.addAction(ACTION_RETRY);
+            mPhone.getContext().registerReceiver(new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    if (ACTION_RETRY.equals(intent.getAction())) {
+                        DataRetryManager.this.onAlarmIntentRetry(
+                                intent.getIntExtra(ACTION_RETRY_EXTRA_HASHCODE,
+                                        -1 /*Bad hashcode*/));
+                    }
                 }
-            }
-        }, intentFilter);
+            }, intentFilter);
+        }
 
         if (mDataConfigManager.shouldResetDataThrottlingWhenTacChanges()) {
             mPhone.getServiceStateTracker().registerForAreaCodeChanged(this, EVENT_TAC_CHANGED,
@@ -1357,6 +1366,9 @@ public class DataRetryManager extends Handler {
         logl("Remove all retry and throttling entries, reason=" + resetReasonToString(reason));
         removeMessages(EVENT_DATA_SETUP_RETRY);
         removeMessages(EVENT_DATA_HANDOVER_RETRY);
+
+        mDataProfileManager.clearAllDataProfilePermanentFailures();
+
         mDataRetryEntries.stream()
                 .filter(entry -> entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED)
                 .forEach(entry -> entry.setState(DataRetryEntry.RETRY_STATE_CANCELLED));
@@ -1447,8 +1459,7 @@ public class DataRetryManager extends Handler {
      * @param dataRetryEntry The data retry entry.
      */
     private void schedule(@NonNull DataRetryEntry dataRetryEntry) {
-        logl("Scheduled data retry " + dataRetryEntry
-                + " hashcode=" + dataRetryEntry.hashCode());
+        logl("Scheduled data retry " + dataRetryEntry + " hashcode=" + dataRetryEntry.hashCode());
         mDataRetryEntries.add(dataRetryEntry);
         if (mDataRetryEntries.size() >= MAXIMUM_HISTORICAL_ENTRIES) {
             // Discard the oldest retry entry.
@@ -1464,16 +1475,32 @@ public class DataRetryManager extends Handler {
                             ? EVENT_DATA_SETUP_RETRY : EVENT_DATA_HANDOVER_RETRY, dataRetryEntry),
                     dataRetryEntry.retryDelayMillis);
         } else {
-            Intent intent = new Intent(ACTION_RETRY);
-            intent.putExtra(ACTION_RETRY_EXTRA_HASHCODE, dataRetryEntry.hashCode());
-            // No need to wake up the device, the retry can wait util next time the device wake up
-            // to save power.
-            mAlarmManager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME,
-                    dataRetryEntry.retryElapsedTime,
-                    PendingIntent.getBroadcast(mPhone.getContext(),
-                            dataRetryEntry.hashCode() /*Unique identifier of this retry attempt*/,
-                            intent,
-                            PendingIntent.FLAG_IMMUTABLE));
+            if (mFlags.useAlarmCallback()) {
+                // No need to wake up the device, the retry can wait util next time the device wake
+                // up to save power.
+                mAlarmManager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME,
+                        dataRetryEntry.retryElapsedTime,
+                        "dataRetryHash-" + dataRetryEntry.hashCode() /*debug tag*/,
+                        Runnable::run,
+                        null /*worksource*/,
+                        () -> {
+                            logl("onAlarm retry " + dataRetryEntry);
+                            sendMessage(obtainMessage(dataRetryEntry instanceof DataSetupRetryEntry
+                                            ? EVENT_DATA_SETUP_RETRY : EVENT_DATA_HANDOVER_RETRY,
+                                    dataRetryEntry));
+                        });
+            } else {
+                Intent intent = new Intent(ACTION_RETRY);
+                intent.putExtra(ACTION_RETRY_EXTRA_HASHCODE, dataRetryEntry.hashCode());
+                // No need to wake up the device, the retry can wait util next time the device wake
+                // up  to save power.
+                mAlarmManager.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME,
+                        dataRetryEntry.retryElapsedTime,
+                        PendingIntent.getBroadcast(mPhone.getContext(),
+                                dataRetryEntry.hashCode()/*Unique identifier of the retry attempt*/,
+                                intent,
+                                PendingIntent.FLAG_IMMUTABLE));
+            }
         }
     }
 
@@ -1514,9 +1541,12 @@ public class DataRetryManager extends Handler {
         DataThrottlingEntry entry = new DataThrottlingEntry(dataProfile, networkRequestList,
                 dataNetwork, transport, retryType, expirationTime);
         // Remove previous entry that contains the same data profile. Therefore it should always
-        // contain at maximum all the distinct data profiles of the current subscription.
+        // contain at maximu all the distinct data profiles of the current subscription times each
+        // transport.
         mDataThrottlingEntries.removeIf(
-                throttlingEntry -> dataProfile.equals(throttlingEntry.dataProfile));
+                throttlingEntry -> dataProfile.equals(throttlingEntry.dataProfile)
+                        && (!mFlags.unthrottleCheckTransport()
+                        || throttlingEntry.transport == transport));
 
         if (mDataThrottlingEntries.size() >= MAXIMUM_HISTORICAL_ENTRIES) {
             // If we don't see the anomaly report after U release, we should remove this check for
@@ -1578,7 +1608,8 @@ public class DataRetryManager extends Handler {
             // in DataProfileInfo.aidl), so we need to get the equivalent data profile from data
             // profile manager.
             Stream<DataThrottlingEntry> stream = mDataThrottlingEntries.stream();
-            stream = stream.filter(entry -> entry.expirationTimeMillis > now);
+            stream = stream.filter(entry -> entry.expirationTimeMillis > now
+                    && (!mFlags.unthrottleCheckTransport() || entry.transport == transport));
             if (dataProfile.getApnSetting() != null) {
                 stream = stream
                         .filter(entry -> entry.dataProfile.getApnSetting() != null)

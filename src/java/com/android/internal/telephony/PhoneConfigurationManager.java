@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static android.telephony.TelephonyManager.ACTION_MULTI_SIM_CONFIG_CHANGED;
 import static android.telephony.TelephonyManager.EXTRA_ACTIVE_SIM_SUPPORTED_COUNT;
 
+import android.annotation.NonNull;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
@@ -37,6 +38,7 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.telephony.Rlog;
 
@@ -75,6 +77,10 @@ public class PhoneConfigurationManager {
     private final Map<Integer, Boolean> mPhoneStatusMap;
     private MockableInterface mMi = new MockableInterface();
     private TelephonyManager mTelephonyManager;
+
+    /** Feature flags */
+    @NonNull
+    private final FeatureFlags mFeatureFlags;
     /**
      * True if 'Virtual DSDA' i.e., in-call IMS connectivity on both subs with only single logical
      * modem, is enabled.
@@ -88,10 +94,11 @@ public class PhoneConfigurationManager {
      * Init method to instantiate the object
      * Should only be called once.
      */
-    public static PhoneConfigurationManager init(Context context) {
+    public static PhoneConfigurationManager init(Context context,
+            @NonNull FeatureFlags featureFlags) {
         synchronized (PhoneConfigurationManager.class) {
             if (sInstance == null) {
-                sInstance = new PhoneConfigurationManager(context);
+                sInstance = new PhoneConfigurationManager(context, featureFlags);
             } else {
                 Log.wtf(LOG_TAG, "init() called multiple times!  sInstance = " + sInstance);
             }
@@ -103,8 +110,9 @@ public class PhoneConfigurationManager {
      * Constructor.
      * @param context context needed to send broadcast.
      */
-    private PhoneConfigurationManager(Context context) {
+    private PhoneConfigurationManager(Context context, @NonNull FeatureFlags featureFlags) {
         mContext = context;
+        mFeatureFlags = featureFlags;
         // TODO: send commands to modem once interface is ready.
         mTelephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
         //initialize with default, it'll get updated when RADIO is ON/AVAILABLE
@@ -360,7 +368,7 @@ public class PhoneConfigurationManager {
     }
 
     private void notifyCapabilityChanged() {
-        PhoneNotifier notifier = new DefaultPhoneNotifier(mContext);
+        PhoneNotifier notifier = new DefaultPhoneNotifier(mContext, mFeatureFlags);
 
         notifier.notifyPhoneCapabilityChanged(mStaticCapability);
     }

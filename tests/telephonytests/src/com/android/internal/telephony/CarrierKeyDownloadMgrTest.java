@@ -41,12 +41,15 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.util.Pair;
 
+import com.android.internal.telephony.flags.FeatureFlags;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 
 import java.security.PublicKey;
 import java.text.SimpleDateFormat;
@@ -87,18 +90,19 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
                     + "\"public-key\": \"" + CERT + "\"}]}";
 
     private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
-
+    private FeatureFlags mFeatureFlags;
     @Before
     public void setUp() throws Exception {
         logd("CarrierActionAgentTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mBundle = mContextFixture.getCarrierConfigBundle();
         when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(mBundle);
-
+        when(mUserManager.isUserUnlocked()).thenReturn(true);
         // Capture listener to emulate the carrier config change notification used later
         ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
                 ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
-        mCarrierKeyDM = new CarrierKeyDownloadManager(mPhone);
+        mFeatureFlags = Mockito.mock(FeatureFlags.class);
+        mCarrierKeyDM = new CarrierKeyDownloadManager(mPhone, mFeatureFlags);
         verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
                 listenerArgumentCaptor.capture());
         mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(0);
@@ -342,7 +346,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
      **/
     @Test
     @SmallTest
-    public void testCarrierConfigChanged() {
+    public void testCarrierConfigChangedWithUserUnlocked() {
         CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
                 mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         int slotId = mPhone.getPhoneId();
@@ -356,6 +360,57 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID,
                 TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
+        assertEquals("310260", mCarrierKeyDM.mMccMncForDownload);
+        assertEquals(1, mCarrierKeyDM.mCarrierId);
+    }
+
+    @Test
+    @SmallTest
+    public void testCarrierConfigChangedWithUserLocked() {
+        when(mUserManager.isUserUnlocked()).thenReturn(false);
+        CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
+                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        int slotId = mPhone.getPhoneId();
+        PersistableBundle bundle = carrierConfigManager.getConfigForSubId(slotId);
+        bundle.putInt(CarrierConfigManager.IMSI_KEY_AVAILABILITY_INT, 3);
+        bundle.putString(CarrierConfigManager.IMSI_KEY_DOWNLOAD_URL_STRING, mURL);
+
+        when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
+        when(mTelephonyManager.getSimCarrierId()).thenReturn(1);
+        mCarrierConfigChangeListener.onCarrierConfigChanged(0 /* slotIndex */,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
+        processAllMessages();
+        assertNull(mCarrierKeyDM.mMccMncForDownload);
+        assertEquals(0, mCarrierKeyDM.mCarrierId);
+    }
+
+    @Test
+    @SmallTest
+    public void testUserLockedAfterCarrierConfigChanged() {
+        // User is locked at beginning
+        when(mUserManager.isUserUnlocked()).thenReturn(false);
+        CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
+                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        int slotId = mPhone.getPhoneId();
+        PersistableBundle bundle = carrierConfigManager.getConfigForSubId(slotId);
+        bundle.putInt(CarrierConfigManager.IMSI_KEY_AVAILABILITY_INT, 3);
+        bundle.putString(CarrierConfigManager.IMSI_KEY_DOWNLOAD_URL_STRING, mURL);
+
+        // Carrier config change received
+        when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
+        when(mTelephonyManager.getSimCarrierId()).thenReturn(1);
+        mCarrierConfigChangeListener.onCarrierConfigChanged(0 /* slotIndex */,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
+        processAllMessages();
+
+        // User unlocked event received
+        Intent mIntent = new Intent(Intent.ACTION_USER_UNLOCKED);
+        mContext.sendBroadcast(mIntent);
+        when(mUserManager.isUserUnlocked()).thenReturn(true);
+        processAllMessages();
+
         assertEquals("310260", mCarrierKeyDM.mMccMncForDownload);
         assertEquals(1, mCarrierKeyDM.mCarrierId);
     }

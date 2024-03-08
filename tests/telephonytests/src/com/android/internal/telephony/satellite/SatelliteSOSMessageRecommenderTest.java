@@ -16,6 +16,11 @@
 
 package com.android.internal.telephony.satellite;
 
+import static android.telephony.TelephonyManager.EXTRA_EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE;
+import static android.telephony.TelephonyManager.EXTRA_EMERGENCY_CALL_TO_SATELLITE_LAUNCH_INTENT;
+import static android.telephony.satellite.SatelliteManager.EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_SOS;
+import static android.telephony.satellite.SatelliteManager.EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_T911;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -26,30 +31,35 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.annotation.NonNull;
+import android.app.PendingIntent;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.Resources;
-import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Looper;
 import android.os.RemoteException;
 import android.os.ResultReceiver;
-import android.telecom.Call;
 import android.telecom.Connection;
 import android.telephony.BinderCacheManager;
-import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.satellite.ISatelliteProvisionStateCallback;
 import android.telephony.satellite.SatelliteManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
+import com.android.internal.R;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.flags.FeatureFlags;
 
 import org.junit.After;
 import org.junit.Before;
@@ -59,8 +69,10 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -74,48 +86,56 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
     private static final String TAG = "SatelliteSOSMessageRecommenderTest";
     private static final long TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS = 500;
     private static final int PHONE_ID = 0;
+    private static final int PHONE_ID2 = 1;
     private static final String CALL_ID = "CALL_ID";
     private static final String WRONG_CALL_ID = "WRONG_CALL_ID";
+    private static final String DEFAULT_SATELLITE_MESSAGING_PACKAGE = "android.com.google.default";
+    private static final String DEFAULT_SATELLITE_MESSAGING_CLASS =
+            "android.com.google.default.SmsMmsApp";
+    private static final String DEFAULT_HANDOVER_INTENT_ACTION =
+            "android.com.vendor.action.EMERGENCY_MESSAGING";
     private TestSatelliteController mTestSatelliteController;
     private TestImsManager mTestImsManager;
-
-    @Mock
-    private Context mMockContext;
     @Mock
     private Resources mResources;
     @Mock
     private ImsManager.MmTelFeatureConnectionFactory mMmTelFeatureConnectionFactory;
+    @Mock
+    private FeatureFlags mFeatureFlags;
     private TestConnection mTestConnection;
     private TestSOSMessageRecommender mTestSOSMessageRecommender;
+    private ServiceState mServiceState2;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         MockitoAnnotations.initMocks(this);
 
-        when(mMockContext.getMainLooper()).thenReturn(Looper.myLooper());
-        when(mMockContext.getResources()).thenReturn(mResources);
-        when(mResources.getString(com.android.internal.R.string.config_satellite_service_package))
+        when(mContext.getResources()).thenReturn(mResources);
+        when(mResources.getString(R.string.config_satellite_service_package))
                 .thenReturn("");
-        when(mMockContext.getSystemServiceName(CarrierConfigManager.class))
-                .thenReturn("CarrierConfigManager");
-        when(mMockContext.getSystemService(CarrierConfigManager.class))
-                .thenReturn(mCarrierConfigManager);
-        when(mMockContext.getSystemServiceName(SubscriptionManager.class))
-                .thenReturn("SubscriptionManager");
-        when(mMockContext.getSystemService(SubscriptionManager.class))
-                .thenReturn(mSubscriptionManager);
-        mTestSatelliteController = new TestSatelliteController(mMockContext,
-                Looper.myLooper());
+        when(mResources.getString(R.string.config_satellite_emergency_handover_intent_action))
+                .thenReturn(DEFAULT_HANDOVER_INTENT_ACTION);
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
+        mTestSatelliteController = new TestSatelliteController(mContext,
+                Looper.myLooper(), mFeatureFlags);
         mTestImsManager = new TestImsManager(
-                mMockContext, PHONE_ID, mMmTelFeatureConnectionFactory, null, null, null);
+                mContext, PHONE_ID, mMmTelFeatureConnectionFactory, null, null, null);
         mTestConnection = new TestConnection(CALL_ID);
+        mPhones = new Phone[] {mPhone, mPhone2};
+        replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
+        mServiceState2 = Mockito.mock(ServiceState.class);
         when(mPhone.getServiceState()).thenReturn(mServiceState);
-        mTestSOSMessageRecommender = new TestSOSMessageRecommender(Looper.myLooper(),
+        when(mPhone.getPhoneId()).thenReturn(PHONE_ID);
+        when(mPhone2.getServiceState()).thenReturn(mServiceState2);
+        when(mPhone2.getPhoneId()).thenReturn(PHONE_ID2);
+        mTestSOSMessageRecommender = new TestSOSMessageRecommender(mContext, Looper.myLooper(),
                 mTestSatelliteController, mTestImsManager,
                 TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
         when(mServiceState.getState()).thenReturn(ServiceState.STATE_OUT_OF_SERVICE);
+        when(mServiceState2.getState()).thenReturn(ServiceState.STATE_OUT_OF_SERVICE);
         when(mPhone.isImsRegistered()).thenReturn(false);
+        when(mPhone2.isImsRegistered()).thenReturn(false);
     }
 
     @After
@@ -124,18 +144,103 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
     }
 
     @Test
-    public void testTimeoutBeforeEmergencyCallEnd() {
-        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection, mPhone);
+    public void testTimeoutBeforeEmergencyCallEnd_T911() {
+        testTimeoutBeforeEmergencyCallEnd(EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_T911,
+                DEFAULT_SATELLITE_MESSAGING_PACKAGE, DEFAULT_SATELLITE_MESSAGING_CLASS,
+                DEFAULT_HANDOVER_INTENT_ACTION);
+    }
+
+    @Test
+    public void testTimeoutBeforeEmergencyCallEnd_SOS_WithValidHandoverAppConfigured() {
+        String satelliteHandoverApp =
+                "android.com.vendor.message;android.com.vendor.message.SmsApp";
+        when(mResources.getString(R.string.config_oem_enabled_satellite_sos_handover_app))
+                .thenReturn(satelliteHandoverApp);
+        mTestSatelliteController.setSatelliteConnectedViaCarrierWithinHysteresisTime(false);
+        testTimeoutBeforeEmergencyCallEnd(EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_SOS,
+                "android.com.vendor.message", "android.com.vendor.message.SmsApp",
+                DEFAULT_HANDOVER_INTENT_ACTION);
+    }
+
+    @Test
+    public void testTimeoutBeforeEmergencyCallEnd_SOS_WithInValidHandoverAppConfigured() {
+        String satelliteHandoverApp =
+                "android.com.vendor.message;android.com.vendor.message.SmsApp;abc";
+        when(mResources.getString(R.string.config_oem_enabled_satellite_sos_handover_app))
+                .thenReturn(satelliteHandoverApp);
+        mTestSatelliteController.setSatelliteConnectedViaCarrierWithinHysteresisTime(false);
+        testTimeoutBeforeEmergencyCallEnd(EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_SOS, "", "",
+                DEFAULT_HANDOVER_INTENT_ACTION);
+    }
+
+    @Test
+    public void testTimeoutBeforeEmergencyCallEnd_SOS_WithoutHandoverAppConfigured() {
+        when(mResources.getString(R.string.config_oem_enabled_satellite_sos_handover_app))
+                .thenReturn("");
+        mTestSatelliteController.setSatelliteConnectedViaCarrierWithinHysteresisTime(false);
+        testTimeoutBeforeEmergencyCallEnd(EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_SOS, "", "",
+                DEFAULT_HANDOVER_INTENT_ACTION);
+    }
+
+    private void testTimeoutBeforeEmergencyCallEnd(int expectedHandoverType,
+            String expectedPackageName, String expectedClassName, String expectedAction) {
+        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
         processAllMessages();
         assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
+        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
 
         // Wait for the timeout to expires
         moveTimeForward(TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
         processAllMessages();
+        if (TextUtils.isEmpty(expectedPackageName) || TextUtils.isEmpty(expectedClassName)) {
+            assertTrue(mTestConnection.isEventWithoutLaunchIntentSent(
+                    TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE, expectedHandoverType));
+        } else {
+            assertTrue(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE,
+                    expectedHandoverType, expectedPackageName, expectedClassName, expectedAction));
+        }
+        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertUnregisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
+    }
 
-        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
-        assertTrue(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
-        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
+    @Test
+    public void testTimeoutBeforeEmergencyCallEnd_EventDisplayEmergencyMessageNotSent() {
+        mTestSatelliteController.setSatelliteConnectedViaCarrierWithinHysteresisTime(false);
+        mTestSatelliteController.setIsSatelliteViaOemProvisioned(false);
+        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
+        processAllMessages();
+        assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
+        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
+
+        // Wait for the timeout to expires
+        moveTimeForward(TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
+        processAllMessages();
+        assertFalse(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE));
+        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertUnregisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
+    }
+
+    @Test
+    public void testTimeoutBeforeEmergencyCallEnd_T911_FromNotConnectedToConnected() {
+        mTestSatelliteController.setSatelliteConnectedViaCarrierWithinHysteresisTime(false);
+        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
+        processAllMessages();
+        assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
+        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
+
+        mTestSatelliteController.setSatelliteConnectedViaCarrierWithinHysteresisTime(true);
+        // Wait for the timeout to expires
+        moveTimeForward(TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
+        processAllMessages();
+        assertTrue(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE,
+                EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_T911,
+                DEFAULT_SATELLITE_MESSAGING_PACKAGE, DEFAULT_SATELLITE_MESSAGING_CLASS,
+                DEFAULT_HANDOVER_INTENT_ACTION));
+        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertUnregisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
     }
 
     @Test
@@ -150,22 +255,34 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
 
     @Test
     public void testImsRegistrationStateChangedBeforeTimeout() {
-        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection, mPhone);
+        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
         processAllMessages();
 
         assertTrue(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
-        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
 
-        mTestImsManager.sendImsRegistrationStateChangedEvent(true);
+        when(mPhone.isImsRegistered()).thenReturn(true);
+        mTestImsManager.sendImsRegistrationStateChangedEvent(0, true);
         processAllMessages();
 
-        assertFalse(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
+        assertFalse(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE));
         assertFalse(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
         assertUnregisterForStateChangedEventsTriggered(mPhone, 0, 0, 0);
 
-        mTestImsManager.sendImsRegistrationStateChangedEvent(false);
+        when(mPhone.isImsRegistered()).thenReturn(false);
+        when(mPhone2.isImsRegistered()).thenReturn(true);
+        mTestImsManager.sendImsRegistrationStateChangedEvent(1, true);
+        processAllMessages();
+        assertFalse(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE));
+        assertFalse(mTestSOSMessageRecommender.isTimerStarted());
+        assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
+        assertUnregisterForStateChangedEventsTriggered(mPhone, 0, 0, 0);
+
+        when(mPhone2.isImsRegistered()).thenReturn(false);
+        mTestImsManager.sendImsRegistrationStateChangedEvent(1, false);
         processAllMessages();
         assertEquals(2, mTestSOSMessageRecommender.getCountOfTimerStarted());
 
@@ -173,19 +290,23 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         moveTimeForward(TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
         processAllMessages();
 
-        assertTrue(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
-        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
+        assertTrue(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE,
+                EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_T911, DEFAULT_SATELLITE_MESSAGING_PACKAGE,
+                DEFAULT_SATELLITE_MESSAGING_CLASS, DEFAULT_HANDOVER_INTENT_ACTION));
+        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertUnregisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
         assertEquals(0, mTestSOSMessageRecommender.getCountOfTimerStarted());
     }
 
     @Test
     public void testSatelliteProvisionStateChangedBeforeTimeout() {
-        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection, mPhone);
+        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
         processAllMessages();
 
         assertTrue(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
-        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
 
         mTestSatelliteController.sendProvisionStateChangedEvent(
                 SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, false);
@@ -193,13 +314,15 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
 
         assertFalse(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(0, mTestSOSMessageRecommender.getCountOfTimerStarted());
-        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
+        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertUnregisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
 
-        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection, mPhone);
+        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
         processAllMessages();
         assertTrue(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
-        assertRegisterForStateChangedEventsTriggered(mPhone, 2, 2, 2);
+        assertRegisterForStateChangedEventsTriggered(mPhone, 2, 4, 2);
+        assertRegisterForStateChangedEventsTriggered(mPhone2, 2, 4, 2);
 
         mTestSatelliteController.sendProvisionStateChangedEvent(
                 SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, true);
@@ -208,57 +331,44 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         moveTimeForward(TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
         processAllMessages();
 
-        assertTrue(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
+        assertTrue(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE,
+                EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_T911, DEFAULT_SATELLITE_MESSAGING_PACKAGE,
+                DEFAULT_SATELLITE_MESSAGING_CLASS, DEFAULT_HANDOVER_INTENT_ACTION));
         assertFalse(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(0, mTestSOSMessageRecommender.getCountOfTimerStarted());
-        assertUnregisterForStateChangedEventsTriggered(mPhone, 2, 2, 2);
+        assertUnregisterForStateChangedEventsTriggered(mPhone, 2, 4, 2);
+        assertUnregisterForStateChangedEventsTriggered(mPhone2, 2, 4, 2);
     }
 
     @Test
     public void testEmergencyCallRedialBeforeTimeout() {
-        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection, mPhone);
+        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
         processAllMessages();
 
         assertTrue(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
-        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
 
-        Phone newPhone = Mockito.mock(Phone.class);
-        when(newPhone.getServiceState()).thenReturn(mServiceState);
-        when(newPhone.isImsRegistered()).thenReturn(false);
-        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection, newPhone);
+        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
         processAllMessages();
 
-        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
         assertTrue(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
-        /**
-         * Since {@link SatelliteSOSMessageRecommender} always uses
-         * {@link SubscriptionManager#DEFAULT_SUBSCRIPTION_ID} when registering for provision state
-         * changed events with {@link SatelliteController}, registerForProvisionCount does
-         * not depend on Phone.
-         * <p>
-         * Since we use a single mocked ImsManager instance, registerForImsCount does not depend on
-         * Phone.
-         */
-        assertRegisterForStateChangedEventsTriggered(newPhone, 2, 2, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
 
         // Wait for the timeout to expires
         moveTimeForward(TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
         processAllMessages();
 
-        assertTrue(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
-        /**
-         * Since {@link SatelliteSOSMessageRecommender} always uses
-         * {@link SubscriptionManager#DEFAULT_SUBSCRIPTION_ID} when unregistering for provision
-         * state changed events with {@link SatelliteController}, unregisterForProvisionCount does
-         * not depend on Phone.
-         * <p>
-         * Since we use a single mocked ImsManager instance, unregisterForImsCount does not depend
-         * on Phone.
-         */
-        assertUnregisterForStateChangedEventsTriggered(newPhone, 2, 2, 1);
+        assertTrue(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE,
+                EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_T911, DEFAULT_SATELLITE_MESSAGING_PACKAGE,
+                DEFAULT_SATELLITE_MESSAGING_CLASS, DEFAULT_HANDOVER_INTENT_ACTION));
+        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertUnregisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
         assertEquals(0, mTestSOSMessageRecommender.getCountOfTimerStarted());
+        assertFalse(mTestSOSMessageRecommender.isTimerStarted());
     }
 
     @Test
@@ -287,50 +397,55 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
 
     @Test
     public void testOnEmergencyCallConnectionStateChangedWithWrongCallId() {
-        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection, mPhone);
+        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
         processAllMessages();
 
         assertTrue(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
-        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
 
         mTestSOSMessageRecommender.onEmergencyCallConnectionStateChanged(
                 WRONG_CALL_ID, Connection.STATE_ACTIVE);
         processAllMessages();
 
-        assertFalse(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
+        assertFalse(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE));
         assertFalse(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(0, mTestSOSMessageRecommender.getCountOfTimerStarted());
-        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
+        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertUnregisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
     }
 
     @Test
     public void testSatelliteNotAllowedInCurrentLocation() {
         mTestSatelliteController.setIsSatelliteCommunicationAllowed(false);
-        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection, mPhone);
+        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
         processAllMessages();
 
         /**
-         * We should have registered for the state change events abd started the timer when
+         * We should have registered for the state change events and started the timer when
          * receiving the event onEmergencyCallStarted. After getting the callback for the result of
          * the request requestIsSatelliteCommunicationAllowedForCurrentLocation, the resources
          * should be cleaned up.
          */
         assertFalse(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(0, mTestSOSMessageRecommender.getCountOfTimerStarted());
-        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
-        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
+        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertUnregisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
     }
 
     @Test
     public void testOnEmergencyCallStarted() {
         SatelliteController satelliteController = new SatelliteController(
-                mMockContext, Looper.myLooper());
+                mContext, Looper.myLooper(), mFeatureFlags);
         TestSOSMessageRecommender testSOSMessageRecommender = new TestSOSMessageRecommender(
+                mContext,
                 Looper.myLooper(),
                 satelliteController, mTestImsManager,
                 TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
-        testSOSMessageRecommender.onEmergencyCallStarted(mTestConnection, mPhone);
+        testSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
         processAllMessages();
 
         assertFalse(testSOSMessageRecommender.isTimerStarted());
@@ -339,51 +454,68 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
 
     private void testStopTrackingCallBeforeTimeout(
             @Connection.ConnectionState int connectionState) {
-        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection, mPhone);
+        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
         processAllMessages();
 
         assertTrue(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
-        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
 
         mTestSOSMessageRecommender.onEmergencyCallConnectionStateChanged(CALL_ID, connectionState);
         processAllMessages();
 
-        assertFalse(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
+        assertFalse(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE));
         assertFalse(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(0, mTestSOSMessageRecommender.getCountOfTimerStarted());
-        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
+        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertUnregisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
     }
 
     private void testCellularServiceStateChangedBeforeTimeout(
             @ServiceState.RegState int availableServiceState,
             @ServiceState.RegState int unavailableServiceState) {
-        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection, mPhone);
+        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
         processAllMessages();
 
         assertTrue(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
-        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertRegisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
 
-        mTestSOSMessageRecommender.sendServiceStateChangedEvent(availableServiceState);
+        when(mServiceState.getState()).thenReturn(availableServiceState);
+        mTestSOSMessageRecommender.sendServiceStateChangedEvent();
         processAllMessages();
-
-        assertFalse(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
+        assertFalse(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE));
         assertFalse(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
         assertUnregisterForStateChangedEventsTriggered(mPhone, 0, 0, 0);
+        assertUnregisterForStateChangedEventsTriggered(mPhone2, 0, 0, 0);
 
-        mTestSOSMessageRecommender.sendServiceStateChangedEvent(unavailableServiceState);
+        when(mServiceState.getState()).thenReturn(unavailableServiceState);
+        when(mServiceState2.getState()).thenReturn(availableServiceState);
+        mTestSOSMessageRecommender.sendServiceStateChangedEvent();
+        processAllMessages();
+        assertFalse(mTestSOSMessageRecommender.isTimerStarted());
+        assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
+
+        when(mServiceState2.getState()).thenReturn(unavailableServiceState);
+        mTestSOSMessageRecommender.sendServiceStateChangedEvent();
         processAllMessages();
         assertEquals(2, mTestSOSMessageRecommender.getCountOfTimerStarted());
+        assertTrue(mTestSOSMessageRecommender.isTimerStarted());
 
         // Wait for the timeout to expires
         moveTimeForward(TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
         processAllMessages();
 
-        assertTrue(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
-        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
+        assertTrue(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE,
+                EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_T911, DEFAULT_SATELLITE_MESSAGING_PACKAGE,
+                DEFAULT_SATELLITE_MESSAGING_CLASS, DEFAULT_HANDOVER_INTENT_ACTION));
+        assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 2, 1);
+        assertUnregisterForStateChangedEventsTriggered(mPhone2, 1, 2, 1);
         assertEquals(0, mTestSOSMessageRecommender.getCountOfTimerStarted());
+        assertFalse(mTestSOSMessageRecommender.isTimerStarted());
     }
 
     private void assertRegisterForStateChangedEventsTriggered(
@@ -412,8 +544,9 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
                 mProvisionStateChangedCallbacks;
         private int mRegisterForSatelliteProvisionStateChangedCalls = 0;
         private int mUnregisterForSatelliteProvisionStateChangedCalls = 0;
-        private boolean mIsSatelliteProvisioned = true;
+        private boolean mIsSatelliteViaOemProvisioned = true;
         private boolean mIsSatelliteCommunicationAllowed = true;
+        private boolean mIsSatelliteConnectedViaCarrierWithinHysteresisTime = true;
 
         /**
          * Create a SatelliteController to act as a backend service of
@@ -421,30 +554,31 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
          *
          * @param context The Context for the SatelliteController.
          */
-        protected TestSatelliteController(Context context, Looper looper) {
-            super(context, looper);
+        protected TestSatelliteController(
+                Context context, Looper looper, FeatureFlags featureFlags) {
+            super(context, looper, featureFlags);
             mProvisionStateChangedCallbacks = new HashMap<>();
         }
 
         @Override
-        public Boolean isSatelliteProvisioned() {
-            return mIsSatelliteProvisioned;
+        public Boolean isSatelliteViaOemProvisioned() {
+            return mIsSatelliteViaOemProvisioned;
         }
 
         @Override
-        public boolean isSatelliteSupported() {
+        public boolean isSatelliteSupportedViaOem() {
             return true;
         }
 
         @Override
-        @SatelliteManager.SatelliteError public int registerForSatelliteProvisionStateChanged(
+        @SatelliteManager.SatelliteResult public int registerForSatelliteProvisionStateChanged(
                 int subId, @NonNull ISatelliteProvisionStateCallback callback) {
             mRegisterForSatelliteProvisionStateChangedCalls++;
             Set<ISatelliteProvisionStateCallback> perSubscriptionCallbacks =
                     mProvisionStateChangedCallbacks.getOrDefault(subId, new HashSet<>());
             perSubscriptionCallbacks.add(callback);
             mProvisionStateChangedCallbacks.put(subId, perSubscriptionCallbacks);
-            return SatelliteManager.SATELLITE_ERROR_NONE;
+            return SatelliteManager.SATELLITE_RESULT_SUCCESS;
         }
 
         @Override
@@ -464,11 +598,26 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
             Bundle bundle = new Bundle();
             bundle.putBoolean(SatelliteManager.KEY_SATELLITE_COMMUNICATION_ALLOWED,
                     mIsSatelliteCommunicationAllowed);
-            result.send(SatelliteManager.SATELLITE_ERROR_NONE, bundle);
+            result.send(SatelliteManager.SATELLITE_RESULT_SUCCESS, bundle);
+        }
+
+        @Override
+        public boolean isSatelliteConnectedViaCarrierWithinHysteresisTime() {
+            return mIsSatelliteConnectedViaCarrierWithinHysteresisTime;
+        }
+
+        @Override
+        protected int getEnforcedEmergencyCallToSatelliteHandoverType() {
+            return INVALID_EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE;
         }
 
         public void setIsSatelliteCommunicationAllowed(boolean allowed) {
             mIsSatelliteCommunicationAllowed = allowed;
+        }
+
+        public void setSatelliteConnectedViaCarrierWithinHysteresisTime(
+                boolean connectedViaCarrier) {
+            mIsSatelliteConnectedViaCarrierWithinHysteresisTime = connectedViaCarrier;
         }
 
         public int getRegisterForSatelliteProvisionStateChangedCalls() {
@@ -479,8 +628,12 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
             return mUnregisterForSatelliteProvisionStateChangedCalls;
         }
 
+        public void setIsSatelliteViaOemProvisioned(boolean provisioned) {
+            mIsSatelliteViaOemProvisioned = provisioned;
+        }
+
         public void sendProvisionStateChangedEvent(int subId, boolean provisioned) {
-            mIsSatelliteProvisioned = provisioned;
+            mIsSatelliteViaOemProvisioned = provisioned;
             Set<ISatelliteProvisionStateCallback> perSubscriptionCallbacks =
                     mProvisionStateChangedCallbacks.get(subId);
             if (perSubscriptionCallbacks != null) {
@@ -497,7 +650,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
 
     private static class TestImsManager extends ImsManager {
 
-        private final Set<RegistrationManager.RegistrationCallback> mCallbacks;
+        private final List<RegistrationManager.RegistrationCallback> mCallbacks;
         private int mAddRegistrationCallbackCalls = 0;
         private int mRemoveRegistrationListenerCalls = 0;
 
@@ -508,7 +661,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
                 SubscriptionManagerProxy subManagerProxy, SettingsProxy settingsProxy,
                 BinderCacheManager binderCacheManager) {
             super(context, phoneId, factory, subManagerProxy, settingsProxy, binderCacheManager);
-            mCallbacks = new HashSet<>();
+            mCallbacks = new ArrayList<>();
         }
 
         @Override
@@ -525,7 +678,9 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
             }
 
             callback.setExecutor(executor);
-            mCallbacks.add(callback);
+            if (!mCallbacks.contains(callback)) {
+                mCallbacks.add(callback);
+            }
         }
 
         @Override
@@ -546,20 +701,24 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
             return mRemoveRegistrationListenerCalls;
         }
 
-        public void sendImsRegistrationStateChangedEvent(boolean registered) {
+        public void sendImsRegistrationStateChangedEvent(int callbackIndex, boolean registered) {
+            if (callbackIndex < 0 || callbackIndex >= mCallbacks.size()) {
+                throw new IndexOutOfBoundsException("sendImsRegistrationStateChangedEvent: invalid"
+                        + "callbackIndex=" + callbackIndex
+                        + ", mCallbacks.size=" + mCallbacks.size());
+            }
+            RegistrationManager.RegistrationCallback callback = mCallbacks.get(callbackIndex);
             if (registered) {
-                for (RegistrationManager.RegistrationCallback callback : mCallbacks) {
-                    callback.onRegistered(null);
-                }
+                callback.onRegistered(null);
             } else {
-                for (RegistrationManager.RegistrationCallback callback : mCallbacks) {
-                    callback.onUnregistered(null);
-                }
+                callback.onUnregistered(null);
             }
         }
     }
 
     private static class TestSOSMessageRecommender extends SatelliteSOSMessageRecommender {
+        private ComponentName mSmsAppComponent = new ComponentName(
+                DEFAULT_SATELLITE_MESSAGING_PACKAGE, DEFAULT_SATELLITE_MESSAGING_CLASS);
 
         /**
          * Create an instance of SatelliteSOSMessageRecommender.
@@ -571,9 +730,15 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
          *                            null only in unit tests.
          * @param timeoutMillis       The timeout duration of the timer.
          */
-        TestSOSMessageRecommender(Looper looper, SatelliteController satelliteController,
-                ImsManager imsManager, long timeoutMillis) {
-            super(looper, satelliteController, imsManager, timeoutMillis);
+        TestSOSMessageRecommender(Context context, Looper looper,
+                SatelliteController satelliteController, ImsManager imsManager,
+                long timeoutMillis) {
+            super(context, looper, satelliteController, imsManager, timeoutMillis);
+        }
+
+        @Override
+        protected ComponentName getDefaultSmsApp() {
+            return mSmsAppComponent;
         }
 
         public boolean isTimerStarted() {
@@ -584,28 +749,66 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
             return mCountOfTimerStarted;
         }
 
-        public void sendServiceStateChangedEvent(@ServiceState.RegState int state) {
-            ServiceState serviceState = new ServiceState();
-            serviceState.setState(state);
-            sendMessage(obtainMessage(EVENT_CELLULAR_SERVICE_STATE_CHANGED,
-                    new AsyncResult(null, serviceState, null)));
+        public void sendServiceStateChangedEvent() {
+            sendMessage(obtainMessage(EVENT_SERVICE_STATE_CHANGED));
         }
     }
 
     private static class TestConnection extends Connection {
-        private final Set<String> mSentEvents;
+        private String mSentEvent = null;
+        private Bundle mExtras = null;
         TestConnection(String callId) {
             setTelecomCallId(callId);
-            mSentEvents = new HashSet<>();
         }
 
         @Override
         public void sendConnectionEvent(String event, Bundle extras) {
-            mSentEvents.add(event);
+            mSentEvent = event;
+            mExtras = extras;
+        }
+
+        public boolean isEventSent(String event, int handoverType, String packageName,
+                String className, String action) {
+            if (mSentEvent == null || mExtras == null) {
+                return false;
+            }
+
+            PendingIntent pendingIntent = mExtras.getParcelable(
+                    EXTRA_EMERGENCY_CALL_TO_SATELLITE_LAUNCH_INTENT, PendingIntent.class);
+            Intent intent = pendingIntent.getIntent();
+            if (!TextUtils.equals(event, mSentEvent) || handoverType != mExtras.getInt(
+                    EXTRA_EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE)
+                    || !TextUtils.equals(packageName, intent.getComponent().getPackageName())
+                    || !TextUtils.equals(className, intent.getComponent().getClassName())
+                    || !TextUtils.equals(action, intent.getAction())) {
+                return false;
+            }
+            return true;
+        }
+
+        public boolean isEventWithoutLaunchIntentSent(String event, int handoverType) {
+            if (mSentEvent == null || mExtras == null) {
+                return false;
+            }
+
+            PendingIntent pendingIntent = mExtras.getParcelable(
+                    EXTRA_EMERGENCY_CALL_TO_SATELLITE_LAUNCH_INTENT, PendingIntent.class);
+            if (!TextUtils.equals(event, mSentEvent) || handoverType != mExtras.getInt(
+                    EXTRA_EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE) || pendingIntent != null) {
+                return false;
+            }
+
+            return true;
         }
 
         public boolean isEventSent(String event) {
-            return mSentEvents.contains(event);
+            if (mSentEvent == null) {
+                return false;
+            }
+            if (!TextUtils.equals(event, mSentEvent)) {
+                return false;
+            }
+            return true;
         }
     }
 }

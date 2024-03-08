@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony.data;
 
+import static android.telephony.data.ApnSetting.INFRASTRUCTURE_CELLULAR;
+import static android.telephony.data.ApnSetting.INFRASTRUCTURE_SATELLITE;
+
 import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertTrue;
 import static junit.framework.Assert.fail;
@@ -154,6 +157,9 @@ public class ApnSettingTest extends TelephonyTest {
         assertTrue(createApnSetting(
                 ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_MMS | ApnSetting.TYPE_EMERGENCY)
                 .canHandleType(ApnSetting.TYPE_EMERGENCY));
+        assertTrue(createApnSetting(
+                ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_RCS | ApnSetting.TYPE_EMERGENCY)
+                .canHandleType(ApnSetting.TYPE_RCS));
         assertFalse(createApnSetting(ApnSetting.TYPE_ALL)
                 .canHandleType(ApnSetting.TYPE_MCX));
         assertTrue(createApnSetting(
@@ -377,5 +383,35 @@ public class ApnSettingTest extends TelephonyTest {
                 .setMmsProxyAddress("proxy.mobile.att.net")
                 .build();
         assertEquals("proxy.mobile.att.net", apn3.getMmsProxyAddressAsString());
+    }
+
+    @Test
+    public void testBuild_InfrastructureBitmask() {
+        int infrastructureBitmask = INFRASTRUCTURE_CELLULAR | INFRASTRUCTURE_SATELLITE;
+        ApnSetting apn1 = new ApnSetting.Builder()
+                .setId(1234)
+                .setOperatorNumeric("310260")
+                .setEntryName("mms")
+                .setApnName("mms")
+                .setApnTypeBitmask(ApnSetting.TYPE_MMS | ApnSetting.TYPE_DEFAULT)
+                .setProtocol(ApnSetting.PROTOCOL_IPV4V6)
+                .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE))
+                .build();
+        // InfrastructureBitmask default value set to '3(cellular|satellite)'
+        assertEquals(infrastructureBitmask, apn1.getInfrastructureBitmask());
+
+        infrastructureBitmask = INFRASTRUCTURE_CELLULAR;
+        ApnSetting apn2 = new ApnSetting.Builder()
+                .setId(1235)
+                .setOperatorNumeric("310260")
+                .setEntryName("mms")
+                .setApnName("mms")
+                .setApnTypeBitmask(ApnSetting.TYPE_MMS | ApnSetting.TYPE_DEFAULT)
+                .setProtocol(ApnSetting.PROTOCOL_IPV4V6)
+                .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE))
+                .setInfrastructureBitmask(infrastructureBitmask)
+                .build();
+        // InfrastructureBitmask value set to '1(cellular)'
+        assertEquals(infrastructureBitmask, apn2.getInfrastructureBitmask());
     }
 }

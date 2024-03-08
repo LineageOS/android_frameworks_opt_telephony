@@ -38,9 +38,10 @@ android_test {
         "platform-test-annotations",
         "services.core",
         "services.net",
-        "truth-prebuilt",
+        "truth",
         "testables",
-        "platform-compat-test-rules"
+        "platform-compat-test-rules",
+        "flag-junit",
     ],
 
     jarjar_rules: ":jarjar-rules-telephony-tests",

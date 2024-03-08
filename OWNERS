@@ -2,8 +2,8 @@ amagup@google.com
 amallampati@google.com
 amruthr@google.com
 breadley@google.com
-chinmayd@google.com
 fionaxu@google.com
+grantmenke@google.com
 huiwang@google.com
 jackyu@google.com
 jayachandranc@google.com
@@ -17,6 +17,5 @@ tjstuart@google.com
 tnd@google.com
 xiaotonj@google.com
 
-
-
-
+# Domain Selection code is co-owned, adding additional owners for this code
+per-file EmergencyStateTracker*=hwangoo@google.com,forestchoi@google.com,avinashmp@google.com,mkoon@google.com,seheele@google.com

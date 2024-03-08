@@ -17,6 +17,7 @@
 package com.android.internal.telephony.imsphone;
 
 import static junit.framework.Assert.assertNotNull;
+import static junit.framework.Assert.assertNull;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -236,5 +237,41 @@ public class ImsCallTest extends TelephonyTest {
                 ServiceState.RIL_RADIO_TECHNOLOGY_LTE + "");
         assertFalse(mTestImsCall.isWifiCall());
         assertEquals(mTestImsCall.getNetworkType(), TelephonyManager.NETWORK_TYPE_LTE);
+    }
+
+    @Test
+    @SmallTest
+    public void testListenerCalledAfterCallClosed() throws Exception {
+        ImsCallSession mockSession = mock(ImsCallSession.class);
+        ImsCall testImsCall = new ImsCall(mContext, mTestCallProfile);
+        ImsCallProfile profile = new ImsCallProfile();
+        when(mockSession.getCallProfile()).thenReturn(profile);
+        testImsCall.attachSession(mockSession);
+
+        ArgumentCaptor<ImsCallSession.Listener> listenerCaptor =
+                ArgumentCaptor.forClass(ImsCallSession.Listener.class);
+        verify(mockSession).setListener(listenerCaptor.capture(), any());
+        ImsCallSession.Listener listener = listenerCaptor.getValue();
+        assertNotNull(listener);
+
+        // Call closed
+        testImsCall.close();
+        // Set CallProfile value to null because ImsCallSession was closed
+        when(mockSession.getCallProfile()).thenReturn(null);
+
+        // Set new profile with direction of none
+        ImsStreamMediaProfile newProfile = new ImsStreamMediaProfile(
+                ImsStreamMediaProfile.AUDIO_QUALITY_AMR_WB,
+                ImsStreamMediaProfile.DIRECTION_INACTIVE,
+                ImsStreamMediaProfile.VIDEO_QUALITY_NONE,
+                ImsStreamMediaProfile.DIRECTION_INACTIVE,
+                ImsStreamMediaProfile.RTT_MODE_DISABLED);
+        try {
+            listener.callSessionProgressing(mockSession, newProfile);
+        } catch (Exception e) {
+            throw new AssertionError("not expected exception", e);
+        }
+
+        assertNull(testImsCall.getCallProfile());
     }
 }

@@ -36,6 +36,7 @@ import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSIO
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SIGNAL_STRENGTH_AT_END__SIGNAL_STRENGTH_GREAT;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SIGNAL_STRENGTH_AT_END__SIGNAL_STRENGTH_NONE_OR_UNKNOWN;
 
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
 import android.net.wifi.WifiInfo;
@@ -53,6 +54,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.util.LongSparseArray;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
@@ -66,6 +68,9 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.analytics.TelephonyAnalytics;
+import com.android.internal.telephony.analytics.TelephonyAnalytics.CallAnalytics;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
@@ -153,6 +158,7 @@ public class VoiceCallSessionStats {
      */
     private final VoiceCallRatTracker mRatUsage = new VoiceCallRatTracker();
 
+    private final @NonNull FeatureFlags mFlags;
     private final int mPhoneId;
     private final Phone mPhone;
 
@@ -162,10 +168,13 @@ public class VoiceCallSessionStats {
     private final DeviceStateHelper mDeviceStateHelper =
             PhoneFactory.getMetricsCollector().getDeviceStateHelper();
 
-    public VoiceCallSessionStats(int phoneId, Phone phone) {
+    private final VonrHelper mVonrHelper =
+            PhoneFactory.getMetricsCollector().getVonrHelper();
+
+    public VoiceCallSessionStats(int phoneId, Phone phone, @NonNull FeatureFlags featureFlags) {
         mPhoneId = phoneId;
         mPhone = phone;
-
+        mFlags = featureFlags;
         DataConnectionStateTracker.getInstance(phoneId).start(phone);
     }
 
@@ -211,6 +220,19 @@ public class VoiceCallSessionStats {
                     proto.disconnectExtraCode = conn.getPreciseDisconnectCause();
                     proto.disconnectExtraMessage = conn.getVendorDisconnectCause();
                     proto.callDuration = classifyCallDuration(conn.getDurationMillis());
+                    if (mPhone != null) {
+                        TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
+                        if (telephonyAnalytics != null) {
+                            CallAnalytics callAnalytics = telephonyAnalytics.getCallAnalytics();
+                            if (callAnalytics != null) {
+                                callAnalytics.onCallTerminated(proto.isEmergency,
+                                        false /* isOverIms */,
+                                        getVoiceRatWithVoNRFix(mPhone, mPhone.getServiceState(),
+                                                proto.bearerAtEnd),
+                                        proto.simSlotIndex, proto.disconnectReasonCode);
+                            }
+                        }
+                    }
                     finishCall(id);
                 }
             }
@@ -441,6 +463,10 @@ public class VoiceCallSessionStats {
         @VideoState int videoState = conn.getVideoState();
         VoiceCallSession proto = new VoiceCallSession();
 
+        if (mFlags.vonrEnabledMetric()) {
+            mVonrHelper.updateVonrEnabledState();
+        }
+
         proto.bearerAtStart = bearer;
         proto.bearerAtEnd = bearer;
         proto.direction = getDirection(conn);
@@ -468,6 +494,11 @@ public class VoiceCallSessionStats {
         proto.lastKnownRat = rat;
         proto.videoEnabled = videoState != VideoProfile.STATE_AUDIO_ONLY ? true : false;
         proto.handoverInProgress = isHandoverInProgress(bearer, proto.isEmergency);
+
+        boolean isCrossSimCall = isCrossSimCall(conn);
+        proto.isIwlanCrossSimAtStart = isCrossSimCall;
+        proto.isIwlanCrossSimAtEnd = isCrossSimCall;
+        proto.isIwlanCrossSimAtConnected = isCrossSimCall;
 
         // internal fields for tracking
         if (getDirection(conn) == VOICE_CALL_SESSION__DIRECTION__CALL_DIRECTION_MT) {
@@ -535,6 +566,10 @@ public class VoiceCallSessionStats {
         // Set device fold state
         proto.foldState = mDeviceStateHelper.getFoldState();
 
+        if (mFlags.vonrEnabledMetric()) {
+            proto.vonrEnabled = mVonrHelper.getVonrEnabled(mPhone.getSubId());
+        }
+
         mAtomsStorage.addVoiceCallSession(proto);
 
         // merge RAT usages to PersistPullers when the call session ends (i.e. no more active calls)
@@ -594,7 +629,9 @@ public class VoiceCallSessionStats {
             proto.setupFailed = false;
             // Track RAT when voice call is connected.
             ServiceState serviceState = getServiceState();
-            proto.ratAtConnected = getVoiceRatWithVoNRFix(mPhone, serviceState, proto.bearerAtEnd);
+            @NetworkType int rat = getVoiceRatWithVoNRFix(mPhone, serviceState, proto.bearerAtEnd);
+            proto.ratAtConnected = rat;
+            proto.isIwlanCrossSimAtConnected = isCrossSimCall(conn);
             // Reset list of codecs with the last codec at the present time. In this way, we
             // track codec quality only after call is connected and not while ringing.
             resetCodecList(conn);
@@ -631,6 +668,7 @@ public class VoiceCallSessionStats {
                 proto.lastKnownRat = rat;
             }
         }
+        proto.isIwlanCrossSimAtEnd = isCrossSimCall(mPhone);
     }
 
     private void finishImsCall(int id, ImsReasonInfo reasonInfo, long durationMillis) {
@@ -640,6 +678,18 @@ public class VoiceCallSessionStats {
         proto.disconnectExtraCode = reasonInfo.mExtraCode;
         proto.disconnectExtraMessage = ImsStats.filterExtraMessage(reasonInfo.mExtraMessage);
         proto.callDuration = classifyCallDuration(durationMillis);
+        if (mPhone != null) {
+            TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
+            if (telephonyAnalytics != null) {
+                CallAnalytics callAnalytics = telephonyAnalytics.getCallAnalytics();
+                if (callAnalytics != null) {
+                    callAnalytics.onCallTerminated(proto.isEmergency, true /* isOverIms */ ,
+                            getVoiceRatWithVoNRFix(
+                                    mPhone, mPhone.getServiceState(), proto.bearerAtEnd),
+                            proto.simSlotIndex, proto.disconnectReasonCode);
+                }
+            }
+        }
         finishCall(id);
     }
 
@@ -876,6 +926,21 @@ public class VoiceCallSessionStats {
      */
     private static int getConnectionId(Connection conn) {
         return conn == null ? 0 : (int) conn.getCreateTime();
+    }
+
+    private boolean isCrossSimCall(Connection conn) {
+        if (conn instanceof ImsPhoneConnection) {
+            return ((ImsPhoneConnection) conn).isCrossSimCall();
+        }
+        return false;
+    }
+
+    private boolean isCrossSimCall(Phone phone) {
+        if (phone.getImsPhone() != null) {
+            return phone.getImsPhone().getImsRegistrationTech()
+                    == ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM;
+        }
+        return false;
     }
 
     @VisibleForTesting

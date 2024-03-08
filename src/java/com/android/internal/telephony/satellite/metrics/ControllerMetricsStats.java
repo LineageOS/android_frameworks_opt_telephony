@@ -178,9 +178,9 @@ public class ControllerMetricsStats {
 
     /** Report a counter when an attempt for incoming datagram is failed */
     public void reportIncomingDatagramCount(
-            @NonNull @SatelliteManager.SatelliteError int result) {
+            @NonNull @SatelliteManager.SatelliteResult int result) {
         SatelliteStats.SatelliteControllerParams controllerParam;
-        if (result == SatelliteManager.SATELLITE_ERROR_NONE) {
+        if (result == SatelliteManager.SATELLITE_RESULT_SUCCESS) {
             controllerParam = new SatelliteStats.SatelliteControllerParams.Builder()
                     .setCountOfIncomingDatagramSuccess(ADD_COUNT)
                     .build();
@@ -194,9 +194,9 @@ public class ControllerMetricsStats {
     }
 
     /** Report a counter when an attempt for de-provision is success or not */
-    public void reportProvisionCount(@NonNull @SatelliteManager.SatelliteError int result) {
+    public void reportProvisionCount(@NonNull @SatelliteManager.SatelliteResult int result) {
         SatelliteStats.SatelliteControllerParams controllerParam;
-        if (result == SatelliteManager.SATELLITE_ERROR_NONE) {
+        if (result == SatelliteManager.SATELLITE_RESULT_SUCCESS) {
             controllerParam = new SatelliteStats.SatelliteControllerParams.Builder()
                     .setCountOfProvisionSuccess(ADD_COUNT)
                     .build();
@@ -210,9 +210,9 @@ public class ControllerMetricsStats {
     }
 
     /** Report a counter when an attempt for de-provision is success or not */
-    public void reportDeprovisionCount(@NonNull @SatelliteManager.SatelliteError int result) {
+    public void reportDeprovisionCount(@NonNull @SatelliteManager.SatelliteResult int result) {
         SatelliteStats.SatelliteControllerParams controllerParam;
-        if (result == SatelliteManager.SATELLITE_ERROR_NONE) {
+        if (result == SatelliteManager.SATELLITE_RESULT_SUCCESS) {
             controllerParam = new SatelliteStats.SatelliteControllerParams.Builder()
                     .setCountOfDeprovisionSuccess(ADD_COUNT)
                     .build();

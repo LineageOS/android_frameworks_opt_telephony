@@ -9,7 +9,8 @@
       ]
     },
     {
-      "name": "CarrierAppIntegrationTestCases"
+      "name": "CarrierAppIntegrationTestCases",
+      "keywords": ["internal"]
     },
     {
       "name": "CtsTelephony2TestCases",

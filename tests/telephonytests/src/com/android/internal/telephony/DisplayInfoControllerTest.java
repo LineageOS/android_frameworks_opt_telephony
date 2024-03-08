@@ -42,11 +42,14 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.text.TextUtils;
 
+import com.android.internal.telephony.flags.FeatureFlags;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 import java.util.Collections;
 import java.util.concurrent.Executor;
@@ -54,17 +57,18 @@ import java.util.concurrent.Executor;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class DisplayInfoControllerTest extends TelephonyTest {
-
     private static final int PHONE_ID = 0;
     private static final String MCC = "600";
     private static final String MNC = "01";
     private static final String NUMERIC = MCC + MNC;
     private static final String NETWORK = "TestNet";
 
+    // Mocked classes
+    private FeatureFlags mFeatureFlags;
+
     private DisplayInfoController mDic;
     private ServiceStateTracker mSst;
     private ServiceStateTrackerTestHandler mSstHandler;
-    private SignalStrengthController mSsc;
     private PersistableBundle mBundle;
     private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
 
@@ -75,8 +79,8 @@ public class DisplayInfoControllerTest extends TelephonyTest {
 
         @Override
         public void onLooperPrepared() {
-            mSsc = new SignalStrengthController(mPhone);
-            doReturn(mSsc).when(mPhone).getSignalStrengthController();
+            SignalStrengthController ssc = new SignalStrengthController(mPhone);
+            doReturn(ssc).when(mPhone).getSignalStrengthController();
             doReturn(new ServiceState()).when(mPhone).getServiceState();
             doReturn(NUMERIC).when(mTelephonyManager).getSimOperatorNumericForPhone(eq(PHONE_ID));
             doReturn(NETWORK).when(mTelephonyManager).getSimOperatorNameForPhone(eq(PHONE_ID));
@@ -87,7 +91,7 @@ public class DisplayInfoControllerTest extends TelephonyTest {
             ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener>
                     listenerArgumentCaptor = ArgumentCaptor.forClass(
                     CarrierConfigManager.CarrierConfigChangeListener.class);
-            mSst = new ServiceStateTracker(mPhone, mSimulatedCommands);
+            mSst = new ServiceStateTracker(mPhone, mSimulatedCommands, mFeatureFlags);
             verify(mCarrierConfigManager, atLeast(2)).registerCarrierConfigChangeListener(any(),
                     listenerArgumentCaptor.capture());
             mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(1);
@@ -101,6 +105,7 @@ public class DisplayInfoControllerTest extends TelephonyTest {
         logd("DisplayInfoControllerTest setup!");
         super.setUp(getClass().getSimpleName());
 
+        mFeatureFlags = Mockito.mock(FeatureFlags.class);
         doReturn((Executor) Runnable::run).when(mContext).getMainExecutor();
         mBundle = mContextFixture.getCarrierConfigBundle();
         mSstHandler = new ServiceStateTrackerTestHandler(getClass().getSimpleName());
@@ -191,7 +196,7 @@ public class DisplayInfoControllerTest extends TelephonyTest {
         assertFalse(ss.getRoaming()); // home
 
         doReturn(mSst).when(mPhone).getServiceStateTracker();
-        mDic = new DisplayInfoController(mPhone);
+        mDic = new DisplayInfoController(mPhone, mFeatureFlags);
         mDic.updateTelephonyDisplayInfo();
         TelephonyDisplayInfo tdi = mDic.getTelephonyDisplayInfo();
 
@@ -211,7 +216,7 @@ public class DisplayInfoControllerTest extends TelephonyTest {
         assertFalse(ss.getRoaming()); // home
 
         doReturn(mSst).when(mPhone).getServiceStateTracker();
-        mDic = new DisplayInfoController(mPhone);
+        mDic = new DisplayInfoController(mPhone, mFeatureFlags);
         mDic.updateTelephonyDisplayInfo();
         TelephonyDisplayInfo tdi = mDic.getTelephonyDisplayInfo();
 
@@ -232,7 +237,7 @@ public class DisplayInfoControllerTest extends TelephonyTest {
         assertTrue(ss1.getRoaming()); // roam
 
         doReturn(mSst).when(mPhone).getServiceStateTracker();
-        mDic = new DisplayInfoController(mPhone);
+        mDic = new DisplayInfoController(mPhone, mFeatureFlags);
         mDic.updateTelephonyDisplayInfo();
         TelephonyDisplayInfo tdi = mDic.getTelephonyDisplayInfo();
 
@@ -254,7 +259,7 @@ public class DisplayInfoControllerTest extends TelephonyTest {
         assertFalse(ss.getRoaming()); // home
 
         doReturn(mSst).when(mPhone).getServiceStateTracker();
-        mDic = new DisplayInfoController(mPhone);
+        mDic = new DisplayInfoController(mPhone, mFeatureFlags);
         mDic.updateTelephonyDisplayInfo();
         TelephonyDisplayInfo tdi = mDic.getTelephonyDisplayInfo();
 
@@ -275,10 +280,32 @@ public class DisplayInfoControllerTest extends TelephonyTest {
         assertTrue(ss1.getRoaming()); // roam
 
         doReturn(mSst).when(mPhone).getServiceStateTracker();
-        mDic = new DisplayInfoController(mPhone);
+        mDic = new DisplayInfoController(mPhone, mFeatureFlags);
         mDic.updateTelephonyDisplayInfo();
         TelephonyDisplayInfo tdi = mDic.getTelephonyDisplayInfo();
 
         assertTrue(tdi.isRoaming());
+    }
+
+    @Test
+    public void testIsRoamingOverride_HideRoamingIndicator() {
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+        mBundle.putStringArray(
+                CarrierConfigManager.KEY_GSM_ROAMING_NETWORKS_STRING_ARRAY, new String[] {NUMERIC});
+        mBundle.putBoolean(CarrierConfigManager.KEY_SHOW_ROAMING_INDICATOR_BOOL, false);
+        doReturn(true).when(mFeatureFlags).hideRoamingIcon();
+        sendCarrierConfigUpdate();
+
+        changeRegState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        ServiceState ss1 = mSst.getServiceState();
+
+        assertTrue(ss1.getRoaming()); // roam
+
+        doReturn(mSst).when(mPhone).getServiceStateTracker();
+        mDic = new DisplayInfoController(mPhone, mFeatureFlags);
+        mDic.updateTelephonyDisplayInfo();
+        TelephonyDisplayInfo tdi = mDic.getTelephonyDisplayInfo();
+
+        assertFalse(tdi.isRoaming()); // display override
     }
 }

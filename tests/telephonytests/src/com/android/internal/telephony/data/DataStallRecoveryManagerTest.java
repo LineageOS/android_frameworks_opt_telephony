@@ -29,6 +29,7 @@ import static org.mockito.Mockito.verify;
 import android.content.Intent;
 import android.database.ContentObserver;
 import android.net.NetworkAgent;
+import android.net.NetworkCapabilities;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -51,8 +52,7 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Set;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -154,12 +154,14 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         DataNetworkControllerCallback dataNetworkControllerCallback =
                 dataNetworkControllerCallbackCaptor.getAllValues().get(0);
 
-        if (isConnected) {
-            List<DataNetwork> dataprofile = new ArrayList<>();
-            dataNetworkControllerCallback.onInternetDataNetworkConnected(dataprofile);
-        } else {
-            dataNetworkControllerCallback.onInternetDataNetworkDisconnected();
+        DataNetwork network = mock(DataNetwork.class);
+        NetworkCapabilities netCaps = new NetworkCapabilities();
+        doReturn(netCaps).when(network).getNetworkCapabilities();
+        if (!isConnected) {
+            // A network that doesn't need to be tracked for validation
+            netCaps.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
         }
+        dataNetworkControllerCallback.onConnectedInternetDataNetworksChanged(Set.of(network));
         processAllMessages();
     }
 

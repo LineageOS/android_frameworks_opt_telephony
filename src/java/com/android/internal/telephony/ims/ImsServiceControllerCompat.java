@@ -118,13 +118,13 @@ public class ImsServiceControllerCompat extends ImsServiceController {
     public final void disableIms(int slotId, int subId) {
         MmTelFeatureCompatAdapter adapter = mMmTelCompatAdapters.get(slotId);
         if (adapter == null) {
-            Log.w(TAG, "enableIms: adapter null for slot :" + slotId);
+            Log.w(TAG, "disableIms: adapter null for slot :" + slotId);
             return;
         }
         try {
             adapter.disableIms();
         } catch (RemoteException e) {
-            Log.w(TAG, "Couldn't enable IMS: " + e.getMessage());
+            Log.w(TAG, "Couldn't disableIms IMS: " + e.getMessage());
         }
     }
 
