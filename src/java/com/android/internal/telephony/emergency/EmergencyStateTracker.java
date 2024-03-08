@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.emergency;
 
+import static android.telecom.Connection.STATE_ACTIVE;
+import static android.telecom.Connection.STATE_DISCONNECTED;
 import static android.telephony.CarrierConfigManager.ImsEmergency.KEY_EMERGENCY_CALLBACK_MODE_SUPPORTED_BOOL;
 
 import static com.android.internal.telephony.emergency.EmergencyConstants.MODE_EMERGENCY_CALLBACK;
@@ -53,12 +55,15 @@ import android.util.ArraySet;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
+import com.android.internal.telephony.CallStateException;
+import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.data.PhoneSwitcher;
+import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 import com.android.internal.telephony.satellite.SatelliteController;
 import com.android.telephony.Rlog;
 
@@ -77,6 +82,19 @@ public class EmergencyStateTracker {
 
     private static final String TAG = "EmergencyStateTracker";
 
+    private static class OnDisconnectListener extends Connection.ListenerBase {
+        private final CompletableFuture<Boolean> mFuture;
+
+        OnDisconnectListener(CompletableFuture<Boolean> future) {
+            mFuture = future;
+        }
+
+        @Override
+        public void onDisconnect(int cause) {
+            mFuture.complete(true);
+        }
+    };
+
     /**
      * Timeout before we continue with the emergency call without waiting for DDS switch response
      * from the modem.
@@ -90,6 +108,9 @@ public class EmergencyStateTracker {
     private static final long DEFAULT_ECM_EXIT_TIMEOUT_MS = 300000;
 
     private static final int DEFAULT_TRANSPORT_CHANGE_TIMEOUT_MS = 1 * 1000;
+
+    // Timeout to wait for the termination of incoming call before continue with the emergency call.
+    private static final int DEFAULT_REJECT_INCOMING_CALL_TIMEOUT_MS = 3 * 1000; // 3 seconds.
 
     /** The emergency types used when setting the emergency mode on modem. */
     @Retention(RetentionPolicy.SOURCE)
@@ -149,6 +170,7 @@ public class EmergencyStateTracker {
     private boolean mIsEmergencySmsStartedDuringScbm;
 
     private CompletableFuture<Boolean> mEmergencyTransportChangedFuture;
+    private final Object mRegistrantidentifier = new Object();
 
     private final android.util.ArrayMap<Integer, Boolean> mNoSimEcbmSupported =
             new android.util.ArrayMap<>();
@@ -233,6 +255,8 @@ public class EmergencyStateTracker {
     public static final int MSG_SET_EMERGENCY_CALLBACK_MODE_DONE = 3;
     /** A message which is used to automatically exit from SCBM after a period of time. */
     private static final int MSG_EXIT_SCBM = 4;
+    @VisibleForTesting
+    public static final int MSG_NEW_RINGING_CONNECTION = 5;
 
     private class MyHandler extends Handler {
 
@@ -377,6 +401,10 @@ public class EmergencyStateTracker {
                     exitEmergencySmsCallbackModeAndEmergencyMode();
                     break;
                 }
+                case MSG_NEW_RINGING_CONNECTION: {
+                    handleNewRingingConnection(msg);
+                    break;
+                }
                 default:
                     break;
             }
@@ -436,6 +464,8 @@ public class EmergencyStateTracker {
         filter.addAction(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
         context.registerReceiver(mEcmExitReceiver, filter, null, mHandler);
         mTelephonyManagerProxy = new TelephonyManagerProxyImpl(context);
+
+        registerForNewRingingConnection();
     }
 
     /**
@@ -471,6 +501,7 @@ public class EmergencyStateTracker {
         IntentFilter filter = new IntentFilter();
         filter.addAction(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
         context.registerReceiver(mEcmExitReceiver, filter, null, mHandler);
+        registerForNewRingingConnection();
     }
 
     /**
@@ -550,6 +581,7 @@ public class EmergencyStateTracker {
                 mPhone = phone;
                 mOngoingConnection = c;
                 mIsTestEmergencyNumber = isTestEmergencyNumber;
+                maybeRejectIncomingCall(null);
                 return mCallEmergencyModeFuture;
             }
         }
@@ -557,7 +589,10 @@ public class EmergencyStateTracker {
         mPhone = phone;
         mOngoingConnection = c;
         mIsTestEmergencyNumber = isTestEmergencyNumber;
-        turnOnRadioAndSwitchDds(mPhone, EMERGENCY_TYPE_CALL, mIsTestEmergencyNumber);
+        maybeRejectIncomingCall(result -> {
+            Rlog.i(TAG, "maybeRejectIncomingCall : result = " + result);
+            turnOnRadioAndSwitchDds(mPhone, EMERGENCY_TYPE_CALL, mIsTestEmergencyNumber);
+        });
         return mCallEmergencyModeFuture;
     }
 
@@ -1722,5 +1757,97 @@ public class EmergencyStateTracker {
 
         Rlog.i(TAG, "updateNoSimEcbmSupported preference updated slotIndex=" + slotIndex
                 + ", supported=" + carrierConfig);
+    }
+
+    /**
+     * Ensures that there is no incoming call.
+     *
+     * @param completeConsumer The consumer to call once rejecting incoming call completes,
+     *                         provides {@code true} result if operation completes successfully
+     *                         or {@code false} if the operation timed out/failed.
+     */
+    private void maybeRejectIncomingCall(Consumer<Boolean> completeConsumer) {
+        Phone[] phones = mPhoneFactoryProxy.getPhones();
+        if (phones == null) {
+            if (completeConsumer != null) {
+                completeConsumer.accept(true);
+            }
+            return;
+        }
+
+        Call ringingCall = null;
+        for (Phone phone : phones) {
+            ringingCall = phone.getRingingCall();
+            if (ringingCall != null && ringingCall.isRinging()) {
+                Rlog.i(TAG, "maybeRejectIncomingCall found a ringing call");
+                break;
+            }
+        }
+
+        if (ringingCall == null || !ringingCall.isRinging()) {
+            if (completeConsumer != null) {
+                completeConsumer.accept(true);
+            }
+            return;
+        }
+
+        try {
+            ringingCall.hangup();
+            if (completeConsumer == null) return;
+
+            CompletableFuture<Boolean> future = new CompletableFuture<>();
+            com.android.internal.telephony.Connection cn = ringingCall.getLatestConnection();
+            cn.addListener(new OnDisconnectListener(future));
+            // A timeout that will complete the future to not block the outgoing call indefinitely.
+            CompletableFuture<Boolean> timeout = new CompletableFuture<>();
+            mHandler.postDelayed(
+                    () -> timeout.complete(false), DEFAULT_REJECT_INCOMING_CALL_TIMEOUT_MS);
+            // Ensure that the Consumer is completed on the main thread.
+            CompletableFuture<Void> unused = future.acceptEitherAsync(timeout, completeConsumer,
+                    mHandler::post).exceptionally((ex) -> {
+                        Rlog.w(TAG, "maybeRejectIncomingCall - exceptionally= " + ex);
+                        return null;
+                    });
+        } catch (Exception e) {
+            Rlog.w(TAG, "maybeRejectIncomingCall - exception= " + e.getMessage());
+            if (completeConsumer != null) {
+                completeConsumer.accept(false);
+            }
+        }
+    }
+
+    private void registerForNewRingingConnection() {
+        Phone[] phones = mPhoneFactoryProxy.getPhones();
+        if (phones == null) {
+            // unit testing
+            return;
+        }
+        for (Phone phone : phones) {
+            phone.registerForNewRingingConnection(mHandler, MSG_NEW_RINGING_CONNECTION,
+                    mRegistrantidentifier);
+        }
+    }
+
+    /**
+     * Hangup the new ringing call if there is an ongoing emergency call not connected.
+     */
+    private void handleNewRingingConnection(Message msg) {
+        Connection c = (Connection) ((AsyncResult) msg.obj).result;
+        if (c == null || mOngoingConnection == null
+                || mOngoingConnection.getState() == STATE_ACTIVE
+                || mOngoingConnection.getState() == STATE_DISCONNECTED) {
+            return;
+        }
+        if ((c.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS)
+                && ((ImsPhoneConnection) c).isIncomingCallAutoRejected()) {
+            Rlog.i(TAG, "handleNewRingingConnection auto rejected call");
+        } else {
+            try {
+                Rlog.i(TAG, "handleNewRingingConnection silently drop incoming call");
+                c.getCall().hangup();
+            } catch (CallStateException e) {
+                Rlog.w(TAG, "handleNewRingingConnection", e);
+            }
+        }
     }
 }
