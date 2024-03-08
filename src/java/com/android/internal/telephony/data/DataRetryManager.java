@@ -1192,7 +1192,7 @@ public class DataRetryManager extends Handler {
 
         boolean retryScheduled = false;
         List<NetworkRequestList> groupedNetworkRequestLists =
-                DataUtils.getGroupedNetworkRequestList(requestList);
+                DataUtils.getGroupedNetworkRequestList(requestList, mFlags);
         for (DataSetupRetryRule retryRule : mDataSetupRetryRuleList) {
             if (retryRule.isPermanentFailCauseRule() && retryRule.getFailCauses().contains(cause)) {
                 if (dataProfile.getApnSetting() != null) {

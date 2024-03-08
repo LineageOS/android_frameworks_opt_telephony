@@ -163,6 +163,16 @@ public class TelephonyNetworkFactory extends NetworkFactory {
                 .addEnterpriseId(NetworkCapabilities.NET_ENTERPRISE_ID_5)
                 .setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
                 .setSubscriptionId(subscriptionId).build());
+
+        if (mFlags.satelliteInternet()) {
+            // TODO: b/328622096 remove the try/catch
+            try {
+                builder.addTransportType(NetworkCapabilities.TRANSPORT_SATELLITE);
+            } catch (IllegalArgumentException exception) {
+                log("TRANSPORT_SATELLITE is not supported.");
+            }
+        }
+
         return builder.build();
     }
 
@@ -263,7 +273,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
 
     private void onNeedNetworkFor(Message msg) {
         TelephonyNetworkRequest networkRequest =
-                new TelephonyNetworkRequest((NetworkRequest) msg.obj, mPhone);
+                new TelephonyNetworkRequest((NetworkRequest) msg.obj, mPhone, mFlags);
         boolean shouldApply = mPhoneSwitcher.shouldApplyNetworkRequest(
                 networkRequest, mPhone.getPhoneId());
 
@@ -289,7 +299,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
 
     private void onReleaseNetworkFor(Message msg) {
         TelephonyNetworkRequest networkRequest =
-                new TelephonyNetworkRequest((NetworkRequest) msg.obj, mPhone);
+                new TelephonyNetworkRequest((NetworkRequest) msg.obj, mPhone, mFlags);
         boolean applied = mNetworkRequests.get(networkRequest)
                 != AccessNetworkConstants.TRANSPORT_TYPE_INVALID;
 
