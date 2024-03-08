@@ -69,6 +69,8 @@ import android.testing.TestableLooper;
 import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.Call;
+import com.android.internal.telephony.CallStateException;
+import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
@@ -2557,6 +2559,120 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
 
         // Verify exitEmergencyMode() is called.
         verify(testPhone).exitEmergencyMode(any(Message.class));
+    }
+
+    /**
+     * Test that the EmergencyStateTracker rejects incoming call when starting an emergency call.
+     */
+    @Test
+    @SmallTest
+    public void testRejectRingingCall() {
+        Phone phone = setupTestPhoneForEmergencyCall(false /* isRoaming */,
+                false /* isRadioOn */);
+        when(phone.getSubId()).thenReturn(1);
+        Connection c = mock(Connection.class);
+        Call call = mock(Call.class);
+        doReturn(c).when(call).getLatestConnection();
+        doReturn(true).when(call).isRinging();
+        doReturn(call).when(phone).getRingingCall();
+        setEcmSupportedConfig(phone, true);
+
+        EmergencyStateTracker testEst = setupEmergencyStateTracker(
+                false /* isSuplDdsSwitchRequiredForEmergencyCall */);
+
+        // There is an ongoing emergency call.
+        CompletableFuture<Integer> future = testEst.startEmergencyCall(phone,
+                mTestConnection1, false);
+
+        assertNotNull(future);
+
+        // Verify rejecting ringing call.
+        try {
+            verify(call).hangup();
+        } catch (CallStateException e) {
+        }
+    }
+
+    /**
+     * Test that the EmergencyStateTracker rejects incoming call if there is an emergency call
+     * in dialing state.
+     */
+    @Test
+    @SmallTest
+    public void testRejectNewIncomingCall() {
+        Phone phone = setupTestPhoneForEmergencyCall(false /* isRoaming */,
+                false /* isRadioOn */);
+        when(phone.getSubId()).thenReturn(1);
+        setEcmSupportedConfig(phone, true);
+
+        EmergencyStateTracker testEst = setupEmergencyStateTracker(
+                false /* isSuplDdsSwitchRequiredForEmergencyCall */);
+
+        ArgumentCaptor<Handler> handlerCaptor = ArgumentCaptor.forClass(Handler.class);
+        ArgumentCaptor<Integer> intCaptor = ArgumentCaptor.forClass(Integer.class);
+
+        verify(phone).registerForNewRingingConnection(handlerCaptor.capture(),
+                intCaptor.capture(), any());
+        assertNotNull(handlerCaptor.getValue());
+        assertNotNull(intCaptor.getValue());
+
+        // There is an ongoing emergency call.
+        CompletableFuture<Integer> future = testEst.startEmergencyCall(phone,
+                mTestConnection1, false);
+
+        assertNotNull(future);
+
+        Connection c = mock(Connection.class);
+        Call call = mock(Call.class);
+        doReturn(call).when(c).getCall();
+
+        Message msg = Message.obtain(handlerCaptor.getValue(), intCaptor.getValue());
+        AsyncResult.forMessage(msg, c, null);
+        msg.sendToTarget();
+        processAllMessages();
+
+        // Verify rejecting incoming call.
+        try {
+            verify(call).hangup();
+        } catch (CallStateException e) {
+        }
+    }
+
+    @Test
+    @SmallTest
+    public void testNotRejectNewIncomingCall() {
+        Phone phone = setupTestPhoneForEmergencyCall(false /* isRoaming */,
+                false /* isRadioOn */);
+        when(phone.getSubId()).thenReturn(1);
+        setEcmSupportedConfig(phone, true);
+
+        EmergencyStateTracker unused = setupEmergencyStateTracker(
+                false /* isSuplDdsSwitchRequiredForEmergencyCall */);
+
+        ArgumentCaptor<Handler> handlerCaptor = ArgumentCaptor.forClass(Handler.class);
+        ArgumentCaptor<Integer> intCaptor = ArgumentCaptor.forClass(Integer.class);
+
+        verify(phone).registerForNewRingingConnection(handlerCaptor.capture(),
+                intCaptor.capture(), any());
+        assertNotNull(handlerCaptor.getValue());
+        assertNotNull(intCaptor.getValue());
+
+        // There is no ongoing emergency call.
+
+        Connection c = mock(Connection.class);
+        Call call = mock(Call.class);
+        doReturn(call).when(c).getCall();
+
+        Message msg = Message.obtain(handlerCaptor.getValue(), intCaptor.getValue());
+        AsyncResult.forMessage(msg, c, null);
+        msg.sendToTarget();
+        processAllMessages();
+
+        // Verify not rejecting incoming call.
+        try {
+            verify(call, never()).hangup();
+        } catch (CallStateException e) {
+        }
     }
 
     private EmergencyStateTracker setupEmergencyStateTracker(
