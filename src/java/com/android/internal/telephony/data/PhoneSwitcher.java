@@ -1894,6 +1894,11 @@ public class PhoneSwitcher extends Handler {
                     hold the retry until sim gets ready */
                     logl("onDdsSwitchResponse: Wait for SIM to get READY");
                     return;
+                } else if (error == CommandException.Error.RADIO_NOT_AVAILABLE) {
+                    logl("onDdsSwitchResponse: Falling back to HAL_COMMAND_ALLOW_DATA");
+                    mHalCommandToUse = HAL_COMMAND_ALLOW_DATA;
+                    sendRilCommands(phoneId);
+                    return;
                 }
             }
             logl("onDdsSwitchResponse: Scheduling DDS switch retry");
