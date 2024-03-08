@@ -431,6 +431,9 @@ public class SatelliteSessionController extends StateMachine {
                 case EVENT_SATELLITE_ENABLED_STATE_CHANGED:
                     handleSatelliteEnabledStateChanged((boolean) msg.obj);
                     break;
+                case EVENT_SATELLITE_MODEM_STATE_CHANGED:
+                    deferMessage(msg);
+                    break;
             }
             // Ignore all unexpected events.
             return HANDLED;
@@ -443,6 +446,14 @@ public class SatelliteSessionController extends StateMachine {
                 } else {
                     transitionTo(mIdleState);
                 }
+            } else {
+                /*
+                 * During the state transition from POWER_OFF to NOT_CONNECTED, modem might be
+                 * reset. In such cases, we need to remove all deferred
+                 * EVENT_SATELLITE_MODEM_STATE_CHANGED events so that they will not mess up our
+                 * state machine later.
+                 */
+                removeDeferredMessages(EVENT_SATELLITE_MODEM_STATE_CHANGED);
             }
         }
     }
