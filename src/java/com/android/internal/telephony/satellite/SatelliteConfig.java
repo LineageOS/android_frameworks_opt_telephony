@@ -228,6 +228,10 @@ public class SatelliteConfig {
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public boolean isFileExist(Path filePath) {
+        if (filePath == null) {
+            Log.d(TAG, "isFileExist : filePath is null");
+            return false;
+        }
         return Files.exists(filePath);
     }
 }
