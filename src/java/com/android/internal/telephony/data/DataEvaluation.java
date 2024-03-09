@@ -346,7 +346,9 @@ public class DataEvaluation {
         /** Handover max retry stopped but network is not on the preferred transport. */
         HANDOVER_RETRY_STOPPED(true),
         /** BootStrap sim data limit reached. */
-        DATA_LIMIT_REACHED(true);
+        DATA_LIMIT_REACHED(true),
+        /** Data network connectivity transport not allowed. */
+        DATA_NETWORK_TRANSPORT_NOT_ALLOWED(true);
 
         private final boolean mIsHardReason;
 
