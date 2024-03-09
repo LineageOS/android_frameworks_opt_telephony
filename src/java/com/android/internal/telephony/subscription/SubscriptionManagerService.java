@@ -4422,6 +4422,43 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
+     * checks whether esim bootstrap is activated for any of the available active subscription info
+     * list.
+     *
+     * @return {@code true} if esim bootstrap is activated for any of the active subscription,
+     * else {@code false}
+     *
+     */
+    public boolean isEsimBootStrapProvisioningActivated() {
+        if (!mFeatureFlags.esimBootstrapProvisioningFlag()) {
+            return false;
+        }
+
+        List<SubscriptionInfo> activeSubInfos =
+                getActiveSubscriptionInfoList(mContext.getOpPackageName(),
+                        mContext.getAttributionTag(), true/*isForAllProfile*/);
+
+        return activeSubInfos.stream().anyMatch(subInfo -> subInfo != null
+                && subInfo.getProfileClass() == SubscriptionManager.PROFILE_CLASS_PROVISIONING);
+    }
+
+    /**
+     * checks whether esim bootstrap is activated for the subscription.
+     *
+     * @return {@code true} if esim bootstrap is activated for sub id else {@code false}
+     *
+     */
+    public boolean isEsimBootStrapProvisioningActiveForSubId(int subId) {
+        if (!mFeatureFlags.esimBootstrapProvisioningFlag()) {
+            return false;
+        }
+
+        SubscriptionInfoInternal subInfo = getSubscriptionInfoInternal(subId);
+        return subInfo != null
+                && subInfo.getProfileClass() == SubscriptionManager.PROFILE_CLASS_PROVISIONING;
+    }
+
+    /**
      * Get the current calling package name.
      * @return the current calling package name
      */
