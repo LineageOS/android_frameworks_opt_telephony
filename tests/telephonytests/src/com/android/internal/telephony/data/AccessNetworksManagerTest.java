@@ -356,7 +356,7 @@ public class AccessNetworksManagerTest extends TelephonyTest {
 
         mAccessNetworksManager.registerCallback(mMockedCallback);
 
-        mQnsCallback.onReconnectQualifedNetworkType(ApnSetting.TYPE_IMS | ApnSetting.TYPE_MMS,
+        mQnsCallback.onReconnectQualifiedNetworkType(ApnSetting.TYPE_IMS | ApnSetting.TYPE_MMS,
                 AccessNetworkType.IWLAN);
         processAllMessages();
 
@@ -381,7 +381,7 @@ public class AccessNetworksManagerTest extends TelephonyTest {
     @Test
     public void testCallbackForReconnectQualifiedNetworkTypeWithFlagDisabled() throws Exception {
         when(mFeatureFlags.reconnectQualifiedNetwork()).thenReturn(false);
-        mQnsCallback.onReconnectQualifedNetworkType(ApnSetting.TYPE_IMS | ApnSetting.TYPE_MMS,
+        mQnsCallback.onReconnectQualifiedNetworkType(ApnSetting.TYPE_IMS | ApnSetting.TYPE_MMS,
                 AccessNetworkType.IWLAN);
         processAllMessages();
 
