@@ -69,3 +69,13 @@ flag {
     description: "This flag controls whether framework supports SIP subscribe retry or not"
     bug:"297023230"
 }
+
+flag {
+    name: "answer_audio_only_when_answering_via_mmi_code"
+    namespace: "telephony"
+    description: "This flag changes the media type when answering incoming call via MMI code"
+    bug:"286499659"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
+}
