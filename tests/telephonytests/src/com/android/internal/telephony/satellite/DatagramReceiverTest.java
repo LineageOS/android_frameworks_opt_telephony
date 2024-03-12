@@ -323,10 +323,10 @@ public class DatagramReceiverTest extends TelephonyTest {
         // Checks invalid case only as SatelliteController does not exist in unit test
         mTestDemoModeDatagramReceiver.setDemoMode(true);
         mTestDemoModeDatagramReceiver.setDeviceAlignedWithSatellite(true);
-        when(mMockDatagramController.getDemoModeDatagram()).thenReturn(mDatagram);
+        when(mMockDatagramController.popDemoModeDatagram()).thenReturn(mDatagram);
         mTestDemoModeDatagramReceiver.pollPendingSatelliteDatagrams(SUB_ID, mResultListener::offer);
         processAllMessages();
-        verify(mMockDatagramController, times(1)).getDemoModeDatagram();
+        verify(mMockDatagramController, times(1)).popDemoModeDatagram();
         verify(mMockDatagramController)
                 .updateReceiveStatus(eq(SUB_ID),
                         eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING),
@@ -353,10 +353,10 @@ public class DatagramReceiverTest extends TelephonyTest {
         mTestDemoModeDatagramReceiver.setDemoMode(true);
         mTestDemoModeDatagramReceiver.setDuration(TEST_EXPIRE_TIMER_SATELLITE_ALIGN);
         mTestDemoModeDatagramReceiver.setDeviceAlignedWithSatellite(false);
-        when(mMockDatagramController.getDemoModeDatagram()).thenReturn(mDatagram);
+        when(mMockDatagramController.popDemoModeDatagram()).thenReturn(mDatagram);
         mTestDemoModeDatagramReceiver.pollPendingSatelliteDatagrams(SUB_ID, mResultListener::offer);
         processAllMessages();
-        verify(mMockDatagramController, never()).getDemoModeDatagram();
+        verify(mMockDatagramController, never()).popDemoModeDatagram();
         verify(mMockDatagramController)
                 .updateReceiveStatus(eq(SUB_ID),
                         eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING),

@@ -89,6 +89,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
             (int) TimeUnit.SECONDS.toMillis(180);
     private static final long TEST_DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMEOUT_MILLIS =
             TimeUnit.SECONDS.toMillis(60);
+    private static final Long TIMEOUT_DATAGRAM_DELAY_IN_DEMO_MODE = TimeUnit.SECONDS.toMillis(10);
 
     private DatagramDispatcher mDatagramDispatcherUT;
     private TestDatagramDispatcher mTestDemoModeDatagramDispatcher;
@@ -409,6 +410,8 @@ public class DatagramDispatcherTest extends TelephonyTest {
                 true, mResultListener::offer);
 
         processAllMessages();
+        moveTimeForward(TIMEOUT_DATAGRAM_DELAY_IN_DEMO_MODE);
+        processAllMessages();
 
         mInOrder.verify(mMockDatagramController)
                 .updateSendStatus(eq(SUB_ID),
@@ -483,6 +486,8 @@ public class DatagramDispatcherTest extends TelephonyTest {
         mTestDemoModeDatagramDispatcher.sendSatelliteDatagram(SUB_ID, DATAGRAM_TYPE2, mDatagram,
                 true, mResultListener::offer);
 
+        processAllMessages();
+        moveTimeForward(TIMEOUT_DATAGRAM_DELAY_IN_DEMO_MODE);
         processAllMessages();
 
         mInOrder.verify(mMockDatagramController)
@@ -597,6 +602,11 @@ public class DatagramDispatcherTest extends TelephonyTest {
         mTestDemoModeDatagramDispatcher.sendSatelliteDatagram(SUB_ID, DATAGRAM_TYPE1, mDatagram,
                 true, mIntegerConsumer);
         processAllMessages();
+        moveTimeForward(TIMEOUT_DATAGRAM_DELAY_IN_DEMO_MODE);
+        processAllMessages();
+
+        verify(mMockDatagramController).pollPendingSatelliteDatagrams(anyInt(), any());
+
         waitForIntegerConsumerResult(1);
         assertEquals(SatelliteManager.SATELLITE_RESULT_SUCCESS,
                 (int) mIntegerConsumerResult.get(0));
@@ -609,6 +619,11 @@ public class DatagramDispatcherTest extends TelephonyTest {
         mTestDemoModeDatagramDispatcher.sendSatelliteDatagram(SUB_ID, DATAGRAM_TYPE1, mDatagram,
                 true, mIntegerConsumer);
         processAllMessages();
+        moveTimeForward(TIMEOUT_DATAGRAM_DELAY_IN_DEMO_MODE);
+        processAllMessages();
+
+        verify(mMockDatagramController, times(2)).pollPendingSatelliteDatagrams(anyInt(), any());
+
         waitForIntegerConsumerResult(1);
         assertEquals(SatelliteManager.SATELLITE_RESULT_SUCCESS,
                 (int) mIntegerConsumerResult.get(0));
