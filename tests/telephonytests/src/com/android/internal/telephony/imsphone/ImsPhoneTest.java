@@ -73,6 +73,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.sysprop.TelephonyProperties;
+import android.telecom.VideoProfile;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
@@ -284,6 +285,14 @@ public class ImsPhoneTest extends TelephonyTest {
         doReturn(Call.State.INCOMING).when(mRingingCall).getState();
         assertEquals(true, mImsPhoneUT.handleInCallMmiCommands("2"));
         verify(mImsCT).acceptCall(ImsCallProfile.CALL_TYPE_VOICE);
+
+        // Verify b/286499659, fixed media type
+        doReturn(true).when(mFeatureFlags).answerAudioOnlyWhenAnsweringViaMmiCode();
+        doReturn(Call.State.IDLE).when(mForegroundCall).getState();
+        doReturn(Call.State.IDLE).when(mBackgroundCall).getState();
+        doReturn(Call.State.INCOMING).when(mRingingCall).getState();
+        assertEquals(true, mImsPhoneUT.handleInCallMmiCommands("2"));
+        verify(mImsCT).acceptCall(VideoProfile.STATE_AUDIO_ONLY);
     }
 
     @Test
