@@ -3219,6 +3219,7 @@ public class SatelliteController extends Handler {
     private void setDemoModeEnabled(boolean enabled) {
         mIsDemoModeEnabled = enabled;
         mDatagramController.setDemoMode(mIsDemoModeEnabled);
+        logd("setDemoModeEnabled: mIsDemoModeEnabled=" + mIsDemoModeEnabled);
     }
 
     private boolean isMockModemAllowed() {
