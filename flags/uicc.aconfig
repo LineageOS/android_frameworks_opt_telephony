@@ -14,6 +14,7 @@ flag {
 }
 flag {
     name: "carrier_restriction_status"
+    is_exported: true
     namespace: "telephony"
     description: "This flag controls the visibility of the getCarrierRestrictionStatus in carrierRestrictionRules class."
     bug:"313553044"
@@ -26,6 +27,7 @@ flag {
 }
 flag {
     name: "esim_available_memory"
+    is_exported: true
     namespace: "telephony"
     description: "This flag controls eSIM available memory feature."
     bug:"318348580"

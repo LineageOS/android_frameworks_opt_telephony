@@ -16,6 +16,7 @@ flag {
 
 flag {
   name: "mms_disabled_error"
+  is_exported: true
   namespace: "telephony"
   description: "This flag controls the support of the new MMS error code MMS_ERROR_MMS_DISABLED."
   bug: "305062594"

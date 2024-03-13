@@ -9,6 +9,7 @@ flag {
 
 flag {
   name: "hide_roaming_icon"
+  is_exported: true
   namespace: "telephony"
   description: "Allow carriers to hide the roaming (R) icon when roaming."
   bug: "301467052"
@@ -16,6 +17,7 @@ flag {
 
 flag {
   name: "enable_identifier_disclosure_transparency"
+  is_exported: true
   namespace: "telephony"
   description: "Guards APIs for enabling and disabling identifier disclosure transparency"
   bug: "276752426"
@@ -30,6 +32,7 @@ flag {
 
 flag {
   name: "enable_modem_cipher_transparency"
+  is_exported: true
   namespace: "telephony"
   description: "Guards APIs for enabling and disabling modem cipher transparency."
   bug: "283336425"
@@ -44,6 +47,7 @@ flag {
 
 flag {
   name: "hide_prefer_3g_item"
+  is_exported: true
   namespace: "telephony"
   description: "Used in the Preferred Network Types menu to determine if the 3G option is displayed."
   bug: "310639009"
@@ -58,6 +62,7 @@ flag {
 
 flag {
   name: "network_registration_info_reject_cause"
+  is_exported: true
   namespace: "telephony"
   description: "Elevate NRI#getRejectCause from System to Public"
   bug: "239730435"
