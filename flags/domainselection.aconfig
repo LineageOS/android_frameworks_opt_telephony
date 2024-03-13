@@ -16,6 +16,7 @@ flag {
 
 flag {
     name: "use_oem_domain_selection_service"
+    is_exported: true
     namespace: "telephony"
     description: "This flag controls OEMs' domain selection service supported."
     bug:"258112541"

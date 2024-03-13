@@ -24,6 +24,7 @@ flag {
 
 flag {
   name: "enable_wps_check_api_flag"
+  is_exported: true
   namespace: "telephony"
   description: "Enable system api isWpsCallNumber. Its an utility api to check if the dialed number is for Wireless Priority Service call."
   bug: "304272356"
@@ -59,6 +60,7 @@ flag {
 
 flag {
   name: "show_call_id_and_call_waiting_in_additional_settings_menu"
+  is_exported: true
   namespace: "telephony"
   description: "Expose carrier config KEY_ADDITIONAL_SETTINGS_CALLER_ID_VISIBILITY_BOOL and KEY_ADDITIONAL_SETTINGS_CALL_WAITING_VISIBILITY_BOOL."
   bug: "310264981"
@@ -66,6 +68,7 @@ flag {
 
 flag {
     name: "reset_mobile_network_settings"
+    is_exported: true
     namespace: "telephony"
     description: "Allows applications to launch Reset Mobile Network Settings page in Settings app."
     bug:"271921464"
