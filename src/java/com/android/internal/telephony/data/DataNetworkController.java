@@ -246,13 +246,6 @@ public class DataNetworkController extends Handler {
             TimeUnit.SECONDS.toMillis(1);
 
     /**
-     * The delay in milliseconds to re-evaluate existing data networks for bootstrap sim data usage
-     * limit.
-     */
-    private static final long REEVALUATE_BOOTSTRAP_SIM_DATA_USAGE_MILLIS =
-            TimeUnit.SECONDS.toMillis(60);
-
-    /**
      * The guard timer in milliseconds to limit querying the data usage api stats frequently
      */
     private static final long GUARD_TIMER_INTERVAL_TO_QUERY_DATA_USAGE_API_STATS_MILLIS =
@@ -1942,7 +1935,7 @@ public class DataNetworkController extends Handler {
                 if (!hasMessages(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS)) {
                     sendMessageDelayed(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
                             DataEvaluationReason.CHECK_DATA_USAGE),
-                            REEVALUATE_BOOTSTRAP_SIM_DATA_USAGE_MILLIS);
+                            mDataConfigManager.getReevaluateBootstrapSimDataUsageMillis());
                 } else {
                     log("skip scheduling evaluating existing data networks since already"
                             + "scheduled");
@@ -3052,7 +3045,7 @@ public class DataNetworkController extends Handler {
         if (isEsimBootStrapProvisioningActivated()) {
             sendMessageDelayed(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
                     DataEvaluationReason.CHECK_DATA_USAGE),
-                    REEVALUATE_BOOTSTRAP_SIM_DATA_USAGE_MILLIS);
+                    mDataConfigManager.getReevaluateBootstrapSimDataUsageMillis());
         }
     }
 
