@@ -2448,7 +2448,7 @@ public class GsmCdmaPhone extends Phone {
      */
     @Override
     public void setN1ModeEnabled(boolean enable, @Nullable Message result) {
-        if (mFeatureFlags.enableCarrierConfigN1Control()) {
+        if (mFeatureFlags.enableCarrierConfigN1ControlAttempt2()) {
             // This might be called by IMS on another thread, so to avoid the requirement to
             // lock, post it through the handler.
             post(() -> {
@@ -2489,7 +2489,7 @@ public class GsmCdmaPhone extends Phone {
 
     /** Only called on the handler thread. */
     private void updateCarrierN1ModeSupported(@NonNull PersistableBundle b) {
-        if (!mFeatureFlags.enableCarrierConfigN1Control()) return;
+        if (!mFeatureFlags.enableCarrierConfigN1ControlAttempt2()) return;
 
         if (!CarrierConfigManager.isConfigForIdentifiedCarrier(b)) return;
 
