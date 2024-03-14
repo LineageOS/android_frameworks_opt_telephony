@@ -16,13 +16,26 @@
 
 package com.android.internal.telephony.metrics;
 
+import static android.telephony.SmsManager.RESULT_ERROR_NONE;
+import static android.telephony.SmsManager.RESULT_RIL_SMS_SEND_FAIL_RETRY;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_BITMASK_GPRS;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_BITMASK_GSM;
 import static android.text.format.DateUtils.DAY_IN_MILLIS;
 import static android.text.format.DateUtils.HOUR_IN_MILLIS;
 
+import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
 import static com.android.internal.telephony.TelephonyStatsLog.GBA_EVENT__FAILED_REASON__FEATURE_NOT_READY;
 import static com.android.internal.telephony.TelephonyStatsLog.GBA_EVENT__FAILED_REASON__UNKNOWN;
+import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS__ERROR__SMS_ERROR_GENERIC;
+import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS__ERROR__SMS_SUCCESS;
+import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS__SMS_FORMAT__SMS_FORMAT_3GPP;
+import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS__SMS_FORMAT__SMS_FORMAT_3GPP2;
+import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS__SMS_TECH__SMS_TECH_CS_3GPP;
+import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS__SMS_TECH__SMS_TECH_CS_3GPP2;
+import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS__SMS_TYPE__SMS_TYPE_NORMAL;
+import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS__SMS_TYPE__SMS_TYPE_SMS_PP;
+import static com.android.internal.telephony.TelephonyStatsLog.OUTGOING_SMS__SEND_RESULT__SMS_SEND_RESULT_ERROR;
+import static com.android.internal.telephony.TelephonyStatsLog.OUTGOING_SMS__SEND_RESULT__SMS_SEND_RESULT_SUCCESS;
 import static com.android.internal.telephony.TelephonyStatsLog.RCS_ACS_PROVISIONING_STATS__RESPONSE_TYPE__ERROR;
 import static com.android.internal.telephony.TelephonyStatsLog.RCS_ACS_PROVISIONING_STATS__RESPONSE_TYPE__PROVISIONING_XML;
 import static com.android.internal.telephony.TelephonyStatsLog.RCS_CLIENT_PROVISIONING_STATS__EVENT__CLIENT_PARAMS_SENT;
@@ -70,7 +83,9 @@ import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationFeat
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationServiceDescStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTermination;
+import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingShortCodeSms;
+import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PresenceNotifyEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsAcsProvisioningStats;
@@ -234,6 +249,14 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private SipTransportSession mSipTransportSession1;
     private SipTransportSession mSipTransportSession2;
     private SipTransportSession[] mSipTransportSession;
+
+    private IncomingSms mIncomingSms1;
+    private IncomingSms mIncomingSms2;
+    private IncomingSms[] mIncomingSms;
+
+    private OutgoingSms mOutgoingSms1;
+    private OutgoingSms mOutgoingSms2;
+    private OutgoingSms[] mOutgoingSms;
 
     private OutgoingShortCodeSms mOutgoingShortCodeSms1;
     private OutgoingShortCodeSms mOutgoingShortCodeSms2;
@@ -946,6 +969,95 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSipTransportSession =
                 new SipTransportSession[] {mSipTransportSession1, mSipTransportSession2};
 
+        generateTestSmsData();
+        generateTestSatelliteData();
+    }
+
+    private void generateTestSmsData() {
+        mIncomingSms1 = new IncomingSms();
+        mIncomingSms1.smsFormat = INCOMING_SMS__SMS_FORMAT__SMS_FORMAT_3GPP;
+        mIncomingSms1.smsTech = INCOMING_SMS__SMS_TECH__SMS_TECH_CS_3GPP;
+        mIncomingSms1.rat = TelephonyManager.NETWORK_TYPE_LTE;
+        mIncomingSms1.smsType = INCOMING_SMS__SMS_TYPE__SMS_TYPE_NORMAL;
+        mIncomingSms1.totalParts = 1;
+        mIncomingSms1.receivedParts = 1;
+        mIncomingSms1.blocked = false;
+        mIncomingSms1.error = INCOMING_SMS__ERROR__SMS_SUCCESS;
+        mIncomingSms1.isRoaming = false;
+        mIncomingSms1.simSlotIndex = 0;
+        mIncomingSms1.isMultiSim = false;
+        mIncomingSms1.isEsim = false;
+        mIncomingSms1.carrierId = TelephonyManager.UNKNOWN_CARRIER_ID;
+        mIncomingSms1.messageId = 0;
+        mIncomingSms1.count = 1;
+        mIncomingSms1.isManagedProfile = false;
+        mIncomingSms1.isNtn = false;
+
+        mIncomingSms2 = new IncomingSms();
+        mIncomingSms2.smsFormat = INCOMING_SMS__SMS_FORMAT__SMS_FORMAT_3GPP2;
+        mIncomingSms2.smsTech = INCOMING_SMS__SMS_TECH__SMS_TECH_CS_3GPP2;
+        mIncomingSms2.rat = TelephonyManager.NETWORK_TYPE_CDMA;
+        mIncomingSms2.smsType = INCOMING_SMS__SMS_TYPE__SMS_TYPE_SMS_PP;
+        mIncomingSms2.totalParts = 2;
+        mIncomingSms2.receivedParts = 2;
+        mIncomingSms2.blocked = true;
+        mIncomingSms2.error = INCOMING_SMS__ERROR__SMS_ERROR_GENERIC;
+        mIncomingSms2.isRoaming = true;
+        mIncomingSms2.simSlotIndex = 1;
+        mIncomingSms2.isMultiSim = true;
+        mIncomingSms2.isEsim = true;
+        mIncomingSms2.carrierId = TelephonyManager.UNKNOWN_CARRIER_ID;
+        mIncomingSms2.messageId = 1;
+        mIncomingSms2.count = 2;
+        mIncomingSms2.isManagedProfile = true;
+        mIncomingSms2.isNtn = true;
+
+        mIncomingSms = new IncomingSms[] {mIncomingSms1, mIncomingSms2};
+
+        mOutgoingSms1 = new OutgoingSms();
+        mOutgoingSms1.smsFormat = INCOMING_SMS__SMS_FORMAT__SMS_FORMAT_3GPP;
+        mOutgoingSms1.smsTech = INCOMING_SMS__SMS_TECH__SMS_TECH_CS_3GPP;
+        mOutgoingSms1.rat = TelephonyManager.NETWORK_TYPE_LTE;
+        mOutgoingSms1.sendResult = OUTGOING_SMS__SEND_RESULT__SMS_SEND_RESULT_SUCCESS;
+        mOutgoingSms1.errorCode = NO_ERROR_CODE;
+        mOutgoingSms1.isRoaming = false;
+        mOutgoingSms1.isFromDefaultApp = true;
+        mOutgoingSms1.simSlotIndex = 0;
+        mOutgoingSms1.isMultiSim = false;
+        mOutgoingSms1.carrierId = TelephonyManager.UNKNOWN_CARRIER_ID;
+        mOutgoingSms1.messageId = 0;
+        mOutgoingSms1.retryId = 0;
+        mOutgoingSms1.intervalMillis = 0;
+        mOutgoingSms1.count = 1;
+        mOutgoingSms1.sendErrorCode = RESULT_ERROR_NONE;
+        mOutgoingSms1.networkErrorCode = NO_ERROR_CODE;
+        mOutgoingSms1.isManagedProfile = false;
+        mOutgoingSms1.isEmergency = false;
+        mOutgoingSms1.isNtn = false;
+
+        mOutgoingSms2 = new OutgoingSms();
+        mOutgoingSms2.smsFormat = INCOMING_SMS__SMS_FORMAT__SMS_FORMAT_3GPP2;
+        mOutgoingSms2.smsTech = INCOMING_SMS__SMS_TECH__SMS_TECH_CS_3GPP2;
+        mOutgoingSms2.rat = TelephonyManager.NETWORK_TYPE_CDMA;
+        mOutgoingSms2.sendResult = OUTGOING_SMS__SEND_RESULT__SMS_SEND_RESULT_ERROR;
+        mOutgoingSms2.errorCode = NO_ERROR_CODE;
+        mOutgoingSms2.isRoaming = true;
+        mOutgoingSms2.isFromDefaultApp = false;
+        mOutgoingSms2.simSlotIndex = 1;
+        mOutgoingSms2.isMultiSim = true;
+        mOutgoingSms2.carrierId = TelephonyManager.UNKNOWN_CARRIER_ID;
+        mOutgoingSms2.messageId = 1;
+        mOutgoingSms2.retryId = 1;
+        mOutgoingSms2.intervalMillis = 10;
+        mOutgoingSms2.count = 2;
+        mOutgoingSms2.sendErrorCode = RESULT_RIL_SMS_SEND_FAIL_RETRY;
+        mOutgoingSms2.networkErrorCode = NO_ERROR_CODE;
+        mOutgoingSms2.isManagedProfile = true;
+        mOutgoingSms2.isEmergency = true;
+        mOutgoingSms2.isNtn = true;
+
+        mOutgoingSms = new OutgoingSms[] {mOutgoingSms1, mOutgoingSms2};
+
         mOutgoingShortCodeSms1 = new OutgoingShortCodeSms();
         mOutgoingShortCodeSms1.category = 1;
         mOutgoingShortCodeSms1.xmlVersion = 30;
@@ -958,8 +1070,6 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
         mOutgoingShortCodeSms = new OutgoingShortCodeSms[] {mOutgoingShortCodeSms1,
                 mOutgoingShortCodeSms2};
-
-        generateTestSatelliteData();
     }
 
     private void generateTestSatelliteData() {
@@ -1244,6 +1354,12 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSipTransportSession1 = null;
         mSipTransportSession2 = null;
         mSipTransportSession = null;
+        mIncomingSms = null;
+        mIncomingSms1 = null;
+        mIncomingSms2 = null;
+        mOutgoingSms = null;
+        mOutgoingSms1 = null;
+        mOutgoingSms2 = null;
         mOutgoingShortCodeSms1 = null;
         mOutgoingShortCodeSms2 = null;
         mOutgoingShortCodeSms = null;
@@ -3721,6 +3837,88 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     }
 
     @Test
+    public void addIncomingSms_emptyProto() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addIncomingSms(mIncomingSms1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // IncomingSms should be added successfully, changes should be saved.
+        verifyCurrentStateSavedToFileOnce();
+        IncomingSms[] expectedList = new IncomingSms[] {mIncomingSms1};
+        assertProtoArrayEquals(expectedList, mPersistAtomsStorage.getIncomingSms(0L));
+    }
+
+    @Test
+    public void addIncomingSms_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addIncomingSms(mIncomingSms1);
+        mPersistAtomsStorage.addIncomingSms(mIncomingSms2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // IncomingSms should be added successfully.
+        verifyCurrentStateSavedToFileOnce();
+        IncomingSms[] expectedList = new IncomingSms[] {mIncomingSms1, mIncomingSms2};
+        assertProtoArrayEqualsIgnoringOrder(expectedList, mPersistAtomsStorage.getIncomingSms(0L));
+    }
+
+    @Test
+    public void getIncomingSms_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        // Pull interval less than minimum.
+        mPersistAtomsStorage.incTimeMillis(50L);
+        IncomingSms[] outgoingShortCodeSmsList = mPersistAtomsStorage.getIncomingSms(100L);
+        // Should be denied.
+        assertNull(outgoingShortCodeSmsList);
+    }
+
+    @Test
+    public void addOutgoingSms_emptyProto() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addOutgoingSms(mOutgoingSms1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // OutgoingSms should be added successfully, changes should be saved.
+        verifyCurrentStateSavedToFileOnce();
+        OutgoingSms[] expectedList = new OutgoingSms[] {mOutgoingSms1};
+        assertProtoArrayEquals(expectedList, mPersistAtomsStorage.getOutgoingSms(0L));
+    }
+
+    @Test
+    public void addOutgoingSms_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addOutgoingSms(mOutgoingSms1);
+        mPersistAtomsStorage.addOutgoingSms(mOutgoingSms2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // OutgoingSms should be added successfully.
+        verifyCurrentStateSavedToFileOnce();
+        OutgoingSms[] expectedList = new OutgoingSms[] {mOutgoingSms1, mOutgoingSms2};
+        assertProtoArrayEqualsIgnoringOrder(expectedList, mPersistAtomsStorage.getOutgoingSms(0L));
+    }
+
+    @Test
+    public void getOutgoingSms_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        // Pull interval less than minimum.
+        mPersistAtomsStorage.incTimeMillis(50L);
+        OutgoingSms[] outgoingShortCodeSmsList = mPersistAtomsStorage.getOutgoingSms(100L);
+        // Should be denied.
+        assertNull(outgoingShortCodeSmsList);
+    }
+
+    @Test
     public void addOutgoingShortCodeSms_emptyProto() throws Exception {
         createEmptyTestFile();
 
@@ -4516,6 +4714,16 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         return SipTransportSession.parseFrom(MessageNano.toByteArray(source));
     }
 
+    private static IncomingSms copyOf(IncomingSms source)
+            throws Exception {
+        return IncomingSms.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static OutgoingSms copyOf(OutgoingSms source)
+            throws Exception {
+        return OutgoingSms.parseFrom(MessageNano.toByteArray(source));
+    }
+
     private static OutgoingShortCodeSms copyOf(OutgoingShortCodeSms source)
             throws Exception {
         return OutgoingShortCodeSms.parseFrom(MessageNano.toByteArray(source));
@@ -4943,6 +5151,64 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                     && stats.sipMessageDirection == expectedStats.sipMessageDirection
                     && stats.sipResponse == expectedStats.sipResponse) {
                 actualCount = stats.sessionCount;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+    }
+
+    private static void assertHasStatsAndCount(
+            IncomingSms[] incomingSmsList,
+            @Nullable IncomingSms expectedIncomingSms, int expectedCount) {
+        assertNotNull(incomingSmsList);
+        int actualCount = -1;
+        for (IncomingSms incomingSms : incomingSmsList) {
+            if (incomingSms.smsFormat == expectedIncomingSms.smsFormat
+                    && incomingSms.smsTech == expectedIncomingSms.smsTech
+                    && incomingSms.rat == expectedIncomingSms.rat
+                    && incomingSms.smsType == expectedIncomingSms.smsType
+                    && incomingSms.totalParts == expectedIncomingSms.totalParts
+                    && incomingSms.receivedParts == expectedIncomingSms.receivedParts
+                    && incomingSms.blocked == expectedIncomingSms.blocked
+                    && incomingSms.error == expectedIncomingSms.error
+                    && incomingSms.isRoaming == expectedIncomingSms.isRoaming
+                    && incomingSms.simSlotIndex == expectedIncomingSms.simSlotIndex
+                    && incomingSms.isMultiSim == expectedIncomingSms.isMultiSim
+                    && incomingSms.isEsim == expectedIncomingSms.isEsim
+                    && incomingSms.carrierId == expectedIncomingSms.carrierId
+                    && incomingSms.messageId == expectedIncomingSms.messageId
+                    && incomingSms.isManagedProfile == expectedIncomingSms.isManagedProfile
+                    && incomingSms.isNtn == expectedIncomingSms.isNtn) {
+                actualCount = incomingSms.count;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+    }
+
+    private static void assertHasStatsAndCount(
+            OutgoingSms[] outgoingSmsList,
+            @Nullable OutgoingSms expectedOutgoingSms, int expectedCount) {
+        assertNotNull(outgoingSmsList);
+        int actualCount = -1;
+        for (OutgoingSms outgoingSms : outgoingSmsList) {
+            if (outgoingSms.smsFormat == expectedOutgoingSms.smsFormat
+                    && outgoingSms.smsTech == expectedOutgoingSms.smsTech
+                    && outgoingSms.rat == expectedOutgoingSms.rat
+                    && outgoingSms.sendResult == expectedOutgoingSms.sendResult
+                    && outgoingSms.errorCode == expectedOutgoingSms.errorCode
+                    && outgoingSms.isRoaming == expectedOutgoingSms.isRoaming
+                    && outgoingSms.isFromDefaultApp == expectedOutgoingSms.isFromDefaultApp
+                    && outgoingSms.simSlotIndex == expectedOutgoingSms.simSlotIndex
+                    && outgoingSms.isMultiSim == expectedOutgoingSms.isMultiSim
+                    && outgoingSms.carrierId == expectedOutgoingSms.carrierId
+                    && outgoingSms.messageId == expectedOutgoingSms.messageId
+                    && outgoingSms.retryId == expectedOutgoingSms.retryId
+                    && outgoingSms.intervalMillis == expectedOutgoingSms.intervalMillis
+                    && outgoingSms.sendErrorCode == expectedOutgoingSms.sendErrorCode
+                    && outgoingSms.networkErrorCode == expectedOutgoingSms.networkErrorCode
+                    && outgoingSms.isManagedProfile == expectedOutgoingSms.isManagedProfile
+                    && outgoingSms.isEmergency == expectedOutgoingSms.isEmergency
+                    && outgoingSms.isNtn == expectedOutgoingSms.isNtn) {
+                actualCount = outgoingSms.count;
             }
         }
         assertEquals(expectedCount, actualCount);

@@ -310,6 +310,7 @@ message IncomingSms {
     optional int64 message_id = 14;
     optional int32 count = 15;
     optional bool is_managed_profile = 16;
+    optional bool is_ntn = 17;
 
     // Internal use only
     optional int32 hashCode = 10001;
@@ -334,6 +335,8 @@ message OutgoingSms {
     optional int32 send_error_code = 16;
     optional int32 network_error_code = 17;
     optional bool is_managed_profile = 18;
+    optional bool is_emergency = 19;
+    optional bool is_ntn = 20;
 
     // Internal use only
     optional int32 hashCode = 10001;
