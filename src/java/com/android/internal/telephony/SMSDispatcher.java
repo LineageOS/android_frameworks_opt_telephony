@@ -1063,7 +1063,8 @@ public abstract class SMSDispatcher extends Handler {
                     SmsManager.RESULT_ERROR_NONE,
                     tracker.mMessageId,
                     tracker.isFromDefaultSmsApplication(mContext),
-                    tracker.getInterval());
+                    tracker.getInterval(),
+                    mTelephonyManager.isEmergencyNumber(tracker.mDestAddress));
             if (mPhone != null) {
                 TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
                 if (telephonyAnalytics != null) {
@@ -1113,7 +1114,8 @@ public abstract class SMSDispatcher extends Handler {
                         getNotInServiceError(ss),
                         tracker.mMessageId,
                         tracker.isFromDefaultSmsApplication(mContext),
-                        tracker.getInterval());
+                        tracker.getInterval(),
+                        mTelephonyManager.isEmergencyNumber(tracker.mDestAddress));
                 if (mPhone != null) {
                     TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
                     if (telephonyAnalytics != null) {
@@ -1149,7 +1151,8 @@ public abstract class SMSDispatcher extends Handler {
                         errorCode,
                         tracker.mMessageId,
                         tracker.isFromDefaultSmsApplication(mContext),
-                        tracker.getInterval());
+                        tracker.getInterval(),
+                        mTelephonyManager.isEmergencyNumber(tracker.mDestAddress));
                 if (mPhone != null) {
                     TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
                     if (telephonyAnalytics != null) {
@@ -1175,7 +1178,8 @@ public abstract class SMSDispatcher extends Handler {
                         errorCode,
                         tracker.mMessageId,
                         tracker.isFromDefaultSmsApplication(mContext),
-                        tracker.getInterval());
+                        tracker.getInterval(),
+                        mTelephonyManager.isEmergencyNumber(tracker.mDestAddress));
                 if (mPhone != null) {
                     TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
                     if (telephonyAnalytics != null) {
@@ -2403,7 +2407,8 @@ public abstract class SMSDispatcher extends Handler {
                     error,
                     trackers[0].mMessageId,
                     trackers[0].isFromDefaultSmsApplication(mContext),
-                    trackers[0].getInterval());
+                    trackers[0].getInterval(),
+                    mTelephonyManager.isEmergencyNumber(trackers[0].mDestAddress));
             if (mPhone != null) {
                 TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
                 if (telephonyAnalytics != null) {
