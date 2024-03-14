@@ -439,7 +439,7 @@ public class DatagramReceiver extends Handler {
                         "pollPendingSatelliteDatagrams");
 
                 if (mIsDemoMode && error == SatelliteManager.SATELLITE_RESULT_SUCCESS) {
-                    SatelliteDatagram datagram = mDatagramController.getDemoModeDatagram();
+                    SatelliteDatagram datagram = mDatagramController.popDemoModeDatagram();
                     final int validSubId = SatelliteServiceUtils.getValidSatelliteSubId(
                             request.subId, mContext);
                     SatelliteDatagramListenerHandler listenerHandler =
@@ -744,11 +744,10 @@ public class DatagramReceiver extends Handler {
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
     protected void setDeviceAlignedWithSatellite(boolean isAligned) {
-        if (mIsDemoMode) {
-            synchronized (mLock) {
-                mIsAligned = isAligned;
-                if (isAligned) handleEventSatelliteAligned();
-            }
+        synchronized (mLock) {
+            mIsAligned = isAligned;
+            logd("setDeviceAlignedWithSatellite: " + mIsAligned);
+            if (isAligned && mIsDemoMode) handleEventSatelliteAligned();
         }
     }
 

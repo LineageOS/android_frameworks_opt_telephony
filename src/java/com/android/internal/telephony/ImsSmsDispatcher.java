@@ -247,7 +247,8 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         networkReasonCode,
                         tracker.mMessageId,
                         tracker.isFromDefaultSmsApplication(mContext),
-                        tracker.getInterval());
+                        tracker.getInterval(),
+                        mTelephonyManager.isEmergencyNumber(tracker.mDestAddress));
                 if (mPhone != null) {
                     TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
                     if (telephonyAnalytics != null) {
@@ -664,7 +665,8 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     SmsManager.RESULT_SYSTEM_ERROR,
                     tracker.mMessageId,
                     tracker.isFromDefaultSmsApplication(mContext),
-                    tracker.getInterval());
+                    tracker.getInterval(),
+                    mTelephonyManager.isEmergencyNumber(tracker.mDestAddress));
             if (mPhone != null) {
                 TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
                 if (telephonyAnalytics != null) {

@@ -1055,7 +1055,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 sms.carrierId,
                 sms.messageId,
                 sms.count,
-                sms.isManagedProfile);
+                sms.isManagedProfile,
+                sms.isNtn);
     }
 
     private static StatsEvent buildStatsEvent(OutgoingSms sms) {
@@ -1078,7 +1079,9 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 sms.count,
                 sms.sendErrorCode,
                 sms.networkErrorCode,
-                sms.isManagedProfile);
+                sms.isManagedProfile,
+                sms.isEmergency,
+                sms.isNtn);
     }
 
     private static StatsEvent buildStatsEvent(DataCallSession dataCallSession) {

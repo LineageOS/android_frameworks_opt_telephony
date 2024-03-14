@@ -35,6 +35,8 @@ import com.android.internal.R;
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -59,6 +61,8 @@ public class DatagramController {
     public static final int TIMEOUT_TYPE_DATAGRAM_WAIT_FOR_CONNECTED_STATE = 2;
     /** This type is used by CTS to override the time to wait for response of the send request */
     public static final int TIMEOUT_TYPE_WAIT_FOR_DATAGRAM_SENDING_RESPONSE = 3;
+    /** This type is used by CTS to override the time to datagram delay in demo mode */
+    public static final int TIMEOUT_TYPE_DATAGRAM_DELAY_IN_DEMO_MODE = 4;
     private static final String ALLOW_MOCK_MODEM_PROPERTY = "persist.radio.allow_mock_modem";
     private static final boolean DEBUG = !"user".equals(Build.TYPE);
 
@@ -83,8 +87,8 @@ public class DatagramController {
     private int mReceivePendingCount = 0;
     @GuardedBy("mLock")
     private int mReceiveErrorCode = SatelliteManager.SATELLITE_RESULT_SUCCESS;
-
-    private SatelliteDatagram mDemoModeDatagram;
+    @GuardedBy("mLock")
+    private final List<SatelliteDatagram> mDemoModeDatagramList;
     private boolean mIsDemoMode = false;
     private long mAlignTimeoutDuration = SATELLITE_ALIGN_TIMEOUT;
     private long mDatagramWaitTimeForConnectedState;
@@ -143,6 +147,7 @@ public class DatagramController {
 
         mDatagramWaitTimeForConnectedState = getDatagramWaitForConnectedStateTimeoutMillis();
         mModemImageSwitchingDuration = getSatelliteModemImageSwitchingDurationMillis();
+        mDemoModeDatagramList = new ArrayList<>();
     }
 
     /**
@@ -208,7 +213,7 @@ public class DatagramController {
     public void sendSatelliteDatagram(int subId, @SatelliteManager.DatagramType int datagramType,
             @NonNull SatelliteDatagram datagram, boolean needFullScreenPointingUI,
             @NonNull Consumer<Integer> callback) {
-        setDemoModeDatagram(datagramType, datagram);
+        pushDemoModeDatagram(datagramType, datagram);
         mDatagramDispatcher.sendSatelliteDatagram(subId, datagramType, datagram,
                 needFullScreenPointingUI, callback);
     }
@@ -349,14 +354,25 @@ public class DatagramController {
         mDatagramReceiver.setDemoMode(isDemoMode);
 
         if (!isDemoMode) {
-            mDemoModeDatagram = null;
+            synchronized (mLock) {
+                mDemoModeDatagramList.clear();
+            }
+            setDeviceAlignedWithSatellite(false);
         }
+        logd("setDemoMode: mIsDemoMode=" + mIsDemoMode);
     }
 
     /** Get the last sent datagram for demo mode */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
-    public SatelliteDatagram getDemoModeDatagram() {
-        return mDemoModeDatagram;
+    public SatelliteDatagram popDemoModeDatagram() {
+        if (!mIsDemoMode) {
+            return null;
+        }
+
+        synchronized (mLock) {
+            logd("popDemoModeDatagram");
+            return mDemoModeDatagramList.size() > 0 ? mDemoModeDatagramList.remove(0) : null;
+        }
     }
 
     /**
@@ -365,10 +381,13 @@ public class DatagramController {
      * @param datagram datagram The last datagram saved when sendSatelliteDatagramForDemo is called
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
-    protected void setDemoModeDatagram(@SatelliteManager.DatagramType int datagramType,
+    protected void pushDemoModeDatagram(@SatelliteManager.DatagramType int datagramType,
             SatelliteDatagram datagram) {
-        if (mIsDemoMode &&  datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {
-            mDemoModeDatagram = datagram;
+        if (mIsDemoMode && datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {
+            synchronized (mLock) {
+                mDemoModeDatagramList.add(datagram);
+                logd("pushDemoModeDatagram size=" + mDemoModeDatagramList.size());
+            }
         }
     }
 
@@ -419,6 +438,8 @@ public class DatagramController {
             }
         } else if (timeoutType == TIMEOUT_TYPE_WAIT_FOR_DATAGRAM_SENDING_RESPONSE) {
             mDatagramDispatcher.setWaitTimeForDatagramSendingResponse(reset, timeoutMillis);
+        } else if (timeoutType == TIMEOUT_TYPE_DATAGRAM_DELAY_IN_DEMO_MODE) {
+            mDatagramDispatcher.setTimeoutDatagramDelayInDemoMode(reset, timeoutMillis);
         } else {
             loge("Invalid timeout type " + timeoutType);
             return false;
