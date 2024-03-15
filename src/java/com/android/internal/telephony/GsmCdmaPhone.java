@@ -3679,6 +3679,7 @@ public class GsmCdmaPhone extends Phone {
             case EVENT_SUBSCRIPTIONS_CHANGED:
                 logd("EVENT_SUBSCRIPTIONS_CHANGED");
                 updateUsageSetting();
+                updateNullCipherNotifier();
                 break;
             case EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE:
                 logd("EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE");
@@ -3779,7 +3780,8 @@ public class GsmCdmaPhone extends Phone {
                         && mNullCipherNotifier != null) {
                     ar = (AsyncResult) msg.obj;
                     SecurityAlgorithmUpdate update = (SecurityAlgorithmUpdate) ar.result;
-                    mNullCipherNotifier.onSecurityAlgorithmUpdate(mContext, getSubId(), update);
+                    mNullCipherNotifier.onSecurityAlgorithmUpdate(mContext, getPhoneId(),
+                            getSubId(), update);
                 }
                 break;
 
@@ -5452,6 +5454,25 @@ public class GsmCdmaPhone extends Phone {
 
         mCi.setSecurityAlgorithmsUpdatedEnabled(prefEnabled,
                 obtainMessage(EVENT_SET_SECURITY_ALGORITHMS_UPDATED_ENABLED_DONE));
+    }
+
+    /**
+     * Update the phoneId -> subId mapping of the null cipher notifier.
+     */
+    @VisibleForTesting
+    public void updateNullCipherNotifier() {
+        if (!mFeatureFlags.enableModemCipherTransparencyUnsolEvents()) {
+            return;
+        }
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerService
+                .getSubscriptionInfoInternal(getSubId());
+        boolean active = false;
+        if (subInfo != null) {
+            active = subInfo.isActive();
+        }
+        mNullCipherNotifier.setSubscriptionMapping(mContext, getPhoneId(),
+                active ? subInfo.getSubscriptionId() : -1);
     }
 
     @Override
