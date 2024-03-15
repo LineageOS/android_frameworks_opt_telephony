@@ -103,6 +103,7 @@ import com.android.internal.telephony.data.LinkBandwidthEstimator.LinkBandwidthE
 import com.android.internal.telephony.data.TelephonyNetworkAgent.TelephonyNetworkAgentCallback;
 import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.metrics.DataCallSessionStats;
+import com.android.internal.telephony.metrics.DataNetworkValidationStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.FunctionalUtils;
@@ -552,6 +553,9 @@ public class DataNetwork extends StateMachine {
     /** Metrics of per data network connection. */
     private final DataCallSessionStats mDataCallSessionStats;
 
+    /** Metrics of per data network validation. */
+    private final @NonNull DataNetworkValidationStats mDataNetworkValidationStats;
+
     /**
      * The unique context id assigned by the data service in {@link DataCallResponse#getId()}. One
      * for {@link AccessNetworkConstants#TRANSPORT_TYPE_WWAN} and one for
@@ -986,6 +990,7 @@ public class DataNetwork extends StateMachine {
                 mDataNetworkControllerCallback);
         mDataConfigManager = mDataNetworkController.getDataConfigManager();
         mDataCallSessionStats = new DataCallSessionStats(mPhone);
+        mDataNetworkValidationStats = new DataNetworkValidationStats(mPhone);
         mDataNetworkCallback = callback;
         mDataProfile = dataProfile;
         if (dataProfile.getTrafficDescriptor() != null) {
@@ -1919,6 +1924,9 @@ public class DataNetwork extends StateMachine {
                 if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                     unregisterForWwanEvents();
                 }
+                // Since NetworkValidation is able to request only in the Connected state,
+                // if ever connected, log for onDataNetworkDisconnected.
+                mDataNetworkValidationStats.onDataNetworkDisconnected(getDataNetworkType());
             } else {
                 mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
                         .onSetupDataFailed(DataNetwork.this,
@@ -3511,6 +3519,8 @@ public class DataNetwork extends StateMachine {
                 DataService.REQUEST_REASON_HANDOVER, mLinkProperties, mPduSessionId,
                 mNetworkSliceInfo, mHandoverDataProfile.getTrafficDescriptor(), true,
                 obtainMessage(EVENT_HANDOVER_RESPONSE, retryEntry));
+
+        mDataNetworkValidationStats.onHandoverAttempted();
     }
 
     /**
@@ -3705,6 +3715,11 @@ public class DataNetwork extends StateMachine {
         // Request validation directly from the data service.
         mDataServiceManagers.get(mTransport).requestNetworkValidation(
                 mCid.get(mTransport), obtainMessage(EVENT_DATA_NETWORK_VALIDATION_RESPONSE));
+
+        int apnTypeBitmask = mDataProfile.getApnSetting() != null
+                ? mDataProfile.getApnSetting().getApnTypeBitmask() : ApnSetting.TYPE_NONE;
+        mDataNetworkValidationStats.onRequestNetworkValidation(apnTypeBitmask);
+
         log("handleDataNetworkValidationRequest, network validation requested");
     }
 
@@ -3753,6 +3768,9 @@ public class DataNetwork extends StateMachine {
             mNetworkValidationStatus = networkValidationStatus;
             notifyPreciseDataConnectionState();
         }
+
+        mDataNetworkValidationStats.onUpdateNetworkValidationState(
+                mNetworkValidationStatus, getDataNetworkType());
     }
 
     /**

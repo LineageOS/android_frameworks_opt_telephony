@@ -23,7 +23,7 @@ option java_outer_classname = "PersistAtomsProto";
 
 // Holds atoms to store on persist storage in case of power cycle or process crash.
 // NOTE: using int64 rather than google.protobuf.Timestamp for timestamps simplifies implementation.
-// Next id: 70
+// Next id: 72
 message PersistAtoms {
     /* Aggregated RAT usage during the call. */
     repeated VoiceCallRatUsage voice_call_rat_usage = 1;
@@ -231,6 +231,12 @@ message PersistAtoms {
 
     /* Timestamp of last satellite_sos_message_recommender pull. */
     optional int64 satellite_sos_message_recommender_pull_timestamp_millis = 69;
+
+    /* Data Network Validation statistics and information. */
+    repeated DataNetworkValidation data_network_validation = 70;
+
+    /* Timestamp of last data_network_validation pull. */
+    optional int64 data_network_validation_pull_timestamp_millis = 71;
 }
 
 // The canonical versions of the following enums live in:
@@ -693,4 +699,14 @@ message SatelliteSosMessageRecommender {
     optional bool is_multi_sim = 6;
     optional int32 recommending_handover_type = 7;
     optional bool is_satellite_allowed_in_current_location = 8;
+}
+
+message DataNetworkValidation {
+    optional int32 network_type = 1;
+    optional int32 apn_type_bitmask = 2;
+    optional int32 signal_strength = 3;
+    optional int32 validation_result = 4;
+    optional int64 elapsed_time_in_millis = 5;
+    optional bool handover_attempted = 6;
+    optional int32 network_validation_count = 7;
 }

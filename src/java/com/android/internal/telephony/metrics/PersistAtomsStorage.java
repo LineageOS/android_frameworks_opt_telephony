@@ -33,6 +33,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.CarrierIdMismatch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
+import com.android.internal.telephony.nano.PersistAtomsProto.DataNetworkValidation;
 import com.android.internal.telephony.nano.PersistAtomsProto.GbaEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsDedicatedBearerEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsDedicatedBearerListenerEvent;
@@ -173,6 +174,9 @@ public class PersistAtomsStorage {
     private final int mMaxNumSatelliteStats;
     private final int mMaxNumSatelliteControllerStats = 1;
 
+    /** Maximum number of data network validation to store during pulls. */
+    private final int mMaxNumDataNetworkValidation;
+
     /** Stores persist atoms and persist states of the puller. */
     @VisibleForTesting protected PersistAtoms mAtoms;
 
@@ -223,6 +227,7 @@ public class PersistAtomsStorage {
             mMaxNumGbaEventStats = 5;
             mMaxOutgoingShortCodeSms = 5;
             mMaxNumSatelliteStats = 5;
+            mMaxNumDataNetworkValidation = 5;
         } else {
             mMaxNumVoiceCallSessions = 50;
             mMaxNumSms = 25;
@@ -247,6 +252,7 @@ public class PersistAtomsStorage {
             mMaxNumGbaEventStats = 10;
             mMaxOutgoingShortCodeSms = 10;
             mMaxNumSatelliteStats = 15;
+            mMaxNumDataNetworkValidation = 15;
         }
 
         mAtoms = loadAtomsFromFile();
@@ -787,6 +793,25 @@ public class PersistAtomsStorage {
             mAtoms.satelliteSosMessageRecommender =
                     insertAtRandomPlace(mAtoms.satelliteSosMessageRecommender, stats,
                             mMaxNumSatelliteStats);
+        }
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
+    }
+
+    /** Adds a data network validation to the storage. */
+    public synchronized void addDataNetworkValidation(DataNetworkValidation dataNetworkValidation) {
+        DataNetworkValidation existingStats = find(dataNetworkValidation);
+        if (existingStats != null) {
+            int count = existingStats.networkValidationCount
+                    + dataNetworkValidation.networkValidationCount;
+            long elapsedTime = ((dataNetworkValidation.elapsedTimeInMillis
+                    * dataNetworkValidation.networkValidationCount) + (
+                    existingStats.elapsedTimeInMillis * existingStats.networkValidationCount))
+                    / count;
+            existingStats.networkValidationCount = count;
+            existingStats.elapsedTimeInMillis = elapsedTime;
+        } else {
+            mAtoms.dataNetworkValidation = insertAtRandomPlace(
+                    mAtoms.dataNetworkValidation, dataNetworkValidation, mMaxNumDataCallSessions);
         }
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
@@ -1449,6 +1474,24 @@ public class PersistAtomsStorage {
         }
     }
 
+    /**
+     * Returns and clears the data network validation if last pulled longer than {@code
+     * minIntervalMillis} ago, otherwise returns {@code null}.
+     */
+    @Nullable
+    public synchronized DataNetworkValidation[] getDataNetworkValidation(long minIntervalMillis) {
+        long wallTime = getWallTimeMillis();
+        if (wallTime - mAtoms.dataNetworkValidationPullTimestampMillis > minIntervalMillis) {
+            mAtoms.dataNetworkValidationPullTimestampMillis = wallTime;
+            DataNetworkValidation[] previousDataNetworkValidation = mAtoms.dataNetworkValidation;
+            mAtoms.dataNetworkValidation = new DataNetworkValidation[0];
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
+            return previousDataNetworkValidation;
+        } else {
+            return null;
+        }
+    }
+
     /** Saves {@link PersistAtoms} to a file in private storage immediately. */
     public synchronized void flushAtoms() {
         saveAtomsToFile(0);
@@ -1599,6 +1642,12 @@ public class PersistAtomsStorage {
             atoms.satelliteSosMessageRecommender = sanitizeAtoms(
                     atoms.satelliteSosMessageRecommender, SatelliteSosMessageRecommender.class,
                     mMaxNumSatelliteStats);
+            atoms.dataNetworkValidation =
+                    sanitizeAtoms(
+                            atoms.dataNetworkValidation,
+                            DataNetworkValidation.class,
+                            mMaxNumDataNetworkValidation
+                    );
 
             // out of caution, sanitize also the timestamps
             atoms.voiceCallRatUsagePullTimestampMillis =
@@ -1661,6 +1710,8 @@ public class PersistAtomsStorage {
                     sanitizeTimestamp(atoms.satelliteProvisionPullTimestampMillis);
             atoms.satelliteSosMessageRecommenderPullTimestampMillis =
                     sanitizeTimestamp(atoms.satelliteSosMessageRecommenderPullTimestampMillis);
+            atoms.dataNetworkValidationPullTimestampMillis =
+                    sanitizeTimestamp(atoms.dataNetworkValidationPullTimestampMillis);
             return atoms;
         } catch (NoSuchFileException e) {
             Rlog.d(TAG, "PersistAtoms file not found");
@@ -2084,6 +2135,24 @@ public class PersistAtomsStorage {
     }
 
     /**
+     * Returns SatelliteOutgoingDatagram atom that has same values or {@code null}
+     * if it does not exist.
+     */
+    private @Nullable DataNetworkValidation find(DataNetworkValidation key) {
+        for (DataNetworkValidation stats : mAtoms.dataNetworkValidation) {
+            if (stats.networkType == key.networkType
+                    && stats.apnTypeBitmask == key.apnTypeBitmask
+                    && stats.signalStrength == key.signalStrength
+                    && stats.validationResult == key.validationResult
+                    && stats.handoverAttempted == key.handoverAttempted) {
+                return stats;
+            }
+        }
+        return null;
+    }
+
+
+    /**
      * Inserts a new element in a random position in an array with a maximum size.
      *
      * <p>If the array is full, merge with existing item if possible or replace one item randomly.
@@ -2339,6 +2408,7 @@ public class PersistAtomsStorage {
         atoms.satelliteOutgoingDatagramPullTimestampMillis = currentTime;
         atoms.satelliteProvisionPullTimestampMillis = currentTime;
         atoms.satelliteSosMessageRecommenderPullTimestampMillis = currentTime;
+        atoms.dataNetworkValidationPullTimestampMillis = currentTime;
 
         Rlog.d(TAG, "created new PersistAtoms");
         return atoms;
