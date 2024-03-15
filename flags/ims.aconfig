@@ -1,5 +1,6 @@
 package: "com.android.internal.telephony.flags"
 
+# OWNER=hyosunkim TARGET=24Q2
 flag {
     name: "conference_hold_unhold_changed_to_send_message"
     namespace: "telephony"
@@ -7,6 +8,7 @@ flag {
     bug:"288002989"
 }
 
+# OWNER=joonhunshin TARGET=24Q2
 flag {
     name: "ignore_already_terminated_incoming_call_before_registering_listener"
     namespace: "telephony"
@@ -14,6 +16,7 @@ flag {
     bug:"289461637"
 }
 
+# OWNER=joonhunshin TARGET=24Q2
 flag {
     name: "clear_cached_ims_phone_number_when_device_lost_ims_registration"
     namespace: "telephony"
@@ -21,6 +24,7 @@ flag {
     bug:"288002989"
 }
 
+# OWNER=sangyun TARGET=24Q2
 flag {
     name: "update_ims_service_by_gathering_provisioning_changes"
     namespace: "telephony"
@@ -28,6 +32,7 @@ flag {
     bug:"302281114"
 }
 
+# OWNER=shmun TARGET=24Q3
 flag {
     name: "add_rat_related_suggested_action_to_ims_registration"
     is_exported: true
@@ -36,6 +41,7 @@ flag {
     bug:"290573256"
 }
 
+# OWNER=joonhunshin TARGET=24Q3
 flag {
     name: "terminate_active_video_call_when_accepting_second_video_call_as_audio_only"
     namespace: "telephony"
@@ -43,6 +49,7 @@ flag {
     bug:"309548300"
 }
 
+# OWNER=sewookseo TARGET=24Q3
 flag {
     name: "emergency_registration_state"
     is_exported: true
@@ -51,6 +58,7 @@ flag {
     bug:"312101946"
 }
 
+# OWNER=apsankar TARGET=24Q3
 flag {
     name: "call_extra_for_non_hold_supported_carriers"
     namespace: "telephony"
@@ -58,6 +66,7 @@ flag {
     bug:"315993953"
 }
 
+# OWNER=joonhunshin TARGET=24Q3
 flag {
     name: "update_roaming_state_to_set_wfc_mode"
     namespace: "telephony"
@@ -65,6 +74,7 @@ flag {
     bug:"317298331"
 }
 
+# OWNER=joonhunshin TARGET=24Q3
 flag {
     name: "enable_sip_subscribe_retry"
     namespace: "telephony"
@@ -72,6 +82,7 @@ flag {
     bug:"297023230"
 }
 
+# OWNER=joonhunshin TARGET=24Q3
 flag {
     name: "answer_audio_only_when_answering_via_mmi_code"
     namespace: "telephony"

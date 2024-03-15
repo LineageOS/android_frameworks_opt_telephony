@@ -1,5 +1,6 @@
 package: "com.android.internal.telephony.flags"
 
+# OWNER=jmunikrishna TARGET=24Q3
 flag {
     name: "enable_aead_algorithms"
     is_exported: true
@@ -7,6 +8,8 @@ flag {
     description: "Add AEAD algorithms AES-GCM-8, AES-GCM-12 and AES-GCM-16 to IWLAN"
     bug:"306119890"
 }
+
+# OWNER=jmunikrishna TARGET=24Q3
 flag {
     name: "enable_multiple_sa_proposals"
     is_exported: true

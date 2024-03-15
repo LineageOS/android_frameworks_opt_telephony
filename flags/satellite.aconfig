@@ -1,5 +1,6 @@
 package: "com.android.internal.telephony.flags"
 
+# OWNER=amallampati TARGET=24Q3
 flag {
     name: "oem_enabled_satellite_flag"
     is_exported: true
@@ -8,6 +9,7 @@ flag {
     bug:"291811962"
 }
 
+# OWNER=amallampati TARGET=24Q3
 flag {
     name: "carrier_enabled_satellite_flag"
     is_exported: true
@@ -16,6 +18,7 @@ flag {
     bug:"296437388"
 }
 
+# OWNER=nagendranb TARGET=24Q3
 flag {
     name: "satellite_internet"
     namespace: "telephony"
