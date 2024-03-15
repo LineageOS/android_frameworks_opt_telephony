@@ -31,14 +31,15 @@ import java.util.Set;
  * downstream users.
  */
 public class RadioConfigProxy {
-    private final HalVersion mRadioHalVersion;
+    private static final String TAG = "RadioConfigProxy";
+    private HalVersion mRadioHalVersion;
     private final RadioConfigHidlServiceDeathRecipient mRadioConfigHidlServiceDeathRecipient;
     private final RadioConfigAidlServiceDeathRecipient mRadioConfigAidlServiceDeathRecipient;
 
     private volatile android.hardware.radio.config.V1_1.IRadioConfig mHidlRadioConfigProxy = null;
     private volatile android.hardware.radio.config.IRadioConfig mAidlRadioConfigProxy = null;
 
-    private HalVersion mRadioConfigHalVersion = RadioConfig.RADIO_CONFIG_HAL_VERSION_UNKNOWN;
+    private HalVersion mRadioConfigHalVersion = RIL.RADIO_HAL_VERSION_UNKNOWN;
     private boolean mIsAidl;
 
     public RadioConfigProxy(RadioConfig radioConfig, HalVersion radioHalVersion) {
@@ -83,13 +84,15 @@ public class RadioConfigProxy {
     /**
      * Set IRadioConfig as the AIDL implementation for RadioConfigProxy
      *
-     * @param radioConfigHalVersion RadioConfig HAL version
      * @param radioConfig IRadioConfig implementation
      */
-    public void setAidl(
-            HalVersion radioConfigHalVersion,
-            android.hardware.radio.config.IRadioConfig radioConfig) {
-        mRadioConfigHalVersion = radioConfigHalVersion;
+    public void setAidl(android.hardware.radio.config.IRadioConfig radioConfig) {
+        try {
+            mRadioConfigHalVersion = RIL.getServiceHalVersion(radioConfig.getInterfaceVersion());
+            Rlog.d(TAG, "setAidl: setting HAL version to version = " + mRadioConfigHalVersion);
+        } catch (RemoteException e) {
+            Rlog.e(TAG, "setAidl: " + e);
+        }
         mAidlRadioConfigProxy = radioConfig;
         mIsAidl = true;
         mRadioConfigAidlServiceDeathRecipient.setService(radioConfig.asBinder());
@@ -106,7 +109,7 @@ public class RadioConfigProxy {
 
     /** Reset RadioConfigProxy */
     public void clear() {
-        mRadioConfigHalVersion = RadioConfig.RADIO_CONFIG_HAL_VERSION_UNKNOWN;
+        mRadioConfigHalVersion = RIL.RADIO_HAL_VERSION_UNKNOWN;
         mHidlRadioConfigProxy = null;
         mAidlRadioConfigProxy = null;
         mRadioConfigHidlServiceDeathRecipient.clear();
