@@ -259,8 +259,8 @@ message TelephonyServiceState {
   // Roaming type
   enum RoamingType {
 
-    // Unknown. The default value. Different from ROAMING_TYPE_UNKNOWN.
-    UNKNOWN = -1;
+    // Undefined. The default value. Different from ROAMING_TYPE_UNKNOWN.
+    ROAMING_TYPE_UNDEFINED = -1;
 
     // In home network
     ROAMING_TYPE_NOT_ROAMING = 0;
@@ -346,10 +346,10 @@ message TelephonyServiceState {
   optional TelephonyOperator data_operator = 2;
 
   // Current voice network roaming type
-  optional RoamingType voice_roaming_type = 3 [default = UNKNOWN];
+  optional RoamingType voice_roaming_type = 3 [default = ROAMING_TYPE_UNDEFINED];
 
   // Current data network roaming type
-  optional RoamingType data_roaming_type = 4 [default = UNKNOWN];
+  optional RoamingType data_roaming_type = 4 [default = ROAMING_TYPE_UNDEFINED];
 
   // Current voice radio technology
   optional RadioAccessTechnology voice_rat = 5 [default = UNKNOWN];
