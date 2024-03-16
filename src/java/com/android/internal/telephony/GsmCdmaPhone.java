@@ -539,7 +539,7 @@ public class GsmCdmaPhone extends Phone {
         mContext.registerReceiver(mBroadcastReceiver, filter,
                 android.Manifest.permission.MODIFY_PHONE_STATE, null, Context.RECEIVER_EXPORTED);
 
-        mCDM = new CarrierKeyDownloadManager(this, mFeatureFlags);
+        mCDM = new CarrierKeyDownloadManager(this);
         mCIM = new CarrierInfoManager();
 
         mCi.registerForImeiMappingChanged(this, EVENT_IMEI_MAPPING_CHANGED, null);
@@ -2124,8 +2124,13 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void deleteCarrierInfoForImsiEncryption(int carrierId) {
+        CarrierInfoManager.deleteCarrierInfoForImsiEncryption(mContext, getSubId(), carrierId);
+    }
+
+    @Override
+    public void deleteCarrierInfoForImsiEncryption(int carrierId, String simOperator) {
         CarrierInfoManager.deleteCarrierInfoForImsiEncryption(mContext, getSubId(),
-                carrierId);
+                carrierId, simOperator);
     }
 
     @Override
@@ -2448,7 +2453,7 @@ public class GsmCdmaPhone extends Phone {
      */
     @Override
     public void setN1ModeEnabled(boolean enable, @Nullable Message result) {
-        if (mFeatureFlags.enableCarrierConfigN1Control()) {
+        if (mFeatureFlags.enableCarrierConfigN1ControlAttempt2()) {
             // This might be called by IMS on another thread, so to avoid the requirement to
             // lock, post it through the handler.
             post(() -> {
@@ -2489,7 +2494,7 @@ public class GsmCdmaPhone extends Phone {
 
     /** Only called on the handler thread. */
     private void updateCarrierN1ModeSupported(@NonNull PersistableBundle b) {
-        if (!mFeatureFlags.enableCarrierConfigN1Control()) return;
+        if (!mFeatureFlags.enableCarrierConfigN1ControlAttempt2()) return;
 
         if (!CarrierConfigManager.isConfigForIdentifiedCarrier(b)) return;
 
@@ -3674,6 +3679,7 @@ public class GsmCdmaPhone extends Phone {
             case EVENT_SUBSCRIPTIONS_CHANGED:
                 logd("EVENT_SUBSCRIPTIONS_CHANGED");
                 updateUsageSetting();
+                updateNullCipherNotifier();
                 break;
             case EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE:
                 logd("EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE");
@@ -3774,7 +3780,8 @@ public class GsmCdmaPhone extends Phone {
                         && mNullCipherNotifier != null) {
                     ar = (AsyncResult) msg.obj;
                     SecurityAlgorithmUpdate update = (SecurityAlgorithmUpdate) ar.result;
-                    mNullCipherNotifier.onSecurityAlgorithmUpdate(mContext, getSubId(), update);
+                    mNullCipherNotifier.onSecurityAlgorithmUpdate(mContext, getPhoneId(),
+                            getSubId(), update);
                 }
                 break;
 
@@ -5447,6 +5454,25 @@ public class GsmCdmaPhone extends Phone {
 
         mCi.setSecurityAlgorithmsUpdatedEnabled(prefEnabled,
                 obtainMessage(EVENT_SET_SECURITY_ALGORITHMS_UPDATED_ENABLED_DONE));
+    }
+
+    /**
+     * Update the phoneId -> subId mapping of the null cipher notifier.
+     */
+    @VisibleForTesting
+    public void updateNullCipherNotifier() {
+        if (!mFeatureFlags.enableModemCipherTransparencyUnsolEvents()) {
+            return;
+        }
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerService
+                .getSubscriptionInfoInternal(getSubId());
+        boolean active = false;
+        if (subInfo != null) {
+            active = subInfo.isActive();
+        }
+        mNullCipherNotifier.setSubscriptionMapping(mContext, getPhoneId(),
+                active ? subInfo.getSubscriptionId() : -1);
     }
 
     @Override

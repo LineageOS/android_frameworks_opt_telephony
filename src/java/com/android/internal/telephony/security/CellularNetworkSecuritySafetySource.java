@@ -25,6 +25,8 @@ import android.annotation.IntDef;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
+import android.net.Uri;
 import android.safetycenter.SafetyCenterManager;
 import android.safetycenter.SafetyEvent;
 import android.safetycenter.SafetySourceData;
@@ -62,10 +64,6 @@ public class CellularNetworkSecuritySafetySource {
 
     private static final Intent CELLULAR_NETWORK_SECURITY_SETTINGS_INTENT =
             new Intent("android.settings.CELLULAR_NETWORK_SECURITY");
-    // TODO(b/321999913): direct to a help page URL e.g.
-    //                    new Intent(Intent.ACTION_VIEW, Uri.parse("https://..."));
-    private static final Intent LEARN_MORE_INTENT = new Intent();
-
     static final int NULL_CIPHER_STATE_ENCRYPTED = 0;
     static final int NULL_CIPHER_STATE_NOTIFY_ENCRYPTED = 1;
     static final int NULL_CIPHER_STATE_NOTIFY_NON_ENCRYPTED = 2;
@@ -122,6 +120,13 @@ public class CellularNetworkSecuritySafetySource {
         updateSafetyCenter(context);
     }
 
+    /**
+     * Clears issue state for the identified subscription
+     */
+    public synchronized  void clearNullCipherState(Context context, int subId) {
+        mNullCipherStates.remove(subId);
+        updateSafetyCenter(context);
+    }
     /**
      * Enables or disables the identifier disclosure issue and clears any current issues if the
      * enable state is changed.
@@ -216,7 +221,8 @@ public class CellularNetworkSecuritySafetySource {
                 builder = new SafetySourceIssue.Builder(
                         NULL_CIPHER_ISSUE_NON_ENCRYPTED_ID + "_" + subId,
                         context.getString(
-                            R.string.scNullCipherIssueNonEncryptedTitle, subInfo.getDisplayName()),
+                                R.string.scNullCipherIssueNonEncryptedTitle,
+                                subInfo.getDisplayName()),
                         context.getString(R.string.scNullCipherIssueNonEncryptedSummary),
                         SEVERITY_LEVEL_RECOMMENDATION,
                         NULL_CIPHER_ISSUE_NON_ENCRYPTED_ID);
@@ -225,7 +231,7 @@ public class CellularNetworkSecuritySafetySource {
                 builder = new SafetySourceIssue.Builder(
                         NULL_CIPHER_ISSUE_NON_ENCRYPTED_ID + "_" + subId,
                         context.getString(
-                            R.string.scNullCipherIssueEncryptedTitle, subInfo.getDisplayName()),
+                                R.string.scNullCipherIssueEncryptedTitle, subInfo.getDisplayName()),
                         context.getString(R.string.scNullCipherIssueEncryptedSummary),
                         SEVERITY_LEVEL_INFORMATION,
                         NULL_CIPHER_ISSUE_ENCRYPTED_ID);
@@ -233,26 +239,31 @@ public class CellularNetworkSecuritySafetySource {
             default:
                 throw new AssertionError();
         }
-
-        return Optional.of(
-                builder
-                    .setNotificationBehavior(SafetySourceIssue.NOTIFICATION_BEHAVIOR_IMMEDIATELY)
-                    .setIssueCategory(SafetySourceIssue.ISSUE_CATEGORY_DEVICE)
-                    .addAction(
+        builder
+                .setNotificationBehavior(
+                        SafetySourceIssue.NOTIFICATION_BEHAVIOR_IMMEDIATELY)
+                .setIssueCategory(SafetySourceIssue.ISSUE_CATEGORY_DEVICE)
+                .addAction(
                         new SafetySourceIssue.Action.Builder(
                                 NULL_CIPHER_ACTION_SETTINGS_ID,
                                 context.getString(R.string.scNullCipherIssueActionSettings),
                                 mSafetyCenterManagerWrapper.getActivityPendingIntent(
                                         context, CELLULAR_NETWORK_SECURITY_SETTINGS_INTENT))
-                            .build())
-                    .addAction(
-                        new SafetySourceIssue.Action.Builder(
-                                NULL_CIPHER_ACTION_LEARN_MORE_ID,
-                                context.getString(R.string.scNullCipherIssueActionLearnMore),
-                                mSafetyCenterManagerWrapper.getActivityPendingIntent(
-                                        context, LEARN_MORE_INTENT))
-                            .build())
-                    .build());
+                                .build());
+
+        Intent learnMoreIntent = getLearnMoreIntent(context);
+        if (learnMoreIntent != null) {
+            builder.addAction(
+                    new SafetySourceIssue.Action.Builder(
+                            NULL_CIPHER_ACTION_LEARN_MORE_ID,
+                            context.getString(
+                                    R.string.scNullCipherIssueActionLearnMore),
+                            mSafetyCenterManagerWrapper.getActivityPendingIntent(
+                                    context, learnMoreIntent))
+                            .build());
+        }
+
+        return Optional.of(builder.build());
     }
 
     /** Builds the identity disclosure issue if it's enabled and there are disclosures to report. */
@@ -264,7 +275,8 @@ public class CellularNetworkSecuritySafetySource {
 
         SubscriptionInfoInternal subInfo =
                 mSubscriptionManagerService.getSubscriptionInfoInternal(subId);
-        return Optional.of(
+
+        SafetySourceIssue.Builder builder =
                 new SafetySourceIssue.Builder(
                         IDENTIFIER_DISCLOSURE_ISSUE_ID + "_" + subId,
                         context.getString(R.string.scIdentifierDisclosureIssueTitle),
@@ -276,23 +288,51 @@ public class CellularNetworkSecuritySafetySource {
                                 subInfo.getDisplayName()),
                         SEVERITY_LEVEL_RECOMMENDATION,
                         IDENTIFIER_DISCLOSURE_ISSUE_ID)
-                    .setNotificationBehavior(SafetySourceIssue.NOTIFICATION_BEHAVIOR_IMMEDIATELY)
-                    .setIssueCategory(SafetySourceIssue.ISSUE_CATEGORY_DEVICE)
-                    .addAction(
-                        new SafetySourceIssue.Action.Builder(
-                                NULL_CIPHER_ACTION_SETTINGS_ID,
-                                context.getString(R.string.scNullCipherIssueActionSettings),
-                                mSafetyCenterManagerWrapper.getActivityPendingIntent(
-                                        context, CELLULAR_NETWORK_SECURITY_SETTINGS_INTENT))
-                            .build())
-                    .addAction(
-                        new SafetySourceIssue.Action.Builder(
-                                NULL_CIPHER_ACTION_LEARN_MORE_ID,
-                                context.getString(R.string.scNullCipherIssueActionLearnMore),
-                                mSafetyCenterManagerWrapper.getActivityPendingIntent(
-                                        context, LEARN_MORE_INTENT))
-                            .build())
-                .build());
+                        .setNotificationBehavior(
+                                SafetySourceIssue.NOTIFICATION_BEHAVIOR_IMMEDIATELY)
+                        .setIssueCategory(SafetySourceIssue.ISSUE_CATEGORY_DEVICE)
+                        .addAction(
+                                new SafetySourceIssue.Action.Builder(
+                                        NULL_CIPHER_ACTION_SETTINGS_ID,
+                                        context.getString(
+                                                R.string.scNullCipherIssueActionSettings),
+                                        mSafetyCenterManagerWrapper.getActivityPendingIntent(
+                                                context,
+                                                CELLULAR_NETWORK_SECURITY_SETTINGS_INTENT))
+                                        .build());
+
+        Intent learnMoreIntent = getLearnMoreIntent(context);
+        if (learnMoreIntent != null) {
+            builder.addAction(
+                    new SafetySourceIssue.Action.Builder(
+                            NULL_CIPHER_ACTION_LEARN_MORE_ID,
+                            context.getString(R.string.scNullCipherIssueActionLearnMore),
+                            mSafetyCenterManagerWrapper.getActivityPendingIntent(
+                                    context, learnMoreIntent)).build()
+            );
+        }
+
+        return Optional.of(builder.build());
+    }
+
+    /**
+     * Return Intent for learn more action, or null if resource associated with the Intent
+     * uri is
+     * missing or empty.
+     */
+    private Intent getLearnMoreIntent(Context context) {
+        String learnMoreUri;
+        try {
+            learnMoreUri = context.getString(R.string.scCellularNetworkSecurityLearnMore);
+        } catch (Resources.NotFoundException e) {
+            return null;
+        }
+
+        if (learnMoreUri.isEmpty()) {
+            return null;
+        }
+
+        return new Intent(Intent.ACTION_VIEW, Uri.parse(learnMoreUri));
     }
 
     /** A wrapper around {@link SafetyCenterManager} that can be instrumented in tests. */
@@ -337,7 +377,7 @@ public class CellularNetworkSecuritySafetySource {
         private IdentifierDisclosure(int count, Instant start, Instant end) {
             mDisclosureCount = count;
             mWindowStart = start;
-            mWindowEnd  = end;
+            mWindowEnd = end;
         }
 
         private int getDisclosureCount() {

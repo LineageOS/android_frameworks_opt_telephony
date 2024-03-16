@@ -45,6 +45,7 @@ import java.util.List;
 public class NullCipherNotifierTest {
 
     private static final int SUB_ID = 3425;
+    private static final int PHONE_ID = 999;
     private static final List<Integer> NON_TRANSPORT_LAYER_EVENTS =
             List.of(SecurityAlgorithmUpdate.CONNECTION_EVENT_VOLTE_SIP,
                     SecurityAlgorithmUpdate.CONNECTION_EVENT_VOLTE_SIP_SOS,
@@ -149,15 +150,35 @@ public class NullCipherNotifierTest {
     @Test
     public void onSecurityAlgorithmUpdate_enabled_unprotectedEmergency_noSafetySourceUpdate() {
         NullCipherNotifier notifier = new NullCipherNotifier(mExecutor, mSafetySource);
+        notifier.enable(mContext);
 
         notifier.onSecurityAlgorithmUpdate(
                 mContext,
+                PHONE_ID,
                 SUB_ID,
                 new SecurityAlgorithmUpdate(
                         SecurityAlgorithmUpdate.CONNECTION_EVENT_AS_SIGNALLING_5G,
                         SecurityAlgorithmUpdate.SECURITY_ALGORITHM_EEA2,
                         SecurityAlgorithmUpdate.SECURITY_ALGORITHM_HMAC_SHA1_96,
                         /* isUnprotectedEmergency= */ true));
+
+        verify(mSafetySource, never()).setNullCipherState(any(), anyInt(), anyInt());
+    }
+
+    @Test
+    public void onSecurityAlgorithmUpdate_disabled_noSafetySourceUpdate() {
+        NullCipherNotifier notifier = new NullCipherNotifier(mExecutor, mSafetySource);
+        notifier.disable(mContext);
+
+        notifier.onSecurityAlgorithmUpdate(
+                mContext,
+                PHONE_ID,
+                SUB_ID,
+                new SecurityAlgorithmUpdate(
+                        SecurityAlgorithmUpdate.CONNECTION_EVENT_AS_SIGNALLING_5G,
+                        SecurityAlgorithmUpdate.SECURITY_ALGORITHM_EEA2,
+                        SecurityAlgorithmUpdate.SECURITY_ALGORITHM_HMAC_SHA1_96,
+                        /* isUnprotectedEmergency= */ false));
 
         verify(mSafetySource, never()).setNullCipherState(any(), anyInt(), anyInt());
     }
@@ -170,6 +191,7 @@ public class NullCipherNotifierTest {
             clearInvocations(mSafetySource);
             notifier.onSecurityAlgorithmUpdate(
                     mContext,
+                    PHONE_ID,
                     SUB_ID,
                     new SecurityAlgorithmUpdate(
                             connectionEvent,
@@ -185,12 +207,14 @@ public class NullCipherNotifierTest {
     @Test
     public void onUpdate_enabled_transportLayerEvent_encryptionNullCipher_notifyNonEncrypted() {
         NullCipherNotifier notifier = new NullCipherNotifier(mExecutor, mSafetySource);
+        notifier.enable(mContext);
 
         for (int connectionEvent : TRANSPORT_LAYER_EVENTS) {
             for (int encryptionAlgorithm : NULL_CIPHERS) {
                 clearInvocations(mSafetySource);
                 notifier.onSecurityAlgorithmUpdate(
                         mContext,
+                        PHONE_ID,
                         SUB_ID,
                         new SecurityAlgorithmUpdate(
                                 connectionEvent,
@@ -214,12 +238,14 @@ public class NullCipherNotifierTest {
     @Test
     public void onUpdate_enabled_transportLayerEvent_integrityNullCipher_notifyNonEncrypted() {
         NullCipherNotifier notifier = new NullCipherNotifier(mExecutor, mSafetySource);
+        notifier.enable(mContext);
 
         for (int connectionEvent : TRANSPORT_LAYER_EVENTS) {
             for (int integrityAlgorithm : NULL_CIPHERS) {
                 clearInvocations(mSafetySource);
                 notifier.onSecurityAlgorithmUpdate(
                         mContext,
+                        PHONE_ID,
                         SUB_ID,
                         new SecurityAlgorithmUpdate(
                                 connectionEvent,
@@ -243,12 +269,14 @@ public class NullCipherNotifierTest {
     @Test
     public void onUpdate_enabled_transportLayerEvent_encryptionNonNullCipher_encrypted() {
         NullCipherNotifier notifier = new NullCipherNotifier(mExecutor, mSafetySource);
+        notifier.enable(mContext);
 
         for (int connectionEvent : TRANSPORT_LAYER_EVENTS) {
             for (int encryptionAlgorithm : NON_NULL_CIPHERS) {
                 clearInvocations(mSafetySource);
                 notifier.onSecurityAlgorithmUpdate(
                         mContext,
+                        PHONE_ID,
                         SUB_ID,
                         new SecurityAlgorithmUpdate(
                                 connectionEvent,
@@ -272,12 +300,14 @@ public class NullCipherNotifierTest {
     @Test
     public void onUpdate_enabled_transportLayerEvent_integrityNonNullCipher_encrypted() {
         NullCipherNotifier notifier = new NullCipherNotifier(mExecutor, mSafetySource);
+        notifier.enable(mContext);
 
         for (int connectionEvent : TRANSPORT_LAYER_EVENTS) {
             for (int integrityAlgorithm : NON_NULL_CIPHERS) {
                 clearInvocations(mSafetySource);
                 notifier.onSecurityAlgorithmUpdate(
                         mContext,
+                        PHONE_ID,
                         SUB_ID,
                         new SecurityAlgorithmUpdate(
                                 connectionEvent,
@@ -301,11 +331,13 @@ public class NullCipherNotifierTest {
     @Test
     public void onUpdate_enabled_transportLayerEvent_encryptionNonNullCipher_notifyEncrypted() {
         NullCipherNotifier notifier = new NullCipherNotifier(mExecutor, mSafetySource);
+        notifier.enable(mContext);
 
         for (int connectionEvent : TRANSPORT_LAYER_EVENTS) {
             for (int encryptionAlgorithm : NON_NULL_CIPHERS) {
                 notifier.onSecurityAlgorithmUpdate(
                         mContext,
+                        PHONE_ID,
                         SUB_ID,
                         new SecurityAlgorithmUpdate(
                                 connectionEvent,
@@ -316,6 +348,7 @@ public class NullCipherNotifierTest {
                 clearInvocations(mSafetySource);
                 notifier.onSecurityAlgorithmUpdate(
                         mContext,
+                        PHONE_ID,
                         SUB_ID,
                         new SecurityAlgorithmUpdate(
                                 connectionEvent,
@@ -345,6 +378,7 @@ public class NullCipherNotifierTest {
             for (int integrityAlgorithm : NON_NULL_CIPHERS) {
                 notifier.onSecurityAlgorithmUpdate(
                         mContext,
+                        PHONE_ID,
                         SUB_ID,
                         new SecurityAlgorithmUpdate(
                                 connectionEvent,
@@ -355,6 +389,7 @@ public class NullCipherNotifierTest {
                 clearInvocations(mSafetySource);
                 notifier.onSecurityAlgorithmUpdate(
                         mContext,
+                        PHONE_ID,
                         SUB_ID,
                         new SecurityAlgorithmUpdate(
                                 connectionEvent,
@@ -373,5 +408,89 @@ public class NullCipherNotifierTest {
                                 eq(NULL_CIPHER_STATE_NOTIFY_ENCRYPTED));
             }
         }
+    }
+
+    @Test
+    public void onSecurityAlgorithmUpdate_updateSubscriptionId_clearsOldId() {
+        NullCipherNotifier notifier = new NullCipherNotifier(mExecutor, mSafetySource);
+        notifier.enable(mContext);
+
+        int connectionEvent = SecurityAlgorithmUpdate.CONNECTION_EVENT_AS_SIGNALLING_5G;
+        int encryptionAlgorithm = SecurityAlgorithmUpdate.SECURITY_ALGORITHM_EEA2;
+        int subId2 = 1337;
+
+        notifier.onSecurityAlgorithmUpdate(
+                mContext,
+                PHONE_ID,
+                SUB_ID,
+                getWellEncryptedUpdate());
+
+        notifier.setSubscriptionMapping(mContext, PHONE_ID, subId2);
+
+        verify(
+                mSafetySource,
+                times(1).description(
+                        "Connection event: " + connectionEvent
+                                + " Encryption algorithm: " + encryptionAlgorithm))
+                .setNullCipherState(
+                        eq(mContext),
+                        eq(SUB_ID),
+                        eq(NULL_CIPHER_STATE_ENCRYPTED));
+
+        verify(mSafetySource, times(1)).clearNullCipherState(eq(mContext), eq(SUB_ID));
+    }
+
+    @Test
+    public void onSecurityAlgorithmUpdate_newSubIdOnAlgoUpdate_clearsOldId() {
+        NullCipherNotifier notifier = new NullCipherNotifier(mExecutor, mSafetySource);
+        notifier.enable(mContext);
+
+        int connectionEvent = SecurityAlgorithmUpdate.CONNECTION_EVENT_AS_SIGNALLING_5G;
+        int encryptionAlgorithm = SecurityAlgorithmUpdate.SECURITY_ALGORITHM_EEA2;
+        int subId2 = 1337;
+
+        notifier.onSecurityAlgorithmUpdate(
+                mContext,
+                PHONE_ID,
+                SUB_ID,
+                getWellEncryptedUpdate());
+
+        notifier.onSecurityAlgorithmUpdate(
+                mContext,
+                PHONE_ID,
+                subId2,
+                getWellEncryptedUpdate());
+
+        verify(
+                mSafetySource,
+                times(1).description(
+                        "SubId: " + SUB_ID + "Connection event: " + connectionEvent
+                                + " Encryption algorithm: " + encryptionAlgorithm))
+                .setNullCipherState(
+                        eq(mContext),
+                        eq(SUB_ID),
+                        eq(NULL_CIPHER_STATE_ENCRYPTED));
+
+        // The update with subId2 should clear subId1 data since they have the same phone id
+        verify(mSafetySource, times(1)).clearNullCipherState(eq(mContext), eq(SUB_ID));
+
+        verify(
+                mSafetySource,
+                times(1).description(
+                        "SubId: " + SUB_ID + "Connection event: " + connectionEvent
+                                + " Encryption algorithm: " + encryptionAlgorithm))
+                .setNullCipherState(
+                        eq(mContext),
+                        eq(subId2),
+                        eq(NULL_CIPHER_STATE_ENCRYPTED));
+
+    }
+
+    private SecurityAlgorithmUpdate getWellEncryptedUpdate() {
+        return new SecurityAlgorithmUpdate(
+                SecurityAlgorithmUpdate.CONNECTION_EVENT_AS_SIGNALLING_5G,
+                SecurityAlgorithmUpdate.SECURITY_ALGORITHM_EEA2,
+                SecurityAlgorithmUpdate.SECURITY_ALGORITHM_HMAC_SHA1_96,
+                /* isUnprotectedEmergency= */ false);
     }
 }

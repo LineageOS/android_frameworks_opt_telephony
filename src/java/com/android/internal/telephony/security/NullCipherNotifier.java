@@ -56,6 +56,7 @@ public class NullCipherNotifier {
 
     private final CellularNetworkSecuritySafetySource mSafetySource;
     private final HashMap<Integer, SubscriptionState> mSubscriptionState = new HashMap<>();
+    private final HashMap<Integer, Integer> mActiveSubscriptions = new HashMap<>();
 
     private final Object mEnabledLock = new Object();
     @GuardedBy("mEnabledLock")
@@ -90,29 +91,76 @@ public class NullCipherNotifier {
      * Adds a security algorithm update. If appropriate, this will trigger a user notification.
      */
     public void onSecurityAlgorithmUpdate(
-            Context context, int subId, SecurityAlgorithmUpdate update) {
+            Context context, int phoneId, int subId, SecurityAlgorithmUpdate update) {
         Rlog.d(TAG, "Security algorithm update: subId = " + subId + " " + update);
 
         if (shouldIgnoreUpdate(update)) {
             return;
         }
 
+        if (!isEnabled()) {
+            Rlog.i(TAG, "Ignoring onSecurityAlgorithmUpdate. Notifier is disabled.");
+            return;
+        }
+
         try {
             mSerializedWorkQueue.execute(() -> {
-                SubscriptionState subState = mSubscriptionState.get(subId);
-                if (subState == null) {
-                    subState = new SubscriptionState();
-                    mSubscriptionState.put(subId, subState);
-                }
+                try {
+                    maybeUpdateSubscriptionMapping(context, phoneId, subId);
+                    SubscriptionState subState = mSubscriptionState.get(subId);
+                    if (subState == null) {
+                        subState = new SubscriptionState();
+                        mSubscriptionState.put(subId, subState);
+                    }
 
-                @CellularNetworkSecuritySafetySource.NullCipherState int nullCipherState =
-                        subState.update(update);
-                mSafetySource.setNullCipherState(context, subId, nullCipherState);
+                    @CellularNetworkSecuritySafetySource.NullCipherState int nullCipherState =
+                            subState.update(update);
+                    mSafetySource.setNullCipherState(context, subId, nullCipherState);
+                } catch (Throwable t) {
+                    Rlog.e(TAG, "Failed to execute onSecurityAlgorithmUpdate " + t.getMessage());
+                }
             });
         } catch (RejectedExecutionException e) {
-            Rlog.e(TAG, "Failed to schedule onEnableNotifier: " + e.getMessage());
+            Rlog.e(TAG, "Failed to schedule onSecurityAlgorithmUpdate: " + e.getMessage());
         }
     }
+
+    /**
+     * Set or update the current phoneId to subId mapping. When a new subId is mapped to a phoneId,
+     * we update the safety source to clear state of the old subId.
+     */
+    public void setSubscriptionMapping(Context context, int phoneId, int subId) {
+
+        if (!isEnabled()) {
+            Rlog.i(TAG, "Ignoring setSubscriptionMapping. Notifier is disabled.");
+        }
+
+        try {
+            mSerializedWorkQueue.execute(() -> {
+                try {
+                    maybeUpdateSubscriptionMapping(context, phoneId, subId);
+                } catch (Throwable t) {
+                    Rlog.e(TAG, "Failed to update subId mapping. phoneId: " + phoneId + " subId: "
+                            + subId + ". " + t.getMessage());
+                }
+            });
+
+        } catch (RejectedExecutionException e) {
+            Rlog.e(TAG, "Failed to schedule setSubscriptionMapping: " + e.getMessage());
+        }
+    }
+
+    private void maybeUpdateSubscriptionMapping(Context context, int phoneId, int subId) {
+        final Integer oldSubId = mActiveSubscriptions.put(phoneId, subId);
+        if (oldSubId == null || oldSubId == subId) {
+            return;
+        }
+
+        // Our subId was updated for this phone, we should clear this subId's state.
+        mSubscriptionState.remove(oldSubId);
+        mSafetySource.clearNullCipherState(context, oldSubId);
+    }
+
 
     /**
      * Enables null cipher notification; {@code onSecurityAlgorithmUpdate} will start handling
@@ -285,7 +333,7 @@ public class NullCipherNotifier {
     /** The state of security algorithms for a network connection. */
     private static final class ConnectionState {
         private static final ConnectionState UNKNOWN =
-                 new ConnectionState(SECURITY_ALGORITHM_UNKNOWN, SECURITY_ALGORITHM_UNKNOWN);
+                new ConnectionState(SECURITY_ALGORITHM_UNKNOWN, SECURITY_ALGORITHM_UNKNOWN);
 
         private final @SecurityAlgorithm int mEncryption;
         private final @SecurityAlgorithm int mIntegrity;

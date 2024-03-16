@@ -36,6 +36,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.safetycenter.SafetySourceData;
+import android.safetycenter.SafetySourceIssue;
 import android.util.Singleton;
 
 import com.android.internal.R;
@@ -50,6 +51,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.time.Instant;
+import java.util.List;
 
 public final class CellularNetworkSecuritySafetySourceTest extends TelephonyTest {
 
@@ -76,6 +78,8 @@ public final class CellularNetworkSecuritySafetySourceTest extends TelephonyTest
 
         mContextFixture.putResource(R.string.scCellularNetworkSecurityTitle, "fake");
         mContextFixture.putResource(R.string.scCellularNetworkSecuritySummary, "fake");
+        mContextFixture.putResource(R.string.scCellularNetworkSecurityLearnMore,
+                "https://support.google.com/android?p=cellular_security");
         mContextFixture.putResource(R.string.scNullCipherIssueNonEncryptedTitle, "fake %1$s");
         mContextFixture.putResource(R.string.scNullCipherIssueNonEncryptedSummary, "fake");
         mContextFixture.putResource(R.string.scNullCipherIssueEncryptedTitle, "fake %1$s");
@@ -172,6 +176,26 @@ public final class CellularNetworkSecuritySafetySourceTest extends TelephonyTest
     }
 
     @Test
+    public void clearNullCipherState() {
+        ArgumentCaptor<SafetySourceData> data = ArgumentCaptor.forClass(SafetySourceData.class);
+
+        mSafetySource.setNullCipherIssueEnabled(mContext, true);
+        mSafetySource.setNullCipherState(mContext, 0, NULL_CIPHER_STATE_NOTIFY_ENCRYPTED);
+        mSafetySource.clearNullCipherState(mContext, 0);
+
+        // Once for enable, once for encrypted state, and once for clearing state
+        verify(mSafetyCenterManagerWrapper, times(3)).setSafetySourceData(data.capture());
+
+        // initial check that our encrypted state update created an issue
+        assertThat(data.getAllValues().get(1).getStatus()).isNotNull();
+        assertThat(data.getAllValues().get(1).getIssues()).hasSize(1);
+
+        // assert that our last call to clear state results in no issues sent to SC
+        assertThat(data.getAllValues().get(2).getStatus()).isNotNull();
+        assertThat(data.getAllValues().get(2).getIssues()).isEmpty();
+    }
+
+    @Test
     public void disableIdentifierDisclosueIssue_nullData() {
         // We must first enable before disabling, since a standalone call to disable may result in
         // a no-op when the default for a new notifier is to be disabled.
@@ -244,5 +268,25 @@ public final class CellularNetworkSecuritySafetySourceTest extends TelephonyTest
         verify(mSafetyCenterManagerWrapper, times(4)).setSafetySourceData(data.capture());
         assertThat(data.getAllValues().get(3).getStatus()).isNotNull();
         assertThat(data.getAllValues().get(3).getIssues()).hasSize(2);
+    }
+
+    @Test
+    public void learnMoreLinkEmpty_learnMoreIsHidden() {
+        mContextFixture.putResource(R.string.scCellularNetworkSecurityLearnMore, "");
+
+        ArgumentCaptor<SafetySourceData> data = ArgumentCaptor.forClass(SafetySourceData.class);
+
+        mSafetySource.setNullCipherIssueEnabled(mContext, true);
+        mSafetySource.setNullCipherState(mContext, 0, NULL_CIPHER_STATE_NOTIFY_NON_ENCRYPTED);
+        mSafetySource.setIdentifierDisclosureIssueEnabled(mContext, true);
+        mSafetySource.setIdentifierDisclosure(mContext, 0, 12, Instant.now(), Instant.now());
+
+        verify(mSafetyCenterManagerWrapper, times(4)).setSafetySourceData(data.capture());
+        List<SafetySourceIssue.Action> actions = data.getAllValues().get(
+                3).getIssues().getFirst().getActions();
+
+        // we only see the action that takes you to the settings page
+        assertThat(actions).hasSize(1);
+        assertThat(actions.getFirst().getId()).isEqualTo("cellular_security_settings");
     }
 }
