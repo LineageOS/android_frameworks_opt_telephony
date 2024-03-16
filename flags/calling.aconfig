@@ -1,5 +1,6 @@
 package: "com.android.internal.telephony.flags"
 
+# OWNER=breadley TARGET=24Q3
 flag {
   name: "simultaneous_calling_indications"
   is_exported: true
@@ -9,6 +10,7 @@ flag {
   is_exported: true
 }
 
+# OWNER=yomna TARGET=24Q3
 flag {
   name: "show_call_fail_notification_for_2g_toggle"
   namespace: "telephony"

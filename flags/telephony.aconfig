@@ -1,5 +1,6 @@
 package: "com.android.internal.telephony.flags"
 
+# OWNER=joonhunshin TARGET=24Q3
 flag {
     name: "enforce_telephony_feature_mapping"
     namespace: "telephony"
@@ -7,6 +8,7 @@ flag {
     bug:"297989574"
 }
 
+# OWNER=joonhunshin TARGET=24Q3
 flag {
     name: "enforce_telephony_feature_mapping_for_public_apis"
     namespace: "telephony"
@@ -14,6 +16,7 @@ flag {
     bug:"297989574"
 }
 
+# OWNER=stevestatia TARGET=24Q3
 flag {
     name: "prevent_system_server_and_phone_deadlock"
     namespace: "telephony"
@@ -21,6 +24,7 @@ flag {
     bug: "315973270"
 }
 
+# OWNER=joonhunshin TARGET=24Q3
 flag {
     name: "prevent_invocation_repeat_of_ril_call_when_device_does_not_support_voice"
     namespace: "telephony"
@@ -28,6 +32,7 @@ flag {
     bug: "290833783"
 }
 
+# OWNER=jackyu TARGET=24Q3
 flag {
     name: "minimal_telephony_cdm_check"
     namespace: "telephony"
@@ -35,6 +40,7 @@ flag {
     bug: "310710841"
 }
 
+# OWNER=jackyu TARGET=24Q3
 flag {
     name: "minimal_telephony_managers_conditional_on_features"
     namespace: "telephony"
@@ -42,6 +48,7 @@ flag {
     bug: "310710841"
 }
 
+# OWNER=joonhunshin TARGET=24Q3
 flag {
     name: "set_no_reply_timer_for_cfnry"
     namespace: "telephony"

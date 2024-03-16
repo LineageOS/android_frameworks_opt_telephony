@@ -1,5 +1,6 @@
 package: "com.android.internal.telephony.flags"
 
+# OWNER=tjstuart TARGET=24Q3
 flag {
   name: "do_not_override_precise_label"
   namespace: "telephony"
@@ -8,6 +9,7 @@ flag {
   is_fixed_read_only: true
 }
 
+# OWNER=tnd TARGET=24Q1
 flag {
   name: "log_mms_sms_database_access_info"
   namespace: "telephony"
@@ -15,6 +17,7 @@ flag {
   bug: "275225402"
 }
 
+# OWNER=tjstuart TARGET=24Q3
 flag {
   name: "stop_spamming_emergency_notification"
   namespace: "telephony"
@@ -22,6 +25,7 @@ flag {
   bug: "275225402"
 }
 
+# OWNER=avinashmp TARGET=24Q3
 flag {
   name: "enable_wps_check_api_flag"
   is_exported: true
@@ -30,6 +34,7 @@ flag {
   bug: "304272356"
 }
 
+# OWNER=grantmenke TARGET=24Q3
 flag {
   name: "ensure_access_to_call_settings_is_restricted"
   namespace: "telephony"
@@ -37,6 +42,7 @@ flag {
   bug: "309655251"
 }
 
+# OWNER=sangyun TARGET=24Q2
 flag {
   name: "reorganize_roaming_notification"
   namespace: "telephony"
@@ -44,6 +50,7 @@ flag {
   bug: "310594087"
 }
 
+# OWNER=sangyun TARGET=24Q2
 flag {
   name: "dismiss_network_selection_notification_on_sim_disable"
   namespace: "telephony"
@@ -51,6 +58,7 @@ flag {
   bug: "310594186"
 }
 
+# OWNER=nagendranb TARGET=24Q3
 flag {
   name: "enable_telephony_analytics"
   namespace: "telephony"
@@ -58,6 +66,7 @@ flag {
   bug: "309896524"
 }
 
+# OWNER=rambowang TARGET=24Q3
 flag {
   name: "show_call_id_and_call_waiting_in_additional_settings_menu"
   is_exported: true
@@ -66,6 +75,7 @@ flag {
   bug: "310264981"
 }
 
+# OWNER=rambowang TARGET=24Q3
 flag {
     name: "reset_mobile_network_settings"
     is_exported: true
@@ -74,6 +84,7 @@ flag {
     bug:"271921464"
 }
 
+# OWNER=rambowang TARGET=24Q3
 flag {
     name: "fix_crash_on_getting_config_when_phone_is_gone"
     namespace: "telephony"
@@ -84,6 +95,7 @@ flag {
     }
 }
 
+# OWNER=rambowang TARGET=24Q3
 flag {
     name: "add_anomaly_when_notify_config_changed_with_invalid_phone"
     namespace: "telephony"
@@ -94,6 +106,7 @@ flag {
     }
 }
 
+# OWNER=rambowang TARGET=24Q3
 flag {
     name: "hide_preinstalled_carrier_app_at_most_once"
     namespace: "telephony"
