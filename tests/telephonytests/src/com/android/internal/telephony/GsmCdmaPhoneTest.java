@@ -1519,7 +1519,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     public void testNrCapabilityChanged_firstRequest_incompleteCarrierConfig_changeNeeded() {
-        when(mFeatureFlags.enableCarrierConfigN1Control()).thenReturn(true);
+        when(mFeatureFlags.enableCarrierConfigN1ControlAttempt2()).thenReturn(true);
 
         mPhoneUT.mCi = mMockCi;
         PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
@@ -1550,7 +1550,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     public void testNrCapabilityChanged_firstRequest_noChangeNeeded() {
-        when(mFeatureFlags.enableCarrierConfigN1Control()).thenReturn(true);
+        when(mFeatureFlags.enableCarrierConfigN1ControlAttempt2()).thenReturn(true);
 
         mPhoneUT.mCi = mMockCi;
         PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
@@ -1574,7 +1574,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     public void testNrCapabilityChanged_firstRequest_needsChange() {
-        when(mFeatureFlags.enableCarrierConfigN1Control()).thenReturn(true);
+        when(mFeatureFlags.enableCarrierConfigN1ControlAttempt2()).thenReturn(true);
 
         mPhoneUT.mCi = mMockCi;
         PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
@@ -1598,7 +1598,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     public void testNrCapabilityChanged_CarrierConfigChanges() {
-        when(mFeatureFlags.enableCarrierConfigN1Control()).thenReturn(true);
+        when(mFeatureFlags.enableCarrierConfigN1ControlAttempt2()).thenReturn(true);
 
         // Initialize the inner cache and set the modem to N1 mode = enabled/true
         testNrCapabilityChanged_firstRequest_needsChange();
@@ -1620,7 +1620,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     public void testNrCapabilityChanged_CarrierConfigChanges_ErrorResponse() {
-        when(mFeatureFlags.enableCarrierConfigN1Control()).thenReturn(true);
+        when(mFeatureFlags.enableCarrierConfigN1ControlAttempt2()).thenReturn(true);
 
         mPhoneUT.mCi = mMockCi;
         for (int i = 0; i < 2; i++) {
@@ -1646,7 +1646,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     public void testNrCapabilityChanged_firstRequest_ImsChanges() {
-        when(mFeatureFlags.enableCarrierConfigN1Control()).thenReturn(true);
+        when(mFeatureFlags.enableCarrierConfigN1ControlAttempt2()).thenReturn(true);
 
         mPhoneUT.mCi = mMockCi;
         Message passthroughMessage = mTestHandler.obtainMessage(0xC0FFEE);
