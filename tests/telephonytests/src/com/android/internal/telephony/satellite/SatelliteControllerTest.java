@@ -2366,6 +2366,24 @@ public class SatelliteControllerTest extends TelephonyTest {
         doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
         provisionSatelliteService();
         setUpResponseForStartSendingNtnSignalStrength(expectedResult);
+
+        // but it is ignored because satellite is disabled
+        setUpResponseForRequestIsSatelliteEnabled(false, SATELLITE_RESULT_SUCCESS);
+        verifySatelliteEnabled(false, SATELLITE_RESULT_SUCCESS);
+        sendCmdStartSendingNtnSignalStrengthChangedEvent(true);
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, never())
+                .startSendingNtnSignalStrength(any(Message.class));
+
+        // after satellite is enabled, startSendingNtnSignalStrength() is requested normally
+        resetSatelliteControllerUT();
+        reset(mMockSatelliteModemInterface);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        provisionSatelliteService();
+        setUpResponseForStartSendingNtnSignalStrength(expectedResult);
+        setUpResponseForRequestIsSatelliteEnabled(true, SATELLITE_RESULT_SUCCESS);
+        verifySatelliteEnabled(true, SATELLITE_RESULT_SUCCESS);
+        processAllMessages();
         sendCmdStartSendingNtnSignalStrengthChangedEvent(true);
         processAllMessages();
         verify(mMockSatelliteModemInterface, times(1))
