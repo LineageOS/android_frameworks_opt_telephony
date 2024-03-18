@@ -93,6 +93,8 @@ public class SatelliteModemInterface {
             new RegistrantList();
     @NonNull private final RegistrantList mSatelliteCapabilitiesChangedRegistrants =
             new RegistrantList();
+    @NonNull private final RegistrantList mSatelliteSupportedStateChangedRegistrants =
+            new RegistrantList();
 
     @NonNull private final ISatelliteListener mListener = new ISatelliteListener.Stub() {
         @Override
@@ -157,6 +159,11 @@ public class SatelliteModemInterface {
                 android.telephony.satellite.stub.SatelliteCapabilities satelliteCapabilities) {
             mSatelliteCapabilitiesChangedRegistrants.notifyResult(
                     SatelliteServiceUtils.fromSatelliteCapabilities(satelliteCapabilities));
+        }
+
+        @Override
+        public void onSatelliteSupportedStateChanged(boolean supported) {
+            mSatelliteSupportedStateChangedRegistrants.notifyResult(supported);
         }
     };
 
@@ -502,6 +509,27 @@ public class SatelliteModemInterface {
      */
     public void unregisterForSatelliteCapabilitiesChanged(@NonNull Handler h) {
         mSatelliteCapabilitiesChangedRegistrants.remove(h);
+    }
+
+    /**
+     * Registers for the satellite supported state changed.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForSatelliteSupportedStateChanged(
+            @NonNull Handler h, int what, @Nullable Object obj) {
+        mSatelliteSupportedStateChangedRegistrants.add(h, what, obj);
+    }
+
+    /**
+     * Unregisters for the satellite supported state changed.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForSatelliteSupportedStateChanged(@NonNull Handler h) {
+        mSatelliteSupportedStateChangedRegistrants.remove(h);
     }
 
     /**
