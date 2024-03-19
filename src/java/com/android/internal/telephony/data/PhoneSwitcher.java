@@ -1562,6 +1562,9 @@ public class PhoneSwitcher extends Handler {
         mPendingSwitchSubId = INVALID_SUBSCRIPTION_ID;
 
         if (subIdToValidate == mPreferredDataSubId.get()) {
+            if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
+                mAutoSelectedDataSubId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
+            }
             sendSetOpptCallbackHelper(callback, SET_OPPORTUNISTIC_SUB_SUCCESS);
             return;
         }
