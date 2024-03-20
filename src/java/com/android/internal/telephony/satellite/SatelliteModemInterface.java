@@ -1009,48 +1009,6 @@ public class SatelliteModemInterface {
     }
 
     /**
-     * Request to get whether satellite communication is allowed for the current location.
-     *
-     * @param message The Message to send to result of the operation to.
-     */
-    public void requestIsSatelliteCommunicationAllowedForCurrentLocation(@NonNull Message message) {
-        if (mSatelliteService != null) {
-            try {
-                mSatelliteService.requestIsSatelliteCommunicationAllowedForCurrentLocation(
-                        new IIntegerConsumer.Stub() {
-                            @Override
-                            public void accept(int result) {
-                                int error = SatelliteServiceUtils.fromSatelliteError(result);
-                                logd("requestIsCommunicationAllowedForCurrentLocation: "
-                                        + error);
-                                Binder.withCleanCallingIdentity(() ->
-                                        sendMessageWithResult(message, null, error));
-                            }
-                        }, new IBooleanConsumer.Stub() {
-                            @Override
-                            public void accept(boolean result) {
-                                logd("requestIsCommunicationAllowedForCurrentLocation: "
-                                        + result);
-                                Binder.withCleanCallingIdentity(() -> sendMessageWithResult(
-                                        message, result,
-                                        SatelliteManager.SATELLITE_RESULT_SUCCESS));
-                            }
-                        });
-            } catch (RemoteException e) {
-                loge("requestIsCommunicationAllowedForCurrentLocation: RemoteException "
-                        + e);
-                sendMessageWithResult(message, null,
-                        SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR);
-            }
-        } else {
-            loge("requestIsCommunicationAllowedForCurrentLocation: "
-                    + "Satellite service is unavailable.");
-            sendMessageWithResult(message, null,
-                    SatelliteManager.SATELLITE_RESULT_RADIO_NOT_AVAILABLE);
-        }
-    }
-
-    /**
      * Request to get the time after which the satellite will be visible. This is an int
      * representing the duration in seconds after which the satellite will be visible.
      * This will return 0 if the satellite is currently visible.
