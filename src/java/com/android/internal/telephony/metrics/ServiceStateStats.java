@@ -47,6 +47,7 @@ import com.android.internal.telephony.data.DataNetworkController.DataNetworkCont
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
+import com.android.internal.telephony.satellite.SatelliteController;
 import com.android.telephony.Rlog;
 
 import java.util.Set;
@@ -66,12 +67,14 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
     private boolean mExistAnyConnectedInternetPdn;
     private int mCurrentDataRat =
             TelephonyStatsLog.DATA_RAT_STATE_CHANGED__DATA_RAT__DATA_RAT_UNSPECIFIED;
+    private final SatelliteController mSatelliteController;
 
     public ServiceStateStats(Phone phone) {
         super(Runnable::run);
         mPhone = phone;
         mStorage = PhoneFactory.getMetricsCollector().getAtomsStorage();
         mDeviceStateHelper = PhoneFactory.getMetricsCollector().getDeviceStateHelper();
+        mSatelliteController = SatelliteController.getInstance();
     }
 
     /** Finalizes the durations of the current service state segment. */
@@ -140,6 +143,8 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
             newState.overrideVoiceService = mOverrideVoiceService.get();
             newState.isDataEnabled = mPhone.getDataSettingsManager().isDataEnabled();
             newState.isIwlanCrossSim = isCrossSimCallingRegistered(mPhone);
+            newState.isNtn = mSatelliteController != null
+                    ? mSatelliteController.isInSatelliteModeForCarrierRoaming(mPhone) : false;
             TimestampedServiceState prevState =
                     mLastState.getAndSet(new TimestampedServiceState(newState, now));
             addServiceStateAndSwitch(
@@ -315,6 +320,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
         copy.overrideVoiceService = state.overrideVoiceService;
         copy.isDataEnabled = state.isDataEnabled;
         copy.isIwlanCrossSim = state.isIwlanCrossSim;
+        copy.isNtn = state.isNtn;
         return copy;
     }
 

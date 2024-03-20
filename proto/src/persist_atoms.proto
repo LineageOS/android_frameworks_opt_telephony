@@ -287,6 +287,7 @@ message VoiceCallSession {
     optional bool is_iwlan_cross_sim_at_end = 38;
     optional bool is_iwlan_cross_sim_at_connected = 39;
     optional bool vonr_enabled = 40;
+    optional bool is_ntn = 41;
 
     // Internal use only
     optional int64 setup_begin_millis = 10001;
@@ -379,6 +380,7 @@ message DataCallSession {
     repeated int32 handover_failure_rat = 21;
     optional bool is_non_dds = 22;
     optional bool is_iwlan_cross_sim = 23;
+    optional bool is_ntn = 24;
 }
 
 message CellularServiceState {
@@ -397,6 +399,7 @@ message CellularServiceState {
     optional bool override_voice_service = 13;
     optional bool isDataEnabled = 14;
     optional bool is_iwlan_cross_sim = 15;
+    optional bool is_ntn = 16;
 
     // Internal use only
     optional int64 last_used_millis = 10001;

@@ -19,7 +19,9 @@ package com.android.internal.telephony.metrics;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -307,5 +309,50 @@ public class DataCallSessionStatsTest extends TelephonyTest {
         assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, stats.ratAtEnd);
         assertTrue(stats.oosAtEnd);
         assertFalse(stats.ongoing);
+    }
+
+    @Test
+    public void testIsNtn() {
+        when(mSatelliteController.isInSatelliteModeForCarrierRoaming(any())).thenReturn(true);
+
+        mDataCallSessionStats.onSetupDataCall(ApnSetting.TYPE_IMS);
+        mDataCallSessionStats.onSetupDataCallResponse(
+                mDefaultImsResponse,
+                TelephonyManager.NETWORK_TYPE_LTE,
+                ApnSetting.TYPE_IMS,
+                ApnSetting.PROTOCOL_IP,
+                DataFailCause.NONE);
+
+        mDataCallSessionStats.setTimeMillis(60000L);
+        mDataCallSessionStats.conclude();
+
+        ArgumentCaptor<DataCallSession> callCaptor =
+                ArgumentCaptor.forClass(DataCallSession.class);
+        verify(mPersistAtomsStorage).addDataCallSession(callCaptor.capture());
+        DataCallSession stats = callCaptor.getValue();
+
+        assertTrue(stats.isNtn);
+
+        reset(mPersistAtomsStorage);
+
+        when(mSatelliteController.isInSatelliteModeForCarrierRoaming(any()))
+                .thenReturn(false);
+
+        mDataCallSessionStats.onSetupDataCall(ApnSetting.TYPE_IMS);
+        mDataCallSessionStats.onSetupDataCallResponse(
+                mDefaultImsResponse,
+                TelephonyManager.NETWORK_TYPE_LTE,
+                ApnSetting.TYPE_IMS,
+                ApnSetting.PROTOCOL_IP,
+                DataFailCause.NONE);
+
+        mDataCallSessionStats.setTimeMillis(60000L);
+        mDataCallSessionStats.conclude();
+
+
+        verify(mPersistAtomsStorage).addDataCallSession(callCaptor.capture());
+        stats = callCaptor.getValue();
+
+        assertFalse(stats.isNtn);
     }
 }

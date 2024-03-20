@@ -1766,7 +1766,8 @@ public class PersistAtomsStorage {
                     && state.foldState == key.foldState
                     && state.overrideVoiceService == key.overrideVoiceService
                     && state.isDataEnabled == key.isDataEnabled
-                    && state.isIwlanCrossSim == key.isIwlanCrossSim) {
+                    && state.isIwlanCrossSim == key.isIwlanCrossSim
+                    && state.isNtn == key.isNtn) {
                 return state;
             }
         }
