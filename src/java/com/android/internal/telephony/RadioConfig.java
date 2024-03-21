@@ -61,10 +61,6 @@ public class RadioConfig extends Handler {
 
     static final int EVENT_HIDL_SERVICE_DEAD = 1;
     static final int EVENT_AIDL_SERVICE_DEAD = 2;
-    static final HalVersion RADIO_CONFIG_HAL_VERSION_UNKNOWN = new HalVersion(-1, -1);
-    static final HalVersion RADIO_CONFIG_HAL_VERSION_1_1 = new HalVersion(1, 1);
-    static final HalVersion RADIO_CONFIG_HAL_VERSION_1_3 = new HalVersion(1, 3);
-    static final HalVersion RADIO_CONFIG_HAL_VERSION_2_0 = new HalVersion(2, 0);
 
     private final boolean mIsMobileNetworkSupported;
     private final SparseArray<RILRequest> mRequestList = new SparseArray<>();
@@ -294,13 +290,12 @@ public class RadioConfig extends Handler {
 
         if (service != null) {
             mRadioConfigProxy.setAidl(
-                    RADIO_CONFIG_HAL_VERSION_2_0,
                     android.hardware.radio.config.IRadioConfig.Stub.asInterface(service));
         }
 
         if (mRadioConfigProxy.isEmpty()) {
             try {
-                mRadioConfigProxy.setHidl(RADIO_CONFIG_HAL_VERSION_1_3,
+                mRadioConfigProxy.setHidl(RIL.RADIO_HAL_VERSION_1_3,
                         android.hardware.radio.config.V1_3.IRadioConfig.getService(true));
             } catch (RemoteException | NoSuchElementException e) {
                 mRadioConfigProxy.clear();
@@ -310,7 +305,7 @@ public class RadioConfig extends Handler {
 
         if (mRadioConfigProxy.isEmpty()) {
             try {
-                mRadioConfigProxy.setHidl(RADIO_CONFIG_HAL_VERSION_1_1,
+                mRadioConfigProxy.setHidl(RIL.RADIO_HAL_VERSION_1_1,
                         android.hardware.radio.config.V1_1.IRadioConfig.getService(true));
             } catch (RemoteException | NoSuchElementException e) {
                 mRadioConfigProxy.clear();
@@ -515,7 +510,7 @@ public class RadioConfig extends Handler {
         RadioConfigProxy proxy = getRadioConfigProxy(null);
         if (proxy.isEmpty()) return;
 
-        if (proxy.getVersion().less(RADIO_CONFIG_HAL_VERSION_1_1)) {
+        if (proxy.getVersion().less(RIL.RADIO_HAL_VERSION_1_1)) {
             if (result != null) {
                 AsyncResult.forMessage(result, null,
                         CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
@@ -543,7 +538,7 @@ public class RadioConfig extends Handler {
      */
     public boolean isSetPreferredDataCommandSupported() {
         RadioConfigProxy proxy = getRadioConfigProxy(null);
-        return !proxy.isEmpty() && proxy.getVersion().greaterOrEqual(RADIO_CONFIG_HAL_VERSION_1_1);
+        return !proxy.isEmpty() && proxy.getVersion().greaterOrEqual(RIL.RADIO_HAL_VERSION_1_1);
     }
 
     /**
@@ -574,7 +569,7 @@ public class RadioConfig extends Handler {
         RadioConfigProxy proxy = getRadioConfigProxy(result);
         if (proxy.isEmpty()) return;
 
-        if (proxy.getVersion().less(RADIO_CONFIG_HAL_VERSION_1_1)) {
+        if (proxy.getVersion().less(RIL.RADIO_HAL_VERSION_1_1)) {
             if (result != null) {
                 AsyncResult.forMessage(
                         result, null, CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
@@ -628,7 +623,7 @@ public class RadioConfig extends Handler {
         RadioConfigProxy proxy = getRadioConfigProxy(Message.obtain(result));
         if (proxy.isEmpty()) return;
 
-        if (proxy.getVersion().less(RADIO_CONFIG_HAL_VERSION_1_3)) {
+        if (proxy.getVersion().less(RIL.RADIO_HAL_VERSION_1_3)) {
             if (result != null) {
                 if (DBG) {
                     logd("RIL_REQUEST_GET_HAL_DEVICE_CAPABILITIES > REQUEST_NOT_SUPPORTED");
