@@ -2463,6 +2463,12 @@ public class SatelliteController extends Handler {
             logd("getSatellitePlmnsForCarrier: carrierEnabledSatelliteFlag is disabled");
             return new ArrayList<>();
         }
+
+        if (!isSatelliteSupportedViaCarrier(subId)) {
+            logd("Satellite for carrier is not supported.");
+            return new ArrayList<>();
+        }
+
         synchronized (mSupportedSatelliteServicesLock) {
             return mMergedPlmnListPerCarrier.get(subId, new ArrayList<>()).stream().toList();
         }
