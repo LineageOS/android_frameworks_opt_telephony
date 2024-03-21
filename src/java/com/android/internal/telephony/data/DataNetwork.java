@@ -764,6 +764,12 @@ public class DataNetwork extends StateMachine {
     private @Nullable AccessNetworksManagerCallback mAccessNetworksManagerCallback;
 
     /**
+     * PreciseDataConnectionState, the most recently notified. If it has never been notified, it is
+     * null.
+     */
+    private @Nullable PreciseDataConnectionState mPreciseDataConnectionState;
+
+    /**
      * The network bandwidth.
      */
     public static class NetworkBandwidth {
@@ -2967,6 +2973,7 @@ public class DataNetwork extends StateMachine {
                 mDataCallResponse = response;
                 if (response.getLinkStatus() != DataCallResponse.LINK_STATUS_INACTIVE) {
                     updateDataNetwork(response);
+                    notifyPreciseDataConnectionState();
                 } else {
                     log("onDataStateChanged: PDN inactive reported by "
                             + AccessNetworkConstants.transportTypeToString(mTransport)
@@ -3417,11 +3424,20 @@ public class DataNetwork extends StateMachine {
     /**
      * Send the precise data connection state to the listener of
      * {@link android.telephony.TelephonyCallback.PreciseDataConnectionStateListener}.
+     *
+     * Note that notify only when {@link DataState} or {@link
+     * PreciseDataConnectionState.NetworkValidationStatus} changes.
      */
     private void notifyPreciseDataConnectionState() {
         PreciseDataConnectionState pdcs = getPreciseDataConnectionState();
-        logv("notifyPreciseDataConnectionState=" + pdcs);
-        mPhone.notifyDataConnection(pdcs);
+        if (mPreciseDataConnectionState == null
+                || mPreciseDataConnectionState.getState() != pdcs.getState()
+                || mPreciseDataConnectionState.getNetworkValidationStatus()
+                        != pdcs.getNetworkValidationStatus()) {
+            mPreciseDataConnectionState = pdcs;
+            logv("notifyPreciseDataConnectionState=" + pdcs);
+            mPhone.notifyDataConnection(pdcs);
+        }
     }
 
     /**
@@ -3733,8 +3749,7 @@ public class DataNetwork extends StateMachine {
 
     /**
      * Update the validation status from {@link DataCallResponse}, convert to network validation
-     * status {@link PreciseDataConnectionState.NetworkValidationStatus} and notify to
-     * {@link PreciseDataConnectionState} if status was changed.
+     * status {@link PreciseDataConnectionState.NetworkValidationStatus}.
      *
      * @param networkValidationStatus {@link PreciseDataConnectionState.NetworkValidationStatus}
      */
@@ -3751,7 +3766,6 @@ public class DataNetwork extends StateMachine {
                     + PreciseDataConnectionState.networkValidationStatusToString(
                     networkValidationStatus));
             mNetworkValidationStatus = networkValidationStatus;
-            notifyPreciseDataConnectionState();
         }
     }
 
