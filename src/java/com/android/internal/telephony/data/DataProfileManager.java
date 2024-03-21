@@ -939,7 +939,8 @@ public class DataProfileManager extends Handler {
      * @param setting The Apn setting to be checked.
      */
     private void checkApnSetting(@NonNull ApnSetting setting) {
-        if (setting.canHandleType(ApnSetting.TYPE_MMS)) {
+        if (setting.canHandleType(ApnSetting.TYPE_MMS)
+                && setting.getEditedStatus() == Telephony.Carriers.UNEDITED) {
             if (setting.getMmsc() == null) {
                 reportAnomaly("MMS is supported but no MMSC configured " + setting,
                         "9af73e18-b523-4dc5-adab-19d86c6a3685");
@@ -965,7 +966,7 @@ public class DataProfileManager extends Handler {
     private void checkDataProfiles(List<DataProfile> profiles) {
         for (int i = 0; i < profiles.size(); i++) {
             ApnSetting a = profiles.get(i).getApnSetting();
-            if (a == null) continue;
+            if (a == null || a.getEditedStatus() != Telephony.Carriers.UNEDITED) continue;
             if (// Lingering network is not the default and doesn't cover all the regular networks
                     (int) TelephonyManager.NETWORK_TYPE_BITMASK_UNKNOWN
                     != a.getLingeringNetworkTypeBitmask()
@@ -981,7 +982,7 @@ public class DataProfileManager extends Handler {
             }
             for (int j = i + 1; j < profiles.size(); j++) {
                 ApnSetting b = profiles.get(j).getApnSetting();
-                if (b == null) continue;
+                if (b == null || b.getEditedStatus() != Telephony.Carriers.UNEDITED) continue;
                 String apnNameA = a.getApnName();
                 String apnNameB = b.getApnName();
                 if (TextUtils.equals(apnNameA, apnNameB)
