@@ -90,3 +90,13 @@ flag {
         purpose: PURPOSE_BUGFIX
     }
 }
+
+flag {
+    name: "hide_preinstalled_carrier_app_at_most_once"
+    namespace: "telephony"
+    description: "Fix bug when preloaded carrier app is uninstalled and lose provisioning data"
+    bug:"158028151"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
+}
