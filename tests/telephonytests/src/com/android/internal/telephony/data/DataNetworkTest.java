@@ -256,12 +256,18 @@ public class DataNetworkTest extends TelephonyTest {
 
     private void setSuccessfulSetupDataResponse(DataServiceManager dsm, int cid,
             List<TrafficDescriptor> tds, Qos defaultQos) {
+        setSuccessfulSetupDataResponse(dsm, cid, tds, defaultQos,
+                PreciseDataConnectionState.NETWORK_VALIDATION_UNSUPPORTED);
+    }
+
+    private void setSuccessfulSetupDataResponse(DataServiceManager dsm, int cid,
+            List<TrafficDescriptor> tds, Qos defaultQos, int netwokrValidationResult) {
         doAnswer(invocation -> {
             final Message msg = (Message) invocation.getArguments()[10];
 
             DataCallResponse response = createDataCallResponse(
                     cid, DataCallResponse.LINK_STATUS_ACTIVE, tds, defaultQos,
-                    PreciseDataConnectionState.NETWORK_VALIDATION_UNSUPPORTED);
+                    netwokrValidationResult);
             msg.getData().putParcelable("data_call_response", response);
             msg.arg1 = DataServiceCallback.RESULT_SUCCESS;
             msg.sendToTarget();
@@ -2243,6 +2249,51 @@ public class DataNetworkTest extends TelephonyTest {
         List<PreciseDataConnectionState> pdcsList = pdcsCaptor.getAllValues();
         assertThat(pdcsList.get(1).getNetworkValidationStatus())
                 .isEqualTo(PreciseDataConnectionState.NETWORK_VALIDATION_UNSUPPORTED);
+    }
+
+    @Test
+    public void testHandoverWithSuccessNetworkValidation_FlagEnabled() throws Exception {
+        when(mFeatureFlags.networkValidation()).thenReturn(true);
+
+        setupDataNetwork();
+
+        setSuccessfulSetupDataResponse(
+                mMockedWlanDataServiceManager, 456, Collections.emptyList(), null,
+                PreciseDataConnectionState.NETWORK_VALIDATION_SUCCESS);
+        TelephonyNetworkAgent mockNetworkAgent = Mockito.mock(TelephonyNetworkAgent.class);
+        replaceInstance(DataNetwork.class, "mNetworkAgent",
+                mDataNetworkUT, mockNetworkAgent);
+        // Now handover to IWLAN
+        mDataNetworkUT.startHandover(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, null);
+        processAllMessages();
+
+        verify(mMockedWwanDataServiceManager).startHandover(eq(123), any(Message.class));
+        verify(mLinkBandwidthEstimator).unregisterCallback(any(
+                LinkBandwidthEstimatorCallback.class));
+        assertThat(mDataNetworkUT.getTransport())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+        assertThat(mDataNetworkUT.getId()).isEqualTo(456);
+        verify(mDataNetworkCallback).onHandoverSucceeded(eq(mDataNetworkUT));
+
+        ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
+                ArgumentCaptor.forClass(PreciseDataConnectionState.class);
+        verify(mPhone, times(4)).notifyDataConnection(pdcsCaptor.capture());
+        List<PreciseDataConnectionState> pdcsList = pdcsCaptor.getAllValues();
+
+        assertThat(pdcsList).hasSize(4);
+        assertThat(pdcsList.get(0).getState()).isEqualTo(TelephonyManager.DATA_CONNECTING);
+        assertThat(pdcsList.get(1).getState()).isEqualTo(TelephonyManager.DATA_CONNECTED);
+        assertThat(pdcsList.get(1).getNetworkValidationStatus())
+                .isEqualTo(PreciseDataConnectionState.NETWORK_VALIDATION_UNSUPPORTED);
+        assertThat(pdcsList.get(2).getState())
+                .isEqualTo(TelephonyManager.DATA_HANDOVER_IN_PROGRESS);
+        assertThat(pdcsList.get(2).getNetworkValidationStatus())
+                .isEqualTo(PreciseDataConnectionState.NETWORK_VALIDATION_UNSUPPORTED);
+        assertThat(pdcsList.get(3).getState()).isEqualTo(TelephonyManager.DATA_CONNECTED);
+        assertThat(pdcsList.get(3).getNetworkValidationStatus())
+                .isEqualTo(PreciseDataConnectionState.NETWORK_VALIDATION_SUCCESS);
+
+        verify(mDataNetworkCallback).onHandoverSucceeded(eq(mDataNetworkUT));
     }
 
     private void setupIwlanDataNetwork() throws Exception {
