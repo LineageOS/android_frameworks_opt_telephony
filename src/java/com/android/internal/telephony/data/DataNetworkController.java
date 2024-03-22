@@ -1454,8 +1454,7 @@ public class DataNetworkController extends Handler {
         TelephonyNetworkRequest internetRequest = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                        .build(), mPhone);
+                        .build(), mPhone, mFeatureFlags);
         // If we don't skip checking existing network, then we should check If one of the
         // existing networks can satisfy the internet request, then internet is allowed.
         if ((!mFeatureFlags.ignoreExistingNetworksForInternetAllowedChecking()
@@ -1514,8 +1513,7 @@ public class DataNetworkController extends Handler {
         TelephonyNetworkRequest internetRequest = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                        .build(), mPhone);
+                        .build(), mPhone, mFeatureFlags);
         DataEvaluation evaluation = evaluateNetworkRequest(internetRequest,
                 DataEvaluationReason.EXTERNAL_QUERY);
         return evaluation.getDataDisallowedReasons();
@@ -1535,6 +1533,13 @@ public class DataNetworkController extends Handler {
         int transport = mAccessNetworksManager.getPreferredTransportByNetworkCapability(
                 networkRequest.getApnTypeNetworkCapability());
 
+        // Check if the request can be satisfied by cellular network or satellite network.
+        if (mFeatureFlags.satelliteInternet()
+                && !canConnectivityTransportSatisfyNetworkRequest(networkRequest, transport)) {
+            evaluation.addDataDisallowedReason(
+                    DataDisallowedReason.DATA_NETWORK_TRANSPORT_NOT_ALLOWED);
+        }
+
         // Bypass all checks for emergency network request.
         if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)) {
             DataProfile emergencyProfile = mDataProfileManager.getDataProfileForNetworkRequest(
@@ -1549,14 +1554,13 @@ public class DataNetworkController extends Handler {
                 evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_THROTTLED);
                 log("Emergency network request is throttled by the previous setup data "
                             + "call response.");
-                log(evaluation.toString());
-                networkRequest.setEvaluation(evaluation);
-                return evaluation;
             }
 
-            evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_REQUEST);
-            if (emergencyProfile != null) {
-                evaluation.setCandidateDataProfile(emergencyProfile);
+            if (!evaluation.containsDisallowedReasons()) {
+                evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_REQUEST);
+                if (emergencyProfile != null) {
+                    evaluation.setCandidateDataProfile(emergencyProfile);
+                }
             }
             networkRequest.setEvaluation(evaluation);
             log(evaluation.toString());
@@ -1643,11 +1647,6 @@ public class DataNetworkController extends Handler {
         // Check if device is in CDMA ECBM
         if (mPhone.isInCdmaEcm()) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.CDMA_EMERGENCY_CALLBACK_MODE);
-        }
-
-        // Check whether data is disallowed while using satellite
-        if (isDataDisallowedDueToSatellite(networkRequest.getCapabilities())) {
-            evaluation.addDataDisallowedReason(DataDisallowedReason.SERVICE_OPTION_NOT_SUPPORTED);
         }
 
         // Check if only one data network is allowed.
@@ -1822,7 +1821,7 @@ public class DataNetworkController extends Handler {
                 networkRequestList.add(networkRequest);
             }
         }
-        return DataUtils.getGroupedNetworkRequestList(networkRequestList);
+        return DataUtils.getGroupedNetworkRequestList(networkRequestList, mFeatureFlags);
     }
 
     /**
@@ -1891,10 +1890,26 @@ public class DataNetworkController extends Handler {
             evaluation.addDataDisallowedReason(DataDisallowedReason.CDMA_EMERGENCY_CALLBACK_MODE);
         }
 
-        // Check whether data is disallowed while using satellite
-        if (isDataDisallowedDueToSatellite(dataNetwork.getNetworkCapabilities()
-                .getCapabilities())) {
-            evaluation.addDataDisallowedReason(DataDisallowedReason.SERVICE_OPTION_NOT_SUPPORTED);
+        // If the network is satellite, then the network must be restricted.
+        if (mFeatureFlags.satelliteInternet()) {
+            // The IWLAN data network should remain intact even when satellite is connected.
+            if (dataNetwork.getTransport() != AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                // On satellite, every data network needs to be restricted.
+                if (mServiceState.isUsingNonTerrestrialNetwork()
+                        && dataNetwork.getNetworkCapabilities()
+                        .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
+                    evaluation.addDataDisallowedReason(
+                            DataDisallowedReason.DATA_NETWORK_TRANSPORT_NOT_ALLOWED);
+                }
+
+                // Check if the transport is compatible with the network
+                if (mServiceState.isUsingNonTerrestrialNetwork() != dataNetwork.isSatellite()) {
+                    // Since we don't support satellite/cellular network handover, we should always
+                    // tear down the network when transport changes.
+                    evaluation.addDataDisallowedReason(
+                            DataDisallowedReason.DATA_NETWORK_TRANSPORT_NOT_ALLOWED);
+                }
+            }
         }
 
         // Check whether data limit reached for bootstrap sim, else re-evaluate based on the timer
@@ -2079,6 +2094,65 @@ public class DataNetworkController extends Handler {
 
         log("Evaluated " + dataNetwork + ", " + evaluation);
         return evaluation;
+    }
+
+    /**
+     * Check if the transport from connectivity service can satisfy the network request. Note the
+     * transport here is connectivity service's transport (Wifi, cellular, satellite, etc..), not
+     * the widely used {@link AccessNetworkConstants#TRANSPORT_TYPE_WLAN WLAN},
+     * {@link AccessNetworkConstants#TRANSPORT_TYPE_WWAN WWAN} transport in telephony.
+     *
+     * @param networkRequest Network request
+     * @param transport The preferred transport type for the request. The transport here is
+     * WWAN/WLAN.
+     * @return {@code true} if the connectivity transport can satisfy the network request, otherwise
+     * {@code false}.
+     */
+    private boolean canConnectivityTransportSatisfyNetworkRequest(
+            @NonNull TelephonyNetworkRequest networkRequest, @TransportType int transport) {
+        // When the device is on satellite, only restricted network request can request network.
+        if (mServiceState.isUsingNonTerrestrialNetwork()
+                && networkRequest.getNativeNetworkRequest().hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
+            return false;
+        }
+
+        // If the network request does not specify cellular or satellite, then it can be
+        // satisfied when the device is either on cellular ot satellite.
+        if (!networkRequest.getNativeNetworkRequest().hasTransport(
+                NetworkCapabilities.TRANSPORT_CELLULAR)
+                && !networkRequest.getNativeNetworkRequest().hasTransport(
+                        NetworkCapabilities.TRANSPORT_SATELLITE)) {
+            return true;
+        }
+
+        // Check if this is a IWLAN network request.
+        if (networkRequest.getNativeNetworkRequest().hasTransport(
+                NetworkCapabilities.TRANSPORT_CELLULAR)
+                && transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+            // If the cellular request would result in bringing up network on IWLAN, then no
+            // need to check if the device is using satellite network.
+            return true;
+        }
+
+        // As a short term solution, allowing some networks to be always marked as cellular
+        // transport if certain capabilities are in the network request.
+        if (networkRequest.getNativeNetworkRequest().hasTransport(
+                NetworkCapabilities.TRANSPORT_CELLULAR) && Arrays.stream(
+                        networkRequest.getCapabilities())
+                .anyMatch(mDataConfigManager.getForcedCellularTransportCapabilities()::contains)) {
+            return true;
+        }
+
+        // If the network is cellular, then the request must specify cellular transport. Or if the
+        // the network is satellite, then the request must specify satellite transport and
+        // restricted.
+        return (mServiceState.isUsingNonTerrestrialNetwork()
+                && networkRequest.getNativeNetworkRequest().hasTransport(
+                        NetworkCapabilities.TRANSPORT_SATELLITE))
+                || (!mServiceState.isUsingNonTerrestrialNetwork()
+                        && networkRequest.getNativeNetworkRequest().hasTransport(
+                        NetworkCapabilities.TRANSPORT_CELLULAR));
     }
 
     /**
@@ -2300,6 +2374,8 @@ public class DataNetworkController extends Handler {
                     return DataNetwork.TEAR_DOWN_REASON_HANDOVER_FAILED;
                 case DATA_LIMIT_REACHED:
                     return DataNetwork.TEAR_DOWN_REASON_DATA_LIMIT_REACHED;
+                case DATA_NETWORK_TRANSPORT_NOT_ALLOWED:
+                    return DataNetwork.TEAR_DOWN_REASON_DATA_NETWORK_TRANSPORT_NOT_ALLOWED;
             }
         }
         return DataNetwork.TEAR_DOWN_REASON_NONE;
@@ -3590,7 +3666,7 @@ public class DataNetworkController extends Handler {
             return true;
         }
 
-        if (!oldNri.isNonTerrestrialNetwork() && newNri.isNonTerrestrialNetwork()) {
+        if (oldNri.isNonTerrestrialNetwork() != newNri.isNonTerrestrialNetwork()) {
             return true;
         }
 
@@ -3647,7 +3723,7 @@ public class DataNetworkController extends Handler {
             return true;
         }
 
-        if (oldSS.isUsingNonTerrestrialNetwork() && !newSS.isUsingNonTerrestrialNetwork()) {
+        if (oldSS.isUsingNonTerrestrialNetwork() != newSS.isUsingNonTerrestrialNetwork()) {
             return true;
         }
 
@@ -4020,41 +4096,6 @@ public class DataNetworkController extends Handler {
             packages.add(mDataServiceManagers.valueAt(i).getDataServicePackageName());
         }
         return packages;
-    }
-
-    /**
-     * Check whether data is disallowed while using satellite
-     * @param capabilities An array of the NetworkCapabilities to be checked
-     * @return {@code true} if the capabilities contain any capability that are restricted
-     * while using satellite else {@code false}
-     */
-    private boolean isDataDisallowedDueToSatellite(@NetCapability int[] capabilities) {
-        if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
-            return false;
-        }
-
-        if (!mServiceState.isUsingNonTerrestrialNetwork()) {
-            // Device is not connected to satellite
-            return false;
-        }
-
-        Set<Integer> restrictedCapabilities = Set.of(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-        if (Arrays.stream(capabilities).noneMatch(restrictedCapabilities::contains)) {
-            // Only internet data disallowed while using satellite
-            return false;
-        }
-
-        for (NetworkRegistrationInfo nri : mServiceState.getNetworkRegistrationInfoList()) {
-            if (nri.isNonTerrestrialNetwork()
-                    && nri.getAvailableServices().contains(
-                            NetworkRegistrationInfo.SERVICE_TYPE_DATA)) {
-                // Data is supported while using satellite
-                return false;
-            }
-        }
-
-        // Data is disallowed while using satellite
-        return true;
     }
 
     /**
