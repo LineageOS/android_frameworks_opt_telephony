@@ -5396,4 +5396,23 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verify(mMockedWwanDataServiceManager, never()).deactivateDataCall(anyInt(),
                 eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
     }
+
+    @Test
+    public void testRadioOffTearDown() throws Exception  {
+        testSetupDataNetwork();
+        doReturn(true).when(mSST).isPendingRadioPowerOffAfterDataOff();
+        mDataNetworkControllerUT.tearDownAllDataNetworks(
+                DataNetwork.TEAR_DOWN_REASON_AIRPLANE_MODE_ON);
+        processAllMessages();
+        verifyAllDataDisconnected();
+        verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
+
+        clearInvocations(mMockedDataNetworkControllerCallback);
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllMessages();
+        verifyAllDataDisconnected();
+        verify(mMockedDataNetworkControllerCallback, never()).onAnyDataNetworkExistingChanged(
+                anyBoolean());
+    }
 }

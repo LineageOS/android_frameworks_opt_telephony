@@ -227,7 +227,6 @@ public class ServiceStateTracker extends Handler {
     private final RegistrantList mAreaCodeChangedRegistrants = new RegistrantList();
 
     /* Radio power off pending flag */
-    // @GuardedBy("this")
     private volatile boolean mPendingRadioPowerOffAfterDataOff = false;
 
     /** Waiting period before recheck gprs and voice registration. */
@@ -5008,20 +5007,10 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
-     * process the pending request to turn radio off after data is disconnected
-     *
-     * return true if there is pending request to process; false otherwise.
+     * return true if there is pending disconnect data request to process; false otherwise.
      */
-    public boolean processPendingRadioPowerOffAfterDataOff() {
-        synchronized(this) {
-            if (mPendingRadioPowerOffAfterDataOff) {
-                if (DBG) log("Process pending request to turn radio off.");
-                hangupAndPowerOff();
-                mPendingRadioPowerOffAfterDataOff = false;
-                return true;
-            }
-            return false;
-        }
+    public boolean isPendingRadioPowerOffAfterDataOff() {
+        return mPendingRadioPowerOffAfterDataOff;
     }
 
     private void onCarrierConfigurationChanged(int slotIndex) {
