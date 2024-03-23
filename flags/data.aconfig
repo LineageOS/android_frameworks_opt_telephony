@@ -149,3 +149,11 @@ flag {
   description: "Enable DSRS diagnostics."
   bug: "319601607"
 }
+
+# OWNER=jackyu TARGET=24Q3
+flag {
+  name: "data_rat_metric_enabled"
+  namespace: "telephony"
+  description: "Write DataRatStateChanged atom"
+  bug:"318519337"
+}

@@ -103,6 +103,7 @@ import com.android.internal.telephony.data.LinkBandwidthEstimator.LinkBandwidthE
 import com.android.internal.telephony.data.TelephonyNetworkAgent.TelephonyNetworkAgentCallback;
 import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.metrics.DataCallSessionStats;
+import com.android.internal.telephony.metrics.DataNetworkValidationStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.FunctionalUtils;
@@ -552,6 +553,9 @@ public class DataNetwork extends StateMachine {
     /** Metrics of per data network connection. */
     private final DataCallSessionStats mDataCallSessionStats;
 
+    /** Metrics of per data network validation. */
+    private final @NonNull DataNetworkValidationStats mDataNetworkValidationStats;
+
     /**
      * The unique context id assigned by the data service in {@link DataCallResponse#getId()}. One
      * for {@link AccessNetworkConstants#TRANSPORT_TYPE_WWAN} and one for
@@ -762,6 +766,12 @@ public class DataNetwork extends StateMachine {
      * Callback used to listen QNS preference changes.
      */
     private @Nullable AccessNetworksManagerCallback mAccessNetworksManagerCallback;
+
+    /**
+     * PreciseDataConnectionState, the most recently notified. If it has never been notified, it is
+     * null.
+     */
+    private @Nullable PreciseDataConnectionState mPreciseDataConnectionState;
 
     /**
      * The network bandwidth.
@@ -986,6 +996,7 @@ public class DataNetwork extends StateMachine {
                 mDataNetworkControllerCallback);
         mDataConfigManager = mDataNetworkController.getDataConfigManager();
         mDataCallSessionStats = new DataCallSessionStats(mPhone);
+        mDataNetworkValidationStats = new DataNetworkValidationStats(mPhone);
         mDataNetworkCallback = callback;
         mDataProfile = dataProfile;
         if (dataProfile.getTrafficDescriptor() != null) {
@@ -1919,6 +1930,9 @@ public class DataNetwork extends StateMachine {
                 if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                     unregisterForWwanEvents();
                 }
+                // Since NetworkValidation is able to request only in the Connected state,
+                // if ever connected, log for onDataNetworkDisconnected.
+                mDataNetworkValidationStats.onDataNetworkDisconnected(getDataNetworkType());
             } else {
                 mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
                         .onSetupDataFailed(DataNetwork.this,
@@ -2967,6 +2981,7 @@ public class DataNetwork extends StateMachine {
                 mDataCallResponse = response;
                 if (response.getLinkStatus() != DataCallResponse.LINK_STATUS_INACTIVE) {
                     updateDataNetwork(response);
+                    notifyPreciseDataConnectionState();
                 } else {
                     log("onDataStateChanged: PDN inactive reported by "
                             + AccessNetworkConstants.transportTypeToString(mTransport)
@@ -3417,11 +3432,20 @@ public class DataNetwork extends StateMachine {
     /**
      * Send the precise data connection state to the listener of
      * {@link android.telephony.TelephonyCallback.PreciseDataConnectionStateListener}.
+     *
+     * Note that notify only when {@link DataState} or {@link
+     * PreciseDataConnectionState.NetworkValidationStatus} changes.
      */
     private void notifyPreciseDataConnectionState() {
         PreciseDataConnectionState pdcs = getPreciseDataConnectionState();
-        logv("notifyPreciseDataConnectionState=" + pdcs);
-        mPhone.notifyDataConnection(pdcs);
+        if (mPreciseDataConnectionState == null
+                || mPreciseDataConnectionState.getState() != pdcs.getState()
+                || mPreciseDataConnectionState.getNetworkValidationStatus()
+                        != pdcs.getNetworkValidationStatus()) {
+            mPreciseDataConnectionState = pdcs;
+            logv("notifyPreciseDataConnectionState=" + pdcs);
+            mPhone.notifyDataConnection(pdcs);
+        }
     }
 
     /**
@@ -3511,6 +3535,8 @@ public class DataNetwork extends StateMachine {
                 DataService.REQUEST_REASON_HANDOVER, mLinkProperties, mPduSessionId,
                 mNetworkSliceInfo, mHandoverDataProfile.getTrafficDescriptor(), true,
                 obtainMessage(EVENT_HANDOVER_RESPONSE, retryEntry));
+
+        mDataNetworkValidationStats.onHandoverAttempted();
     }
 
     /**
@@ -3705,6 +3731,11 @@ public class DataNetwork extends StateMachine {
         // Request validation directly from the data service.
         mDataServiceManagers.get(mTransport).requestNetworkValidation(
                 mCid.get(mTransport), obtainMessage(EVENT_DATA_NETWORK_VALIDATION_RESPONSE));
+
+        int apnTypeBitmask = mDataProfile.getApnSetting() != null
+                ? mDataProfile.getApnSetting().getApnTypeBitmask() : ApnSetting.TYPE_NONE;
+        mDataNetworkValidationStats.onRequestNetworkValidation(apnTypeBitmask);
+
         log("handleDataNetworkValidationRequest, network validation requested");
     }
 
@@ -3733,8 +3764,7 @@ public class DataNetwork extends StateMachine {
 
     /**
      * Update the validation status from {@link DataCallResponse}, convert to network validation
-     * status {@link PreciseDataConnectionState.NetworkValidationStatus} and notify to
-     * {@link PreciseDataConnectionState} if status was changed.
+     * status {@link PreciseDataConnectionState.NetworkValidationStatus}.
      *
      * @param networkValidationStatus {@link PreciseDataConnectionState.NetworkValidationStatus}
      */
@@ -3751,8 +3781,10 @@ public class DataNetwork extends StateMachine {
                     + PreciseDataConnectionState.networkValidationStatusToString(
                     networkValidationStatus));
             mNetworkValidationStatus = networkValidationStatus;
-            notifyPreciseDataConnectionState();
         }
+
+        mDataNetworkValidationStats.onUpdateNetworkValidationState(
+                mNetworkValidationStatus, getDataNetworkType());
     }
 
     /**

@@ -62,10 +62,13 @@ import android.annotation.Nullable;
 import android.content.Context;
 import android.os.Build;
 import android.telephony.DisconnectCause;
+import android.telephony.PreciseDataConnectionState;
 import android.telephony.SatelliteProtoEnums;
 import android.telephony.ServiceState;
+import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyProtoEnums;
+import android.telephony.data.ApnSetting;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.SipDelegateManager;
 
@@ -76,6 +79,7 @@ import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
+import com.android.internal.telephony.nano.PersistAtomsProto.DataNetworkValidation;
 import com.android.internal.telephony.nano.PersistAtomsProto.GbaEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsDedicatedBearerEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsDedicatedBearerListenerEvent;
@@ -285,6 +289,12 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private SatelliteSosMessageRecommender mSatelliteSosMessageRecommender1;
     private SatelliteSosMessageRecommender mSatelliteSosMessageRecommender2;
     private SatelliteSosMessageRecommender[] mSatelliteSosMessageRecommenders;
+
+    private DataNetworkValidation mDataNetworkValidationLte1;
+    private DataNetworkValidation mDataNetworkValidationLte2;
+    private DataNetworkValidation mDataNetworkValidationIwlan1;
+    private DataNetworkValidation mDataNetworkValidationIwlan2;
+    private DataNetworkValidation[] mDataNetworkValidations;
 
     private void makeTestData() {
         // MO call with SRVCC (LTE to UMTS)
@@ -1070,6 +1080,10 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
         mOutgoingShortCodeSms = new OutgoingShortCodeSms[] {mOutgoingShortCodeSms1,
                 mOutgoingShortCodeSms2};
+
+        generateTestSatelliteData();
+
+        generateTestDataNetworkValidationsData();
     }
 
     private void generateTestSatelliteData() {
@@ -1213,6 +1227,61 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteSosMessageRecommenders =
                 new SatelliteSosMessageRecommender[] {
                         mSatelliteSosMessageRecommender1, mSatelliteSosMessageRecommender2
+                };
+    }
+
+    private void generateTestDataNetworkValidationsData() {
+
+        // for LTE #1
+        mDataNetworkValidationLte1 = new DataNetworkValidation();
+        mDataNetworkValidationLte1.networkType = TelephonyManager.NETWORK_TYPE_LTE;
+        mDataNetworkValidationLte1.apnTypeBitmask = ApnSetting.TYPE_IMS;
+        mDataNetworkValidationLte1.signalStrength = SignalStrength.SIGNAL_STRENGTH_GREAT;
+        mDataNetworkValidationLte1.validationResult =
+                PreciseDataConnectionState.NETWORK_VALIDATION_SUCCESS;
+        mDataNetworkValidationLte1.elapsedTimeInMillis = 100L;
+        mDataNetworkValidationLte1.handoverAttempted = false;
+        mDataNetworkValidationLte1.networkValidationCount = 1;
+
+        // for LTE #2
+        mDataNetworkValidationLte2 = new DataNetworkValidation();
+        mDataNetworkValidationLte2.networkType = TelephonyManager.NETWORK_TYPE_LTE;
+        mDataNetworkValidationLte2.apnTypeBitmask = ApnSetting.TYPE_IMS;
+        mDataNetworkValidationLte2.signalStrength = SignalStrength.SIGNAL_STRENGTH_GREAT;
+        mDataNetworkValidationLte2.validationResult =
+                PreciseDataConnectionState.NETWORK_VALIDATION_SUCCESS;
+        mDataNetworkValidationLte2.elapsedTimeInMillis = 100L;
+        mDataNetworkValidationLte2.handoverAttempted = false;
+        mDataNetworkValidationLte2.networkValidationCount = 1;
+
+        // for IWLAN #1
+        mDataNetworkValidationIwlan1 = new DataNetworkValidation();
+        mDataNetworkValidationIwlan1.networkType = TelephonyManager.NETWORK_TYPE_IWLAN;
+        mDataNetworkValidationIwlan1.apnTypeBitmask = ApnSetting.TYPE_IMS;
+        mDataNetworkValidationIwlan1.signalStrength = SignalStrength.SIGNAL_STRENGTH_POOR;
+        mDataNetworkValidationIwlan1.validationResult =
+                PreciseDataConnectionState.NETWORK_VALIDATION_FAILURE;
+        mDataNetworkValidationIwlan1.elapsedTimeInMillis = 10000L;
+        mDataNetworkValidationIwlan1.handoverAttempted = false;
+        mDataNetworkValidationIwlan1.networkValidationCount = 1;
+
+        // for IWLAN #2
+        mDataNetworkValidationIwlan2 = new DataNetworkValidation();
+        mDataNetworkValidationIwlan2.networkType = TelephonyManager.NETWORK_TYPE_IWLAN;
+        mDataNetworkValidationIwlan2.apnTypeBitmask = ApnSetting.TYPE_IMS;
+        mDataNetworkValidationIwlan2.signalStrength = SignalStrength.SIGNAL_STRENGTH_POOR;
+        mDataNetworkValidationIwlan2.validationResult =
+                PreciseDataConnectionState.NETWORK_VALIDATION_FAILURE;
+        mDataNetworkValidationIwlan2.elapsedTimeInMillis = 30000L;
+        mDataNetworkValidationIwlan2.handoverAttempted = false;
+        mDataNetworkValidationIwlan2.networkValidationCount = 1;
+
+        mDataNetworkValidations =
+                new DataNetworkValidation[] {
+                        mDataNetworkValidationLte1,
+                        mDataNetworkValidationLte1,
+                        mDataNetworkValidationIwlan1,
+                        mDataNetworkValidationIwlan2,
                 };
     }
 
@@ -1381,6 +1450,10 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteSosMessageRecommender1 = null;
         mSatelliteSosMessageRecommender2 = null;
         mSatelliteSosMessageRecommenders = null;
+        mDataNetworkValidationLte1 = null;
+        mDataNetworkValidationLte2 = null;
+        mDataNetworkValidationIwlan1 = null;
+        mDataNetworkValidationIwlan2 = null;
         super.tearDown();
     }
 
@@ -4513,6 +4586,77 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void addDataNetworkValidation_newEntry() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        mPersistAtomsStorage.addDataNetworkValidation(mDataNetworkValidationLte1);
+        mPersistAtomsStorage.addDataNetworkValidation(mDataNetworkValidationIwlan1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // There should be 2 DataNetworkValidation
+        verifyCurrentStateSavedToFileOnce();
+        DataNetworkValidation[] output = mPersistAtomsStorage.getDataNetworkValidation(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new DataNetworkValidation[] {
+                        mDataNetworkValidationLte1, mDataNetworkValidationIwlan1},
+                output);
+    }
+
+    @Test
+    public void addDataNetworkValidation_existingEntry() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        int expectedNetworkValidationCount =
+                mDataNetworkValidationLte1.networkValidationCount
+                        + mDataNetworkValidationLte2.networkValidationCount;
+
+        mPersistAtomsStorage.addDataNetworkValidation(mDataNetworkValidationLte1);
+        mPersistAtomsStorage.addDataNetworkValidation(mDataNetworkValidationLte2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        DataNetworkValidation expected = copyOf(mDataNetworkValidationLte1);
+        expected.networkValidationCount = expectedNetworkValidationCount;
+
+        // There should be 1 DataNetworkValidation
+        verifyCurrentStateSavedToFileOnce();
+        DataNetworkValidation[] output =
+                mPersistAtomsStorage.getDataNetworkValidation(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new DataNetworkValidation[] {expected},
+                output);
+    }
+
+    @Test
+    public void addDataNetworkValidation_tooManyEntries() throws Exception {
+
+        // Set up
+        doReturn(false).when(mPackageManager).hasSystemFeature(anyString());
+
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // Currently, the maximum number that can be stored for DataNetworkValidation in Atom
+        // storage is 15. Try saving excess.
+        int maxNumDataNetworkValidation = 20;
+        mPersistAtomsStorage.addDataNetworkValidation(mDataNetworkValidationLte1);
+        for (int i = 0; i < maxNumDataNetworkValidation; i++) {
+            DataNetworkValidation copied = copyOf(mDataNetworkValidationLte1);
+            copied.apnTypeBitmask = mDataNetworkValidationLte1.apnTypeBitmask + i;
+            mPersistAtomsStorage.addDataNetworkValidation(copied);
+        }
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // There should be less than or equal to maxNumDataNetworkValidation
+        verifyCurrentStateSavedToFileOnce();
+        DataNetworkValidation[] output =
+                mPersistAtomsStorage.getDataNetworkValidation(0L);
+        assertTrue(output.length <= maxNumDataNetworkValidation);
+    }
+
+    @Test
+    @SmallTest
     public void clearAtoms() throws Exception {
         createTestFile(START_TIME_MILLIS);
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
@@ -4596,6 +4740,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         atoms.satelliteProvisionPullTimestampMillis = lastPullTimeMillis;
         atoms.satelliteSosMessageRecommender = mSatelliteSosMessageRecommenders;
         atoms.satelliteSosMessageRecommenderPullTimestampMillis = lastPullTimeMillis;
+        atoms.dataNetworkValidation = mDataNetworkValidations;
+        atoms.dataNetworkValidationPullTimestampMillis = lastPullTimeMillis;
         FileOutputStream stream = new FileOutputStream(mTestFile);
         stream.write(PersistAtoms.toByteArray(atoms));
         stream.close();
@@ -4757,6 +4903,11 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private static SatelliteSosMessageRecommender copyOf(SatelliteSosMessageRecommender source)
             throws Exception {
         return SatelliteSosMessageRecommender.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static DataNetworkValidation copyOf(DataNetworkValidation source)
+            throws Exception {
+        return DataNetworkValidation.parseFrom(MessageNano.toByteArray(source));
     }
 
     private void assertAllPullTimestampEquals(long timestamp) {
