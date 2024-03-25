@@ -354,11 +354,26 @@ public class EmergencyStateTracker {
                             mOnEcmExitCompleteRunnable.run();
                             mOnEcmExitCompleteRunnable = null;
                         }
+                        if (mPhone != null && mEmergencyMode == MODE_EMERGENCY_WWAN) {
+                            // In cross sim redialing.
+                            setEmergencyModeInProgress(true);
+                            mWasEmergencyModeSetOnModem = true;
+                            mPhone.setEmergencyMode(MODE_EMERGENCY_WWAN,
+                                    mHandler.obtainMessage(MSG_SET_EMERGENCY_MODE_DONE,
+                                    Integer.valueOf(EMERGENCY_TYPE_CALL)));
+                        }
                     } else if (emergencyType == EMERGENCY_TYPE_SMS) {
                         if (mIsEmergencyCallStartedDuringEmergencySms) {
                             mIsEmergencyCallStartedDuringEmergencySms = false;
                             turnOnRadioAndSwitchDds(mPhone, EMERGENCY_TYPE_CALL,
                                     mIsTestEmergencyNumber);
+                        } else if (mPhone != null && mEmergencyMode == MODE_EMERGENCY_WWAN) {
+                            // Starting emergency call while exiting emergency mode
+                            setEmergencyModeInProgress(true);
+                            mWasEmergencyModeSetOnModem = true;
+                            mPhone.setEmergencyMode(MODE_EMERGENCY_WWAN,
+                                    mHandler.obtainMessage(MSG_SET_EMERGENCY_MODE_DONE,
+                                    Integer.valueOf(EMERGENCY_TYPE_CALL)));
                         } else if (mIsEmergencySmsStartedDuringScbm) {
                             mIsEmergencySmsStartedDuringScbm = false;
                             setEmergencyMode(mSmsPhone, emergencyType,
@@ -713,6 +728,16 @@ public class EmergencyStateTracker {
             maybeNotifyTransportChangeCompleted(emergencyType, false);
             return;
         }
+
+        if (emergencyType == EMERGENCY_TYPE_CALL
+                && mode == MODE_EMERGENCY_WWAN
+                && isEmergencyModeInProgress() && !isInEmergencyMode()) {
+            // In cross sim redialing or ending emergency SMS, exitEmergencyMode is not completed.
+            mEmergencyMode = mode;
+            Rlog.i(TAG, "setEmergencyMode wait for the completion of exitEmergencyMode");
+            return;
+        }
+
         mEmergencyMode = mode;
         setEmergencyModeInProgress(true);
 
