@@ -22,6 +22,7 @@ import static android.telephony.DomainSelectionService.SELECTOR_TYPE_CALLING;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -42,8 +43,10 @@ import android.os.RemoteException;
 import android.telecom.PhoneAccount;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.DisconnectCause;
 import android.telephony.DomainSelectionService;
 import android.telephony.EmergencyRegistrationResult;
+import android.telephony.PreciseDisconnectCause;
 import android.telephony.data.ApnSetting;
 import android.telephony.ims.ImsReasonInfo;
 import android.testing.AndroidTestingRunner;
@@ -771,6 +774,26 @@ public class DomainSelectionConnectionTest extends TelephonyTest {
 
         verify(domainSelector).reselectDomain(eq(attr));
         verify(mDomainSelectionController, times(1)).selectDomain(any(), eq(transportCallback));
+    }
+
+    @Test
+    @SmallTest
+    public void testSetDisconnectCause() throws Exception {
+        mDsc = createConnection(mPhone, SELECTOR_TYPE_CALLING, true,
+                mDomainSelectionController);
+
+        assertEquals(DisconnectCause.NOT_VALID, mDsc.getDisconnectCause());
+        assertEquals(PreciseDisconnectCause.NOT_VALID, mDsc.getPreciseDisconnectCause());
+        assertEquals(mPhone.getPhoneId(), mDsc.getPhoneId());
+
+        String reason = "No SIM or SIM error";
+        mDsc.setDisconnectCause(DisconnectCause.ICC_ERROR,
+                PreciseDisconnectCause.NO_VALID_SIM, reason);
+
+        assertEquals(DisconnectCause.ICC_ERROR, mDsc.getDisconnectCause());
+        assertEquals(PreciseDisconnectCause.NO_VALID_SIM, mDsc.getPreciseDisconnectCause());
+        assertEquals(reason, mDsc.getReasonMessage());
+        assertEquals(mPhone.getPhoneId(), mDsc.getPhoneId());
     }
 
     private DomainSelectionConnection createConnection(Phone phone, int selectorType,
