@@ -56,3 +56,14 @@ flag {
     description: "This flag supports setting the no reply timer for CFNRy based on carrier config"
     bug:"314732435"
 }
+
+# OWNER=joonhunshin TARGET=24Q3
+flag {
+    name: "change_method_of_obtaining_ims_registration_radio_tech"
+    namespace: "telephony"
+    description: "This flag changes the method of obtaining IMS registration radio technology"
+    bug:"330120237"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
+}
