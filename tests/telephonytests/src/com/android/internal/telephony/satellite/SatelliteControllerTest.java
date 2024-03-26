@@ -3196,6 +3196,95 @@ public class SatelliteControllerTest extends TelephonyTest {
         verifySatelliteEnabled(false, SATELLITE_RESULT_SUCCESS);
     }
 
+    @Test
+    public void testUpdateNtnSignalStrentghReportWithFeatureFlagEnabled() {
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
+
+        mIsSatelliteEnabledSemaphore.drainPermits();
+        mIIntegerConsumerResults.clear();
+        resetSatelliteControllerUT();
+
+        // Successfully provisioned
+        reset(mMockSatelliteModemInterface);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        sendProvisionedStateChangedEvent(true, null);
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_RESULT_SUCCESS);
+        sendProvisionedStateChangedEvent(true, null);
+        processAllMessages();
+        verifySatelliteProvisioned(true, SATELLITE_RESULT_SUCCESS);
+
+        // startSendingNtnSignalStrength should be invoked when satellite is enabled
+        mSatelliteControllerUT.setSettingsKeyForSatelliteModeCalled = false;
+        setUpResponseForRequestSatelliteEnabled(true, false, SATELLITE_RESULT_SUCCESS);
+        mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, true, false, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verifySatelliteEnabled(true, SATELLITE_RESULT_SUCCESS);
+        assertTrue(mSatelliteControllerUT.setSettingsKeyForSatelliteModeCalled);
+        assertEquals(
+                SATELLITE_MODE_ENABLED_TRUE, mSatelliteControllerUT.satelliteModeSettingValue);
+        verify(mMockSatelliteModemInterface, times(1)).startSendingNtnSignalStrength(
+                any(Message.class));
+
+        // Ignore request ntn signal strength for redundant enable request
+        reset(mMockSatelliteModemInterface);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, true, false, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verifySatelliteEnabled(true, SATELLITE_RESULT_SUCCESS);
+        verify(mMockSatelliteModemInterface, never()).startSendingNtnSignalStrength(
+                any(Message.class));
+
+        // stopSendingNtnSignalStrength should be invoked when satellite is successfully off.
+        mIIntegerConsumerResults.clear();
+        reset(mMockSatelliteModemInterface);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForRequestSatelliteEnabled(false, false, SATELLITE_RESULT_SUCCESS);
+        mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, false, false, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verifySatelliteEnabled(false, SATELLITE_RESULT_SUCCESS);
+        verify(mMockSatelliteModemInterface, times(1)).stopSendingNtnSignalStrength(
+                any(Message.class));
+
+        // Ignore redundant request for stop reporting ntn signal strength.
+        mIIntegerConsumerResults.clear();
+        reset(mMockSatelliteModemInterface);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestSatelliteEnabled(false, false, SATELLITE_RESULT_SUCCESS);
+        mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, false, false, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verifySatelliteEnabled(false, SATELLITE_RESULT_SUCCESS);
+        verify(mMockSatelliteModemInterface, never()).stopSendingNtnSignalStrength(
+                any(Message.class));
+
+        // startSendingNtnSignalStrength is invoked when satellite is enabled again.
+        mIIntegerConsumerResults.clear();
+        reset(mMockSatelliteModemInterface);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        mSatelliteControllerUT.setSettingsKeyForSatelliteModeCalled = false;
+        setUpResponseForRequestSatelliteEnabled(true, false, SATELLITE_RESULT_SUCCESS);
+        mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, true, false, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verifySatelliteEnabled(true, SATELLITE_RESULT_SUCCESS);
+        assertTrue(mSatelliteControllerUT.setSettingsKeyForSatelliteModeCalled);
+        assertEquals(
+                SATELLITE_MODE_ENABLED_TRUE, mSatelliteControllerUT.satelliteModeSettingValue);
+        verify(mMockSatelliteModemInterface, times(1)).startSendingNtnSignalStrength(
+                any(Message.class));
+    }
+
     private void resetSatelliteControllerUTEnabledState() {
         logd("resetSatelliteControllerUTEnabledState");
         setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_RESULT_RADIO_NOT_AVAILABLE);
