@@ -99,7 +99,8 @@ public class SatelliteSOSMessageRecommender extends Handler {
     private boolean mIsSatelliteAllowedForCurrentLocation = false;
     @GuardedBy("mLock")
     private boolean mCheckingAccessRestrictionInProgress = false;
-    private final long mTimeoutMillis;
+    protected long mTimeoutMillis = 0;
+    private final long mOemEnabledTimeoutMillis;
     private final AtomicBoolean mIsSatelliteConnectedViaCarrierWithinHysteresisTime =
             new AtomicBoolean(false);
     @GuardedBy("mLock")
@@ -114,8 +115,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
      * @param looper The looper used with the handler of this class.
      */
     public SatelliteSOSMessageRecommender(@NonNull Context context, @NonNull Looper looper) {
-        this(context, looper, SatelliteController.getInstance(), null,
-                getEmergencyCallWaitForConnectionTimeoutMillis(context));
+        this(context, looper, SatelliteController.getInstance(), null);
     }
 
     /**
@@ -127,17 +127,16 @@ public class SatelliteSOSMessageRecommender extends Handler {
      * @param satelliteController The SatelliteController singleton instance.
      * @param imsManager The ImsManager instance associated with the phone, which is used for making
      *                   the emergency call. This argument is not null only in unit tests.
-     * @param timeoutMillis The timeout duration of the timer.
      */
     @VisibleForTesting
     protected SatelliteSOSMessageRecommender(@NonNull Context context, @NonNull Looper looper,
-            @NonNull SatelliteController satelliteController, ImsManager imsManager,
-            long timeoutMillis) {
+            @NonNull SatelliteController satelliteController, ImsManager imsManager) {
         super(looper);
         mContext = context;
         mSatelliteController = satelliteController;
         mImsManager = imsManager;
-        mTimeoutMillis = timeoutMillis;
+        mOemEnabledTimeoutMillis =
+                getOemEnabledEmergencyCallWaitForConnectionTimeoutMillis(context);
         mISatelliteProvisionStateCallback = new ISatelliteProvisionStateCallback.Stub() {
             @Override
             public void onSatelliteProvisionStateChanged(boolean provisioned) {
@@ -185,7 +184,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
      */
     public void onEmergencyCallStarted(@NonNull Connection connection) {
         if (!mSatelliteController.isSatelliteSupportedViaOem()
-                && !mSatelliteController.isSatelliteSupportedViaCarrier()) {
+                && !mSatelliteController.isSatelliteEmergencyMessagingSupportedViaCarrier()) {
             logd("onEmergencyCallStarted: satellite is not supported");
             return;
         }
@@ -212,7 +211,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
             String callId, @Connection.ConnectionState int state) {
         logd("callId=" + callId + ", state=" + state);
         if (!mSatelliteController.isSatelliteSupportedViaOem()
-                && !mSatelliteController.isSatelliteSupportedViaCarrier()) {
+                && !mSatelliteController.isSatelliteEmergencyMessagingSupportedViaCarrier()) {
             logd("onEmergencyCallConnectionStateChanged: satellite is not supported");
             return;
         }
@@ -229,6 +228,8 @@ public class SatelliteSOSMessageRecommender extends Handler {
         if (sendEventDisplayEmergencyMessageForcefully(connection)) {
             return;
         }
+
+        selectEmergencyCallWaitForConnectionTimeoutDuration();
         if (mEmergencyConnection == null) {
             handleStateChangedEventForHysteresisTimer();
             registerForInterestedStateChangedEvents();
@@ -504,7 +505,18 @@ public class SatelliteSOSMessageRecommender extends Handler {
         }
     }
 
-    private static long getEmergencyCallWaitForConnectionTimeoutMillis(@NonNull Context context) {
+    private void selectEmergencyCallWaitForConnectionTimeoutDuration() {
+        if (mSatelliteController.isSatelliteEmergencyMessagingSupportedViaCarrier()) {
+            mTimeoutMillis =
+                    mSatelliteController.getCarrierEmergencyCallWaitForConnectionTimeoutMillis();
+        } else {
+            mTimeoutMillis = mOemEnabledTimeoutMillis;
+        }
+        logd("mTimeoutMillis = " + mTimeoutMillis);
+    }
+
+    private static long getOemEnabledEmergencyCallWaitForConnectionTimeoutMillis(
+            @NonNull Context context) {
         return context.getResources().getInteger(
                 R.integer.config_emergency_call_wait_for_connection_timeout_millis);
     }
