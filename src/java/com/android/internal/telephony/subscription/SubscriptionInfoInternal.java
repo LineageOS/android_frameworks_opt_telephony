@@ -1217,7 +1217,22 @@ public class SubscriptionInfoInternal {
      * @return {@code true} if the subscription is visible to the user.
      */
     public boolean isVisible() {
-        return !isOpportunistic() || TextUtils.isEmpty(mGroupUuid);
+        // Provisioning profile
+        if (getProfileClass() == SubscriptionManager.PROFILE_CLASS_PROVISIONING) {
+            return false;
+        }
+
+        // Satellite profile
+        if (getOnlyNonTerrestrialNetwork() == 1) {
+            return false;
+        }
+
+        // Opportunistic profile
+        if (isOpportunistic() && !TextUtils.isEmpty(mGroupUuid)) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
