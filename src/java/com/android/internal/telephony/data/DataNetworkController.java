@@ -1545,7 +1545,7 @@ public class DataNetworkController extends Handler {
             DataProfile emergencyProfile = mDataProfileManager.getDataProfileForNetworkRequest(
                     networkRequest, getDataNetworkType(transport),
                     mServiceState.isUsingNonTerrestrialNetwork(),
-                    isEsimBootStrapProvisioningActivated(), true);
+                    false /*isEsimBootStrapProvisioning*/, true);
 
             // Check if the profile is being throttled.
             if (mDataConfigManager.shouldHonorRetryTimerForEmergencyNetworkRequest()
@@ -1801,6 +1801,9 @@ public class DataNetworkController extends Handler {
 
             if (!TextUtils.isEmpty(subscriberId)) {
                 builder.setSubscriberIds(Set.of(subscriberId));
+                // Consider data usage calculation of only metered network.
+                // Emergency data usage is excluded.
+                builder.setMeteredness(android.net.NetworkStats.METERED_YES);
                 NetworkTemplate template = builder.build();
                 final NetworkStats.Bucket ret = networkStatsManager
                         .querySummaryForDevice(template, 0L, System.currentTimeMillis());
