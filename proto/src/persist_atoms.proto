@@ -406,6 +406,7 @@ message DataCallSession {
     optional bool is_iwlan_cross_sim = 23;
     optional bool is_ntn = 24;
     optional bool is_satellite_transport = 25;
+    optional bool is_provisioning_profile = 26;
 }
 
 message CellularServiceState {

@@ -1206,7 +1206,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 dataCallSession.isNonDds,
                 dataCallSession.isIwlanCrossSim,
                 dataCallSession.isNtn,
-                dataCallSession.isSatelliteTransport);
+                dataCallSession.isSatelliteTransport,
+                dataCallSession.isProvisioningProfile);
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationStats stats) {
