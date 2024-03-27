@@ -933,9 +933,13 @@ public class SubscriptionManagerService extends ISub.Stub {
      *
      * @param subId Subscription id.
      * @param groupOwner The group owner to assign to the subscription
+     *
+     * @throws SecurityException if the caller does not have required permissions.
      */
+    @Override
+    @RequiresPermission(Manifest.permission.MODIFY_PHONE_STATE)
     public void setGroupOwner(int subId, @NonNull String groupOwner) {
-        // This can throw IllegalArgumentException if the subscription does not exist.
+        enforcePermissions("setGroupOwner", Manifest.permission.MODIFY_PHONE_STATE);
         try {
             mSubscriptionDatabaseManager.setGroupOwner(
                     subId,

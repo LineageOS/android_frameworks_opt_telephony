@@ -425,18 +425,32 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     @Test
     public void testSetAdminOwned() {
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
-        mSubscriptionManagerServiceUT.addSubInfo(FAKE_ICCID1, FAKE_CARRIER_NAME1,
-                0, SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+        mSubscriptionManagerServiceUT.addSubInfo(FAKE_ICCID1, FAKE_CARRIER_NAME1, 0,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
         processAllMessages();
         String groupOwner = "test";
 
         mSubscriptionManagerServiceUT.setGroupOwner(1, groupOwner);
 
-        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
-                .getSubscriptionInfoInternal(1);
+        SubscriptionInfoInternal subInfo =
+                mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1);
         assertThat(subInfo).isNotNull();
         assertThat(subInfo.getGroupOwner()).isEqualTo(groupOwner);
         verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
+    }
+
+    @Test
+    public void testSetGroupOwner_callerMissingpPermission_throws() {
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        mSubscriptionManagerServiceUT.addSubInfo(FAKE_ICCID1, FAKE_CARRIER_NAME1, 0,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+        processAllMessages();
+        String groupOwner = "test";
+        // Remove MODIFY_PHONE_STATE
+        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        assertThrows(SecurityException.class,
+                () -> mSubscriptionManagerServiceUT.setGroupOwner(1, groupOwner));
     }
 
     @Test
