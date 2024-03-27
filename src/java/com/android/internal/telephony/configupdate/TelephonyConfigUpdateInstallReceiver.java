@@ -20,12 +20,14 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
 import android.content.Intent;
+import android.os.FileUtils;
 import android.util.Log;
-import android.util.Slog;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.satellite.SatelliteConfig;
 import com.android.internal.telephony.satellite.SatelliteConfigParser;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.server.updates.ConfigUpdateInstallReceiver;
 
 import libcore.io.IoUtils;
@@ -33,6 +35,8 @@ import libcore.io.IoUtils;
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
@@ -43,7 +47,8 @@ public class TelephonyConfigUpdateInstallReceiver extends ConfigUpdateInstallRec
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected static final String UPDATE_DIR = "/data/misc/telephonyconfig";
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
-    protected static final String UPDATE_CONTENT_PATH = "telephony_config.pb";
+    protected static final String NEW_CONFIG_CONTENT_PATH = "new_telephony_config.pb";
+    protected static final String VALID_CONFIG_CONTENT_PATH = "valid_telephony_config.pb";
     protected static final String UPDATE_METADATA_PATH = "metadata/";
     public static final String VERSION = "version";
 
@@ -66,7 +71,7 @@ public class TelephonyConfigUpdateInstallReceiver extends ConfigUpdateInstallRec
     }
 
     public TelephonyConfigUpdateInstallReceiver() {
-        super(UPDATE_DIR, UPDATE_CONTENT_PATH, UPDATE_METADATA_PATH, VERSION);
+        super(UPDATE_DIR, NEW_CONFIG_CONTENT_PATH, UPDATE_METADATA_PATH, VERSION);
     }
 
     /**
@@ -74,57 +79,94 @@ public class TelephonyConfigUpdateInstallReceiver extends ConfigUpdateInstallRec
      */
     @Nullable
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
-    public byte[] getCurrentContent() {
+    public byte[] getContentFromContentPath(@NonNull File contentPath) {
         try {
-            return IoUtils.readFileAsByteArray(updateContent.getCanonicalPath());
+            return IoUtils.readFileAsByteArray(contentPath.getCanonicalPath());
         } catch (IOException e) {
-            Slog.i(TAG, "Failed to read current content, assuming first update!");
+            Log.e(TAG, "Failed to read current content : " + contentPath);
             return null;
         }
     }
+
+    /**
+     * @param parser target of validation.
+     * @return {@code true} if all the config data are valid {@code false} otherwise.
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public boolean isValidSatelliteCarrierConfigData(@NonNull ConfigParser parser) {
+        SatelliteConfig satelliteConfig = (SatelliteConfig) parser.getConfig();
+        if (satelliteConfig == null) {
+            Log.e(TAG, "satelliteConfig is null");
+            return false;
+        }
+
+        // If no carrier config exist then it is considered as a valid config
+        Set<Integer> carrierIds = satelliteConfig.getAllSatelliteCarrierIds();
+        for (int carrierId : carrierIds) {
+            Map<String, Set<Integer>> plmnsServices =
+                    satelliteConfig.getSupportedSatelliteServices(carrierId);
+            Set<String> plmns = plmnsServices.keySet();
+            for (String plmn : plmns) {
+                if (!TelephonyUtils.isValidPlmn(plmn)) {
+                    Log.e(TAG, "found invalid plmn : " + plmn);
+                    return false;
+                }
+                Set<Integer> serviceSet = plmnsServices.get(plmn);
+                for (int service : serviceSet) {
+                    if (!TelephonyUtils.isValidService(service)) {
+                        Log.e(TAG, "found invalid service : " + service);
+                        return false;
+                    }
+                }
+            }
+        }
+        Log.d(TAG, "the config data is valid");
+        return true;
+    }
+
 
     @Override
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PROTECTED)
     public void postInstall(Context context, Intent intent) {
         Log.d(TAG, "Telephony config is updated in file partition");
-        ConfigParser updatedConfigParser = getNewConfigParser(DOMAIN_SATELLITE,
-                getCurrentContent());
 
-        if (updatedConfigParser == null) {
-            Log.d(TAG, "updatedConfigParser is null");
+        ConfigParser newConfigParser = getNewConfigParser(DOMAIN_SATELLITE,
+                getContentFromContentPath(updateContent));
+
+        if (newConfigParser == null) {
+            Log.e(TAG, "newConfigParser is null");
             return;
         }
 
-        boolean isParserChanged = false;
+        if (!isValidSatelliteCarrierConfigData(newConfigParser)) {
+            Log.e(TAG, "received config data has invalid satellite carrier config data");
+            return;
+        }
 
         synchronized (getInstance().mConfigParserLock) {
-            if (getInstance().mConfigParser == null) {
-                getInstance().mConfigParser = updatedConfigParser;
-                isParserChanged = true;
-            } else {
-                int updatedVersion = updatedConfigParser.mVersion;
+            if (getInstance().mConfigParser != null) {
+                int updatedVersion = newConfigParser.mVersion;
                 int previousVersion = getInstance().mConfigParser.mVersion;
                 Log.d(TAG, "previous version is " + previousVersion + " | updated version is "
                         + updatedVersion);
-                if (updatedVersion > previousVersion) {
-                    getInstance().mConfigParser = updatedConfigParser;
-                    isParserChanged = true;
+                if (updatedVersion <= previousVersion) {
+                    Log.e(TAG, "updatedVersion is smaller than previousVersion");
+                    return;
                 }
+            }
+            getInstance().mConfigParser = newConfigParser;
+        }
+
+        if (!getInstance().mCallbackHashMap.keySet().isEmpty()) {
+            Iterator<Executor> iterator = getInstance().mCallbackHashMap.keySet().iterator();
+            while (iterator.hasNext()) {
+                Executor executor = iterator.next();
+                getInstance().mCallbackHashMap.get(executor).onChanged(newConfigParser);
             }
         }
 
-        if (isParserChanged) {
-            if (getInstance().mCallbackHashMap.keySet().isEmpty()) {
-                Log.d(TAG, "mCallbackHashMap.keySet().isEmpty");
-                return;
-            }
-            Iterator<Executor> iterator =
-                    getInstance().mCallbackHashMap.keySet().iterator();
-            while (iterator.hasNext()) {
-                Executor executor = iterator.next();
-                getInstance().mCallbackHashMap.get(executor).onChanged(
-                        updatedConfigParser);
-            }
+        if (!copySourceFileToTargetFile(NEW_CONFIG_CONTENT_PATH, VALID_CONFIG_CONTENT_PATH)) {
+            Log.e(TAG, "fail to copy to the valid satellite carrier config data");
         }
     }
 
@@ -135,7 +177,9 @@ public class TelephonyConfigUpdateInstallReceiver extends ConfigUpdateInstallRec
         synchronized (getInstance().mConfigParserLock) {
             if (getInstance().mConfigParser == null) {
                 Log.d(TAG, "CreateNewConfigParser with domain " + domain);
-                getInstance().mConfigParser = getNewConfigParser(domain, getCurrentContent());
+                getInstance().mConfigParser = getNewConfigParser(
+                        domain, getContentFromContentPath(new File(updateDir,
+                                VALID_CONFIG_CONTENT_PATH)));
             }
             return getInstance().mConfigParser;
         }
@@ -196,5 +240,36 @@ public class TelephonyConfigUpdateInstallReceiver extends ConfigUpdateInstallRec
                 Log.e(TAG, "DOMAIN should be specified");
                 return null;
         }
+    }
+
+    /**
+     * @param sourceFileName source file name
+     * @param targetFileName target file name
+     * @return {@code true} if successful, {@code false} otherwise
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public boolean copySourceFileToTargetFile(
+            @NonNull String sourceFileName, @NonNull String targetFileName) {
+        try {
+            File sourceFile = new File(UPDATE_DIR, sourceFileName);
+            File targetFile = new File(UPDATE_DIR, targetFileName);
+            Log.d(TAG, "copy " + sourceFile.getName() + " >> " + targetFile.getName());
+
+            if (sourceFile.exists()) {
+                if (targetFile.exists()) {
+                    targetFile.delete();
+                }
+                FileUtils.copy(sourceFile, targetFile);
+                FileUtils.copyPermissions(sourceFile, targetFile);
+                Log.d(TAG, "success to copy the file " + sourceFile.getName() + " to "
+                        + targetFile.getName());
+                return true;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "copy error : " + e);
+            return false;
+        }
+        Log.d(TAG, "source file is not exist, no file to copy");
+        return false;
     }
 }

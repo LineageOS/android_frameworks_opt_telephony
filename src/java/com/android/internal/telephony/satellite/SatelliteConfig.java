@@ -19,6 +19,7 @@ package com.android.internal.telephony.satellite;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
+import android.util.ArraySet;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -136,6 +137,19 @@ public class SatelliteConfig {
             Log.d(TAG, "mSupportedServicesPerCarrier is null");
         }
         return new HashMap<>();
+    }
+
+    /**
+     * Get carrier identifier set for the satellite
+     *
+     * @return carrier identifier set from the config data.
+     */
+    @NonNull
+    public Set<Integer> getAllSatelliteCarrierIds() {
+        if (mSupportedServicesPerCarrier != null) {
+            return new ArraySet<>(mSupportedServicesPerCarrier.keySet());
+        }
+        return new ArraySet<>();
     }
 
     /**
