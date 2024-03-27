@@ -103,6 +103,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 /**
  * Utility singleton to monitor subscription changes and incoming NetworkRequests
@@ -390,6 +391,27 @@ public class PhoneSwitcher extends Handler {
             (context, phoneId) -> ImsManager.getInstance(context, phoneId).getRegistrationTech();
 
     /**
+     * Interface to register RegistrationCallback. It's a wrapper of
+     * ImsManager#addRegistrationCallback, to make it mock-able in unittests.
+     */
+    public interface ImsRegisterCallback {
+        /** Set RegistrationCallback. */
+        void setCallback(Context context, int phoneId, RegistrationManager.RegistrationCallback cb,
+                Executor executor) throws ImsException;
+    }
+
+    @VisibleForTesting
+    public ImsRegisterCallback mImsRegisterCallback =
+            (context, phoneId, cb, executor)-> {
+                try {
+                    ImsManager.getInstance(context, phoneId)
+                            .addRegistrationCallback(cb, executor);
+                } catch (ImsException e) {
+                    throw e;
+                }
+            };
+
+    /**
      * Method to get singleton instance.
      */
     public static PhoneSwitcher getInstance() {
@@ -432,8 +454,7 @@ public class PhoneSwitcher extends Handler {
 
     private void registerForImsRadioTechChange(Context context, int phoneId) {
         try {
-            ImsManager.getInstance(context, phoneId).addRegistrationCallback(
-                    mRegistrationCallback, this::post);
+            mImsRegisterCallback.setCallback(context, phoneId, mRegistrationCallback, this::post);
             mIsRegisteredForImsRadioTechChange = true;
         } catch (ImsException imsException) {
             mIsRegisteredForImsRadioTechChange = false;

@@ -42,6 +42,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -73,6 +74,7 @@ import android.testing.TestableLooper;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.ims.ImsException;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
@@ -126,6 +128,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
     private ISetOpportunisticDataCallback mSetOpptDataCallback1;
     private ISetOpportunisticDataCallback mSetOpptDataCallback2;
     PhoneSwitcher.ImsRegTechProvider mMockImsRegTechProvider;
+    PhoneSwitcher.ImsRegisterCallback mMockImsRegisterCallback;
     private SubscriptionInfo mSubscriptionInfo;
     private ISub mMockedIsub;
     private AutoDataSwitchController mAutoDataSwitchController;
@@ -167,6 +170,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         mSetOpptDataCallback1 = mock(ISetOpportunisticDataCallback.class);
         mSetOpptDataCallback2 = mock(ISetOpportunisticDataCallback.class);
         mMockImsRegTechProvider = mock(PhoneSwitcher.ImsRegTechProvider.class);
+        mMockImsRegisterCallback = mock(PhoneSwitcher.ImsRegisterCallback.class);
         mSubscriptionInfo = mock(SubscriptionInfo.class);
         mMockedIsub = mock(ISub.class);
         mAutoDataSwitchController = mock(AutoDataSwitchController.class);
@@ -869,6 +873,11 @@ public class PhoneSwitcherTest extends TelephonyTest {
     private void mockImsRegTech(int phoneId, int regTech) {
         doReturn(regTech).when(mMockImsRegTechProvider).get(any(), eq(phoneId));
         mPhoneSwitcherUT.mImsRegTechProvider = mMockImsRegTechProvider;
+    }
+
+    private void mockImsRegisterCallback(int phoneId) throws ImsException {
+        doNothing().when(mMockImsRegisterCallback).setCallback(any(), eq(phoneId), any(), any());
+        mPhoneSwitcherUT.mImsRegisterCallback = mMockImsRegisterCallback;
     }
 
     @Test
@@ -1754,6 +1763,33 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
         verify(mCommandsInterface0, never()).setDataAllowed(anyBoolean(), any());
         verify(mCommandsInterface1, never()).setDataAllowed(anyBoolean(), any());
+    }
+
+    @Test
+    @SmallTest
+    public void testRegisterForImsRegistrationCallback() throws Exception {
+        initialize();
+        setAllPhonesInactive();
+
+        // Phone 0 has sub 1, phone 1 has sub 2.
+        // Sub 1 is default data sub.
+        // Both are active subscriptions are active sub, as they are in both active slots.
+        setSlotIndexToSubId(0, 1);
+        setSlotIndexToSubId(1, 2);
+        setDefaultDataSubId(1);
+        processAllMessages();
+
+        // Phone 0 should be the default data phoneId.
+        assertEquals(0, mPhoneSwitcherUT.getPreferredDataPhoneId());
+
+        doReturn(true).when(mPhone).isUserDataEnabled();
+        mockImsRegTech(0, REGISTRATION_TECH_LTE);
+        mockImsRegisterCallback(0);
+        mockImsRegisterCallback(1);
+
+        notifyImsRegistrationTechChange(mPhone);
+
+        verify(mMockImsRegisterCallback, times(2)).setCallback(any(), anyInt(), any(), any());
     }
 
     /* Private utility methods start here */
