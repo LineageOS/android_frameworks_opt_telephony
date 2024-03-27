@@ -43,13 +43,16 @@ import static com.android.internal.telephony.subscription.SubscriptionDatabaseMa
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_PHONE_NUMBER2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_RCS_CONFIG1;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_RCS_CONFIG2;
+import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_SATELLITE_ENTITLEMENT_PLMNS1;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_SUBSCRIPTION_INFO1;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_SUBSCRIPTION_INFO2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_UUID1;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -131,11 +134,13 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -3201,5 +3206,61 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 FAKE_CARRIER_NAME1);
         System.setProperty("persist.radio.allow_mock_modem", "false");
         doReturn(false).when(mFlags).oemEnabledSatelliteFlag();
+    }
+
+    @Test
+    public void testGetSatelliteEntitlementPlmnList() throws Exception {
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // When the empty list is stored, verify whether SubscriptionInfoInternal returns an
+        // empty string and SubscriptionManagerService returns an empty List.
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        List<String> expectedPlmnList = new ArrayList<>();
+        int subId = 1;
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(subId);
+        assertTrue(subInfo.getSatelliteEntitlementPlmns().isEmpty());
+        assertEquals(expectedPlmnList,
+                mSubscriptionManagerServiceUT.getSatelliteEntitlementPlmnList(subId));
+
+        // When the list is stored as [123123,12310], verify whether SubscriptionInfoInternal
+        // returns the string as "123123,12310" and SubscriptionManagerService returns the List as
+        // [123123,12310].
+        insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+        String expectedPlmn = FAKE_SATELLITE_ENTITLEMENT_PLMNS1;
+        expectedPlmnList = Arrays.stream(expectedPlmn.split(",")).collect(Collectors.toList());
+        subId = 2;
+
+        subInfo = mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(subId);
+        assertEquals(expectedPlmn, subInfo.getSatelliteEntitlementPlmns());
+        assertEquals(expectedPlmnList,
+                mSubscriptionManagerServiceUT.getSatelliteEntitlementPlmnList(subId));
+
+        // When calling SubscriptionDatabaseManager#getSubscriptionInfoInternalreturns returns a
+        // null, then verify the SubscriptionManagerService returns an empty List.
+        SubscriptionDatabaseManager mockSubscriptionDatabaseManager = Mockito.mock(
+                SubscriptionDatabaseManager.class);
+        Field field = SubscriptionManagerService.class.getDeclaredField(
+                "mSubscriptionDatabaseManager");
+        field.setAccessible(true);
+        field.set(mSubscriptionManagerServiceUT, mockSubscriptionDatabaseManager);
+
+        doReturn(null).when(mockSubscriptionDatabaseManager).getSubscriptionInfoInternal(anyInt());
+        expectedPlmnList = new ArrayList<>();
+        assertEquals(expectedPlmnList,
+                mSubscriptionManagerServiceUT.getSatelliteEntitlementPlmnList(subId));
+
+        // When calling SubscriptionDatabaseManager#getSubscriptionInfoInternalreturns returns a
+        // non null. And when calling SubscriptionInfoInternal#getSatelliteEntitlementPlmns
+        // returns a null, then verify the SubscriptionManagerService returns an empty List.
+        SubscriptionInfoInternal mockSubscriptionInfoInternal = Mockito.mock(
+                SubscriptionInfoInternal.class);
+        doReturn(mockSubscriptionInfoInternal).when(
+                mockSubscriptionDatabaseManager).getSubscriptionInfoInternal(anyInt());
+        doReturn(null).when(mockSubscriptionInfoInternal).getSatelliteEntitlementPlmns();
+
+        assertEquals(expectedPlmnList,
+                mSubscriptionManagerServiceUT.getSatelliteEntitlementPlmnList(subId));
     }
 }

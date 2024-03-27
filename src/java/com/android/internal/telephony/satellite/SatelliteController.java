@@ -3224,12 +3224,17 @@ public class SatelliteController extends Handler {
     private void updatePlmnListPerCarrier(int subId) {
         synchronized (mSupportedSatelliteServicesLock) {
             List<String> carrierPlmnList, entitlementPlmnList;
-            entitlementPlmnList = mEntitlementPlmnListPerCarrier.get(subId,
-                    new ArrayList<>()).stream().toList();
-            if (!entitlementPlmnList.isEmpty()) {
-                mMergedPlmnListPerCarrier.put(subId, entitlementPlmnList);
-                logd("update it using entitlementPlmnList=" + entitlementPlmnList);
-                return;
+            if (getConfigForSubId(subId).getBoolean(KEY_SATELLITE_ENTITLEMENT_SUPPORTED_BOOL,
+                    false)) {
+                entitlementPlmnList = mEntitlementPlmnListPerCarrier.get(subId,
+                        new ArrayList<>()).stream().toList();
+                logd("updatePlmnListPerCarrier: entitlementPlmnList=" + entitlementPlmnList
+                        + " size=" + entitlementPlmnList.size());
+                if (!entitlementPlmnList.isEmpty()) {
+                    mMergedPlmnListPerCarrier.put(subId, entitlementPlmnList);
+                    logd("update it using entitlementPlmnList=" + entitlementPlmnList);
+                    return;
+                }
             }
 
             SatelliteConfig satelliteConfig = getSatelliteConfig();
@@ -3356,8 +3361,10 @@ public class SatelliteController extends Handler {
         }
     }
 
-    /** If there is no cached entitlement plmn list, read it from the db and use it if it is not an
-     * empty list. */
+    /**
+     * If there is no cached entitlement plmn list, read it from the db and use it if it is not an
+     * empty list.
+     */
     private void updateEntitlementPlmnListPerCarrier(int subId) {
         if (!getConfigForSubId(subId).getBoolean(KEY_SATELLITE_ENTITLEMENT_SUPPORTED_BOOL, false)) {
             logd("don't support entitlement");
@@ -3371,7 +3378,7 @@ public class SatelliteController extends Handler {
                 List<String> entitlementPlmnList =
                         mSubscriptionManagerService.getSatelliteEntitlementPlmnList(subId);
                 if (entitlementPlmnList.isEmpty()) {
-                    loge("updateEntitlementPlmnListPerCarrier: no data for subId(" + subId + ")");
+                    logd("updateEntitlementPlmnListPerCarrier: read empty list");
                     return;
                 }
                 logd("updateEntitlementPlmnListPerCarrier: entitlementPlmnList="
