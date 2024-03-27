@@ -2383,6 +2383,32 @@ public class DataNetworkTest extends TelephonyTest {
         // Now QNS prefers MMS on IWLAN
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+        // Verify an mms apn that shares the same apn name doesn't count as an alternative.
+        ApnSetting mmsApnWithSameApn = new ApnSetting.Builder()
+                .setId(2164)
+                .setOperatorNumeric("12345")
+                .setEntryName("fake_mms_apn")
+                .setApnName("fake_apn")
+                .setApnTypeBitmask(ApnSetting.TYPE_MMS)
+                .setProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+                .setCarrierEnabled(true)
+                .setNetworkTypeBitmask((int) TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN)
+                .build();
+        doReturn(new DataProfile.Builder().setApnSetting(mmsApnWithSameApn)
+                .setTrafficDescriptor(new TrafficDescriptor("fake_apn", null))
+                .build()).when(mDataProfileManager).getDataProfileForNetworkRequest(
+                any(TelephonyNetworkRequest.class),
+                eq(TelephonyManager.NETWORK_TYPE_IWLAN), eq(false), eq(false), eq(false));
+        accessNetworksManagerCallbackArgumentCaptor.getValue()
+                .onPreferredTransportChanged(NetworkCapabilities.NET_CAPABILITY_MMS, false);
+        processAllMessages();
+
+        // Check if MMS capability remains intact.
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS)).isTrue();
+
+        // Verify MMS capability is removed if using a valid MMS alternative APN.
         doReturn(mMmsDataProfile).when(mDataProfileManager).getDataProfileForNetworkRequest(
                 any(TelephonyNetworkRequest.class),
                     eq(TelephonyManager.NETWORK_TYPE_IWLAN), eq(false), eq(false), eq(false));
