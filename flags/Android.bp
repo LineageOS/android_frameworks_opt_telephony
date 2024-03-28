@@ -21,6 +21,7 @@ package {
 aconfig_declarations {
     name: "telephony_flags",
     package: "com.android.internal.telephony.flags",
+    container: "system",
     srcs: [
         "calling.aconfig",
         "data.aconfig",

@@ -1,4 +1,5 @@
 package: "com.android.internal.telephony.flags"
+container: "system"
 
 # OWNER=jayachandranc TARGET=24Q3
 flag {
