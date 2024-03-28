@@ -78,6 +78,7 @@ import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
@@ -333,6 +334,14 @@ public class SatelliteController extends Handler {
     @GuardedBy("mSatelliteConnectedLock")
     @NonNull private final SparseBooleanArray
             mWasSatelliteConnectedViaCarrier = new SparseBooleanArray();
+
+    /**
+     * Key: Subscription ID; Value: set of
+     * {@link android.telephony.NetworkRegistrationInfo.ServiceType}
+     */
+    @GuardedBy("mSatelliteConnectedLock")
+    @NonNull private final Map<Integer, List<Integer>>
+            mSatModeCapabilitiesForCarrierRoaming = new HashMap<>();
 
     @GuardedBy("mSatelliteConnectedLock")
     @NonNull private final SparseBooleanArray
@@ -2566,31 +2575,90 @@ public class SatelliteController extends Handler {
             return true;
         }
         for (Phone phone : PhoneFactory.getPhones()) {
-            if (isSatelliteSupportedViaCarrier(phone.getSubId())) {
-                synchronized (mSatelliteConnectedLock) {
-                    Boolean isHysteresisTimeExpired =
-                            mIsSatelliteConnectedViaCarrierHysteresisTimeExpired.get(
-                                    phone.getSubId());
-                    if (isHysteresisTimeExpired != null && isHysteresisTimeExpired) {
-                        continue;
-                    }
-
-                    Long lastDisconnectedTime =
-                            mLastSatelliteDisconnectedTimesMillis.get(phone.getSubId());
-                    long satelliteConnectionHysteresisTime =
-                            getSatelliteConnectionHysteresisTimeMillis(phone.getSubId());
-                    if (lastDisconnectedTime != null
-                            && (getElapsedRealtime() - lastDisconnectedTime)
-                            <= satelliteConnectionHysteresisTime) {
-                        return true;
-                    } else {
-                        mIsSatelliteConnectedViaCarrierHysteresisTimeExpired.put(
-                                phone.getSubId(), true);
-                    }
-                }
+            if (isInSatelliteModeForCarrierRoaming(phone)) {
+                logd("isSatelliteConnectedViaCarrierWithinHysteresisTime: "
+                        + "subId:" + phone.getSubId()
+                        + " is connected to satellite within hysteresis time");
+                return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Get whether device is connected to satellite via carrier.
+     *
+     * @param phone phone object
+     * @return {@code true} if the device is connected to satellite using the phone within the
+     * {@link CarrierConfigManager#KEY_SATELLITE_CONNECTION_HYSTERESIS_SEC_INT}
+     * duration, {@code false} otherwise.
+     */
+    public boolean isInSatelliteModeForCarrierRoaming(@Nullable Phone phone) {
+        if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
+            logd("isInSatelliteModeForCarrierRoaming: carrierEnabledSatelliteFlag is disabled");
+            return false;
+        }
+
+        if (phone == null) {
+            return false;
+        }
+
+        if (!isSatelliteSupportedViaCarrier(phone.getSubId())) {
+            return false;
+        }
+
+        ServiceState serviceState = phone.getServiceState();
+        if (serviceState != null && serviceState.isUsingNonTerrestrialNetwork()) {
+            return true;
+        }
+
+        synchronized (mSatelliteConnectedLock) {
+            Boolean isHysteresisTimeExpired =
+                    mIsSatelliteConnectedViaCarrierHysteresisTimeExpired.get(
+                            phone.getSubId());
+            if (isHysteresisTimeExpired != null && isHysteresisTimeExpired) {
+                return false;
+            }
+
+            Long lastDisconnectedTime =
+                    mLastSatelliteDisconnectedTimesMillis.get(phone.getSubId());
+            long satelliteConnectionHysteresisTime =
+                    getSatelliteConnectionHysteresisTimeMillis(phone.getSubId());
+            if (lastDisconnectedTime != null
+                    && (getElapsedRealtime() - lastDisconnectedTime)
+                    <= satelliteConnectionHysteresisTime) {
+                return true;
+            } else {
+                mIsSatelliteConnectedViaCarrierHysteresisTimeExpired.put(
+                        phone.getSubId(), true);
+                mSatModeCapabilitiesForCarrierRoaming.remove(phone.getSubId());
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Return capabilities of carrier roaming satellite network.
+     *
+     * @param phone phone object
+     * @return The list of services supported by the carrier associated with the {@code subId}
+     */
+    @NonNull
+    public List<Integer> getCapabilitiesForCarrierRoamingSatelliteMode(Phone phone) {
+        if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
+            logd("getCapabilitiesForCarrierRoamingSatelliteMode: carrierEnabledSatelliteFlag"
+                    + " is disabled");
+            return new ArrayList<>();
+        }
+
+        synchronized (mSatelliteConnectedLock) {
+            int subId = phone.getSubId();
+            if (mSatModeCapabilitiesForCarrierRoaming.containsKey(subId)) {
+                return mSatModeCapabilitiesForCarrierRoaming.get(subId);
+            }
+        }
+
+        return new ArrayList<>();
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
@@ -3716,6 +3784,14 @@ public class SatelliteController extends Handler {
                         mWasSatelliteConnectedViaCarrier.put(phone.getSubId(), true);
                         mIsSatelliteConnectedViaCarrierHysteresisTimeExpired.put(
                                 phone.getSubId(), false);
+
+                        for (NetworkRegistrationInfo nri
+                                : serviceState.getNetworkRegistrationInfoList()) {
+                            if (nri.isNonTerrestrialNetwork()) {
+                                mSatModeCapabilitiesForCarrierRoaming.put(phone.getSubId(),
+                                        nri.getAvailableServices());
+                            }
+                        }
                     } else {
                         Boolean connected = mWasSatelliteConnectedViaCarrier.get(phone.getSubId());
                         if (connected != null && connected) {
