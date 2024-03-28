@@ -21,7 +21,6 @@ import static android.telephony.TelephonyManager.DATA_CONNECTED;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_UNKNOWN;
-import static com.android.internal.telephony.flags.Flags.dataRatMetricEnabled;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -32,7 +31,6 @@ import android.telephony.Annotation.NetworkType;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.ServiceState.RoamingType;
-import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 
@@ -40,7 +38,6 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
-import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.data.DataNetwork;
 import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
@@ -64,8 +61,6 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
     private final PersistAtomsStorage mStorage;
     private final DeviceStateHelper mDeviceStateHelper;
     private boolean mExistAnyConnectedInternetPdn;
-    private int mCurrentDataRat =
-            TelephonyStatsLog.DATA_RAT_STATE_CHANGED__DATA_RAT__DATA_RAT_UNSPECIFIED;
 
     public ServiceStateStats(Phone phone) {
         super(Runnable::run);
@@ -144,10 +139,6 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
                     mLastState.getAndSet(new TimestampedServiceState(newState, now));
             addServiceStateAndSwitch(
                     prevState, now, getDataServiceSwitch(prevState.mServiceState, newState));
-        }
-
-        if (dataRatMetricEnabled()) {
-            writeDataRatAtom(serviceState);
         }
     }
 
@@ -463,68 +454,6 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
     public static boolean isNetworkRoaming(ServiceState ss) {
         return isNetworkRoaming(ss, NetworkRegistrationInfo.DOMAIN_CS)
                 || isNetworkRoaming(ss, NetworkRegistrationInfo.DOMAIN_PS);
-    }
-
-    /** Collect data Rat metric. */
-    private void writeDataRatAtom(@NonNull ServiceState serviceState) {
-        if (DataConnectionStateTracker.getActiveDataSubId() != mPhone.getSubId()) {
-            return;
-        }
-        NetworkRegistrationInfo wwanRegInfo = serviceState.getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS,
-                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        if (wwanRegInfo == null) {
-            return;
-        }
-        int dataRat = wwanRegInfo.getAccessNetworkTechnology();
-        int nrFrequency = serviceState.getNrFrequencyRange();
-        int nrState = serviceState.getNrState();
-        int translatedDataRat =
-                TelephonyStatsLog.DATA_RAT_STATE_CHANGED__DATA_RAT__DATA_RAT_UNSPECIFIED;
-        if (!SubscriptionManager.isValidSubscriptionId(mPhone.getSubId())) {
-            translatedDataRat = TelephonyStatsLog.DATA_RAT_STATE_CHANGED__DATA_RAT__NO_SIM;
-        } else if (dataRat == TelephonyManager.NETWORK_TYPE_EHRPD
-                || dataRat == TelephonyManager.NETWORK_TYPE_HSPAP
-                || dataRat == TelephonyManager.NETWORK_TYPE_UMTS
-                || dataRat == TelephonyManager.NETWORK_TYPE_HSDPA
-                || dataRat == TelephonyManager.NETWORK_TYPE_HSUPA
-                || dataRat == TelephonyManager.NETWORK_TYPE_HSPA
-                || dataRat == TelephonyManager.NETWORK_TYPE_EVDO_0
-                || dataRat == TelephonyManager.NETWORK_TYPE_EVDO_A
-                || dataRat == TelephonyManager.NETWORK_TYPE_EVDO_B) {
-            translatedDataRat = TelephonyStatsLog.DATA_RAT_STATE_CHANGED__DATA_RAT__DATA_RAT_3G;
-        } else if (dataRat == TelephonyManager.NETWORK_TYPE_1xRTT
-                || dataRat == TelephonyManager.NETWORK_TYPE_GPRS
-                || dataRat == TelephonyManager.NETWORK_TYPE_EDGE
-                || dataRat == TelephonyManager.NETWORK_TYPE_CDMA
-                || dataRat == TelephonyManager.NETWORK_TYPE_GSM) {
-            translatedDataRat = TelephonyStatsLog.DATA_RAT_STATE_CHANGED__DATA_RAT__DATA_RAT_2G;
-        } else if (dataRat == TelephonyManager.NETWORK_TYPE_NR) {
-            translatedDataRat = nrFrequency != ServiceState.FREQUENCY_RANGE_MMWAVE
-                    ? TelephonyStatsLog.DATA_RAT_STATE_CHANGED__DATA_RAT__DATA_RAT_5G_SA_FR1 :
-                    TelephonyStatsLog.DATA_RAT_STATE_CHANGED__DATA_RAT__DATA_RAT_5G_SA_FR2;
-        } else if (dataRat == TelephonyManager.NETWORK_TYPE_LTE) {
-            if (nrState == NetworkRegistrationInfo.NR_STATE_CONNECTED) {
-                translatedDataRat = nrFrequency != ServiceState.FREQUENCY_RANGE_MMWAVE
-                    ? TelephonyStatsLog.DATA_RAT_STATE_CHANGED__DATA_RAT__DATA_RAT_5G_NSA_FR1 :
-                    TelephonyStatsLog.DATA_RAT_STATE_CHANGED__DATA_RAT__DATA_RAT_5G_NSA_FR2;
-            } else if (nrState == NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED) {
-                translatedDataRat =
-                        TelephonyStatsLog.DATA_RAT_STATE_CHANGED__DATA_RAT__DATA_RAT_5G_NSA_LTE;
-            } else {
-                translatedDataRat =
-                        TelephonyStatsLog.DATA_RAT_STATE_CHANGED__DATA_RAT__DATA_RAT_4G_LTE;
-            }
-        }
-
-        if (translatedDataRat != mCurrentDataRat) {
-            TelephonyStatsLog.write(TelephonyStatsLog.DATA_RAT_STATE_CHANGED, translatedDataRat);
-            mCurrentDataRat = translatedDataRat;
-        }
-    }
-
-    int getCurrentDataRat() {
-        return mCurrentDataRat;
     }
 
     @VisibleForTesting
