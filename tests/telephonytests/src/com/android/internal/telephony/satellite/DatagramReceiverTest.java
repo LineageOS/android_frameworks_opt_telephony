@@ -324,6 +324,7 @@ public class DatagramReceiverTest extends TelephonyTest {
         mTestDemoModeDatagramReceiver.setDemoMode(true);
         mTestDemoModeDatagramReceiver.setDeviceAlignedWithSatellite(true);
         when(mMockDatagramController.popDemoModeDatagram()).thenReturn(mDatagram);
+
         mTestDemoModeDatagramReceiver.pollPendingSatelliteDatagrams(SUB_ID, mResultListener::offer);
         processAllMessages();
         verify(mMockDatagramController, times(1)).popDemoModeDatagram();
@@ -478,7 +479,7 @@ public class DatagramReceiverTest extends TelephonyTest {
         }
 
         @Override
-        protected void setDeviceAlignedWithSatellite(boolean isAligned) {
+        public void setDeviceAlignedWithSatellite(boolean isAligned) {
             super.setDeviceAlignedWithSatellite(isAligned);
         }
 
