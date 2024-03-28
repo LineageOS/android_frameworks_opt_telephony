@@ -444,12 +444,13 @@ public class MultiSimSettingController extends Handler {
             return;
         }
 
-        CarrierConfigManager cm = mContext.getSystemService(CarrierConfigManager.class);
-        if (cm != null) {
-            if (CarrierConfigManager.isConfigForIdentifiedCarrier(cm.getConfigForSubId(subId))) {
-                mCarrierConfigLoadedSubIds[phoneId] = subId;
-                reEvaluateAll();
-            }
+        CarrierConfigManager cm;
+        if (!SubscriptionManager.isValidSubscriptionId(subId) // record SIM absent.
+                || ((cm = mContext.getSystemService(CarrierConfigManager.class)) != null
+                && CarrierConfigManager.isConfigForIdentifiedCarrier(
+                        cm.getConfigForSubId(subId)))) {
+            mCarrierConfigLoadedSubIds[phoneId] = subId;
+            reEvaluateAll();
         }
     }
 
