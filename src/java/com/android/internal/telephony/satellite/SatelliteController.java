@@ -248,7 +248,8 @@ public class SatelliteController extends Handler {
     private final AtomicBoolean mRegisteredForNtnSignalStrengthChanged = new AtomicBoolean(false);
     private final AtomicBoolean mRegisteredForSatelliteCapabilitiesChanged =
             new AtomicBoolean(false);
-    private final AtomicBoolean mShouldReportNtnSignalStrength = new AtomicBoolean(false);
+    private final AtomicBoolean mIsModemEnabledReportingNtnSignalStrength =
+            new AtomicBoolean(false);
     /**
      * Map key: subId, value: callback to get error code of the provision request.
      */
@@ -938,6 +939,8 @@ public class SatelliteController extends Handler {
                             mWaitingForDisableSatelliteModemResponse = false;
                         }
                     }
+                    // Request Ntn signal strength report when satellite enabled or disabled done.
+                    updateNtnSignalStrengthReporting(argument.enableSatellite);
                 } else {
                     synchronized (mSatelliteEnabledRequestLock) {
                         if (mSatelliteEnabledRequest != null &&
@@ -1265,24 +1268,7 @@ public class SatelliteController extends Handler {
                 if (DBG) {
                     logd("CMD_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING: shouldReport=" + shouldReport);
                 }
-                request = new SatelliteControllerHandlerRequest(shouldReport,
-                        SatelliteServiceUtils.getPhone());
-                if (SATELLITE_RESULT_SUCCESS != evaluateOemSatelliteRequestAllowed(true)) {
-                    return;
-                }
-                if (!isSatelliteEnabled() || mShouldReportNtnSignalStrength.get() == shouldReport) {
-                    if (DBG) {
-                        logd("CMD_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING: ignore request.");
-                    }
-                    return;
-                }
-                onCompleted = obtainMessage(EVENT_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING_DONE,
-                        request);
-                if (shouldReport) {
-                    mSatelliteModemInterface.startSendingNtnSignalStrength(onCompleted);
-                } else {
-                    mSatelliteModemInterface.stopSendingNtnSignalStrength(onCompleted);
-                }
+                handleCmdUpdateNtnSignalStrengthReporting(shouldReport);
                 break;
             }
 
@@ -1291,9 +1277,10 @@ public class SatelliteController extends Handler {
                 request = (SatelliteControllerHandlerRequest) ar.userObj;
                 boolean shouldReport = (boolean) request.argument;
                 int errorCode =  SatelliteServiceUtils.getSatelliteError(ar,
-                        "EVENT_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING_DONE");
+                        "EVENT_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING_DONE: shouldReport="
+                                + shouldReport);
                 if (errorCode == SATELLITE_RESULT_SUCCESS) {
-                    mShouldReportNtnSignalStrength.set(shouldReport);
+                    mIsModemEnabledReportingNtnSignalStrength.set(shouldReport);
                 } else {
                     loge(((boolean) request.argument ? "startSendingNtnSignalStrength"
                             : "stopSendingNtnSignalStrength") + "returns " + errorCode);
@@ -2927,7 +2914,7 @@ public class SatelliteController extends Handler {
             loge(caller + ": mSatelliteSessionController is not initialized yet");
         }
         if (!enabled) {
-            mShouldReportNtnSignalStrength.set(false);
+            mIsModemEnabledReportingNtnSignalStrength.set(false);
         }
     }
 
@@ -3929,6 +3916,49 @@ public class SatelliteController extends Handler {
                 mWaitingForDisableSatelliteModemResponse = false;
                 mWaitingForSatelliteModemOff = false;
             }
+        }
+    }
+
+    private void handleCmdUpdateNtnSignalStrengthReporting(boolean shouldReport) {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("handleCmdUpdateNtnSignalStrengthReporting: oemEnabledSatelliteFlag is "
+                    + "disabled");
+            return;
+        }
+
+        if (!isSatelliteEnabled()) {
+            logd("handleCmdUpdateNtnSignalStrengthReporting: ignore request, satellite is "
+                    + "disabled");
+            return;
+        }
+
+        if (mIsModemEnabledReportingNtnSignalStrength.get() == shouldReport) {
+            logd("handleCmdUpdateNtnSignalStrengthReporting: ignore request. "
+                    + "mIsModemEnabledReportingNtnSignalStrength="
+                    + mIsModemEnabledReportingNtnSignalStrength.get());
+            return;
+        }
+
+        updateNtnSignalStrengthReporting(shouldReport);
+    }
+
+    private void updateNtnSignalStrengthReporting(boolean shouldReport) {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("updateNtnSignalStrengthReporting: oemEnabledSatelliteFlag is "
+                    + "disabled");
+            return;
+        }
+
+        SatelliteControllerHandlerRequest request = new SatelliteControllerHandlerRequest(
+                shouldReport, SatelliteServiceUtils.getPhone());
+        Message onCompleted = obtainMessage(EVENT_UPDATE_NTN_SIGNAL_STRENGTH_REPORTING_DONE,
+                request);
+        if (shouldReport) {
+            logd("updateNtnSignalStrengthReporting: startSendingNtnSignalStrength");
+            mSatelliteModemInterface.startSendingNtnSignalStrength(onCompleted);
+        } else {
+            logd("updateNtnSignalStrengthReporting: stopSendingNtnSignalStrength");
+            mSatelliteModemInterface.stopSendingNtnSignalStrength(onCompleted);
         }
     }
 
