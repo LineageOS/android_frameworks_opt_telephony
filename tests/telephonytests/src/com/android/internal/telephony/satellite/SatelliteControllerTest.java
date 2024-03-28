@@ -2477,12 +2477,16 @@ public class SatelliteControllerTest extends TelephonyTest {
         processAllMessages();
         mSatelliteControllerUT.elapsedRealtime = 0;
         assertFalse(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone2));
 
         when(mServiceState.isUsingNonTerrestrialNetwork()).thenReturn(false);
         when(mServiceState2.isUsingNonTerrestrialNetwork()).thenReturn(false);
         sendServiceStateChangedEvent();
         processAllMessages();
         assertFalse(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone2));
 
         // Last satellite connected time of Phone2 should be 0
         when(mServiceState2.isUsingNonTerrestrialNetwork()).thenReturn(true);
@@ -2492,6 +2496,8 @@ public class SatelliteControllerTest extends TelephonyTest {
         mSatelliteControllerUT.elapsedRealtime = 2 * 60 * 1000;
         // But Phone2 is connected to NTN right now
         assertTrue(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
+        assertTrue(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone2));
 
         // Last satellite disconnected time of Phone2 should be 2 * 60 * 1000
         when(mServiceState2.isUsingNonTerrestrialNetwork()).thenReturn(false);
@@ -2499,10 +2505,14 @@ public class SatelliteControllerTest extends TelephonyTest {
         processAllMessages();
         // Current time (2) - last disconnected time (2) < hysteresis timeout (1)
         assertTrue(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
+        assertTrue(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone2));
 
         // Current time (4) - last disconnected time (2) > hysteresis timeout (1)
         mSatelliteControllerUT.elapsedRealtime = 4 * 60 * 1000;
         assertFalse(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone2));
     }
 
     @Test
