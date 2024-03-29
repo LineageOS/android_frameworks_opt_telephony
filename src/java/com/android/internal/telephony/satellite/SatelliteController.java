@@ -746,13 +746,15 @@ public class SatelliteController extends Handler {
     private static final class RequestSatelliteEnabledArgument {
         public boolean enableSatellite;
         public boolean enableDemoMode;
+        public boolean isEmergency;
         @NonNull public Consumer<Integer> callback;
         public long requestId;
 
         RequestSatelliteEnabledArgument(boolean enableSatellite, boolean enableDemoMode,
-                Consumer<Integer> callback) {
+                boolean isEmergency, Consumer<Integer> callback) {
             this.enableSatellite = enableSatellite;
             this.enableDemoMode = enableDemoMode;
+            this.isEmergency = isEmergency;
             this.callback = callback;
             this.requestId = sNextSatelliteEnableRequestId.getAndUpdate(
                     n -> ((n + 1) % Long.MAX_VALUE));
@@ -1372,12 +1374,13 @@ public class SatelliteController extends Handler {
      * @param enableSatellite {@code true} to enable the satellite modem and
      *                        {@code false} to disable.
      * @param enableDemoMode {@code true} to enable demo mode and {@code false} to disable.
+     * @param isEmergency {@code true} to enable emergency mode, {@code false} otherwise.
      * @param callback The callback to get the error code of the request.
      */
     public void requestSatelliteEnabled(int subId, boolean enableSatellite, boolean enableDemoMode,
-            @NonNull IIntegerConsumer callback) {
+            boolean isEmergency, @NonNull IIntegerConsumer callback) {
         logd("requestSatelliteEnabled subId: " + subId + " enableSatellite: " + enableSatellite
-                + " enableDemoMode: " + enableDemoMode);
+                + " enableDemoMode: " + enableDemoMode + " isEmergency: " + isEmergency);
         Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(callback::accept);
         int error = evaluateOemSatelliteRequestAllowed(true);
         if (error != SATELLITE_RESULT_SUCCESS) {
@@ -1418,7 +1421,8 @@ public class SatelliteController extends Handler {
         }
 
         RequestSatelliteEnabledArgument request =
-                new RequestSatelliteEnabledArgument(enableSatellite, enableDemoMode, result);
+                new RequestSatelliteEnabledArgument(enableSatellite, enableDemoMode, isEmergency,
+                        result);
         /**
          * Multiple satellite enabled requests are handled as below:
          * 1. If there are no ongoing requests, store current request in mSatelliteEnabledRequest
@@ -2483,7 +2487,7 @@ public class SatelliteController extends Handler {
 
         mIsRadioOn = false;
         requestSatelliteEnabled(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
-                false /* enableSatellite */, false /* enableDemoMode */,
+                false /* enableSatellite */, false /* enableDemoMode */, false /* isEmergency */,
                 new IIntegerConsumer.Stub() {
                     @Override
                     public void accept(int result) {
@@ -2968,7 +2972,7 @@ public class SatelliteController extends Handler {
 
         Message onCompleted = obtainMessage(EVENT_SET_SATELLITE_ENABLED_DONE, request);
         mSatelliteModemInterface.requestSatelliteEnabled(argument.enableSatellite,
-                argument.enableDemoMode, onCompleted);
+                argument.enableDemoMode, argument.isEmergency, onCompleted);
         startWaitForSatelliteEnablingResponseTimer(argument);
     }
 
@@ -3008,7 +3012,7 @@ public class SatelliteController extends Handler {
                             logd("requestIsSatelliteProvisioned: resultCode=" + resultCode
                                     + ", resultData=" + resultData);
                             requestSatelliteEnabled(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
-                                    false, false,
+                                    false, false, false,
                                     new IIntegerConsumer.Stub() {
                                         @Override
                                         public void accept(int result) {
@@ -3240,6 +3244,7 @@ public class SatelliteController extends Handler {
                             + "mIsSatelliteEnabled=true");
                     requestSatelliteEnabled(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                             false /* enableSatellite */, false /* enableDemoMode */,
+                            false /* isEmergency */,
                             new IIntegerConsumer.Stub() {
                                 @Override
                                 public void accept(int result) {
@@ -4081,7 +4086,7 @@ public class SatelliteController extends Handler {
                     Consumer<Integer> result =
                             FunctionalUtils.ignoreRemoteException(callback::accept);
                     RequestSatelliteEnabledArgument request = new RequestSatelliteEnabledArgument(
-                            false, false, result);
+                            false, false, false, result);
                     synchronized (mSatelliteEnabledRequestLock) {
                         mSatelliteEnabledRequest = request;
                     }
