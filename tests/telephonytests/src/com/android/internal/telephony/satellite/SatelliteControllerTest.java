@@ -2477,12 +2477,16 @@ public class SatelliteControllerTest extends TelephonyTest {
         processAllMessages();
         mSatelliteControllerUT.elapsedRealtime = 0;
         assertFalse(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone2));
 
         when(mServiceState.isUsingNonTerrestrialNetwork()).thenReturn(false);
         when(mServiceState2.isUsingNonTerrestrialNetwork()).thenReturn(false);
         sendServiceStateChangedEvent();
         processAllMessages();
         assertFalse(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone2));
 
         // Last satellite connected time of Phone2 should be 0
         when(mServiceState2.isUsingNonTerrestrialNetwork()).thenReturn(true);
@@ -2492,6 +2496,8 @@ public class SatelliteControllerTest extends TelephonyTest {
         mSatelliteControllerUT.elapsedRealtime = 2 * 60 * 1000;
         // But Phone2 is connected to NTN right now
         assertTrue(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
+        assertTrue(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone2));
 
         // Last satellite disconnected time of Phone2 should be 2 * 60 * 1000
         when(mServiceState2.isUsingNonTerrestrialNetwork()).thenReturn(false);
@@ -2499,10 +2505,14 @@ public class SatelliteControllerTest extends TelephonyTest {
         processAllMessages();
         // Current time (2) - last disconnected time (2) < hysteresis timeout (1)
         assertTrue(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
+        assertTrue(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone2));
 
         // Current time (4) - last disconnected time (2) > hysteresis timeout (1)
         mSatelliteControllerUT.elapsedRealtime = 4 * 60 * 1000;
         assertFalse(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone2));
     }
 
     @Test
@@ -2669,67 +2679,41 @@ public class SatelliteControllerTest extends TelephonyTest {
             throws Exception {
         logd("testPassSatellitePlmnToModemAfterUpdateSatelliteEntitlementStatus");
         when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(true);
+
         replaceInstance(SatelliteController.class, "mMergedPlmnListPerCarrier",
                 mSatelliteControllerUT, new SparseArray<>());
-        List<String> overlayConfigPlmnList =  new ArrayList<>();
+        List<String> overlayConfigPlmnList = new ArrayList<>();
         replaceInstance(SatelliteController.class, "mSatellitePlmnListFromOverlayConfig",
                 mSatelliteControllerUT, overlayConfigPlmnList);
+        mCarrierConfigBundle.putBoolean(
+                CarrierConfigManager.KEY_SATELLITE_ENTITLEMENT_SUPPORTED_BOOL, true);
+        mCarrierConfigBundle.putBoolean(CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL,
+                true);
 
-        // If the PlmnListPerCarrier and the overlay config plmn list are empty verify passing to
-        // the modem.
+        // If the entitlement plmn list, the carrier plmn list and the overlay config plmn list
+        // are empty verify not passing to the modem.
+        reset(mMockSatelliteModemInterface);
         List<String> entitlementPlmnList = new ArrayList<>();
         mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, false,
                 entitlementPlmnList, mIIntegerConsumer);
+        verify(mMockSatelliteModemInterface, never()).requestSatelliteEnabled(anyBoolean(),
+                anyBoolean(), any(Message.class));
 
-        List<String> plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(
-                SUB_ID);
-        List<String> allSatellitePlmnList = SatelliteServiceUtils.mergeStrLists(
-                plmnListPerCarrier, overlayConfigPlmnList);
-
-        assertEquals(new ArrayList<>(), plmnListPerCarrier);
-        assertEquals(new ArrayList<>(), allSatellitePlmnList);
-        verify(mMockSatelliteModemInterface, times(1)).setSatellitePlmn(anyInt(),
-                eq(plmnListPerCarrier), eq(allSatellitePlmnList), any(Message.class));
-
-        // If the PlmnListPerCarrier and the overlay config plmn list are exist but
-        // KEY_SATELLITE_ATTACH_SUPPORTED_BOOL is false, verify passing to the modem.
+        // If the entitlement plmn list and the overlay config plmn list are available and the
+        // carrier plmn list is empty verify passing to the modem.
+        reset(mMockSatelliteModemInterface);
         entitlementPlmnList = Arrays.stream(new String[]{"00101", "00102", "00103"}).toList();
+        List<String> mergedPlmnList = entitlementPlmnList;
         overlayConfigPlmnList =
                 Arrays.stream(new String[]{"00101", "00102", "00104"}).toList();
         replaceInstance(SatelliteController.class, "mSatellitePlmnListFromOverlayConfig",
                 mSatelliteControllerUT, overlayConfigPlmnList);
+        verifyPassingToModemAfterQueryCompleted(entitlementPlmnList, mergedPlmnList,
+                overlayConfigPlmnList);
 
-        mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, true,
-                entitlementPlmnList, mIIntegerConsumer);
-
-        plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(SUB_ID);
-        assertEquals(new ArrayList<>(), plmnListPerCarrier);
-        allSatellitePlmnList = SatelliteServiceUtils.mergeStrLists(
-                entitlementPlmnList, overlayConfigPlmnList);
-        verify(mMockSatelliteModemInterface, times(1)).setSatellitePlmn(anyInt(),
-                eq(entitlementPlmnList), eq(allSatellitePlmnList), any(Message.class));
-
-        // If the PlmnListPerCarrier and the overlay config plmn list are exist and
-        // KEY_SATELLITE_ATTACH_SUPPORTED_BOOL is true verify passing the modem.
+        // If the entitlement plmn list, the overlay config plmn list and the carrier plmn list
+        // are available, verify passing to the modem.
         reset(mMockSatelliteModemInterface);
-        mCarrierConfigBundle.putBoolean(CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL,
-                true);
-
-        mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, true,
-                entitlementPlmnList, mIIntegerConsumer);
-
-        plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(SUB_ID);
-        allSatellitePlmnList = SatelliteServiceUtils.mergeStrLists(
-                plmnListPerCarrier, overlayConfigPlmnList);
-
-        assertEquals(entitlementPlmnList, plmnListPerCarrier);
-        verify(mMockSatelliteModemInterface, times(1)).setSatellitePlmn(anyInt(),
-                eq(plmnListPerCarrier), eq(allSatellitePlmnList), any(Message.class));
-
-        // If the PlmnListPerCarrier and the overlay config plmn list are exist verify passing
-        // the modem.
-        reset(mMockSatelliteModemInterface);
-        entitlementPlmnList = Arrays.stream(new String[]{"00101", "00102", "00103"}).toList();
         Map<Integer, Map<String, Set<Integer>>>
                 satelliteServicesSupportedByCarriers = new HashMap<>();
         List<String> carrierConfigPlmnList = Arrays.stream(new String[]{"00105", "00106"}).toList();
@@ -2739,19 +2723,32 @@ public class SatelliteControllerTest extends TelephonyTest {
         satelliteServicesSupportedByCarriers.put(SUB_ID, plmnAndService);
         replaceInstance(SatelliteController.class, "mSatelliteServicesSupportedByCarriers",
                 mSatelliteControllerUT, satelliteServicesSupportedByCarriers);
-        overlayConfigPlmnList = Arrays.stream(new String[]{"00101", "00102", "00104"}).toList();
-        replaceInstance(SatelliteController.class, "mSatellitePlmnListFromOverlayConfig",
-                mSatelliteControllerUT, overlayConfigPlmnList);
-        List<String> mergedPlmnList = entitlementPlmnList;
+        verifyPassingToModemAfterQueryCompleted(entitlementPlmnList, mergedPlmnList,
+                overlayConfigPlmnList);
 
-        mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, true,
+        // If the entitlement plmn list is empty and the overlay config plmn list and the carrier
+        // plmn list are available, verify not passing to the modem.
+        reset(mMockSatelliteModemInterface);
+        entitlementPlmnList = new ArrayList<>();
+        mergedPlmnList = carrierConfigPlmnList;
+        verifyPassingToModemAfterQueryCompleted(entitlementPlmnList, mergedPlmnList,
+                overlayConfigPlmnList);
+    }
+
+    private void verifyPassingToModemAfterQueryCompleted(List<String> entitlementPlmnList,
+            List<String> mergedPlmnList, List<String> overlayConfigPlmnList) {
+        mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, false,
                 entitlementPlmnList, mIIntegerConsumer);
 
-        plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(SUB_ID);
-        allSatellitePlmnList = SatelliteServiceUtils.mergeStrLists(
+        List<String> plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(
+                SUB_ID);
+        List<String> allSatellitePlmnList = SatelliteServiceUtils.mergeStrLists(
                 plmnListPerCarrier, overlayConfigPlmnList);
 
         assertEquals(mergedPlmnList, plmnListPerCarrier);
+        if (overlayConfigPlmnList.isEmpty()) {
+            assertEquals(plmnListPerCarrier, allSatellitePlmnList);
+        }
         verify(mMockSatelliteModemInterface, times(1)).setSatellitePlmn(anyInt(),
                 eq(plmnListPerCarrier), eq(allSatellitePlmnList), any(Message.class));
     }
@@ -2879,8 +2876,11 @@ public class SatelliteControllerTest extends TelephonyTest {
     public void testUpdatePlmnListPerCarrier() throws Exception {
         logd("testUpdatePlmnListPerCarrier");
         when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(true);
+
         replaceInstance(SatelliteController.class, "mMergedPlmnListPerCarrier",
                 mSatelliteControllerUT, new SparseArray<>());
+        mCarrierConfigBundle.putBoolean(
+                CarrierConfigManager.KEY_SATELLITE_ENTITLEMENT_SUPPORTED_BOOL, true);
         List<String> plmnListPerCarrier;
 
         // verify whether an empty list is returned with conditions below
@@ -2996,8 +2996,8 @@ public class SatelliteControllerTest extends TelephonyTest {
         logd("testUpdateEntitlementPlmnListPerCarrier");
         when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(true);
 
-        // If the Satellite entitlement plmn list read from the DB is empty and carrier config
-        // plmn list also is empty , check whether an empty list is returned when calling
+        // If the Satellite entitlement plmn list read from the DB is empty list and carrier
+        // config plmn list also is empty , check whether an empty list is returned when calling
         // getSatellitePlmnsForCarrier before the entitlement query.
         doReturn(new ArrayList<>()).when(
                 mMockSubscriptionManagerService).getSatelliteEntitlementPlmnList(anyInt());
@@ -3194,6 +3194,95 @@ public class SatelliteControllerTest extends TelephonyTest {
         response.sendToTarget();
         processAllMessages();
         verifySatelliteEnabled(false, SATELLITE_RESULT_SUCCESS);
+    }
+
+    @Test
+    public void testUpdateNtnSignalStrentghReportWithFeatureFlagEnabled() {
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
+
+        mIsSatelliteEnabledSemaphore.drainPermits();
+        mIIntegerConsumerResults.clear();
+        resetSatelliteControllerUT();
+
+        // Successfully provisioned
+        reset(mMockSatelliteModemInterface);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        sendProvisionedStateChangedEvent(true, null);
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_RESULT_SUCCESS);
+        sendProvisionedStateChangedEvent(true, null);
+        processAllMessages();
+        verifySatelliteProvisioned(true, SATELLITE_RESULT_SUCCESS);
+
+        // startSendingNtnSignalStrength should be invoked when satellite is enabled
+        mSatelliteControllerUT.setSettingsKeyForSatelliteModeCalled = false;
+        setUpResponseForRequestSatelliteEnabled(true, false, SATELLITE_RESULT_SUCCESS);
+        mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, true, false, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verifySatelliteEnabled(true, SATELLITE_RESULT_SUCCESS);
+        assertTrue(mSatelliteControllerUT.setSettingsKeyForSatelliteModeCalled);
+        assertEquals(
+                SATELLITE_MODE_ENABLED_TRUE, mSatelliteControllerUT.satelliteModeSettingValue);
+        verify(mMockSatelliteModemInterface, times(1)).startSendingNtnSignalStrength(
+                any(Message.class));
+
+        // Ignore request ntn signal strength for redundant enable request
+        reset(mMockSatelliteModemInterface);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, true, false, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verifySatelliteEnabled(true, SATELLITE_RESULT_SUCCESS);
+        verify(mMockSatelliteModemInterface, never()).startSendingNtnSignalStrength(
+                any(Message.class));
+
+        // stopSendingNtnSignalStrength should be invoked when satellite is successfully off.
+        mIIntegerConsumerResults.clear();
+        reset(mMockSatelliteModemInterface);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setUpResponseForRequestSatelliteEnabled(false, false, SATELLITE_RESULT_SUCCESS);
+        mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, false, false, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verifySatelliteEnabled(false, SATELLITE_RESULT_SUCCESS);
+        verify(mMockSatelliteModemInterface, times(1)).stopSendingNtnSignalStrength(
+                any(Message.class));
+
+        // Ignore redundant request for stop reporting ntn signal strength.
+        mIIntegerConsumerResults.clear();
+        reset(mMockSatelliteModemInterface);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestSatelliteEnabled(false, false, SATELLITE_RESULT_SUCCESS);
+        mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, false, false, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verifySatelliteEnabled(false, SATELLITE_RESULT_SUCCESS);
+        verify(mMockSatelliteModemInterface, never()).stopSendingNtnSignalStrength(
+                any(Message.class));
+
+        // startSendingNtnSignalStrength is invoked when satellite is enabled again.
+        mIIntegerConsumerResults.clear();
+        reset(mMockSatelliteModemInterface);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        mSatelliteControllerUT.setSettingsKeyForSatelliteModeCalled = false;
+        setUpResponseForRequestSatelliteEnabled(true, false, SATELLITE_RESULT_SUCCESS);
+        mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, true, false, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verifySatelliteEnabled(true, SATELLITE_RESULT_SUCCESS);
+        assertTrue(mSatelliteControllerUT.setSettingsKeyForSatelliteModeCalled);
+        assertEquals(
+                SATELLITE_MODE_ENABLED_TRUE, mSatelliteControllerUT.satelliteModeSettingValue);
+        verify(mMockSatelliteModemInterface, times(1)).startSendingNtnSignalStrength(
+                any(Message.class));
     }
 
     private void resetSatelliteControllerUTEnabledState() {
