@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.metrics;
 
+import static com.android.internal.telephony.flags.Flags.dataRatMetricEnabled;
+
 import android.os.Handler;
 import android.os.HandlerExecutor;
 import android.os.HandlerThread;
@@ -27,6 +29,7 @@ import android.util.SparseArray;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.TelephonyStatsLog;
 
 import java.util.HashMap;
 import java.util.List;
@@ -48,6 +51,7 @@ public class DataConnectionStateTracker {
     private HashMap<Integer, PreciseDataConnectionState> mLastPreciseDataConnectionState =
             new HashMap<>();
     private PreciseDataConnectionStateListenerImpl mDataConnectionStateListener;
+    private int mActiveDataSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
     private final SubscriptionManager.OnSubscriptionsChangedListener mSubscriptionsChangedListener =
             new SubscriptionManager.OnSubscriptionsChangedListener() {
@@ -156,8 +160,37 @@ public class DataConnectionStateTracker {
         mPhone.getVoiceCallSessionStats().onPreciseDataConnectionStateChanged(connectionState);
     }
 
+    static int getActiveDataSubId() {
+        if (sDataConnectionStateTracker.size() == 0) {
+            return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        }
+        return sDataConnectionStateTracker.valueAt(0).mActiveDataSubId;
+    }
+
+    /** Log RAT if the active data subId changes to another subId with a different RAT */
+    private void logRATChanges(int subId) {
+        if (mSubId == subId && mActiveDataSubId != subId) {
+            int newDataRat = mPhone.getServiceStateTracker()
+                    .getServiceStateStats().getCurrentDataRat();
+            for (int i = 0; i < sDataConnectionStateTracker.size(); i++) {
+                DataConnectionStateTracker dataConnectionStateTracker =
+                        sDataConnectionStateTracker.valueAt(0);
+                if (dataConnectionStateTracker.mSubId == mActiveDataSubId) {
+                    int previousDataRat = dataConnectionStateTracker.mPhone
+                            .getServiceStateTracker().getServiceStateStats()
+                            .getCurrentDataRat();
+                    if (newDataRat != previousDataRat) {
+                        TelephonyStatsLog.write(TelephonyStatsLog.DATA_RAT_STATE_CHANGED,
+                                newDataRat);
+                    }
+                }
+            }
+        }
+    }
+
     private class PreciseDataConnectionStateListenerImpl extends TelephonyCallback
-            implements TelephonyCallback.PreciseDataConnectionStateListener {
+            implements TelephonyCallback.PreciseDataConnectionStateListener,
+            TelephonyCallback.ActiveDataSubscriptionIdListener {
         private final Executor mExecutor;
         private TelephonyManager mTelephonyManager = null;
 
@@ -184,6 +217,14 @@ public class DataConnectionStateTracker {
         public void onPreciseDataConnectionStateChanged(
                 PreciseDataConnectionState connectionState) {
             notifyDataConnectionStateChanged(connectionState);
+        }
+
+        @Override
+        public void onActiveDataSubscriptionIdChanged(int subId) {
+            if (dataRatMetricEnabled()) {
+                logRATChanges(subId);
+                mActiveDataSubId = subId;
+            }
         }
     }
 }

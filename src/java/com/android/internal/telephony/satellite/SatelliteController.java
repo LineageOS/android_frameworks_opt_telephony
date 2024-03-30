@@ -88,6 +88,7 @@ import android.telephony.satellite.ISatelliteCapabilitiesCallback;
 import android.telephony.satellite.ISatelliteDatagramCallback;
 import android.telephony.satellite.ISatelliteModemStateCallback;
 import android.telephony.satellite.ISatelliteProvisionStateCallback;
+import android.telephony.satellite.ISatelliteSupportedStateCallback;
 import android.telephony.satellite.ISatelliteTransmissionUpdateCallback;
 import android.telephony.satellite.NtnSignalStrength;
 import android.telephony.satellite.SatelliteCapabilities;
@@ -196,6 +197,7 @@ public class SatelliteController extends Handler {
     private static final int EVENT_SATELLITE_CAPABILITIES_CHANGED = 38;
     private static final int EVENT_WAIT_FOR_SATELLITE_ENABLING_RESPONSE_TIMED_OUT = 39;
     private static final int EVENT_SATELLITE_CONFIG_DATA_UPDATED = 40;
+    private static final int EVENT_SATELLITE_SUPPORTED_STATE_CHANGED = 41;
 
     @NonNull private static SatelliteController sInstance;
     @NonNull private final Context mContext;
@@ -251,6 +253,8 @@ public class SatelliteController extends Handler {
             new AtomicBoolean(false);
     private final AtomicBoolean mIsModemEnabledReportingNtnSignalStrength =
             new AtomicBoolean(false);
+    private final AtomicBoolean mRegisteredForSatelliteSupportedStateChanged =
+            new AtomicBoolean(false);
     /**
      * Map key: subId, value: callback to get error code of the provision request.
      */
@@ -274,6 +278,11 @@ public class SatelliteController extends Handler {
      */
     private final ConcurrentHashMap<IBinder, ISatelliteCapabilitiesCallback>
             mSatelliteCapabilitiesChangedListeners = new ConcurrentHashMap<>();
+    /**
+     * Map key: binder of the callback, value: callback to receive supported state changed events.
+     */
+    private final ConcurrentHashMap<IBinder, ISatelliteSupportedStateCallback>
+            mSatelliteSupportedStateChangedListeners = new ConcurrentHashMap<>();
     private final Object mIsSatelliteSupportedLock = new Object();
     @GuardedBy("mIsSatelliteSupportedLock")
     private Boolean mIsSatelliteSupported = null;
@@ -1312,6 +1321,16 @@ public class SatelliteController extends Handler {
                 break;
             }
 
+            case EVENT_SATELLITE_SUPPORTED_STATE_CHANGED: {
+                ar = (AsyncResult) msg.obj;
+                if (ar.result == null) {
+                    loge("EVENT_SATELLITE_SUPPORTED_STATE_CHANGED: result is null");
+                } else {
+                    handleEventSatelliteSupportedStateChanged((boolean) ar.result);
+                }
+                break;
+            }
+
             case EVENT_SATELLITE_CONFIG_DATA_UPDATED: {
                 handleEventConfigDataUpdated();
                 mSatelliteConfigUpdateChangedRegistrants.notifyRegistrants();
@@ -2162,6 +2181,43 @@ public class SatelliteController extends Handler {
     }
 
     /**
+     * Registers for the satellite supported state changed.
+     *
+     * @param subId The subId of the subscription to register for supported state changed.
+     * @param callback The callback to handle the satellite supported state changed event.
+     *
+     * @return The {@link SatelliteManager.SatelliteResult} result of the operation.
+     */
+    @SatelliteManager.SatelliteResult public int registerForSatelliteSupportedStateChanged(
+            int subId, @NonNull ISatelliteSupportedStateCallback callback) {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("registerForSatelliteSupportedStateChanged: oemEnabledSatelliteFlag is disabled");
+            return SatelliteManager.SATELLITE_RESULT_REQUEST_NOT_SUPPORTED;
+        }
+
+        mSatelliteSupportedStateChangedListeners.put(callback.asBinder(), callback);
+        return SATELLITE_RESULT_SUCCESS;
+    }
+
+    /**
+     * Unregisters for the satellite supported state changed.
+     * If callback was not registered before, the request will be ignored.
+     *
+     * @param subId The subId of the subscription to unregister for supported state changed.
+     * @param callback The callback that was passed to
+     * {@link #registerForSatelliteSupportedStateChanged(int, ISatelliteSupportedStateCallback)}.
+     */
+    public void unregisterForSatelliteSupportedStateChanged(
+            int subId, @NonNull ISatelliteSupportedStateCallback callback) {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("unregisterForSatelliteSupportedStateChanged: "
+                    + "oemEnabledSatelliteFlag is disabled");
+            return;
+        }
+        mSatelliteSupportedStateChangedListeners.remove(callback.asBinder());
+    }
+
+    /**
      * This API can be used by only CTS to update satellite vendor service package name.
      *
      * @param servicePackageName The package name of the satellite vendor service.
@@ -2943,6 +2999,7 @@ public class SatelliteController extends Handler {
             registerForSatelliteModemStateChanged();
             registerForNtnSignalStrengthChanged();
             registerForCapabilitiesChanged();
+            registerForSatelliteSupportedStateChanged();
 
             requestIsSatelliteProvisioned(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                     new ResultReceiver(this) {
@@ -3042,6 +3099,16 @@ public class SatelliteController extends Handler {
                 mSatelliteModemInterface.registerForSatelliteCapabilitiesChanged(
                         this, EVENT_SATELLITE_CAPABILITIES_CHANGED, null);
                 mRegisteredForSatelliteCapabilitiesChanged.set(true);
+            }
+        }
+    }
+
+    private void registerForSatelliteSupportedStateChanged() {
+        if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
+            if (!mRegisteredForSatelliteSupportedStateChanged.get()) {
+                mSatelliteModemInterface.registerForSatelliteSupportedStateChanged(
+                        this, EVENT_SATELLITE_SUPPORTED_STATE_CHANGED, null);
+                mRegisteredForSatelliteSupportedStateChanged.set(true);
             }
         }
     }
@@ -3151,6 +3218,53 @@ public class SatelliteController extends Handler {
         });
         deadCallersList.forEach(listener -> {
             mSatelliteCapabilitiesChangedListeners.remove(listener.asBinder());
+        });
+    }
+
+    private void handleEventSatelliteSupportedStateChanged(boolean supported) {
+        logd("handleSatelliteSupportedStateChangedEvent: supported=" + supported);
+
+        synchronized (mIsSatelliteSupportedLock) {
+            if (mIsSatelliteSupported != null && mIsSatelliteSupported == supported) {
+                if (DBG) {
+                    logd("current satellite support state and new supported state are matched,"
+                            + " ignore update.");
+                }
+                return;
+            }
+            /* In case satellite has been reported as not support from modem, but satellite is
+               enabled, request disable satellite. */
+            synchronized (mIsSatelliteEnabledLock) {
+                if (!supported && mIsSatelliteEnabled != null && mIsSatelliteEnabled) {
+                    logd("Invoke requestSatelliteEnabled(), supported=false, "
+                            + "mIsSatelliteEnabled=true");
+                    requestSatelliteEnabled(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                            false /* enableSatellite */, false /* enableDemoMode */,
+                            new IIntegerConsumer.Stub() {
+                                @Override
+                                public void accept(int result) {
+                                    logd("handleSatelliteSupportedStateChangedEvent: request "
+                                            + "satellite disable, result="
+                                            + result);
+                                }
+                            });
+
+                }
+            }
+            mIsSatelliteSupported = supported;
+        }
+
+        List<ISatelliteSupportedStateCallback> deadCallersList = new ArrayList<>();
+        mSatelliteSupportedStateChangedListeners.values().forEach(listener -> {
+            try {
+                listener.onSatelliteSupportedStateChanged(supported);
+            } catch (RemoteException e) {
+                logd("handleSatelliteSupportedStateChangedEvent RemoteException: " + e);
+                deadCallersList.add(listener);
+            }
+        });
+        deadCallersList.forEach(listener -> {
+            mSatelliteSupportedStateChangedListeners.remove(listener.asBinder());
         });
     }
 

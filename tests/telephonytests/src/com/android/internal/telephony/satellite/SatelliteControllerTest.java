@@ -106,6 +106,7 @@ import android.telephony.satellite.ISatelliteCapabilitiesCallback;
 import android.telephony.satellite.ISatelliteDatagramCallback;
 import android.telephony.satellite.ISatelliteModemStateCallback;
 import android.telephony.satellite.ISatelliteProvisionStateCallback;
+import android.telephony.satellite.ISatelliteSupportedStateCallback;
 import android.telephony.satellite.ISatelliteTransmissionUpdateCallback;
 import android.telephony.satellite.NtnSignalStrength;
 import android.telephony.satellite.SatelliteCapabilities;
@@ -3285,6 +3286,123 @@ public class SatelliteControllerTest extends TelephonyTest {
                 any(Message.class));
     }
 
+    @Test
+    public void testRegisterForSatelliteSupportedStateChanged_WithFeatureFlagEnabled() {
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
+
+        Semaphore semaphore = new Semaphore(0);
+        final boolean[] isSupported  = new boolean[1];
+        ISatelliteSupportedStateCallback callback =
+                new ISatelliteSupportedStateCallback.Stub() {
+                    @Override
+                    public void onSatelliteSupportedStateChanged(boolean supported) {
+                        logd("onSatelliteSupportedStateChanged: supported=" + supported);
+                        isSupported[0] = supported;
+                        try {
+                            semaphore.release();
+                        } catch (Exception ex) {
+                            loge("onSatelliteSupportedStateChanged: Got exception in releasing "
+                                    + "semaphore, ex=" + ex);
+                        }
+                    }
+                };
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+        int errorCode = mSatelliteControllerUT.registerForSatelliteSupportedStateChanged(
+                SUB_ID, callback);
+        assertEquals(SATELLITE_RESULT_SUCCESS, errorCode);
+
+        sendSatelliteSupportedStateChangedEvent(true, null);
+        processAllMessages();
+        // Verify redundant report is ignored
+        assertFalse(waitForForEvents(
+                semaphore, 1, "testRegisterForSatelliteSupportedStateChanged"));
+        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+
+        // Verify updated state is reported
+        sendSatelliteSupportedStateChangedEvent(false, null);
+        processAllMessages();
+        assertTrue(waitForForEvents(
+                semaphore, 1, "testRegisterForSatelliteSupportedStateChanged"));
+        assertEquals(false, isSupported[0]);
+        verifySatelliteSupported(false, SATELLITE_RESULT_SUCCESS);
+
+        // Verify redundant report is ignored
+        sendSatelliteSupportedStateChangedEvent(false, null);
+        processAllMessages();
+        assertFalse(waitForForEvents(
+                semaphore, 1, "testRegisterForSatelliteSupportedStateChanged"));
+        verifySatelliteSupported(false, SATELLITE_RESULT_SUCCESS);
+
+        // Verify updated state is reported
+        sendSatelliteSupportedStateChangedEvent(true, null);
+        processAllMessages();
+        assertTrue(waitForForEvents(
+                semaphore, 1, "testRegisterForSatelliteSupportedStateChanged"));
+        assertEquals(true, isSupported[0]);
+        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+
+        // Successfully enable satellite
+        sendProvisionedStateChangedEvent(true, null);
+        processAllMessages();
+        verifySatelliteProvisioned(true, SATELLITE_RESULT_SUCCESS);
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestSatelliteEnabled(true, false, SATELLITE_RESULT_SUCCESS);
+        mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, true, false, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verifySatelliteEnabled(true, SATELLITE_RESULT_SUCCESS);
+
+        // Send satellite is not supported state from modem to disable satellite
+        setUpResponseForRequestSatelliteEnabled(false, false, SATELLITE_RESULT_SUCCESS);
+        sendSatelliteSupportedStateChangedEvent(false, null);
+        processAllMessages();
+        assertTrue(waitForForEvents(
+                semaphore, 1, "testRegisterForSatelliteSupportedStateChanged"));
+        assertEquals(false, isSupported[0]);
+
+        // It is needed to set satellite as support to check whether satellite is enabled or not
+        sendSatelliteSupportedStateChangedEvent(true, null);
+        processAllMessages();
+        assertTrue(waitForForEvents(
+                semaphore, 1, "testRegisterForSatelliteSupportedStateChanged"));
+        assertEquals(true, isSupported[0]);
+        // Verify satellite was disabled
+        verifySatelliteEnabled(false, SATELLITE_RESULT_SUCCESS);
+
+        mSatelliteControllerUT.unregisterForSatelliteSupportedStateChanged(SUB_ID, callback);
+        sendSatelliteSupportedStateChangedEvent(true, null);
+        processAllMessages();
+        assertFalse(waitForForEvents(
+                semaphore, 1, "testRegisterForSatelliteSupportedStateChanged"));
+    }
+
+    @Test
+    public void testRegisterForSatelliteSupportedStateChanged_WithFeatureFlagDisabled() {
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(false);
+
+        Semaphore semaphore = new Semaphore(0);
+        ISatelliteSupportedStateCallback callback =
+                new ISatelliteSupportedStateCallback.Stub() {
+                    @Override
+                    public void onSatelliteSupportedStateChanged(boolean supported) {
+                        logd("onSatelliteSupportedStateChanged: supported=" + supported);
+                        try {
+                            semaphore.release();
+                        } catch (Exception ex) {
+                            loge("onSatelliteSupportedStateChanged: Got exception in releasing "
+                                    + "semaphore, ex=" + ex);
+                        }
+                    }
+                };
+        int errorCode = mSatelliteControllerUT.registerForSatelliteSupportedStateChanged(
+                SUB_ID, callback);
+        assertEquals(SATELLITE_RESULT_REQUEST_NOT_SUPPORTED, errorCode);
+    }
+
     private void resetSatelliteControllerUTEnabledState() {
         logd("resetSatelliteControllerUTEnabledState");
         setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_RESULT_RADIO_NOT_AVAILABLE);
@@ -3799,6 +3917,13 @@ public class SatelliteControllerTest extends TelephonyTest {
         Message msg = mSatelliteControllerUT.obtainMessage(
                 38 /* EVENT_SATELLITE_CAPABILITIES_CHANGED */);
         msg.obj = new AsyncResult(null, capabilities, exception);
+        msg.sendToTarget();
+    }
+
+    private void sendSatelliteSupportedStateChangedEvent(boolean supported, Throwable exception) {
+        Message msg = mSatelliteControllerUT.obtainMessage(
+                41 /* EVENT_SATELLITE_SUPPORTED_STATE_CHANGED */);
+        msg.obj = new AsyncResult(null, supported, exception);
         msg.sendToTarget();
     }
 
