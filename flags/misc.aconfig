@@ -116,3 +116,14 @@ flag {
         purpose: PURPOSE_BUGFIX
     }
 }
+
+# OWNER=sangyun TARGET=24Q3
+flag {
+    name: "roaming_notification_for_single_data_network"
+    namespace: "telephony"
+    description: "Fix bug where roaming notification was not shown on a single data network."
+    bug:"249908996"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
+}
