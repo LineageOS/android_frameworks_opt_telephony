@@ -3183,7 +3183,13 @@ public class DataNetworkController extends Handler {
             return;
         }
 
-        if (dataNetwork.isInternetSupported()) {
+        // Only track the networks that require validation.
+        // The criteria is base on NetworkMonitorUtils.java.
+        NetworkCapabilities capabilities = dataNetwork.getNetworkCapabilities();
+        if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED)
+                && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)) {
             if (status == NetworkAgent.VALIDATION_STATUS_NOT_VALID
                     && (dataNetwork.getCurrentState() == null || dataNetwork.isDisconnected())) {
                 log("Ignoring invalid validation status for disconnected DataNetwork");
