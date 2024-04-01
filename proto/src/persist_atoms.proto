@@ -665,6 +665,14 @@ message SatelliteSession {
     optional int32 satellite_service_initialization_result = 1;
     optional int32 satellite_technology = 2;
     optional int32 count = 3;
+    optional int32 satellite_service_termination_result = 4;
+    optional int64 initialization_processing_time_millis = 5;
+    optional int64 termination_processing_time_millis = 6;
+    optional int32 session_duration_seconds = 7;
+    optional int32 count_of_outgoing_datagram_success = 8;
+    optional int32 count_of_outgoing_datagram_failed = 9;
+    optional int32 count_of_incoming_datagram_success = 10;
+    optional int32 count_of_incoming_datagram_failed = 11;
 }
 
 message SatelliteIncomingDatagram {

@@ -134,6 +134,14 @@ public class SatelliteStatsTest extends TelephonyTest {
                         .setSatelliteServiceInitializationResult(
                                 SatelliteProtoEnums.SATELLITE_ERROR_NONE)
                         .setSatelliteTechnology(SatelliteProtoEnums.NT_RADIO_TECHNOLOGY_PROPRIETARY)
+                        .setTerminationResult(SatelliteProtoEnums.SATELLITE_ERROR_NONE)
+                        .setInitializationProcessingTime(100)
+                        .setTerminationProcessingTime(200)
+                        .setSessionDuration(3)
+                        .setCountOfOutgoingDatagramSuccess(1)
+                        .setCountOfOutgoingDatagramFailed(0)
+                        .setCountOfIncomingDatagramSuccess(1)
+                        .setCountOfIncomingDatagramFailed(0)
                         .build();
 
         mSatelliteStats.onSatelliteSessionMetrics(param);
@@ -144,7 +152,18 @@ public class SatelliteStatsTest extends TelephonyTest {
         SatelliteSession stats = captor.getValue();
         assertEquals(param.getSatelliteServiceInitializationResult(),
                 stats.satelliteServiceInitializationResult);
-        assertEquals(param.getSatelliteTechnology(), stats.satelliteTechnology);
+        assertEquals(param.getTerminationResult(), stats.satelliteServiceTerminationResult);
+        assertEquals(param.getInitializationProcessingTime(),
+                stats.initializationProcessingTimeMillis);
+        assertEquals(param.getTerminationProcessingTime(), stats.terminationProcessingTimeMillis);
+        assertEquals(param.getSessionDuration(), stats.sessionDurationSeconds);
+        assertEquals(param.getCountOfOutgoingDatagramSuccess(),
+                stats.countOfOutgoingDatagramSuccess);
+        assertEquals(param.getCountOfOutgoingDatagramFailed(), stats.countOfOutgoingDatagramFailed);
+        assertEquals(param.getCountOfIncomingDatagramSuccess(),
+                stats.countOfIncomingDatagramSuccess);
+        assertEquals(param.getCountOfIncomingDatagramFailed(), stats.countOfIncomingDatagramFailed);
+
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 

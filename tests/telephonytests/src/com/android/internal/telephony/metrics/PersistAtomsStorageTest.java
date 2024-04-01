@@ -1123,6 +1123,15 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteSession1.satelliteTechnology =
                 SatelliteProtoEnums.NT_RADIO_TECHNOLOGY_PROPRIETARY;
         mSatelliteSession1.count = 1;
+        mSatelliteSession1.satelliteServiceTerminationResult =
+                SatelliteProtoEnums.SATELLITE_ERROR_NONE;
+        mSatelliteSession1.initializationProcessingTimeMillis = 100;
+        mSatelliteSession1.terminationProcessingTimeMillis = 200;
+        mSatelliteSession1.sessionDurationSeconds = 3;
+        mSatelliteSession1.countOfOutgoingDatagramSuccess = 1;
+        mSatelliteSession1.countOfOutgoingDatagramFailed = 0;
+        mSatelliteSession1.countOfIncomingDatagramSuccess = 1;
+        mSatelliteSession1.countOfIncomingDatagramFailed = 0;
 
         mSatelliteSession2 = new SatelliteSession();
         mSatelliteSession2.satelliteServiceInitializationResult =
@@ -1130,6 +1139,15 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteSession2.satelliteTechnology =
                 SatelliteProtoEnums.NT_RADIO_TECHNOLOGY_NB_IOT_NTN;
         mSatelliteSession2.count = 1;
+        mSatelliteSession1.satelliteServiceTerminationResult =
+                SatelliteProtoEnums.SATELLITE_ERROR_NONE;
+        mSatelliteSession1.initializationProcessingTimeMillis = 300;
+        mSatelliteSession1.terminationProcessingTimeMillis = 100;
+        mSatelliteSession1.sessionDurationSeconds = 10;
+        mSatelliteSession1.countOfOutgoingDatagramSuccess = 0;
+        mSatelliteSession1.countOfOutgoingDatagramFailed = 2;
+        mSatelliteSession1.countOfIncomingDatagramSuccess = 0;
+        mSatelliteSession1.countOfIncomingDatagramFailed = 1;
 
         mSatelliteSessions =
                 new SatelliteSession[] {
@@ -4944,7 +4962,22 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         for (SatelliteSession stats : tested) {
             if (stats.satelliteServiceInitializationResult
                     == expectedStats.satelliteServiceInitializationResult
-                    && stats.satelliteTechnology == expectedStats.satelliteTechnology) {
+                    && stats.satelliteTechnology == expectedStats.satelliteTechnology
+                    && stats.satelliteServiceTerminationResult
+                    == expectedStats.satelliteServiceTerminationResult
+                    && stats.initializationProcessingTimeMillis
+                    == expectedStats.initializationProcessingTimeMillis
+                    && stats.terminationProcessingTimeMillis
+                    == expectedStats.terminationProcessingTimeMillis
+                    && stats.sessionDurationSeconds == expectedStats.sessionDurationSeconds
+                    && stats.countOfOutgoingDatagramSuccess
+                    == expectedStats.countOfOutgoingDatagramSuccess
+                    && stats.countOfOutgoingDatagramFailed
+                    == expectedStats.countOfOutgoingDatagramFailed
+                    && stats.countOfIncomingDatagramSuccess
+                    == expectedStats.countOfIncomingDatagramSuccess
+                    && stats.countOfIncomingDatagramFailed
+                    == expectedStats.countOfIncomingDatagramFailed) {
                 actualCount = stats.count;
             }
         }
