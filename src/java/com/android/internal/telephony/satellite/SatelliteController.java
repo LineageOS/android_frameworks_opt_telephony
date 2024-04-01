@@ -394,6 +394,8 @@ public class SatelliteController extends Handler {
     private static final String NOTIFICATION_CHANNEL_ID = "satellite";
 
     private final RegistrantList mSatelliteConfigUpdateChangedRegistrants = new RegistrantList();
+    private final BTWifiNFCStateReceiver mBTWifiNFCSateReceiver;
+    private final UwbAdapterStateCallback mUwbAdapterStateCallback;
 
     /**
      * @return The singleton instance of SatelliteController.
@@ -463,6 +465,8 @@ public class SatelliteController extends Handler {
         mContentResolver = mContext.getContentResolver();
         mCarrierConfigManager = mContext.getSystemService(CarrierConfigManager.class);
 
+        mBTWifiNFCSateReceiver = new BTWifiNFCStateReceiver();
+        mUwbAdapterStateCallback = new UwbAdapterStateCallback();
         initializeSatelliteModeRadios();
 
         ContentObserver satelliteModeRadiosContentObserver = new ContentObserver(this) {
@@ -545,8 +549,6 @@ public class SatelliteController extends Handler {
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected void initializeSatelliteModeRadios() {
         if (mContentResolver != null) {
-            BTWifiNFCStateReceiver bTWifiNFCSateReceiver = new BTWifiNFCStateReceiver();
-            UwbAdapterStateCallback uwbAdapterStateCallback = new UwbAdapterStateCallback();
             IntentFilter radioStateIntentFilter = new IntentFilter();
 
             synchronized (mRadioStateLock) {
@@ -600,7 +602,14 @@ public class SatelliteController extends Handler {
                         radioStateIntentFilter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
                     }
                 }
-                mContext.registerReceiver(bTWifiNFCSateReceiver, radioStateIntentFilter);
+
+                try {
+                    // Unregister receiver before registering it.
+                    mContext.unregisterReceiver(mBTWifiNFCSateReceiver);
+                } catch (IllegalArgumentException e) {
+                    logd("initializeSatelliteModeRadios: unregisterReceiver, e=" + e);
+                }
+                mContext.registerReceiver(mBTWifiNFCSateReceiver, radioStateIntentFilter);
 
                 if (satelliteModeRadios.contains(Settings.Global.RADIO_UWB)) {
                     UwbManager uwbManager = mContext.getSystemService(UwbManager.class);
@@ -609,8 +618,10 @@ public class SatelliteController extends Handler {
                         mUwbStateEnabled = uwbManager.isUwbEnabled();
                         final long identity = Binder.clearCallingIdentity();
                         try {
+                            // Unregister callback before registering it.
+                            uwbManager.unregisterAdapterStateCallback(mUwbAdapterStateCallback);
                             uwbManager.registerAdapterStateCallback(mContext.getMainExecutor(),
-                                    uwbAdapterStateCallback);
+                                    mUwbAdapterStateCallback);
                         } finally {
                             Binder.restoreCallingIdentity(identity);
                         }
