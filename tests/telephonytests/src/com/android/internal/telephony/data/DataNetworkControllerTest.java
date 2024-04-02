@@ -51,6 +51,7 @@ import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkPolicyManager;
 import android.net.NetworkRequest;
+import android.net.Uri;
 import android.net.vcn.VcnManager.VcnNetworkPolicyChangeListener;
 import android.net.vcn.VcnNetworkPolicyResult;
 import android.os.AsyncResult;
@@ -4047,6 +4048,41 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // fota is gone.
         verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_DUN);
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
+    }
+
+    @Test
+    public void testNetworkValidationStatusChangeCallback() throws Exception {
+        // Request not restricted network
+        TelephonyNetworkRequest request = createNetworkRequest(
+                NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        mDataNetworkControllerUT.addNetworkRequest(request);
+        processAllMessages();
+        TelephonyNetworkAgent agent = getPrivateField(getDataNetworks().get(0), "mNetworkAgent",
+                TelephonyNetworkAgent.class);
+        agent.onValidationStatus(1/*status*/, Uri.EMPTY);
+        processAllMessages();
+
+        // Verify notify
+        verify(mMockedDataNetworkControllerCallback)
+                .onInternetDataNetworkValidationStatusChanged(1);
+
+        // Request restricted network
+        mDataNetworkControllerUT.removeNetworkRequest(request);
+        getDataNetworks().get(0).tearDown(DataNetwork.TEAR_DOWN_REASON_NONE);
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(0, false, "");
+        processAllMessages();
+        clearInvocations(mMockedDataNetworkControllerCallback);
+        mDataNetworkControllerUT.addNetworkRequest(createNetworkRequest(
+                true, NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllMessages();
+        agent = getPrivateField(getDataNetworks().get(0), "mNetworkAgent",
+                TelephonyNetworkAgent.class);
+        agent.onValidationStatus(1/*status*/, Uri.EMPTY);
+        processAllMessages();
+
+        // Verify not notified
+        verify(mMockedDataNetworkControllerCallback, never())
+                .onInternetDataNetworkValidationStatusChanged(anyInt());
     }
 
     @Test
