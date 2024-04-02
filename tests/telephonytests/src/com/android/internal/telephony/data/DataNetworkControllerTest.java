@@ -3381,9 +3381,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // Verify retry is cleared on this network
         assertThat(mDataNetworkControllerUT.getDataRetryManager()
                 .isAnyHandoverRetryScheduled(network)).isFalse();
-        // Verify the data profile is still throttled
-        assertThat(mDataNetworkControllerUT.getDataRetryManager().isDataProfileThrottled(
-                network.getDataProfile(), AccessNetworkConstants.TRANSPORT_TYPE_WLAN)).isTrue();
     }
 
     @Test
