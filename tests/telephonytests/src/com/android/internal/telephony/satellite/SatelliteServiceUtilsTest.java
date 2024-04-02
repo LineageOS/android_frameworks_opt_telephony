@@ -17,6 +17,7 @@
 package com.android.internal.telephony.satellite;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import android.os.PersistableBundle;
@@ -60,6 +61,8 @@ public class SatelliteServiceUtilsTest extends TelephonyTest {
         String plmn1 = "10101";
         String plmn2 = "10102";
         String plmn3 = "10103";
+        String plmn4 = "";
+        String plmn5 = "123456789";
         int[] supportedServicesForPlmn1 = {1, 2, 3};
         int[] supportedServicesForPlmn2 = {3, 4, 100};
         int[] expectedServicesForPlmn1 = {1, 2, 3};
@@ -74,6 +77,8 @@ public class SatelliteServiceUtilsTest extends TelephonyTest {
         supportedServicesBundle.putIntArray(plmn1, supportedServicesForPlmn1);
         supportedServicesBundle.putIntArray(plmn2, supportedServicesForPlmn2);
         supportedServicesBundle.putIntArray(plmn3, new int[0]);
+        supportedServicesBundle.putIntArray(plmn4, supportedServicesForPlmn1);
+        supportedServicesBundle.putIntArray(plmn5, supportedServicesForPlmn2);
 
         supportedServiceMap =
                 SatelliteServiceUtils.parseSupportedSatelliteServices(supportedServicesBundle);
@@ -96,6 +101,9 @@ public class SatelliteServiceUtilsTest extends TelephonyTest {
         assertTrue(supportedServiceMap.containsKey(plmn3));
         supportedServices = supportedServiceMap.get(plmn3);
         assertTrue(supportedServices.isEmpty());
+
+        assertFalse(supportedServiceMap.containsKey(plmn4));
+        assertFalse(supportedServiceMap.containsKey(plmn5));
     }
 
     @Test
