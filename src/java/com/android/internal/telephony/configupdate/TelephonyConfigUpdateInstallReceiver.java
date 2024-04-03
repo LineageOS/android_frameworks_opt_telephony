@@ -27,6 +27,8 @@ import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.satellite.SatelliteConfig;
 import com.android.internal.telephony.satellite.SatelliteConfigParser;
+import com.android.internal.telephony.satellite.SatelliteConstants;
+import com.android.internal.telephony.satellite.metrics.ConfigUpdaterMetricsStats;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.server.updates.ConfigUpdateInstallReceiver;
 
@@ -57,6 +59,7 @@ public class TelephonyConfigUpdateInstallReceiver extends ConfigUpdateInstallRec
     private final Object mConfigParserLock = new Object();
     @GuardedBy("mConfigParserLock")
     private ConfigParser mConfigParser;
+    @NonNull private final ConfigUpdaterMetricsStats mConfigUpdaterMetricsStats;
 
 
     public static TelephonyConfigUpdateInstallReceiver sReceiverAdaptorInstance =
@@ -72,6 +75,7 @@ public class TelephonyConfigUpdateInstallReceiver extends ConfigUpdateInstallRec
 
     public TelephonyConfigUpdateInstallReceiver() {
         super(UPDATE_DIR, NEW_CONFIG_CONTENT_PATH, UPDATE_METADATA_PATH, VERSION);
+        mConfigUpdaterMetricsStats = ConfigUpdaterMetricsStats.getOrCreateInstance();
     }
 
     /**
@@ -97,6 +101,8 @@ public class TelephonyConfigUpdateInstallReceiver extends ConfigUpdateInstallRec
         SatelliteConfig satelliteConfig = (SatelliteConfig) parser.getConfig();
         if (satelliteConfig == null) {
             Log.e(TAG, "satelliteConfig is null");
+            mConfigUpdaterMetricsStats.reportOemAndCarrierConfigError(
+                    SatelliteConstants.CONFIG_UPDATE_RESULT_NO_SATELLITE_DATA);
             return false;
         }
 
@@ -109,12 +115,16 @@ public class TelephonyConfigUpdateInstallReceiver extends ConfigUpdateInstallRec
             for (String plmn : plmns) {
                 if (!TelephonyUtils.isValidPlmn(plmn)) {
                     Log.e(TAG, "found invalid plmn : " + plmn);
+                    mConfigUpdaterMetricsStats.reportCarrierConfigError(
+                            SatelliteConstants.CONFIG_UPDATE_RESULT_CARRIER_DATA_INVALID_PLMN);
                     return false;
                 }
                 Set<Integer> serviceSet = plmnsServices.get(plmn);
                 for (int service : serviceSet) {
                     if (!TelephonyUtils.isValidService(service)) {
                         Log.e(TAG, "found invalid service : " + service);
+                        mConfigUpdaterMetricsStats.reportCarrierConfigError(SatelliteConstants
+                                .CONFIG_UPDATE_RESULT_CARRIER_DATA_INVALID_SUPPORTED_SERVICES);
                         return false;
                     }
                 }
@@ -149,8 +159,11 @@ public class TelephonyConfigUpdateInstallReceiver extends ConfigUpdateInstallRec
                 int previousVersion = getInstance().mConfigParser.mVersion;
                 Log.d(TAG, "previous version is " + previousVersion + " | updated version is "
                         + updatedVersion);
+                mConfigUpdaterMetricsStats.setConfigVersion(updatedVersion);
                 if (updatedVersion <= previousVersion) {
                     Log.e(TAG, "updatedVersion is smaller than previousVersion");
+                    mConfigUpdaterMetricsStats.reportOemAndCarrierConfigError(
+                            SatelliteConstants.CONFIG_UPDATE_RESULT_INVALID_VERSION);
                     return;
                 }
             }
@@ -167,6 +180,8 @@ public class TelephonyConfigUpdateInstallReceiver extends ConfigUpdateInstallRec
 
         if (!copySourceFileToTargetFile(NEW_CONFIG_CONTENT_PATH, VALID_CONFIG_CONTENT_PATH)) {
             Log.e(TAG, "fail to copy to the valid satellite carrier config data");
+            mConfigUpdaterMetricsStats.reportOemAndCarrierConfigError(
+                    SatelliteConstants.CONFIG_UPDATE_RESULT_IO_ERROR);
         }
     }
 
@@ -231,6 +246,8 @@ public class TelephonyConfigUpdateInstallReceiver extends ConfigUpdateInstallRec
     public ConfigParser getNewConfigParser(String domain, @Nullable byte[] data) {
         if (data == null) {
             Log.d(TAG, "content data is null");
+            mConfigUpdaterMetricsStats.reportOemAndCarrierConfigError(
+                    SatelliteConstants.CONFIG_UPDATE_RESULT_NO_DATA);
             return null;
         }
         switch (domain) {
@@ -238,6 +255,8 @@ public class TelephonyConfigUpdateInstallReceiver extends ConfigUpdateInstallRec
                 return new SatelliteConfigParser(data);
             default:
                 Log.e(TAG, "DOMAIN should be specified");
+                mConfigUpdaterMetricsStats.reportOemAndCarrierConfigError(
+                        SatelliteConstants.CONFIG_UPDATE_RESULT_INVALID_DOMAIN);
                 return null;
         }
     }

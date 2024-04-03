@@ -16,9 +16,13 @@
 
 package com.android.internal.telephony.metrics;
 
+import static com.android.internal.telephony.TelephonyStatsLog.CARRIER_ROAMING_SATELLITE_CONTROLLER_STATS;
+import static com.android.internal.telephony.TelephonyStatsLog.CARRIER_ROAMING_SATELLITE_SESSION;
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_DATA_SERVICE_SWITCH;
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_SERVICE_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.OUTGOING_SHORT_CODE_SMS;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_CONFIG_UPDATER;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_ENTITLEMENT;
 import static com.android.internal.telephony.TelephonyStatsLog.SIM_SLOT_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.SUPPORTED_RADIO_ACCESS_FAMILY;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_RAT_USAGE;
@@ -45,9 +49,13 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.flags.FeatureFlags;
+import com.android.internal.telephony.nano.PersistAtomsProto.CarrierRoamingSatelliteControllerStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.CarrierRoamingSatelliteSession;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingShortCodeSms;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteConfigUpdater;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteEntitlement;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
@@ -115,7 +123,7 @@ public class MetricsCollectorTest extends TelephonyTest {
         mFeatureFlags = mock(FeatureFlags.class);
         mMetricsCollector =
                 new MetricsCollector(mContext, mPersistAtomsStorage,
-                        mDeviceStateHelper, mVonrHelper, mFeatureFlags);
+                        mDeviceStateHelper, mVonrHelper, mDefaultNetworkMonitor, mFeatureFlags);
         doReturn(mSST).when(mSecondPhone).getServiceStateTracker();
         doReturn(mServiceStateStats).when(mSST).getServiceStateStats();
     }
@@ -468,6 +476,180 @@ public class MetricsCollectorTest extends TelephonyTest {
         List<StatsEvent> actualAtoms = new ArrayList<>();
 
         int result = mMetricsCollector.onPullAtom(OUTGOING_SHORT_CODE_SMS, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(4);
+        assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
+    }
+
+    @Test
+    public void onPullAtom_carrierRoamingSatelliteSession_empty() {
+        doReturn(new CarrierRoamingSatelliteSession[0]).when(mPersistAtomsStorage)
+                .getCarrierRoamingSatelliteSessionStats(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(CARRIER_ROAMING_SATELLITE_SESSION, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(0);
+        assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
+    }
+
+    @Test
+    public void onPullAtom_carrierRoamingSatelliteSession_tooFrequent() {
+        doReturn(null).when(mPersistAtomsStorage)
+                .getCarrierRoamingSatelliteSessionStats(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(CARRIER_ROAMING_SATELLITE_SESSION, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(0);
+        assertThat(result).isEqualTo(StatsManager.PULL_SKIP);
+        verify(mPersistAtomsStorage, times(1))
+                .getCarrierRoamingSatelliteSessionStats(eq(MIN_COOLDOWN_MILLIS));
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    public void onPullAtom_carrierRoamingSatelliteSession_multipleAtoms() {
+        CarrierRoamingSatelliteSession carrierRoamingSatelliteSession =
+                new CarrierRoamingSatelliteSession();
+        doReturn(new CarrierRoamingSatelliteSession[] {carrierRoamingSatelliteSession,
+                carrierRoamingSatelliteSession, carrierRoamingSatelliteSession,
+                carrierRoamingSatelliteSession})
+                .when(mPersistAtomsStorage)
+                .getCarrierRoamingSatelliteSessionStats(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(CARRIER_ROAMING_SATELLITE_SESSION, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(4);
+        assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
+    }
+
+    @Test
+    public void onPullAtom_carrierRoamingSatelliteControllerStats_empty() {
+        doReturn(new CarrierRoamingSatelliteControllerStats[0]).when(mPersistAtomsStorage)
+                .getCarrierRoamingSatelliteControllerStats(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(CARRIER_ROAMING_SATELLITE_CONTROLLER_STATS,
+                actualAtoms);
+
+        assertThat(actualAtoms).hasSize(0);
+        assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
+    }
+
+    @Test
+    public void onPullAtom_carrierRoamingSatelliteControllerStats_multipleAtoms() {
+        CarrierRoamingSatelliteControllerStats carrierRoamingSatelliteControllerStats =
+                new CarrierRoamingSatelliteControllerStats();
+        doReturn(new CarrierRoamingSatelliteControllerStats[] {
+                carrierRoamingSatelliteControllerStats})
+                .when(mPersistAtomsStorage)
+                .getCarrierRoamingSatelliteControllerStats(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(CARRIER_ROAMING_SATELLITE_CONTROLLER_STATS,
+                actualAtoms);
+
+        assertThat(actualAtoms).hasSize(1);
+        assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
+    }
+
+    @Test
+    public void onPullAtom_carrierRoamingSatelliteControllerStats_tooFrequent() {
+        doReturn(null).when(mPersistAtomsStorage)
+                .getCarrierRoamingSatelliteControllerStats(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(CARRIER_ROAMING_SATELLITE_CONTROLLER_STATS,
+                actualAtoms);
+
+        assertThat(actualAtoms).hasSize(0);
+        assertThat(result).isEqualTo(StatsManager.PULL_SKIP);
+        verify(mPersistAtomsStorage, times(1))
+                .getCarrierRoamingSatelliteControllerStats(eq(MIN_COOLDOWN_MILLIS));
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    public void onPullAtom_satelliteEntitlement_empty() {
+        doReturn(new SatelliteEntitlement[0]).when(mPersistAtomsStorage)
+                .getSatelliteEntitlementStats(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(SATELLITE_ENTITLEMENT, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(0);
+        assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
+    }
+
+    @Test
+    public void onPullAtom_satelliteEntitlement_tooFrequent() {
+        doReturn(null).when(mPersistAtomsStorage).getSatelliteEntitlementStats(
+                anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(SATELLITE_ENTITLEMENT, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(0);
+        assertThat(result).isEqualTo(StatsManager.PULL_SKIP);
+        verify(mPersistAtomsStorage, times(1))
+                .getSatelliteEntitlementStats(eq(MIN_COOLDOWN_MILLIS));
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    public void onPullAtom_satelliteEntitlement_multipleAtoms() {
+        SatelliteEntitlement satelliteEntitlement = new SatelliteEntitlement();
+        doReturn(new SatelliteEntitlement[] {satelliteEntitlement, satelliteEntitlement,
+                satelliteEntitlement, satelliteEntitlement})
+                .when(mPersistAtomsStorage)
+                .getSatelliteEntitlementStats(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(SATELLITE_ENTITLEMENT, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(4);
+        assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
+    }
+
+    @Test
+    public void onPullAtom_satelliteConfigUpdater_empty() {
+        doReturn(new SatelliteConfigUpdater[0]).when(mPersistAtomsStorage)
+                .getSatelliteConfigUpdaterStats(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(SATELLITE_CONFIG_UPDATER, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(0);
+        assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
+    }
+
+    @Test
+    public void onPullAtom_satelliteConfigUpdater_tooFrequent() {
+        doReturn(null).when(mPersistAtomsStorage).getSatelliteConfigUpdaterStats(
+                anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(SATELLITE_CONFIG_UPDATER, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(0);
+        assertThat(result).isEqualTo(StatsManager.PULL_SKIP);
+        verify(mPersistAtomsStorage, times(1))
+                .getSatelliteConfigUpdaterStats(eq(MIN_COOLDOWN_MILLIS));
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    public void onPullAtom_satelliteConfigUpdater_multipleAtoms() {
+        SatelliteConfigUpdater satelliteConfigUpdater = new SatelliteConfigUpdater();
+        doReturn(new SatelliteConfigUpdater[] {satelliteConfigUpdater, satelliteConfigUpdater,
+                satelliteConfigUpdater, satelliteConfigUpdater})
+                .when(mPersistAtomsStorage)
+                .getSatelliteConfigUpdaterStats(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(SATELLITE_CONFIG_UPDATER, actualAtoms);
 
         assertThat(actualAtoms).hasSize(4);
         assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
