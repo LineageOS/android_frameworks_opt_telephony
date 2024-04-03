@@ -2156,15 +2156,32 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * tethering and enterprise capabilities are not respected as restricted requests. For a request
-     * with these capabilities, any soft disallowed reasons are honored.
+     * Check if a network request should be treated as a valid restricted network request that
+     * can bypass soft disallowed reasons, for example, mobile data off.
+     *
      * @param networkRequest The network request to evaluate.
-     * @return {@code true} if the request doesn't contain any exceptional capabilities, its
-     * restricted capability, if any, is respected.
+     * @return {@code true} if the request can be considered as a valid restricted network request
+     * that can bypass any soft disallowed reasons, otherwise {@code false}.
      */
     private boolean isValidRestrictedRequest(@NonNull TelephonyNetworkRequest networkRequest) {
-        return !(networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN)
-                || networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE));
+
+        if (!mFeatureFlags.satelliteInternet()) {
+            return !(networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN)
+                    || networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE));
+        } else {
+            // tethering, enterprise and mms with restricted capabilities always honor soft
+            // disallowed reasons and not respected as restricted request
+            if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN)
+                    || networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)
+                    || networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS)) {
+                return false;
+            }
+            // When the device is on satellite, internet with restricted capabilities always honor
+            // soft disallowed reasons and not respected as restricted request
+            return !(mServiceState.isUsingNonTerrestrialNetwork()
+                    && networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+
+        }
     }
 
     /**
