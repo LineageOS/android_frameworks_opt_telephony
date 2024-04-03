@@ -1746,6 +1746,107 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testMobileDataDisabledIsValidRestrictedRequestWithSatelliteInternetRequest() {
+        mIsNonTerrestrialNetwork = true;
+
+        //Mobile Data Disabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false, mContext.getOpPackageName());
+        processAllMessages();
+
+        // Data is not supported for cellular transport network request while using satellite
+        // network
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+
+        // Set network request transport as Satellite with restricted capability + internet
+        NetworkCapabilities netCaps = new NetworkCapabilities();
+        netCaps.addTransportType(NetworkCapabilities.TRANSPORT_SATELLITE);
+        netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        netCaps.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+        mDataNetworkControllerUT.addNetworkRequest(new TelephonyNetworkRequest(
+                new NetworkRequest(netCaps, ConnectivityManager.TYPE_MOBILE, ++mNetworkRequestId,
+                        NetworkRequest.Type.REQUEST), mPhone, mFeatureFlags));
+        processAllMessages();
+
+        // Verify data is not connected since Network request cannot satisfy by transport
+        verify(mMockedDataNetworkControllerCallback, never())
+                .onConnectedInternetDataNetworksChanged(any());
+
+        mIsNonTerrestrialNetwork = false;
+    }
+
+    @Test
+    public void testMobileDataDisabledIsValidRestrictedRequestWithTransportSatelliteMMSRequest()
+            throws Exception {
+        mIsNonTerrestrialNetwork = true;
+
+        // Data disabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false, mContext.getOpPackageName());
+        // Always allow MMS off
+        mDataNetworkControllerUT.getDataSettingsManager().setMobileDataPolicy(TelephonyManager
+                .MOBILE_DATA_POLICY_MMS_ALWAYS_ALLOWED, false);
+        processAllMessages();
+
+        // Data is not supported for cellular transport network request while using satellite
+        // network
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+
+        // Set network request transport as Cellular+Satellite with restricted capability + mms
+        NetworkCapabilities netCaps = new NetworkCapabilities();
+        netCaps.addTransportType(NetworkCapabilities.TRANSPORT_SATELLITE);
+        netCaps.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
+        netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+        netCaps.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+        mDataNetworkControllerUT.addNetworkRequest(new TelephonyNetworkRequest(
+                new NetworkRequest(netCaps, ConnectivityManager.TYPE_MOBILE, ++mNetworkRequestId,
+                        NetworkRequest.Type.REQUEST), mPhone, mFeatureFlags));
+        processAllMessages();
+
+        // Verify mms is not connected
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+
+        mIsNonTerrestrialNetwork = false;
+    }
+
+    @Test
+    public void testOnMmsAlwaysALlowedIsValidRestrictedRequestWithTransportSatelliteMMSRequest()
+            throws Exception {
+        mIsNonTerrestrialNetwork = true;
+
+        // Data disabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false, mContext.getOpPackageName());
+        // Always allow MMS On
+        mDataNetworkControllerUT.getDataSettingsManager().setMobileDataPolicy(TelephonyManager
+                .MOBILE_DATA_POLICY_MMS_ALWAYS_ALLOWED, true);
+        processAllMessages();
+
+        // Data is not supported for cellular transport network request while using satellite
+        // network
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+
+        // Set network request transport as Cellular+Satellite with restricted capability + mms
+        NetworkCapabilities netCaps = new NetworkCapabilities();
+        netCaps.addTransportType(NetworkCapabilities.TRANSPORT_SATELLITE);
+        netCaps.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
+        netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+        netCaps.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+        mDataNetworkControllerUT.addNetworkRequest(new TelephonyNetworkRequest(
+                new NetworkRequest(netCaps, ConnectivityManager.TYPE_MOBILE, ++mNetworkRequestId,
+                        NetworkRequest.Type.REQUEST), mPhone, mFeatureFlags));
+        processAllMessages();
+
+        // Verify mms is connected if mms always allowed is on
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_MMS);
+
+        mIsNonTerrestrialNetwork = false;
+    }
+
+    @Test
     public void testIsNetworkRequestSatisfiedByTransportSatelliteTransportRequest_Terrestrial() {
         // Set network request transport as satellite in satellite network
         NetworkCapabilities netCaps = new NetworkCapabilities();
