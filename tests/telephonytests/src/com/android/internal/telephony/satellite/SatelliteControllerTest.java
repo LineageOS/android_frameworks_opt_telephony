@@ -2667,7 +2667,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         // Verify call the requestSetSatelliteEnabledForCarrier to enable the satellite when
         // satellite service is enabled by entitlement server.
         mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, true, new ArrayList<>(),
-                mIIntegerConsumer);
+                new ArrayList<>(), mIIntegerConsumer);
         processAllMessages();
 
         assertTrue(waitForIIntegerConsumerResult(1));
@@ -2687,7 +2687,7 @@ public class SatelliteControllerTest extends TelephonyTest {
                 .when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
         setUpResponseForRequestSetSatelliteEnabledForCarrier(false, SATELLITE_RESULT_SUCCESS);
         mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, false, new ArrayList<>(),
-                mIIntegerConsumer);
+                new ArrayList<>(), mIIntegerConsumer);
         processAllMessages();
 
         assertTrue(waitForIIntegerConsumerResult(1));
@@ -2712,17 +2712,18 @@ public class SatelliteControllerTest extends TelephonyTest {
         mCarrierConfigBundle.putBoolean(CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL,
                 true);
 
-        // If the entitlement plmn list, the carrier plmn list and the overlay config plmn list
-        // are empty verify not passing to the modem.
+        // If the entitlement plmn list, the carrier plmn list, the overlay config plmn list and
+        // the barred plmn list are empty, verify not passing to the modem.
         reset(mMockSatelliteModemInterface);
         List<String> entitlementPlmnList = new ArrayList<>();
+        List<String> barredPlmnList = new ArrayList<>();
         mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, false,
-                entitlementPlmnList, mIIntegerConsumer);
+                entitlementPlmnList, barredPlmnList, mIIntegerConsumer);
         verify(mMockSatelliteModemInterface, never()).requestSatelliteEnabled(anyBoolean(),
                 anyBoolean(), anyBoolean(), any(Message.class));
 
         // If the entitlement plmn list and the overlay config plmn list are available and the
-        // carrier plmn list is empty verify passing to the modem.
+        // carrier plmn list and the barred plmn list are empty, verify passing to the modem.
         reset(mMockSatelliteModemInterface);
         entitlementPlmnList = Arrays.stream(new String[]{"00101", "00102", "00103"}).toList();
         List<String> mergedPlmnList = entitlementPlmnList;
@@ -2731,10 +2732,10 @@ public class SatelliteControllerTest extends TelephonyTest {
         replaceInstance(SatelliteController.class, "mSatellitePlmnListFromOverlayConfig",
                 mSatelliteControllerUT, overlayConfigPlmnList);
         verifyPassingToModemAfterQueryCompleted(entitlementPlmnList, mergedPlmnList,
-                overlayConfigPlmnList);
+                overlayConfigPlmnList, barredPlmnList);
 
         // If the entitlement plmn list, the overlay config plmn list and the carrier plmn list
-        // are available, verify passing to the modem.
+        // are available and the barred plmn list is empty, verify passing to the modem.
         reset(mMockSatelliteModemInterface);
         Map<Integer, Map<String, Set<Integer>>>
                 satelliteServicesSupportedByCarriers = new HashMap<>();
@@ -2746,7 +2747,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         replaceInstance(SatelliteController.class, "mSatelliteServicesSupportedByCarriers",
                 mSatelliteControllerUT, satelliteServicesSupportedByCarriers);
         verifyPassingToModemAfterQueryCompleted(entitlementPlmnList, mergedPlmnList,
-                overlayConfigPlmnList);
+                overlayConfigPlmnList, barredPlmnList);
 
         // If the entitlement plmn list is empty and the overlay config plmn list and the carrier
         // plmn list are available, verify not passing to the modem.
@@ -2754,18 +2755,26 @@ public class SatelliteControllerTest extends TelephonyTest {
         entitlementPlmnList = new ArrayList<>();
         mergedPlmnList = carrierConfigPlmnList;
         verifyPassingToModemAfterQueryCompleted(entitlementPlmnList, mergedPlmnList,
-                overlayConfigPlmnList);
+                overlayConfigPlmnList, barredPlmnList);
+
+        // If the entitlement plmn list is empty and the overlay config plmn list, the carrier
+        // plmn list and the barred plmn list are available, verify passing to the modem.
+        reset(mMockSatelliteModemInterface);
+        barredPlmnList = Arrays.stream(new String[]{"00105", "00107"}).toList();
+        verifyPassingToModemAfterQueryCompleted(entitlementPlmnList, mergedPlmnList,
+                overlayConfigPlmnList, barredPlmnList);
     }
 
     private void verifyPassingToModemAfterQueryCompleted(List<String> entitlementPlmnList,
-            List<String> mergedPlmnList, List<String> overlayConfigPlmnList) {
+            List<String> mergedPlmnList, List<String> overlayConfigPlmnList,
+            List<String> barredPlmnList) {
         mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, false,
-                entitlementPlmnList, mIIntegerConsumer);
+                entitlementPlmnList, barredPlmnList, mIIntegerConsumer);
 
         List<String> plmnListPerCarrier = mSatelliteControllerUT.getSatellitePlmnsForCarrier(
                 SUB_ID);
         List<String> allSatellitePlmnList = SatelliteServiceUtils.mergeStrLists(
-                plmnListPerCarrier, overlayConfigPlmnList);
+                plmnListPerCarrier, overlayConfigPlmnList, barredPlmnList);
 
         assertEquals(mergedPlmnList, plmnListPerCarrier);
         if (overlayConfigPlmnList.isEmpty()) {
@@ -2963,21 +2972,21 @@ public class SatelliteControllerTest extends TelephonyTest {
 
         // Change SUB_ID's EntitlementStatus to true
         mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, true, new ArrayList<>(),
-                mIIntegerConsumer);
+                new ArrayList<>(), mIIntegerConsumer);
 
         assertEquals(true, satelliteEnabledPerCarrier.get(SUB_ID));
         assertEquals(false, satelliteEnabledPerCarrier.get(SUB_ID1));
 
         // Change SUB_ID1's EntitlementStatus to true
         mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID1, true, new ArrayList<>(),
-                mIIntegerConsumer);
+                new ArrayList<>(), mIIntegerConsumer);
 
         assertEquals(true, satelliteEnabledPerCarrier.get(SUB_ID));
         assertEquals(true, satelliteEnabledPerCarrier.get(SUB_ID1));
 
         // Change SUB_ID's EntitlementStatus to false
         mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, false, new ArrayList<>(),
-                mIIntegerConsumer);
+                new ArrayList<>(), mIIntegerConsumer);
 
         assertEquals(false, satelliteEnabledPerCarrier.get(SUB_ID));
         assertEquals(true, satelliteEnabledPerCarrier.get(SUB_ID1));

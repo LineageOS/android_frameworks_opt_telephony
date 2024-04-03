@@ -375,6 +375,9 @@ public class SatelliteController extends Handler {
     /** Key Subscription ID, value : PLMN allowed list from entitlement. */
     @GuardedBy("mSupportedSatelliteServicesLock")
     private SparseArray<List<String>> mEntitlementPlmnListPerCarrier = new SparseArray<>();
+    /** Key Subscription ID, value : PLMN barred list from entitlement. */
+    @GuardedBy("mSupportedSatelliteServicesLock")
+    private SparseArray<List<String>> mEntitlementBarredPlmnListPerCarrier = new SparseArray<>();
     /**
      * Key : Subscription ID, Value : If there is an entitlementPlmnList, use it. Otherwise, use the
      * carrierPlmnList. */
@@ -2746,10 +2749,12 @@ public class SatelliteController extends Handler {
      * @param subId              subId
      * @param entitlementEnabled {@code true} Satellite service enabled
      * @param allowedPlmnList    plmn allowed list to use the satellite service
+     * @param barredPlmnList    plmn barred list to pass the modem
      * @param callback           callback for accept
      */
     public void onSatelliteEntitlementStatusUpdated(int subId, boolean entitlementEnabled,
-            List<String> allowedPlmnList, @Nullable IIntegerConsumer callback) {
+            List<String> allowedPlmnList, List<String> barredPlmnList,
+            @Nullable IIntegerConsumer callback) {
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
             return;
         }
@@ -2764,7 +2769,8 @@ public class SatelliteController extends Handler {
         }
         logd("onSatelliteEntitlementStatusUpdated subId=" + subId + " , entitlementEnabled="
                 + entitlementEnabled + ", allowedPlmnList=" + (Objects.equals(null, allowedPlmnList)
-                ? "" : allowedPlmnList + ""));
+                ? "" : allowedPlmnList + ", barredPlmnList=" + (Objects.equals(null,
+                barredPlmnList) ? "" : barredPlmnList + "")));
 
         synchronized (mSupportedSatelliteServicesLock) {
             if (mSatelliteEntitlementStatusPerCarrier.get(subId, false) != entitlementEnabled) {
@@ -2780,6 +2786,7 @@ public class SatelliteController extends Handler {
             mMergedPlmnListPerCarrier.remove(subId);
 
             mEntitlementPlmnListPerCarrier.put(subId, allowedPlmnList);
+            mEntitlementBarredPlmnListPerCarrier.put(subId, barredPlmnList);
             updatePlmnListPerCarrier(subId);
             configureSatellitePlmnForCarrier(subId);
             mSubscriptionManagerService.setSatelliteEntitlementPlmnList(subId, allowedPlmnList);
@@ -3368,10 +3375,12 @@ public class SatelliteController extends Handler {
         synchronized (mSupportedSatelliteServicesLock) {
             List<String> carrierPlmnList = mMergedPlmnListPerCarrier.get(subId,
                     new ArrayList<>()).stream().toList();
+            List<String> barredPlmnList = mEntitlementBarredPlmnListPerCarrier.get(subId,
+                    new ArrayList<>()).stream().toList();
             int slotId = SubscriptionManager.getSlotIndex(subId);
             mSatelliteModemInterface.setSatellitePlmn(slotId, carrierPlmnList,
                     SatelliteServiceUtils.mergeStrLists(
-                            carrierPlmnList, mSatellitePlmnListFromOverlayConfig),
+                            carrierPlmnList, mSatellitePlmnListFromOverlayConfig, barredPlmnList),
                     obtainMessage(EVENT_SET_SATELLITE_PLMN_INFO_DONE));
         }
     }
