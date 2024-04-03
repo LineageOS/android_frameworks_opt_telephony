@@ -619,19 +619,20 @@ public class SatelliteModemInterface {
      *
      * @param enableSatellite True to enable the satellite modem and false to disable.
      * @param enableDemoMode True to enable demo mode and false to disable.
+     * @param isEmergency {@code true} to enable emergency mode, {@code false} otherwise.
      * @param message The Message to send to result of the operation to.
      */
     public void requestSatelliteEnabled(boolean enableSatellite, boolean enableDemoMode,
-            @NonNull Message message) {
+            boolean isEmergency, @NonNull Message message) {
         if (mSatelliteService != null) {
             try {
                 mSatelliteService.requestSatelliteEnabled(enableSatellite, enableDemoMode,
-                        new IIntegerConsumer.Stub() {
-                    @Override
-                    public void accept(int result) {
-                        int error = SatelliteServiceUtils.fromSatelliteError(result);
-                        logd("setSatelliteEnabled: " + error);
-                        Binder.withCleanCallingIdentity(() ->
+                        isEmergency, new IIntegerConsumer.Stub() {
+                            @Override
+                            public void accept(int result) {
+                                int error = SatelliteServiceUtils.fromSatelliteError(result);
+                                logd("setSatelliteEnabled: " + error);
+                                Binder.withCleanCallingIdentity(() ->
                                 sendMessageWithResult(message, null, error));
                     }
                 });
