@@ -1565,6 +1565,10 @@ public class SubscriptionManagerService extends ISub.Stub {
                             SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_DATABASE_UPDATED)) {
                         logl("Sim specific settings changed the database.");
                         mSubscriptionDatabaseManager.reloadDatabaseSync();
+                        if (mFeatureFlags.backupAndRestoreFor2gSetting()) {
+                            PhoneFactory.getPhone(phoneId)
+                                    .loadAllowedNetworksFromSubscriptionDatabase();
+                        }
                     }
                 }
 
@@ -4149,6 +4153,10 @@ public class SubscriptionManagerService extends ISub.Stub {
                     SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_DATABASE_UPDATED)) {
                 logl("Sim specific settings changed the database.");
                 mSubscriptionDatabaseManager.reloadDatabaseSync();
+                if (mFeatureFlags.backupAndRestoreFor2gSetting()) {
+                    Arrays.stream(PhoneFactory.getPhones())
+                            .forEach(Phone::loadAllowedNetworksFromSubscriptionDatabase);
+                }
             }
         } finally {
             Binder.restoreCallingIdentity(token);
