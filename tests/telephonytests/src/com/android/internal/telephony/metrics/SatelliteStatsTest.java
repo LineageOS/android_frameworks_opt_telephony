@@ -26,7 +26,11 @@ import android.telephony.SatelliteProtoEnums;
 import android.telephony.TelephonyProtoEnums;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.nano.PersistAtomsProto.CarrierRoamingSatelliteControllerStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.CarrierRoamingSatelliteSession;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteConfigUpdater;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteController;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteEntitlement;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteIncomingDatagram;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteOutgoingDatagram;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteProvision;
@@ -298,6 +302,138 @@ public class SatelliteStatsTest extends TelephonyTest {
         assertEquals(param.getRecommendingHandoverType(), stats.recommendingHandoverType);
         assertEquals(param.isSatelliteAllowedInCurrentLocation(),
                 stats.isSatelliteAllowedInCurrentLocation);
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    public void onCarrierRoamingSatelliteSessionMetrics_withAtoms() throws Exception {
+        SatelliteStats.CarrierRoamingSatelliteSessionParams param =
+                new SatelliteStats.CarrierRoamingSatelliteSessionParams.Builder()
+                        .setCarrierId(100)
+                        .setIsNtnRoamingInHomeCountry(true)
+                        .setTotalSatelliteModeTimeSec(10 * 60)
+                        .setNumberOfSatelliteConnections(5)
+                        .setAvgDurationOfSatelliteConnectionSec(2 * 60)
+                        .setSatelliteConnectionGapMinSec(30)
+                        .setSatelliteConnectionGapAvgSec(300)
+                        .setSatelliteConnectionGapMaxSec(500)
+                        .setRsrpAvg(2)
+                        .setRsrpMedian(3)
+                        .setRssnrAvg(12)
+                        .setRssnrMedian(18)
+                        .setCountOfIncomingSms(6)
+                        .setCountOfOutgoingSms(11)
+                        .setCountOfIncomingMms(9)
+                        .setCountOfOutgoingMms(14)
+                        .build();
+
+        mSatelliteStats.onCarrierRoamingSatelliteSessionMetrics(param);
+
+        ArgumentCaptor<CarrierRoamingSatelliteSession> captor =
+                ArgumentCaptor.forClass(CarrierRoamingSatelliteSession.class);
+        verify(mPersistAtomsStorage).addCarrierRoamingSatelliteSessionStats(captor.capture());
+        CarrierRoamingSatelliteSession stats = captor.getValue();
+        assertEquals(param.getCarrierId(), stats.carrierId);
+        assertEquals(param.getIsNtnRoamingInHomeCountry(), stats.isNtnRoamingInHomeCountry);
+        assertEquals(param.getTotalSatelliteModeTimeSec(), stats.totalSatelliteModeTimeSec);
+        assertEquals(param.getNumberOfSatelliteConnections(), stats.numberOfSatelliteConnections);
+        assertEquals(param.getAvgDurationOfSatelliteConnectionSec(),
+                stats.avgDurationOfSatelliteConnectionSec);
+        assertEquals(param.getSatelliteConnectionGapMinSec(), stats.satelliteConnectionGapMinSec);
+        assertEquals(param.getSatelliteConnectionGapAvgSec(), stats.satelliteConnectionGapAvgSec);
+        assertEquals(param.getSatelliteConnectionGapMaxSec(), stats.satelliteConnectionGapMaxSec);
+        assertEquals(param.getRsrpAvg(), stats.rsrpAvg);
+        assertEquals(param.getRsrpMedian(), stats.rsrpMedian);
+        assertEquals(param.getRssnrAvg(), stats.rssnrAvg);
+        assertEquals(param.getRssnrMedian(), stats.rssnrMedian);
+        assertEquals(param.getCountOfIncomingSms(), stats.countOfIncomingSms);
+        assertEquals(param.getCountOfOutgoingSms(), stats.countOfOutgoingSms);
+        assertEquals(param.getCountOfIncomingMms(), stats.countOfIncomingMms);
+        assertEquals(param.getCountOfOutgoingMms(), stats.countOfOutgoingMms);
+
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    public void onCarrierRoamingSatelliteControllerStatsMetrics_withAtoms() throws Exception {
+        SatelliteStats.CarrierRoamingSatelliteControllerStatsParams param =
+                new SatelliteStats.CarrierRoamingSatelliteControllerStatsParams.Builder()
+                        .setConfigDataSource(4)
+                        .setCountOfEntitlementStatusQueryRequest(6)
+                        .setCountOfSatelliteConfigUpdateRequest(2)
+                        .setCountOfSatelliteNotificationDisplayed(1)
+                        .setSatelliteSessionGapMinSec(15)
+                        .setSatelliteSessionGapAvgSec(30)
+                        .setSatelliteSessionGapMaxSec(45)
+                        .build();
+
+        mSatelliteStats.onCarrierRoamingSatelliteControllerStatsMetrics(param);
+
+        ArgumentCaptor<CarrierRoamingSatelliteControllerStats> captor =
+                ArgumentCaptor.forClass(CarrierRoamingSatelliteControllerStats.class);
+        verify(mPersistAtomsStorage).addCarrierRoamingSatelliteControllerStats(captor.capture());
+        CarrierRoamingSatelliteControllerStats stats = captor.getValue();
+        assertEquals(param.getConfigDataSource(), stats.configDataSource);
+        assertEquals(param.getCountOfEntitlementStatusQueryRequest(),
+                stats.countOfEntitlementStatusQueryRequest);
+        assertEquals(param.getCountOfSatelliteConfigUpdateRequest(),
+                stats.countOfSatelliteConfigUpdateRequest);
+        assertEquals(param.getCountOfSatelliteNotificationDisplayed(),
+                stats.countOfSatelliteNotificationDisplayed);
+        assertEquals(param.getSatelliteSessionGapMinSec(), stats.satelliteSessionGapMinSec);
+        assertEquals(param.getSatelliteSessionGapAvgSec(), stats.satelliteSessionGapAvgSec);
+        assertEquals(param.getSatelliteSessionGapMaxSec(), stats.satelliteSessionGapMaxSec);
+
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    public void onSatelliteEntitlementMetrics_withAtoms() throws Exception {
+        SatelliteStats.SatelliteEntitlementParams param =
+                new SatelliteStats.SatelliteEntitlementParams.Builder()
+                        .setCarrierId(10)
+                        .setResult(500)
+                        .setEntitlementStatus(2)
+                        .setIsRetry(true)
+                        .setCount(5)
+                        .build();
+
+        mSatelliteStats.onSatelliteEntitlementMetrics(param);
+
+        ArgumentCaptor<SatelliteEntitlement> captor =
+                ArgumentCaptor.forClass(SatelliteEntitlement.class);
+        verify(mPersistAtomsStorage).addSatelliteEntitlementStats(captor.capture());
+        SatelliteEntitlement stats = captor.getValue();
+        assertEquals(param.getCarrierId(), stats.carrierId);
+        assertEquals(param.getResult(), stats.result);
+        assertEquals(param.getEntitlementStatus(), stats.entitlementStatus);
+        assertEquals(param.getIsRetry(), stats.isRetry);
+        assertEquals(param.getCount(), stats.count);
+
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    public void onSatelliteConfigUpdaterMetrics_withAtoms() throws Exception {
+        SatelliteStats.SatelliteConfigUpdaterParams param =
+                new SatelliteStats.SatelliteConfigUpdaterParams.Builder()
+                        .setConfigVersion(8)
+                        .setOemConfigResult(9)
+                        .setCarrierConfigResult(7)
+                        .setCount(3)
+                        .build();
+
+        mSatelliteStats.onSatelliteConfigUpdaterMetrics(param);
+
+        ArgumentCaptor<SatelliteConfigUpdater> captor =
+                ArgumentCaptor.forClass(SatelliteConfigUpdater.class);
+        verify(mPersistAtomsStorage).addSatelliteConfigUpdaterStats(captor.capture());
+        SatelliteConfigUpdater stats = captor.getValue();
+        assertEquals(param.getConfigVersion(), stats.configVersion);
+        assertEquals(param.getOemConfigResult(), stats.oemConfigResult);
+        assertEquals(param.getCarrierConfigResult(), stats.carrierConfigResult);
+        assertEquals(param.getCount(), stats.count);
+
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 }
