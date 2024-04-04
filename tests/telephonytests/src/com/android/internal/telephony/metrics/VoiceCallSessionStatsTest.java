@@ -34,15 +34,19 @@ import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSIO
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 import android.annotation.NonNull;
 import android.os.Looper;
@@ -2751,6 +2755,36 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         assertProtoEquals(expectedCall, callCaptor.getValue());
         assertThat(ratUsage.get()).hasLength(1);
         assertProtoEquals(expectedRatUsage, ratUsage.get()[0]);
+    }
+
+    @Test
+    public void testIsNtn() {
+        when(mSatelliteController.isInSatelliteModeForCarrierRoaming(any())).thenReturn(true);
+
+        mVoiceCallSessionStats0.onImsDial(mImsConnection0);
+        mVoiceCallSessionStats0.setTimeMillis(2200L);
+        mVoiceCallSessionStats0.onImsCallTerminated(mImsConnection0,
+                new ImsReasonInfo(ImsReasonInfo.CODE_LOCAL_NETWORK_NO_LTE_COVERAGE, 0));
+
+        ArgumentCaptor<VoiceCallSession> callCaptor =
+                ArgumentCaptor.forClass(VoiceCallSession.class);
+        verify(mPersistAtomsStorage, times(1)).addVoiceCallSession(callCaptor.capture());
+        VoiceCallSession session = callCaptor.getValue();
+        assertTrue(session.isNtn);
+
+        reset(mPersistAtomsStorage);
+        reset(mServiceState);
+
+        when(mSatelliteController.isInSatelliteModeForCarrierRoaming(any()))
+                .thenReturn(false);
+        mVoiceCallSessionStats0.onImsDial(mImsConnection0);
+        mVoiceCallSessionStats0.setTimeMillis(2200L);
+        mVoiceCallSessionStats0.onImsCallTerminated(mImsConnection0,
+                new ImsReasonInfo(ImsReasonInfo.CODE_LOCAL_NETWORK_NO_LTE_COVERAGE, 0));
+
+        verify(mPersistAtomsStorage, times(1)).addVoiceCallSession(callCaptor.capture());
+        session = callCaptor.getValue();
+        assertFalse(session.isNtn);
     }
 
     private AtomicReference<VoiceCallRatUsage[]> setupRatUsageCapture() {
