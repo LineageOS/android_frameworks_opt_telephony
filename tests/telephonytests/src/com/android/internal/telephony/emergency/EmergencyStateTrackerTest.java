@@ -577,6 +577,9 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertTrue(emergencyStateTracker.isInEcm());
         assertFalse(emergencyStateTracker.isInCdmaEcm());
         assertTrue(emergencyStateTracker.isInImsEcm());
+
+        assertTrue(emergencyStateTracker.isInEcm(testPhone));
+        assertFalse(emergencyStateTracker.isInEcm(getPhone(1)));
     }
 
     /**
