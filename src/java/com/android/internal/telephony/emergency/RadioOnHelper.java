@@ -153,7 +153,7 @@ public class RadioOnHelper implements RadioOnStateListener.Callback {
     private void powerOffSatellite(Phone phoneForEmergencyCall) {
         SatelliteController satelliteController = SatelliteController.getInstance();
         satelliteController.requestSatelliteEnabled(phoneForEmergencyCall.getSubId(),
-                false /* enableSatellite */, false /* enableDemoMode */,
+                false /* enableSatellite */, false /* enableDemoMode */, false /* isEmergency */,
                 new IIntegerConsumer.Stub() {
                     @Override
                     public void accept(int result) {

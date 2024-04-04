@@ -330,6 +330,20 @@ public class SatelliteServiceUtils {
         return mergedStrSet.stream().toList();
     }
 
+    /**
+     * Merge three string lists into one such that the result list does not have any duplicate
+     * items.
+     */
+    @NonNull
+    public static List<String> mergeStrLists(List<String> strList1, List<String> strList2,
+            List<String> strList3) {
+        Set<String> mergedStrSet = new HashSet<>();
+        mergedStrSet.addAll(strList1);
+        mergedStrSet.addAll(strList2);
+        mergedStrSet.addAll(strList3);
+        return mergedStrSet.stream().toList();
+    }
+
     private static boolean isServiceTypeValid(int serviceType) {
         return (serviceType >= FIRST_SERVICE_TYPE && serviceType <= LAST_SERVICE_TYPE);
     }

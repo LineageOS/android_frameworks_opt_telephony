@@ -50,6 +50,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.net.Uri;
@@ -77,6 +78,7 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
+import android.provider.Telephony;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.Rlog;
@@ -126,6 +128,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -375,6 +378,9 @@ public class SatelliteController extends Handler {
     /** Key Subscription ID, value : PLMN allowed list from entitlement. */
     @GuardedBy("mSupportedSatelliteServicesLock")
     private SparseArray<List<String>> mEntitlementPlmnListPerCarrier = new SparseArray<>();
+    /** Key Subscription ID, value : PLMN barred list from entitlement. */
+    @GuardedBy("mSupportedSatelliteServicesLock")
+    private SparseArray<List<String>> mEntitlementBarredPlmnListPerCarrier = new SparseArray<>();
     /**
      * Key : Subscription ID, Value : If there is an entitlementPlmnList, use it. Otherwise, use the
      * carrierPlmnList. */
@@ -394,6 +400,8 @@ public class SatelliteController extends Handler {
     private static final String NOTIFICATION_CHANNEL_ID = "satellite";
 
     private final RegistrantList mSatelliteConfigUpdateChangedRegistrants = new RegistrantList();
+    private final BTWifiNFCStateReceiver mBTWifiNFCSateReceiver;
+    private final UwbAdapterStateCallback mUwbAdapterStateCallback;
 
     /**
      * @return The singleton instance of SatelliteController.
@@ -463,6 +471,8 @@ public class SatelliteController extends Handler {
         mContentResolver = mContext.getContentResolver();
         mCarrierConfigManager = mContext.getSystemService(CarrierConfigManager.class);
 
+        mBTWifiNFCSateReceiver = new BTWifiNFCStateReceiver();
+        mUwbAdapterStateCallback = new UwbAdapterStateCallback();
         initializeSatelliteModeRadios();
 
         ContentObserver satelliteModeRadiosContentObserver = new ContentObserver(this) {
@@ -526,11 +536,12 @@ public class SatelliteController extends Handler {
      * Get satelliteConfig from SatelliteConfigParser
      */
     public SatelliteConfig getSatelliteConfig() {
-        if (getSatelliteConfigParser() == null) {
-            Log.d(TAG, "getSatelliteConfigParser() is not ready");
+        SatelliteConfigParser satelliteConfigParser = getSatelliteConfigParser();
+        if (satelliteConfigParser == null) {
+            Log.d(TAG, "satelliteConfigParser is not ready");
             return null;
         }
-        return (SatelliteConfig) getSatelliteConfigParser().getConfig();
+        return satelliteConfigParser.getConfig();
     }
 
     /**
@@ -545,8 +556,6 @@ public class SatelliteController extends Handler {
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected void initializeSatelliteModeRadios() {
         if (mContentResolver != null) {
-            BTWifiNFCStateReceiver bTWifiNFCSateReceiver = new BTWifiNFCStateReceiver();
-            UwbAdapterStateCallback uwbAdapterStateCallback = new UwbAdapterStateCallback();
             IntentFilter radioStateIntentFilter = new IntentFilter();
 
             synchronized (mRadioStateLock) {
@@ -600,7 +609,14 @@ public class SatelliteController extends Handler {
                         radioStateIntentFilter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
                     }
                 }
-                mContext.registerReceiver(bTWifiNFCSateReceiver, radioStateIntentFilter);
+
+                try {
+                    // Unregister receiver before registering it.
+                    mContext.unregisterReceiver(mBTWifiNFCSateReceiver);
+                } catch (IllegalArgumentException e) {
+                    logd("initializeSatelliteModeRadios: unregisterReceiver, e=" + e);
+                }
+                mContext.registerReceiver(mBTWifiNFCSateReceiver, radioStateIntentFilter);
 
                 if (satelliteModeRadios.contains(Settings.Global.RADIO_UWB)) {
                     UwbManager uwbManager = mContext.getSystemService(UwbManager.class);
@@ -609,8 +625,10 @@ public class SatelliteController extends Handler {
                         mUwbStateEnabled = uwbManager.isUwbEnabled();
                         final long identity = Binder.clearCallingIdentity();
                         try {
+                            // Unregister callback before registering it.
+                            uwbManager.unregisterAdapterStateCallback(mUwbAdapterStateCallback);
                             uwbManager.registerAdapterStateCallback(mContext.getMainExecutor(),
-                                    uwbAdapterStateCallback);
+                                    mUwbAdapterStateCallback);
                         } finally {
                             Binder.restoreCallingIdentity(identity);
                         }
@@ -746,13 +764,15 @@ public class SatelliteController extends Handler {
     private static final class RequestSatelliteEnabledArgument {
         public boolean enableSatellite;
         public boolean enableDemoMode;
+        public boolean isEmergency;
         @NonNull public Consumer<Integer> callback;
         public long requestId;
 
         RequestSatelliteEnabledArgument(boolean enableSatellite, boolean enableDemoMode,
-                Consumer<Integer> callback) {
+                boolean isEmergency, Consumer<Integer> callback) {
             this.enableSatellite = enableSatellite;
             this.enableDemoMode = enableDemoMode;
+            this.isEmergency = isEmergency;
             this.callback = callback;
             this.requestId = sNextSatelliteEnableRequestId.getAndUpdate(
                     n -> ((n + 1) % Long.MAX_VALUE));
@@ -1372,12 +1392,13 @@ public class SatelliteController extends Handler {
      * @param enableSatellite {@code true} to enable the satellite modem and
      *                        {@code false} to disable.
      * @param enableDemoMode {@code true} to enable demo mode and {@code false} to disable.
+     * @param isEmergency {@code true} to enable emergency mode, {@code false} otherwise.
      * @param callback The callback to get the error code of the request.
      */
     public void requestSatelliteEnabled(int subId, boolean enableSatellite, boolean enableDemoMode,
-            @NonNull IIntegerConsumer callback) {
+            boolean isEmergency, @NonNull IIntegerConsumer callback) {
         logd("requestSatelliteEnabled subId: " + subId + " enableSatellite: " + enableSatellite
-                + " enableDemoMode: " + enableDemoMode);
+                + " enableDemoMode: " + enableDemoMode + " isEmergency: " + isEmergency);
         Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(callback::accept);
         int error = evaluateOemSatelliteRequestAllowed(true);
         if (error != SATELLITE_RESULT_SUCCESS) {
@@ -1418,7 +1439,8 @@ public class SatelliteController extends Handler {
         }
 
         RequestSatelliteEnabledArgument request =
-                new RequestSatelliteEnabledArgument(enableSatellite, enableDemoMode, result);
+                new RequestSatelliteEnabledArgument(enableSatellite, enableDemoMode, isEmergency,
+                        result);
         /**
          * Multiple satellite enabled requests are handled as below:
          * 1. If there are no ongoing requests, store current request in mSatelliteEnabledRequest
@@ -2483,7 +2505,7 @@ public class SatelliteController extends Handler {
 
         mIsRadioOn = false;
         requestSatelliteEnabled(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
-                false /* enableSatellite */, false /* enableDemoMode */,
+                false /* enableSatellite */, false /* enableDemoMode */, false /* isEmergency */,
                 new IIntegerConsumer.Stub() {
                     @Override
                     public void accept(int result) {
@@ -2730,10 +2752,12 @@ public class SatelliteController extends Handler {
      * @param subId              subId
      * @param entitlementEnabled {@code true} Satellite service enabled
      * @param allowedPlmnList    plmn allowed list to use the satellite service
+     * @param barredPlmnList    plmn barred list to pass the modem
      * @param callback           callback for accept
      */
     public void onSatelliteEntitlementStatusUpdated(int subId, boolean entitlementEnabled,
-            List<String> allowedPlmnList, @Nullable IIntegerConsumer callback) {
+            List<String> allowedPlmnList, List<String> barredPlmnList,
+            @Nullable IIntegerConsumer callback) {
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
             return;
         }
@@ -2748,7 +2772,8 @@ public class SatelliteController extends Handler {
         }
         logd("onSatelliteEntitlementStatusUpdated subId=" + subId + " , entitlementEnabled="
                 + entitlementEnabled + ", allowedPlmnList=" + (Objects.equals(null, allowedPlmnList)
-                ? "" : allowedPlmnList + ""));
+                ? "" : allowedPlmnList + ", barredPlmnList=" + (Objects.equals(null,
+                barredPlmnList) ? "" : barredPlmnList + "")));
 
         synchronized (mSupportedSatelliteServicesLock) {
             if (mSatelliteEntitlementStatusPerCarrier.get(subId, false) != entitlementEnabled) {
@@ -2764,6 +2789,7 @@ public class SatelliteController extends Handler {
             mMergedPlmnListPerCarrier.remove(subId);
 
             mEntitlementPlmnListPerCarrier.put(subId, allowedPlmnList);
+            mEntitlementBarredPlmnListPerCarrier.put(subId, barredPlmnList);
             updatePlmnListPerCarrier(subId);
             configureSatellitePlmnForCarrier(subId);
             mSubscriptionManagerService.setSatelliteEntitlementPlmnList(subId, allowedPlmnList);
@@ -2968,7 +2994,7 @@ public class SatelliteController extends Handler {
 
         Message onCompleted = obtainMessage(EVENT_SET_SATELLITE_ENABLED_DONE, request);
         mSatelliteModemInterface.requestSatelliteEnabled(argument.enableSatellite,
-                argument.enableDemoMode, onCompleted);
+                argument.enableDemoMode, argument.isEmergency, onCompleted);
         startWaitForSatelliteEnablingResponseTimer(argument);
     }
 
@@ -3008,7 +3034,7 @@ public class SatelliteController extends Handler {
                             logd("requestIsSatelliteProvisioned: resultCode=" + resultCode
                                     + ", resultData=" + resultData);
                             requestSatelliteEnabled(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
-                                    false, false,
+                                    false, false, false,
                                     new IIntegerConsumer.Stub() {
                                         @Override
                                         public void accept(int result) {
@@ -3240,6 +3266,7 @@ public class SatelliteController extends Handler {
                             + "mIsSatelliteEnabled=true");
                     requestSatelliteEnabled(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                             false /* enableSatellite */, false /* enableDemoMode */,
+                            false /* isEmergency */,
                             new IIntegerConsumer.Stub() {
                                 @Override
                                 public void accept(int result) {
@@ -3351,10 +3378,12 @@ public class SatelliteController extends Handler {
         synchronized (mSupportedSatelliteServicesLock) {
             List<String> carrierPlmnList = mMergedPlmnListPerCarrier.get(subId,
                     new ArrayList<>()).stream().toList();
+            List<String> barredPlmnList = mEntitlementBarredPlmnListPerCarrier.get(subId,
+                    new ArrayList<>()).stream().toList();
             int slotId = SubscriptionManager.getSlotIndex(subId);
             mSatelliteModemInterface.setSatellitePlmn(slotId, carrierPlmnList,
                     SatelliteServiceUtils.mergeStrLists(
-                            carrierPlmnList, mSatellitePlmnListFromOverlayConfig),
+                            carrierPlmnList, mSatellitePlmnListFromOverlayConfig, barredPlmnList),
                     obtainMessage(EVENT_SET_SATELLITE_PLMN_INFO_DONE));
         }
     }
@@ -4081,7 +4110,7 @@ public class SatelliteController extends Handler {
                     Consumer<Integer> result =
                             FunctionalUtils.ignoreRemoteException(callback::accept);
                     RequestSatelliteEnabledArgument request = new RequestSatelliteEnabledArgument(
-                            false, false, result);
+                            false, false, false, result);
                     synchronized (mSatelliteEnabledRequestLock) {
                         mSatelliteEnabledRequest = request;
                     }
@@ -4229,13 +4258,30 @@ public class SatelliteController extends Handler {
                         com.android.internal.R.color.system_notification_accent_color))
                 .setVisibility(Notification.VISIBILITY_PUBLIC);
 
-        // Add action to invoke `What to expect` dialog of Messaging application.
-        Intent intentOpenMessage = new Intent(Intent.ACTION_VIEW);
-        intentOpenMessage.setData(Uri.parse("sms:"));
-        // TODO : b/322733285 add putExtra to invoke "What to expect" dialog.
-        PendingIntent pendingIntentOpenMessage = PendingIntent.getActivity(mContext, 0,
-                intentOpenMessage, PendingIntent.FLAG_IMMUTABLE);
+        // Add action to invoke message application.
+        // getDefaultSmsPackage and getLaunchIntentForPackage are nullable.
+        Optional<Intent> nullableIntent = Optional.ofNullable(
+                        Telephony.Sms.getDefaultSmsPackage(mContext))
+                .flatMap(packageName -> {
+                    PackageManager pm = mContext.getPackageManager();
+                    return Optional.ofNullable(pm.getLaunchIntentForPackage(packageName));
+                });
+        // If nullableIntent is null, create new Intent for most common way to invoke message app.
+        Intent finalIntent = nullableIntent.map(intent -> {
+            // Invoke the home screen of default message application.
+            intent.setAction(Intent.ACTION_MAIN);
+            intent.addCategory(Intent.CATEGORY_HOME);
+            return intent;
+        }).orElseGet(() -> {
+            loge("showSatelliteSystemNotification: no default sms package name, Invoke "
+                    + "default sms compose window instead");
+            Intent newIntent = new Intent(Intent.ACTION_VIEW);
+            newIntent.setData(Uri.parse("sms:"));
+            return newIntent;
+        });
 
+        PendingIntent pendingIntentOpenMessage = PendingIntent.getActivity(mContext, 0,
+                finalIntent, PendingIntent.FLAG_IMMUTABLE);
         Notification.Action actionOpenMessage = new Notification.Action.Builder(0,
                 mContext.getResources().getString(R.string.satellite_notification_open_message),
                 pendingIntentOpenMessage).build();

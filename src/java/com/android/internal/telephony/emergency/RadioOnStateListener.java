@@ -395,6 +395,7 @@ public class RadioOnStateListener {
                 if (mSatelliteController.isSatelliteEnabled()) {
                     mSatelliteController.requestSatelliteEnabled(mPhone.getSubId(),
                             false /* enableSatellite */, false /* enableDemoMode */,
+                            false /* isEmergency*/,
                             new IIntegerConsumer.Stub() {
                                 @Override
                                 public void accept(int result) {
