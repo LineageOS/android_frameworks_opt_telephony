@@ -39,9 +39,13 @@ public class NtnCapabilityResolver {
      */
     public static void resolveNtnCapability(
             @NonNull NetworkRegistrationInfo networkRegistrationInfo, int subId) {
+        String registeredPlmn = networkRegistrationInfo.getRegisteredPlmn();
+        if (TextUtils.isEmpty(registeredPlmn)) {
+            return;
+        }
+
         SatelliteController satelliteController = SatelliteController.getInstance();
         List<String> satellitePlmnList = satelliteController.getSatellitePlmnsForCarrier(subId);
-        String registeredPlmn = networkRegistrationInfo.getRegisteredPlmn();
         for (String satellitePlmn : satellitePlmnList) {
             if (TextUtils.equals(satellitePlmn, registeredPlmn)) {
                 logd("Registered to satellite PLMN " + satellitePlmn);
