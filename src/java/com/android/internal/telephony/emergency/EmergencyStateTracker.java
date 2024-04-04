@@ -1235,6 +1235,15 @@ public class EmergencyStateTracker {
                 && mEmergencyCallDomain == NetworkRegistrationInfo.DOMAIN_CS && isInEcm();
     }
 
+    /**
+     * Returns {@code true} if currently in emergency callback mode with the given {@link Phone}.
+     *
+     * @param phone the {@link Phone} for the emergency call.
+     */
+    public boolean isInEcm(Phone phone) {
+        return isInEcm() && isSamePhone(mPhone, phone);
+    }
+
     private void sendEmergencyCallStateChange(Phone phone, boolean isAlive) {
         if ((isAlive && !mSentEmergencyCallState && getBroadcastEmergencyCallStateChanges(phone))
                 || (!isAlive && mSentEmergencyCallState)) {
