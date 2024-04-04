@@ -105,5 +105,10 @@ public class SatelliteServiceUtilsTest extends TelephonyTest {
         List<String> expectedMergedList = Arrays.asList("1", "2", "3");
         List<String> mergedList = SatelliteServiceUtils.mergeStrLists(l1, l2);
         assertEquals(expectedMergedList, mergedList);
+
+        List<String> l3 = Arrays.asList("2", "3", "4");
+        expectedMergedList = Arrays.asList("1", "2", "3", "4");
+        mergedList = SatelliteServiceUtils.mergeStrLists(l1, l2, l3);
+        assertEquals(expectedMergedList, mergedList);
     }
 }
