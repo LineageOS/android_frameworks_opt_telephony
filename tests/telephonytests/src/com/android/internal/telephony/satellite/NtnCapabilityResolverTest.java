@@ -30,6 +30,8 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import android.annotation.NonNull;
 import android.telephony.CellIdentity;
@@ -100,6 +102,7 @@ public class NtnCapabilityResolverTest extends TelephonyTest {
                 .mapToInt(Integer::intValue)
                 .toArray()));
         NtnCapabilityResolver.resolveNtnCapability(satelliteNri, SUB_ID);
+        verify(mMockSatelliteController).getSatellitePlmnsForCarrier(anyInt());
         assertNotEquals(satelliteNri, originalNri);
         assertTrue(satelliteNri.isNonTerrestrialNetwork());
         assertTrue(Arrays.equals(mSatelliteSupportedServices,
@@ -118,10 +121,30 @@ public class NtnCapabilityResolverTest extends TelephonyTest {
                         .mapToInt(Integer::intValue)
                         .toArray()));
         NtnCapabilityResolver.resolveNtnCapability(cellularNri, SUB_ID);
+        verify(mMockSatelliteController, times(2)).getSatellitePlmnsForCarrier(anyInt());
         assertEquals(cellularNri, originalNri);
         assertFalse(cellularNri.isNonTerrestrialNetwork());
         assertFalse(Arrays.equals(mSatelliteSupportedServices,
                 cellularNri.getAvailableServices().stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray()));
+
+        // Test resolving an empty-PLMN NetworkRegistrationInfo.
+        NetworkRegistrationInfo emptyPlmnNri = createNetworkRegistrationInfo("");
+        originalNri = new NetworkRegistrationInfo(emptyPlmnNri);
+
+        assertEquals(emptyPlmnNri, originalNri);
+        assertFalse(emptyPlmnNri.isNonTerrestrialNetwork());
+        assertFalse(Arrays.equals(mSatelliteSupportedServices,
+                emptyPlmnNri.getAvailableServices().stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray()));
+        NtnCapabilityResolver.resolveNtnCapability(emptyPlmnNri, SUB_ID);
+        verify(mMockSatelliteController, times(2)).getSatellitePlmnsForCarrier(anyInt());
+        assertEquals(emptyPlmnNri, originalNri);
+        assertFalse(emptyPlmnNri.isNonTerrestrialNetwork());
+        assertFalse(Arrays.equals(mSatelliteSupportedServices,
+                emptyPlmnNri.getAvailableServices().stream()
                         .mapToInt(Integer::intValue)
                         .toArray()));
     }

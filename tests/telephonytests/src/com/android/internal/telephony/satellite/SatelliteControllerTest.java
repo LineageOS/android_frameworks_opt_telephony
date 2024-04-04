@@ -2750,7 +2750,7 @@ public class SatelliteControllerTest extends TelephonyTest {
                 overlayConfigPlmnList, barredPlmnList);
 
         // If the entitlement plmn list is empty and the overlay config plmn list and the carrier
-        // plmn list are available, verify not passing to the modem.
+        // plmn list are available, verify passing to the modem.
         reset(mMockSatelliteModemInterface);
         entitlementPlmnList = new ArrayList<>();
         mergedPlmnList = carrierConfigPlmnList;
@@ -2763,6 +2763,46 @@ public class SatelliteControllerTest extends TelephonyTest {
         barredPlmnList = Arrays.stream(new String[]{"00105", "00107"}).toList();
         verifyPassingToModemAfterQueryCompleted(entitlementPlmnList, mergedPlmnList,
                 overlayConfigPlmnList, barredPlmnList);
+
+        // If the entitlement plmn list is null and the overlay config plmn list and the carrier
+        // plmn list are available, verify passing to the modem.
+        reset(mMockSatelliteModemInterface);
+        entitlementPlmnList = null;
+        mergedPlmnList = carrierConfigPlmnList;
+        verifyPassingToModemAfterQueryCompleted(entitlementPlmnList, mergedPlmnList,
+                overlayConfigPlmnList, barredPlmnList);
+
+        // If the entitlement plmn list is invalid, verify not passing to the modem.
+        reset(mMockSatelliteModemInterface);
+        entitlementPlmnList = Arrays.stream(new String[]{"00101", "00102", ""}).toList();
+        mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, false,
+                entitlementPlmnList, barredPlmnList, mIIntegerConsumer);
+        verify(mMockSatelliteModemInterface, never()).requestSatelliteEnabled(anyBoolean(),
+                anyBoolean(), anyBoolean(), any(Message.class));
+
+        // If the entitlement plmn list is invalid, verify not passing to the modem.
+        reset(mMockSatelliteModemInterface);
+        entitlementPlmnList = Arrays.stream(new String[]{"00101", "00102", "123456789"}).toList();
+        mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, false,
+                entitlementPlmnList, barredPlmnList, mIIntegerConsumer);
+        verify(mMockSatelliteModemInterface, never()).requestSatelliteEnabled(anyBoolean(),
+                anyBoolean(), anyBoolean(), any(Message.class));
+
+        // If the entitlement plmn list is invalid, verify not passing to the modem.
+        reset(mMockSatelliteModemInterface);
+        entitlementPlmnList = Arrays.stream(new String[]{"00101", "00102", "12"}).toList();
+        mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, false,
+                entitlementPlmnList, barredPlmnList, mIIntegerConsumer);
+        verify(mMockSatelliteModemInterface, never()).requestSatelliteEnabled(anyBoolean(),
+                anyBoolean(), anyBoolean(), any(Message.class));
+
+        // If the entitlement plmn list is invalid, verify not passing to the modem.
+        reset(mMockSatelliteModemInterface);
+        entitlementPlmnList = Arrays.stream(new String[]{"00101", "00102", "1234"}).toList();
+        mSatelliteControllerUT.onSatelliteEntitlementStatusUpdated(SUB_ID, false,
+                entitlementPlmnList, barredPlmnList, mIIntegerConsumer);
+        verify(mMockSatelliteModemInterface, never()).requestSatelliteEnabled(anyBoolean(),
+                anyBoolean(), anyBoolean(), any(Message.class));
     }
 
     private void verifyPassingToModemAfterQueryCompleted(List<String> entitlementPlmnList,

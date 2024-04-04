@@ -16,9 +16,6 @@
 
 package com.android.internal.telephony.satellite;
 
-import static android.telephony.NetworkRegistrationInfo.FIRST_SERVICE_TYPE;
-import static android.telephony.NetworkRegistrationInfo.LAST_SERVICE_TYPE;
-
 import static java.util.stream.Collectors.joining;
 
 import android.annotation.NonNull;
@@ -43,6 +40,7 @@ import android.telephony.satellite.stub.SatelliteResult;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
+import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -302,19 +300,23 @@ public class SatelliteServiceUtils {
         }
 
         for (String plmn : supportedServicesBundle.keySet()) {
-            Set<Integer> supportedServicesSet = new HashSet<>();
-            for (int serviceType : supportedServicesBundle.getIntArray(plmn)) {
-                if (isServiceTypeValid(serviceType)) {
-                    supportedServicesSet.add(serviceType);
-                } else {
-                    loge("parseSupportedSatelliteServices: invalid service type=" + serviceType
-                            + " for plmn=" + plmn);
+            if (TelephonyUtils.isValidPlmn(plmn)) {
+                Set<Integer> supportedServicesSet = new HashSet<>();
+                for (int serviceType : supportedServicesBundle.getIntArray(plmn)) {
+                    if (TelephonyUtils.isValidService(serviceType)) {
+                        supportedServicesSet.add(serviceType);
+                    } else {
+                        loge("parseSupportedSatelliteServices: invalid service type=" + serviceType
+                                + " for plmn=" + plmn);
+                    }
                 }
+                logd("parseSupportedSatelliteServices: plmn=" + plmn + ", supportedServicesSet="
+                        + supportedServicesSet.stream().map(String::valueOf).collect(
+                        joining(",")));
+                supportedServicesMap.put(plmn, supportedServicesSet);
+            } else {
+                loge("parseSupportedSatelliteServices: invalid plmn=" + plmn);
             }
-            logd("parseSupportedSatelliteServices: plmn=" + plmn + ", supportedServicesSet="
-                    + supportedServicesSet.stream().map(String::valueOf).collect(
-                            joining(",")));
-            supportedServicesMap.put(plmn, supportedServicesSet);
         }
         return supportedServicesMap;
     }
@@ -342,10 +344,6 @@ public class SatelliteServiceUtils {
         mergedStrSet.addAll(strList2);
         mergedStrSet.addAll(strList3);
         return mergedStrSet.stream().toList();
-    }
-
-    private static boolean isServiceTypeValid(int serviceType) {
-        return (serviceType >= FIRST_SERVICE_TYPE && serviceType <= LAST_SERVICE_TYPE);
     }
 
     /**
