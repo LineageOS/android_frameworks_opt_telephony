@@ -23,9 +23,12 @@ import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_INACTIVE_
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_SUCCESS;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED;
 import static android.telephony.TelephonyManager.SIM_STATE_LOADED;
+import static android.telephony.ims.RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED;
+import static android.telephony.ims.RegistrationManager.REGISTRATION_STATE_REGISTERED;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
 
 import static com.android.internal.telephony.data.AutoDataSwitchController.EVALUATION_REASON_VOICE_CALL_END;
 import static com.android.internal.telephony.data.PhoneSwitcher.ECBM_DEFAULT_DATA_SWITCH_BASE_TIME_MS;
@@ -86,6 +89,8 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.imsphone.ImsPhone;
+import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 
 import org.junit.After;
@@ -1789,7 +1794,75 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
         notifyImsRegistrationTechChange(mPhone);
 
+        // Verify that the callback is re-registered when the IMS registration callback is called.
         verify(mMockImsRegisterCallback, times(2)).setCallback(any(), anyInt(), any(), any());
+    }
+
+    @Test
+    @SmallTest
+    public void testReceivingImsRegistrationTech() throws Exception {
+        doReturn(true).when(mFeatureFlags).changeMethodOfObtainingImsRegistrationRadioTech();
+
+        // Set up input and output for testing
+        ImsPhone testImsPhone = mock(ImsPhone.class);
+        doReturn(testImsPhone).when(mPhone).getImsPhone();
+        doReturn(testImsPhone).when(mPhone2).getImsPhone();
+        ImsPhoneCall testImsPhoneCall = mock(ImsPhoneCall.class);
+        doReturn(Call.State.IDLE).when(testImsPhoneCall).getState();
+        doReturn(true).when(testImsPhoneCall).isIdle();
+        doReturn(testImsPhoneCall).when(testImsPhone).getForegroundCall();
+        doReturn(testImsPhoneCall).when(testImsPhone).getBackgroundCall();
+        doReturn(testImsPhoneCall).when(testImsPhone).getRingingCall();
+
+        doNothing().when(testImsPhone).registerForImsRegistrationChanges(any(), anyInt(), any());
+
+        initialize();
+        setAllPhonesInactive();
+
+        // Phone 0 has sub 1, phone 1 has sub 2.
+        // Sub 1 is default data sub.
+        // Both are active subscriptions are active sub, as they are in both active slots.
+        setSlotIndexToSubId(0, 1);
+        setSlotIndexToSubId(1, 2);
+        setDefaultDataSubId(1);
+        processAllMessages();
+
+        // Phone 0 should be the default data phoneId.
+        assertEquals(0, mPhoneSwitcherUT.getPreferredDataPhoneId());
+
+        doReturn(true).when(mPhone).isUserDataEnabled();
+        mockImsRegTech(0, REGISTRATION_TECH_NONE);
+        mockImsRegisterCallback(0);
+        mockImsRegisterCallback(1);
+
+        AsyncResult ar = new AsyncResult(null, new ImsPhone.ImsRegistrationRadioTechInfo(
+                0, REGISTRATION_TECH_LTE, REGISTRATION_STATE_REGISTERED), null);
+        notifyImsRegistrationTechChangeWithAsyncResult(ar);
+
+        // Verify cached IMS registration tech is LTE
+        assertTrue(REGISTRATION_TECH_LTE == mPhoneSwitcherUT.mImsRegistrationRadioTechMap.get(0));
+
+        ar = new AsyncResult(null, new ImsPhone.ImsRegistrationRadioTechInfo(
+                0, REGISTRATION_TECH_IWLAN, REGISTRATION_STATE_REGISTERED), null);
+        notifyImsRegistrationTechChangeWithAsyncResult(ar);
+
+        // Verify cached IMS registration tech is WiFi
+        assertTrue(REGISTRATION_TECH_IWLAN
+                == mPhoneSwitcherUT.mImsRegistrationRadioTechMap.get(0));
+
+        ar = new AsyncResult(null, new ImsPhone.ImsRegistrationRadioTechInfo(
+                0, REGISTRATION_TECH_NONE, REGISTRATION_STATE_NOT_REGISTERED), null);
+        notifyImsRegistrationTechChangeWithAsyncResult(ar);
+
+        // Verify cached IMS registration tech is NONE
+        assertTrue(REGISTRATION_TECH_NONE == mPhoneSwitcherUT.mImsRegistrationRadioTechMap.get(0));
+
+        // Verify there is no crash
+        notifyImsRegistrationTechChangeWithAsyncResult(null);
+
+        // Verify that the callback is not re-registered
+        // when the IMS registration callback is called.
+        verify(mMockImsRegisterCallback, never()).setCallback(any(), anyInt(), any(), any());
     }
 
     /* Private utility methods start here */
@@ -1895,6 +1968,12 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
     private void notifyImsRegistrationTechChange(Phone phone) {
         mPhoneSwitcherUT.sendEmptyMessage(EVENT_IMS_RADIO_TECH_CHANGED);
+        processAllMessages();
+    }
+
+    private void notifyImsRegistrationTechChangeWithAsyncResult(AsyncResult ar) {
+        mPhoneSwitcherUT.sendMessage(
+                mPhoneSwitcherUT.obtainMessage(EVENT_IMS_RADIO_TECH_CHANGED, ar));
         processAllMessages();
     }
 

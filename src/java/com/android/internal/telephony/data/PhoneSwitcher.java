@@ -68,6 +68,7 @@ import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.util.ArrayMap;
 import android.util.LocalLog;
 import android.util.Log;
+import android.util.SparseIntArray;
 
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
@@ -84,6 +85,7 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.flags.FeatureFlags;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwitch;
@@ -321,7 +323,8 @@ public class PhoneSwitcher extends Handler {
 
     private ConnectivityManager mConnectivityManager;
     private int mImsRegistrationTech = REGISTRATION_TECH_NONE;
-
+    @VisibleForTesting
+    public final SparseIntArray mImsRegistrationRadioTechMap = new SparseIntArray();
     private List<Set<CommandException.Error>> mCurrentDdsSwitchFailure;
 
     /** Data settings manager callback. Key is the phone id. */
@@ -515,6 +518,14 @@ public class PhoneSwitcher extends Handler {
                 if (phone.getImsPhone() != null) {
                     phone.getImsPhone().registerForPreciseCallStateChanged(
                             this, EVENT_PRECISE_CALL_STATE_CHANGED, null);
+                    if (mFlags.changeMethodOfObtainingImsRegistrationRadioTech()) {
+                        // Initialize IMS registration tech
+                        mImsRegistrationRadioTechMap.put(phoneId, REGISTRATION_TECH_NONE);
+                        ((ImsPhone) phone.getImsPhone()).registerForImsRegistrationChanges(
+                                this, EVENT_IMS_RADIO_TECH_CHANGED, null);
+
+                        log("register handler to receive IMS registration : " + phoneId);
+                    }
                 }
                 mDataSettingsManagerCallbacks.computeIfAbsent(phoneId,
                         v -> new DataSettingsManagerCallback(this::post) {
@@ -532,7 +543,10 @@ public class PhoneSwitcher extends Handler {
                             }});
                 phone.getDataSettingsManager().registerCallback(
                         mDataSettingsManagerCallbacks.get(phoneId));
-                registerForImsRadioTechChange(context, phoneId);
+
+                if (!mFlags.changeMethodOfObtainingImsRegistrationRadioTech()) {
+                    registerForImsRadioTechChange(context, phoneId);
+                }
             }
             Set<CommandException.Error> ddsFailure = new HashSet<CommandException.Error>();
             mCurrentDdsSwitchFailure.add(ddsFailure);
@@ -742,7 +756,18 @@ public class PhoneSwitcher extends Handler {
             case EVENT_IMS_RADIO_TECH_CHANGED: {
                 // register for radio tech change to listen to radio tech handover in case previous
                 // attempt was not successful
-                registerForImsRadioTechChange();
+                if (!mFlags.changeMethodOfObtainingImsRegistrationRadioTech()) {
+                    registerForImsRadioTechChange();
+                } else {
+                    if (msg.obj == null) {
+                        log("EVENT_IMS_RADIO_TECH_CHANGED but parameter is not available");
+                        break;
+                    }
+                    if (!onImsRadioTechChanged((AsyncResult) (msg.obj))) {
+                        break;
+                    }
+                }
+
                 // if voice call state changes or in voice call didn't change
                 // but RAT changes(e.g. Iwlan -> cross sim), reevaluate for data switch.
                 if (updatesIfPhoneInVoiceCallChanged() || isAnyVoiceCallActiveOnDevice()) {
@@ -754,7 +779,9 @@ public class PhoneSwitcher extends Handler {
             case EVENT_PRECISE_CALL_STATE_CHANGED: {
                 // register for radio tech change to listen to radio tech handover in case previous
                 // attempt was not successful
-                registerForImsRadioTechChange();
+                if (!mFlags.changeMethodOfObtainingImsRegistrationRadioTech()) {
+                    registerForImsRadioTechChange();
+                }
 
                 // If the phoneId in voice call didn't change, do nothing.
                 if (!updatesIfPhoneInVoiceCallChanged()) {
@@ -906,6 +933,45 @@ public class PhoneSwitcher extends Handler {
         }
     }
 
+    /**
+     * Only provide service for the handler of PhoneSwitcher.
+     * @return true if the radio tech changed, otherwise false
+     */
+    private boolean onImsRadioTechChanged(@NonNull AsyncResult asyncResult) {
+        ImsPhone.ImsRegistrationRadioTechInfo imsRegistrationRadioTechInfo =
+                (ImsPhone.ImsRegistrationRadioTechInfo) asyncResult.result;
+        if (imsRegistrationRadioTechInfo == null
+                || imsRegistrationRadioTechInfo.phoneId() == INVALID_PHONE_INDEX
+                || imsRegistrationRadioTechInfo.imsRegistrationState()
+                == RegistrationManager.REGISTRATION_STATE_REGISTERING) {
+            // Ignore REGISTERING state, handle only REGISTERED and NOT_REGISTERED
+            log("onImsRadioTechChanged : result is not available");
+            return false;
+        }
+
+        int phoneId = imsRegistrationRadioTechInfo.phoneId();
+        int subId = SubscriptionManager.getSubscriptionId(phoneId);
+        int tech = imsRegistrationRadioTechInfo.imsRegistrationTech();
+        log("onImsRadioTechChanged phoneId : " + phoneId + " subId : " + subId + " old tech : "
+                + mImsRegistrationRadioTechMap.get(phoneId, REGISTRATION_TECH_NONE)
+                + " new tech : " + tech);
+
+        if (mImsRegistrationRadioTechMap.get(phoneId, REGISTRATION_TECH_NONE) == tech) {
+            // Registration tech not changed
+            return false;
+        }
+
+        mImsRegistrationRadioTechMap.put(phoneId, tech);
+
+        if (subId == INVALID_SUBSCRIPTION_ID) {
+            // Need to update the cached IMS registration tech but no need to do any of the
+            // following. When the SIM removed, REGISTRATION_STATE_NOT_REGISTERED is notified.
+            return false;
+        }
+
+        return true;
+    }
+
     private synchronized void onMultiSimConfigChanged(int activeModemCount) {
         // No change.
         if (mActiveModemCount == activeModemCount) return;
@@ -932,6 +998,14 @@ public class PhoneSwitcher extends Handler {
             if (phone.getImsPhone() != null) {
                 phone.getImsPhone().registerForPreciseCallStateChanged(
                         this, EVENT_PRECISE_CALL_STATE_CHANGED, null);
+                if (mFlags.changeMethodOfObtainingImsRegistrationRadioTech()) {
+                    // Initialize IMS registration tech for new phoneId
+                    mImsRegistrationRadioTechMap.put(phoneId, REGISTRATION_TECH_NONE);
+                    ((ImsPhone) phone.getImsPhone()).registerForImsRegistrationChanges(
+                            this, EVENT_IMS_RADIO_TECH_CHANGED, null);
+
+                    log("register handler to receive IMS registration : " + phoneId);
+                }
             }
 
             mDataSettingsManagerCallbacks.computeIfAbsent(phone.getPhoneId(),
@@ -954,7 +1028,10 @@ public class PhoneSwitcher extends Handler {
 
             Set<CommandException.Error> ddsFailure = new HashSet<CommandException.Error>();
             mCurrentDdsSwitchFailure.add(ddsFailure);
-            registerForImsRadioTechChange(mContext, phoneId);
+
+            if (!mFlags.changeMethodOfObtainingImsRegistrationRadioTech()) {
+                registerForImsRadioTechChange(mContext, phoneId);
+            }
         }
 
         mAutoDataSwitchController.onMultiSimConfigChanged(activeModemCount);
@@ -1121,10 +1198,14 @@ public class PhoneSwitcher extends Handler {
                     mAutoSelectedDataSubId = DEFAULT_SUBSCRIPTION_ID;
                 }
                 mPhoneSubscriptions[i] = sub;
-                // Listen to IMS radio tech change for new sub
-                if (SubscriptionManager.isValidSubscriptionId(sub)) {
-                    registerForImsRadioTechChange(mContext, i);
+
+                if (!mFlags.changeMethodOfObtainingImsRegistrationRadioTech()) {
+                    // Listen to IMS radio tech change for new sub
+                    if (SubscriptionManager.isValidSubscriptionId(sub)) {
+                        registerForImsRadioTechChange(mContext, i);
+                    }
                 }
+
                 diffDetected = true;
                 mAutoDataSwitchController.notifySubscriptionsMappingChanged();
             }
