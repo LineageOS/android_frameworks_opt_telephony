@@ -1656,7 +1656,7 @@ public class SatelliteControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testSupportedSatelliteServices() {
+    public void testSupportedSatelliteServices() throws Exception {
         when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(false);
         List<String> satellitePlmnList = mSatelliteControllerUT.getSatellitePlmnsForCarrier(
                 SUB_ID);
@@ -1670,6 +1670,7 @@ public class SatelliteControllerTest extends TelephonyTest {
                 R.array.config_satellite_providers, satelliteProviderStrArray);
         int[] expectedSupportedServices2 = {2};
         int[] expectedSupportedServices3 = {1, 3};
+        int[] defaultSupportedServices = {5, 6};
         PersistableBundle carrierSupportedSatelliteServicesPerProvider = new PersistableBundle();
         carrierSupportedSatelliteServicesPerProvider.putIntArray(
                 "00102", expectedSupportedServices2);
@@ -1679,6 +1680,9 @@ public class SatelliteControllerTest extends TelephonyTest {
         mCarrierConfigBundle.putPersistableBundle(CarrierConfigManager
                         .KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE,
                 carrierSupportedSatelliteServicesPerProvider);
+        mCarrierConfigBundle.putIntArray(
+                CarrierConfigManager.KEY_CARRIER_ROAMING_SATELLITE_DEFAULT_SERVICES_INT_ARRAY,
+                defaultSupportedServices);
         TestSatelliteController testSatelliteController =
                 new TestSatelliteController(mContext, Looper.myLooper(), mFeatureFlags);
 
@@ -1688,6 +1692,9 @@ public class SatelliteControllerTest extends TelephonyTest {
                 testSatelliteController.getSupportedSatelliteServices(SUB_ID, "00101");
         assertTrue(supportedSatelliteServices.isEmpty());
 
+        // Add entitlement provided PLMNs.
+        setEntitlementPlmnList(testSatelliteController, SUB_ID,
+                Arrays.asList("00102", "00104", "00105"));
         // Carrier config changed with carrierEnabledSatelliteFlag disabled
         for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
                 : mCarrierConfigChangedListenerList) {
@@ -1702,6 +1709,12 @@ public class SatelliteControllerTest extends TelephonyTest {
         assertTrue(supportedSatelliteServices.isEmpty());
         supportedSatelliteServices =
                 testSatelliteController.getSupportedSatelliteServices(SUB_ID, "00103");
+        assertTrue(supportedSatelliteServices.isEmpty());
+        supportedSatelliteServices =
+                testSatelliteController.getSupportedSatelliteServices(SUB_ID, "00104");
+        assertTrue(supportedSatelliteServices.isEmpty());
+        supportedSatelliteServices =
+                testSatelliteController.getSupportedSatelliteServices(SUB_ID, "00105");
         assertTrue(supportedSatelliteServices.isEmpty());
 
         // Trigger carrier config changed with carrierEnabledSatelliteFlag enabled
@@ -1721,6 +1734,7 @@ public class SatelliteControllerTest extends TelephonyTest {
                 expectedSupportedSatellitePlmns, satellitePlmnList.stream().toArray()));
         supportedSatelliteServices =
                 mSatelliteControllerUT.getSupportedSatelliteServices(SUB_ID, "00102");
+        // "00101" should return carrier config assigned value, though it is in allowed list.
         assertTrue(Arrays.equals(expectedSupportedServices2,
                 supportedSatelliteServices.stream()
                         .mapToInt(Integer::intValue)
@@ -1728,6 +1742,19 @@ public class SatelliteControllerTest extends TelephonyTest {
         supportedSatelliteServices =
                 mSatelliteControllerUT.getSupportedSatelliteServices(SUB_ID, "00103");
         assertTrue(Arrays.equals(expectedSupportedServices3,
+                supportedSatelliteServices.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray()));
+        // "00104", and "00105" should return default supported service.
+        supportedSatelliteServices =
+                testSatelliteController.getSupportedSatelliteServices(SUB_ID, "00104");
+        assertTrue(Arrays.equals(defaultSupportedServices,
+                supportedSatelliteServices.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray()));
+        supportedSatelliteServices =
+                testSatelliteController.getSupportedSatelliteServices(SUB_ID, "00105");
+        assertTrue(Arrays.equals(defaultSupportedServices,
                 supportedSatelliteServices.stream()
                         .mapToInt(Integer::intValue)
                         .toArray()));
@@ -1745,13 +1772,32 @@ public class SatelliteControllerTest extends TelephonyTest {
 
         satellitePlmnList = testSatelliteController.getSatellitePlmnsForCarrier(SUB_ID);
         assertTrue(satellitePlmnList.isEmpty());
+        // "00102" and "00103" should return default supported service for SUB_ID.
         supportedSatelliteServices =
                 testSatelliteController.getSupportedSatelliteServices(SUB_ID, "00102");
-        assertTrue(supportedSatelliteServices.isEmpty());
+        assertTrue(Arrays.equals(defaultSupportedServices,
+                supportedSatelliteServices.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray()));
         supportedSatelliteServices =
                 testSatelliteController.getSupportedSatelliteServices(SUB_ID, "00103");
-        assertTrue(supportedSatelliteServices.isEmpty());
-
+        assertTrue(Arrays.equals(defaultSupportedServices,
+                supportedSatelliteServices.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray()));
+        // "00104", and "00105" should return default supported service for SUB_ID.
+        supportedSatelliteServices =
+                testSatelliteController.getSupportedSatelliteServices(SUB_ID, "00104");
+        assertTrue(Arrays.equals(defaultSupportedServices,
+                supportedSatelliteServices.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray()));
+        supportedSatelliteServices =
+                testSatelliteController.getSupportedSatelliteServices(SUB_ID, "00105");
+        assertTrue(Arrays.equals(defaultSupportedServices,
+                supportedSatelliteServices.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray()));
 
         supportedSatelliteServices =
                 testSatelliteController.getSupportedSatelliteServices(SUB_ID1, "00102");
@@ -1764,6 +1810,19 @@ public class SatelliteControllerTest extends TelephonyTest {
         supportedSatelliteServices =
                 testSatelliteController.getSupportedSatelliteServices(SUB_ID1, "00103");
         assertTrue(Arrays.equals(expectedSupportedServices3,
+                supportedSatelliteServices.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray()));
+        /* "00104", and "00105" should return default supported service. */
+        supportedSatelliteServices =
+                testSatelliteController.getSupportedSatelliteServices(SUB_ID1, "00104");
+        assertTrue(Arrays.equals(defaultSupportedServices,
+                supportedSatelliteServices.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray()));
+        supportedSatelliteServices =
+                testSatelliteController.getSupportedSatelliteServices(SUB_ID1, "00105");
+        assertTrue(Arrays.equals(defaultSupportedServices,
                 supportedSatelliteServices.stream()
                         .mapToInt(Integer::intValue)
                         .toArray()));
@@ -2902,6 +2961,17 @@ public class SatelliteControllerTest extends TelephonyTest {
         }
         replaceInstance(SatelliteController.class, "mEntitlementPlmnListPerCarrier",
                 mSatelliteControllerUT, entitlementPlmnListPerCarrier);
+    }
+
+    private void setEntitlementPlmnList(SatelliteController targetClass, int subId,
+            List<String> plmnList) throws Exception {
+        SparseArray<List<String>> entitlementPlmnListPerCarrier = new SparseArray<>();
+        if (!plmnList.isEmpty()) {
+            entitlementPlmnListPerCarrier.clear();
+            entitlementPlmnListPerCarrier.put(subId, plmnList);
+        }
+        replaceInstance(SatelliteController.class, "mEntitlementPlmnListPerCarrier",
+                targetClass, entitlementPlmnListPerCarrier);
     }
 
     private void setConfigDataPlmnList(List<String> plmnList) {
