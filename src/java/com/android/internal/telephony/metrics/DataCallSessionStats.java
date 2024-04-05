@@ -41,6 +41,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.data.DataNetwork;
 import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
+import com.android.internal.telephony.satellite.SatelliteController;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.telephony.Rlog;
@@ -64,10 +65,12 @@ public class DataCallSessionStats {
     public static final int SIZE_LIMIT_HANDOVER_FAILURES = 15;
 
     private final DefaultNetworkMonitor mDefaultNetworkMonitor;
+    private final SatelliteController mSatelliteController;
 
     public DataCallSessionStats(Phone phone) {
         mPhone = phone;
         mDefaultNetworkMonitor = PhoneFactory.getMetricsCollector().getDefaultNetworkMonitor();
+        mSatelliteController = SatelliteController.getInstance();
     }
 
     private boolean isSystemDefaultNetworkMobile() {
@@ -303,6 +306,7 @@ public class DataCallSessionStats {
                 call.handoverFailureRat.length);
         copy.isNonDds = call.isNonDds;
         copy.isIwlanCrossSim = call.isIwlanCrossSim;
+        copy.isNtn = call.isNtn;
         return copy;
     }
 
@@ -329,6 +333,8 @@ public class DataCallSessionStats {
         proto.handoverFailureRat = new int[0];
         proto.isNonDds = false;
         proto.isIwlanCrossSim = false;
+        proto.isNtn = mSatelliteController != null
+                ? mSatelliteController.isInSatelliteModeForCarrierRoaming(mPhone) : false;
         return proto;
     }
 

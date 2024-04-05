@@ -30,15 +30,20 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
+import android.platform.test.flag.junit.CheckFlagsRule;
+import android.platform.test.flag.junit.DeviceFlagsValueProvider;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.NetworkRegistrationInfo;
@@ -58,6 +63,7 @@ import com.android.internal.telephony.uicc.UiccSlot;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -75,6 +81,9 @@ public class ServiceStateStatsTest extends TelephonyTest {
     private Phone mSecondPhone;
 
     private TestableServiceStateStats mServiceStateStats;
+
+    @Rule
+    public final CheckFlagsRule mCheckFlagsRule = DeviceFlagsValueProvider.createCheckFlagsRule();
 
     private static class TestableServiceStateStats extends ServiceStateStats {
         private long mTimeMillis = START_TIME_MILLIS;
@@ -1322,6 +1331,34 @@ public class ServiceStateStatsTest extends TelephonyTest {
         state = captor.getAllValues().get(2);
         assertEquals(false, state.overrideVoiceService);
         verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    public void testIsNtn() {
+        // Using default service state for LTE
+        mServiceStateStats.onServiceStateChanged(mServiceState);
+        mServiceStateStats.incTimeMillis(100L);
+        mServiceStateStats.conclude();
+
+        ArgumentCaptor<CellularServiceState> captor =
+                ArgumentCaptor.forClass(CellularServiceState.class);
+        verify(mPersistAtomsStorage)
+                .addCellularServiceStateAndCellularDataServiceSwitch(captor.capture(), eq(null));
+        CellularServiceState state = captor.getValue();
+        assertFalse(state.isNtn);
+
+        reset(mPersistAtomsStorage);
+        reset(mServiceState);
+
+        when(mSatelliteController.isInSatelliteModeForCarrierRoaming(any())).thenReturn(true);
+        mServiceStateStats.onServiceStateChanged(mServiceState);
+        mServiceStateStats.incTimeMillis(100L);
+        mServiceStateStats.conclude();
+
+        verify(mPersistAtomsStorage)
+                .addCellularServiceStateAndCellularDataServiceSwitch(captor.capture(), eq(null));
+        state = captor.getValue();
+        assertTrue(state.isNtn);
     }
 
     private void mockWwanPsRat(@NetworkType int rat) {
