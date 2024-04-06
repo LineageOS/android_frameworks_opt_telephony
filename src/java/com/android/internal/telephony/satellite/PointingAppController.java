@@ -160,12 +160,14 @@ public class PointingAppController {
     }
 
     private static final class DatagramTransferStateHandlerRequest {
+        public int datagramType;
         public int datagramTransferState;
         public int pendingCount;
         public int errorCode;
 
-        DatagramTransferStateHandlerRequest(int datagramTransferState, int pendingCount,
-                int errorCode) {
+        DatagramTransferStateHandlerRequest(int datagramType, int datagramTransferState,
+                int pendingCount, int errorCode) {
+            this.datagramType = datagramType;
             this.datagramTransferState = datagramTransferState;
             this.pendingCount = pendingCount;
             this.errorCode = errorCode;
@@ -232,8 +234,9 @@ public class PointingAppController {
                     List<IBinder> toBeRemoved = new ArrayList<>();
                     mListeners.values().forEach(listener -> {
                         try {
-                            listener.onSendDatagramStateChanged(request.datagramTransferState,
-                                    request.pendingCount, request.errorCode);
+                            listener.onSendDatagramStateChanged(request.datagramType,
+                                    request.datagramTransferState, request.pendingCount,
+                                    request.errorCode);
                         } catch (RemoteException e) {
                             logd("EVENT_SEND_DATAGRAM_STATE_CHANGED RemoteException: " + e);
                             toBeRemoved.add(listener.asBinder());
@@ -403,10 +406,11 @@ public class PointingAppController {
     }
 
     public void updateSendDatagramTransferState(int subId,
+            @SatelliteManager.DatagramType int datagramType,
             @SatelliteManager.SatelliteDatagramTransferState int datagramTransferState,
             int sendPendingCount, int errorCode) {
         DatagramTransferStateHandlerRequest request = new DatagramTransferStateHandlerRequest(
-                datagramTransferState, sendPendingCount, errorCode);
+                datagramType, datagramTransferState, sendPendingCount, errorCode);
         SatelliteTransmissionUpdateHandler handler =
                 mSatelliteTransmissionUpdateHandlers.get(subId);
 
@@ -424,7 +428,8 @@ public class PointingAppController {
             @SatelliteManager.SatelliteDatagramTransferState int datagramTransferState,
             int receivePendingCount, int errorCode) {
         DatagramTransferStateHandlerRequest request = new DatagramTransferStateHandlerRequest(
-                datagramTransferState, receivePendingCount, errorCode);
+                SatelliteManager.DATAGRAM_TYPE_UNKNOWN, datagramTransferState, receivePendingCount,
+                errorCode);
         SatelliteTransmissionUpdateHandler handler =
                 mSatelliteTransmissionUpdateHandlers.get(subId);
 
