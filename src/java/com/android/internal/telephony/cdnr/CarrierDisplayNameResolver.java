@@ -340,6 +340,7 @@ public class CarrierDisplayNameResolver {
 
         return new CarrierDisplayNameData.Builder()
                 .setSpn(spn)
+                .setDataSpn(spn)
                 .setShowSpn(showSpn)
                 .setPlmn(plmn)
                 .setShowPlmn(showPlmn)
