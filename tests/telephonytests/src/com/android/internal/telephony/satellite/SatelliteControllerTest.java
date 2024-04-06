@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.satellite;
 
+import static android.telephony.CarrierConfigManager.KEY_EMERGENCY_CALL_TO_SATELLITE_T911_HANDOVER_TIMEOUT_MILLIS_INT;
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL;
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_CONNECTION_HYSTERESIS_SEC_INT;
 import static android.telephony.SubscriptionManager.SATELLITE_ENTITLEMENT_STATUS;
@@ -57,6 +58,7 @@ import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SERV
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SERVICE_PROVISION_IN_PROGRESS;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
+import static com.android.internal.telephony.satellite.SatelliteController.DEFAULT_CARRIER_EMERGENCY_CALL_WAIT_FOR_CONNECTION_TIMEOUT_MILLIS;
 import static com.android.internal.telephony.satellite.SatelliteController.SATELLITE_MODE_ENABLED_FALSE;
 import static com.android.internal.telephony.satellite.SatelliteController.SATELLITE_MODE_ENABLED_TRUE;
 
@@ -3552,6 +3554,105 @@ public class SatelliteControllerTest extends TelephonyTest {
         int errorCode = mSatelliteControllerUT.registerForSatelliteSupportedStateChanged(
                 SUB_ID, callback);
         assertEquals(SATELLITE_RESULT_REQUEST_NOT_SUPPORTED, errorCode);
+    }
+
+    @Test
+    public void testIsSatelliteEmergencyMessagingSupportedViaCarrier() {
+        // Carrier-enabled flag is off
+        when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(false);
+        assertFalse(mSatelliteControllerUT.isSatelliteEmergencyMessagingSupportedViaCarrier());
+
+        // Carrier-enabled flag is on and satellite attach is not supported
+        when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(true);
+        assertFalse(mSatelliteControllerUT.isSatelliteEmergencyMessagingSupportedViaCarrier());
+
+        // Trigger carrier config changed to enable satellite attach
+        mCarrierConfigBundle.putBoolean(
+                CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL, true);
+        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
+                : mCarrierConfigChangedListenerList) {
+            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
+                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
+            );
+        }
+        processAllMessages();
+        assertFalse(mSatelliteControllerUT.isSatelliteEmergencyMessagingSupportedViaCarrier());
+
+        // Trigger carrier config changed to enable satellite attach & emergency messaging
+        mCarrierConfigBundle.putBoolean(
+                CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL, true);
+        mCarrierConfigBundle.putBoolean(
+                CarrierConfigManager.KEY_EMERGENCY_MESSAGING_SUPPORTED_BOOL, true);
+        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
+                : mCarrierConfigChangedListenerList) {
+            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
+                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
+            );
+        }
+        processAllMessages();
+        assertTrue(mSatelliteControllerUT.isSatelliteEmergencyMessagingSupportedViaCarrier());
+    }
+
+    @Test
+    public void testGetCarrierEmergencyCallWaitForConnectionTimeoutMillis() {
+        // Carrier-enabled flag is off
+        when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(false);
+        assertEquals(DEFAULT_CARRIER_EMERGENCY_CALL_WAIT_FOR_CONNECTION_TIMEOUT_MILLIS,
+                mSatelliteControllerUT.getCarrierEmergencyCallWaitForConnectionTimeoutMillis());
+
+        // Carrier-enabled flag is on
+        when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(true);
+        assertEquals(DEFAULT_CARRIER_EMERGENCY_CALL_WAIT_FOR_CONNECTION_TIMEOUT_MILLIS,
+                mSatelliteControllerUT.getCarrierEmergencyCallWaitForConnectionTimeoutMillis());
+
+        // Trigger carrier config changed to enable satellite attach
+        int timeoutMillisForCarrier1 = 1000;
+        PersistableBundle carrierConfigBundle1 = new PersistableBundle();
+        carrierConfigBundle1.putBoolean(
+                CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL, true);
+        carrierConfigBundle1.putBoolean(
+                CarrierConfigManager.KEY_EMERGENCY_MESSAGING_SUPPORTED_BOOL, true);
+        carrierConfigBundle1.putInt(
+                KEY_EMERGENCY_CALL_TO_SATELLITE_T911_HANDOVER_TIMEOUT_MILLIS_INT,
+                timeoutMillisForCarrier1);
+        doReturn(carrierConfigBundle1)
+                .when(mCarrierConfigManager).getConfigForSubId(eq(SUB_ID), anyVararg());
+
+        int timeoutMillisForCarrier2 = 2000;
+        PersistableBundle carrierConfigBundle2 = new PersistableBundle();
+        carrierConfigBundle2.putBoolean(
+                CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL, true);
+        carrierConfigBundle2.putBoolean(
+                CarrierConfigManager.KEY_EMERGENCY_MESSAGING_SUPPORTED_BOOL, true);
+        carrierConfigBundle2.putInt(
+                KEY_EMERGENCY_CALL_TO_SATELLITE_T911_HANDOVER_TIMEOUT_MILLIS_INT,
+                timeoutMillisForCarrier2);
+        doReturn(carrierConfigBundle2)
+                .when(mCarrierConfigManager).getConfigForSubId(eq(SUB_ID1), anyVararg());
+
+        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
+                : mCarrierConfigChangedListenerList) {
+            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
+                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
+            );
+        }
+        processAllMessages();
+
+        // Both phones are not in satellite mode for carrier roaming, and thus the max timeout
+        // duration - timeoutMillisForCarrier2 - is used
+        assertEquals(timeoutMillisForCarrier2,
+                mSatelliteControllerUT.getCarrierEmergencyCallWaitForConnectionTimeoutMillis());
+
+        // Phone 1 is in satellite mode for carrier roaming
+        when(mServiceState.isUsingNonTerrestrialNetwork()).thenReturn(true);
+        assertEquals(timeoutMillisForCarrier1,
+                mSatelliteControllerUT.getCarrierEmergencyCallWaitForConnectionTimeoutMillis());
+
+        // Both phones are in satellite mode for carrier roaming. The timeout duration of the first
+        // phone will be selected
+        when(mServiceState2.isUsingNonTerrestrialNetwork()).thenReturn(true);
+        assertEquals(timeoutMillisForCarrier1,
+                mSatelliteControllerUT.getCarrierEmergencyCallWaitForConnectionTimeoutMillis());
     }
 
     private void resetSatelliteControllerUTEnabledState() {

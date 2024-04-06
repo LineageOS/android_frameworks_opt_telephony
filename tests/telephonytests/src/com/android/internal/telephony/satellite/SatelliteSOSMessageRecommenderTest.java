@@ -86,7 +86,7 @@ import java.util.concurrent.Executor;
 @TestableLooper.RunWithLooper
 public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
     private static final String TAG = "SatelliteSOSMessageRecommenderTest";
-    private static final long TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS = 500;
+    private static final int TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS = 500;
     private static final int PHONE_ID = 0;
     private static final int PHONE_ID2 = 1;
     private static final String CALL_ID = "CALL_ID";
@@ -118,6 +118,9 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
                 .thenReturn("");
         when(mResources.getString(R.string.config_satellite_emergency_handover_intent_action))
                 .thenReturn(DEFAULT_HANDOVER_INTENT_ACTION);
+        when(mResources.getInteger(
+                R.integer.config_emergency_call_wait_for_connection_timeout_millis))
+                .thenReturn(TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
         when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
         mTestSatelliteController = new TestSatelliteController(mContext,
                 Looper.myLooper(), mFeatureFlags);
@@ -132,8 +135,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         when(mPhone2.getServiceState()).thenReturn(mServiceState2);
         when(mPhone2.getPhoneId()).thenReturn(PHONE_ID2);
         mTestSOSMessageRecommender = new TestSOSMessageRecommender(mContext, Looper.myLooper(),
-                mTestSatelliteController, mTestImsManager,
-                TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
+                mTestSatelliteController, mTestImsManager);
         when(mServiceState.getState()).thenReturn(ServiceState.STATE_OUT_OF_SERVICE);
         when(mServiceState2.getState()).thenReturn(ServiceState.STATE_OUT_OF_SERVICE);
         when(mPhone.isImsRegistered()).thenReturn(false);
@@ -505,8 +507,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         TestSOSMessageRecommender testSOSMessageRecommender = new TestSOSMessageRecommender(
                 mContext,
                 Looper.myLooper(),
-                satelliteController, mTestImsManager,
-                TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
+                satelliteController, mTestImsManager);
         testSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
         processAllMessages();
 
@@ -530,6 +531,32 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
 
         mTestSatelliteController.mIsSatelliteViaOemProvisioned =
                 originalIsSatelliteViaOemProvisioned;
+    }
+
+    @Test
+    public void testSelectEmergencyCallWaitForConnectionTimeoutDuration() {
+        // Both OEM and carrier don't support satellite
+        mTestSatelliteController.isSatelliteEmergencyMessagingSupportedViaCarrier = false;
+        mTestSatelliteController.isOemEnabledSatelliteSupported = false;
+        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
+        processAllMessages();
+        assertEquals(0, mTestSOSMessageRecommender.getTimeOutMillis());
+
+        // Only OEM support satellite
+        mTestSatelliteController.isOemEnabledSatelliteSupported = true;
+        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
+        processAllMessages();
+        assertEquals(TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS,
+                mTestSOSMessageRecommender.getTimeOutMillis());
+
+        // Both OEM and carrier support satellite. Thus, carrier's timeout duration will be used
+        long carrierTimeoutMillis = 1000;
+        mTestSatelliteController.isSatelliteEmergencyMessagingSupportedViaCarrier = true;
+        mTestSatelliteController.carrierEmergencyCallWaitForConnectionTimeoutMillis =
+                carrierTimeoutMillis;
+        mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
+        processAllMessages();
+        assertEquals(carrierTimeoutMillis, mTestSOSMessageRecommender.getTimeOutMillis());
     }
 
     private void testStopTrackingCallBeforeTimeout(
@@ -636,6 +663,9 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         private boolean mIsSatelliteConnectedViaCarrierWithinHysteresisTime = true;
         public boolean isOemEnabledSatelliteSupported = true;
         public boolean isCarrierEnabledSatelliteSupported = true;
+        public boolean isSatelliteEmergencyMessagingSupportedViaCarrier = true;
+        public long carrierEmergencyCallWaitForConnectionTimeoutMillis =
+                TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS;
 
         /**
          * Create a SatelliteController to act as a backend service of
@@ -694,6 +724,16 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         @Override
         protected int getEnforcedEmergencyCallToSatelliteHandoverType() {
             return INVALID_EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE;
+        }
+
+        @Override
+        public boolean isSatelliteEmergencyMessagingSupportedViaCarrier() {
+            return isSatelliteEmergencyMessagingSupportedViaCarrier;
+        }
+
+        @Override
+        public long getCarrierEmergencyCallWaitForConnectionTimeoutMillis() {
+            return carrierEmergencyCallWaitForConnectionTimeoutMillis;
         }
 
         public void setSatelliteConnectedViaCarrierWithinHysteresisTime(
@@ -811,12 +851,10 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
          * @param imsManager          The ImsManager instance associated with the phone, which is
          *                            used for making the emergency call. This argument is not
          *                            null only in unit tests.
-         * @param timeoutMillis       The timeout duration of the timer.
          */
         TestSOSMessageRecommender(Context context, Looper looper,
-                SatelliteController satelliteController, ImsManager imsManager,
-                long timeoutMillis) {
-            super(context, looper, satelliteController, imsManager, timeoutMillis);
+                SatelliteController satelliteController, ImsManager imsManager) {
+            super(context, looper, satelliteController, imsManager);
         }
 
         @Override
@@ -842,6 +880,10 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
 
         public void sendServiceStateChangedEvent() {
             sendMessage(obtainMessage(EVENT_SERVICE_STATE_CHANGED));
+        }
+
+        public long getTimeOutMillis() {
+            return mTimeoutMillis;
         }
     }
 
