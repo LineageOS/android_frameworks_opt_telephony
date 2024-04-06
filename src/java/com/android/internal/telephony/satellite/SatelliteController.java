@@ -18,9 +18,11 @@ package com.android.internal.telephony.satellite;
 
 import static android.provider.Settings.ACTION_SATELLITE_SETTING;
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE;
+import static android.telephony.CarrierConfigManager.KEY_EMERGENCY_CALL_TO_SATELLITE_T911_HANDOVER_TIMEOUT_MILLIS_INT;
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL;
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_CONNECTION_HYSTERESIS_SEC_INT;
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_ROAMING_SATELLITE_DEFAULT_SERVICES_INT_ARRAY;
+import static android.telephony.CarrierConfigManager.KEY_EMERGENCY_MESSAGING_SUPPORTED_BOOL;
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_ENTITLEMENT_SUPPORTED_BOOL;
 import static android.telephony.SubscriptionManager.SATELLITE_ATTACH_ENABLED_FOR_CARRIER;
 import static android.telephony.SubscriptionManager.SATELLITE_ENTITLEMENT_STATUS;
@@ -129,11 +131,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -164,6 +166,9 @@ public class SatelliteController extends Handler {
     /** Key used to read/write OEM-enabled satellite provision status in shared preferences. */
     private static final String OEM_ENABLED_SATELLITE_PROVISION_STATUS_KEY =
             "oem_enabled_satellite_provision_status_key";
+
+    public static final long DEFAULT_CARRIER_EMERGENCY_CALL_WAIT_FOR_CONNECTION_TIMEOUT_MILLIS =
+            TimeUnit.SECONDS.toMillis(30);
 
     /** Message codes used in handleMessage() */
     //TODO: Move the Commands and events related to position updates to PointingAppController
@@ -2639,6 +2644,32 @@ public class SatelliteController extends Handler {
     }
 
     /**
+     * @return {@code true} if satellite emergency messaging is supported via carrier by any
+     * subscription on the device, {@code false} otherwise.
+     */
+    public boolean isSatelliteEmergencyMessagingSupportedViaCarrier() {
+        if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
+            logd("isSatelliteEmergencyMessagingSupportedViaCarrier: carrierEnabledSatelliteFlag is"
+                    + " disabled");
+            return false;
+        }
+        for (Phone phone : PhoneFactory.getPhones()) {
+            if (isSatelliteEmergencyMessagingSupportedViaCarrier(phone.getSubId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isSatelliteEmergencyMessagingSupportedViaCarrier(int subId) {
+        if (!isSatelliteSupportedViaCarrier(subId)) {
+            return false;
+        }
+        PersistableBundle config = getPersistableBundle(subId);
+        return config.getBoolean(KEY_EMERGENCY_MESSAGING_SUPPORTED_BOOL);
+    }
+
+    /**
      * @return {@code Pair<true, subscription ID>} if any subscription on the device is connected to
      * satellite, {@code Pair<false, null>} otherwise.
      */
@@ -2755,6 +2786,38 @@ public class SatelliteController extends Handler {
         }
 
         return new ArrayList<>();
+    }
+
+    /**
+     * Get the carrier-enabled emergency call wait for connection timeout millis
+     */
+    public long getCarrierEmergencyCallWaitForConnectionTimeoutMillis() {
+        long maxTimeoutMillis = 0;
+        for (Phone phone : PhoneFactory.getPhones()) {
+            if (!isSatelliteEmergencyMessagingSupportedViaCarrier(phone.getSubId())) {
+                continue;
+            }
+
+            int timeoutMillis =
+                    getCarrierEmergencyCallWaitForConnectionTimeoutMillis(phone.getSubId());
+            // Prioritize getting the timeout duration from the phone that is in satellite mode
+            // with carrier roaming
+            if (isInSatelliteModeForCarrierRoaming(phone)) {
+                return timeoutMillis;
+            }
+            if (maxTimeoutMillis < timeoutMillis) {
+                maxTimeoutMillis = timeoutMillis;
+            }
+        }
+        if (maxTimeoutMillis != 0) {
+            return maxTimeoutMillis;
+        }
+        return DEFAULT_CARRIER_EMERGENCY_CALL_WAIT_FOR_CONNECTION_TIMEOUT_MILLIS;
+    }
+
+    private int getCarrierEmergencyCallWaitForConnectionTimeoutMillis(int subId) {
+        PersistableBundle config = getPersistableBundle(subId);
+        return config.getInt(KEY_EMERGENCY_CALL_TO_SATELLITE_T911_HANDOVER_TIMEOUT_MILLIS_INT);
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
@@ -3563,7 +3626,9 @@ public class SatelliteController extends Handler {
                 KEY_SATELLITE_ATTACH_SUPPORTED_BOOL,
                 KEY_SATELLITE_CONNECTION_HYSTERESIS_SEC_INT,
                 KEY_SATELLITE_ENTITLEMENT_SUPPORTED_BOOL,
-                KEY_CARRIER_ROAMING_SATELLITE_DEFAULT_SERVICES_INT_ARRAY);
+                KEY_CARRIER_ROAMING_SATELLITE_DEFAULT_SERVICES_INT_ARRAY,
+                KEY_EMERGENCY_MESSAGING_SUPPORTED_BOOL,
+                KEY_EMERGENCY_CALL_TO_SATELLITE_T911_HANDOVER_TIMEOUT_MILLIS_INT);
         if (config == null || config.isEmpty()) {
             config = CarrierConfigManager.getDefaultConfig();
         }

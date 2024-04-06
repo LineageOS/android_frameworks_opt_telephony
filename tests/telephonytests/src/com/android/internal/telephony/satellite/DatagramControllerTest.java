@@ -16,7 +16,10 @@
 
 package com.android.internal.telephony.satellite;
 
+import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_KEEP_ALIVE;
+import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_LOCATION_SHARING;
 import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE;
+import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_UNKNOWN;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING;
@@ -77,10 +80,10 @@ public class DatagramControllerTest extends TelephonyTest {
                 mContext, Looper.myLooper(), mMockPointingAppController);
 
         // Move both send and receive to IDLE state
-        mDatagramControllerUT.updateSendStatus(SUB_ID, SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
-                0, SATELLITE_RESULT_SUCCESS);
-        mDatagramControllerUT.updateReceiveStatus(SUB_ID, SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
-                0, SATELLITE_RESULT_SUCCESS);
+        mDatagramControllerUT.updateSendStatus(SUB_ID, DATAGRAM_TYPE_UNKNOWN,
+                SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE, 0, SATELLITE_RESULT_SUCCESS);
+        mDatagramControllerUT.updateReceiveStatus(SUB_ID, SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE, 0,
+                SATELLITE_RESULT_SUCCESS);
         pushDemoModeSosDatagram();
     }
 
@@ -92,9 +95,12 @@ public class DatagramControllerTest extends TelephonyTest {
 
     @Test
     public void testUpdateSendStatus() throws Exception {
-        testUpdateSendStatus(true, SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING);
-        testUpdateSendStatus(true, SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE);
-        testUpdateSendStatus(false, SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING);
+        testUpdateSendStatus(true, DATAGRAM_TYPE_SOS_MESSAGE,
+                SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING);
+        testUpdateSendStatus(true, DATAGRAM_TYPE_LOCATION_SHARING,
+                SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE);
+        testUpdateSendStatus(false, DATAGRAM_TYPE_KEEP_ALIVE,
+                SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING);
     }
 
     @Test
@@ -110,18 +116,19 @@ public class DatagramControllerTest extends TelephonyTest {
         testSetDeviceAlignedWithSatellite(false);
     }
 
-    private void testUpdateSendStatus(boolean isDemoMode, int sendState) {
+    private void testUpdateSendStatus(boolean isDemoMode, int datagramType, int sendState) {
         mDatagramControllerUT.setDemoMode(isDemoMode);
         clearAllInvocations();
 
         int sendPendingCount = 1;
         int errorCode = SATELLITE_RESULT_SUCCESS;
-        mDatagramControllerUT.updateSendStatus(SUB_ID, sendState, sendPendingCount, errorCode);
+        mDatagramControllerUT.updateSendStatus(SUB_ID, datagramType, sendState, sendPendingCount,
+                errorCode);
 
         verify(mMockSatelliteSessionController)
                 .onDatagramTransferStateChanged(eq(sendState), anyInt());
         verify(mMockPointingAppController).updateSendDatagramTransferState(
-                eq(SUB_ID), eq(sendState), eq(sendPendingCount), eq(errorCode));
+                eq(SUB_ID), eq(datagramType), eq(sendState), eq(sendPendingCount), eq(errorCode));
 
         if (isDemoMode) {
             if (sendState == SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE) {

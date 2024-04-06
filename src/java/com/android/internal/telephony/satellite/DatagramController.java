@@ -17,6 +17,7 @@
 package com.android.internal.telephony.satellite;
 
 import static android.telephony.SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
+import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_UNKNOWN;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING;
@@ -73,6 +74,8 @@ public class DatagramController {
     private final Object mLock = new Object();
     @GuardedBy("mLock")
     private int mSendSubId;
+    @GuardedBy("mLock")
+    private @SatelliteManager.DatagramType int mDatagramType = DATAGRAM_TYPE_UNKNOWN;
     @GuardedBy("mLock")
     private @SatelliteManager.SatelliteDatagramTransferState int mSendDatagramTransferState =
             SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE;
@@ -229,21 +232,23 @@ public class DatagramController {
      * @param sendPendingCount number of datagrams that are currently being sent
      * @param errorCode If datagram transfer failed, the reason for failure.
      */
-    public void updateSendStatus(int subId,
+    public void updateSendStatus(int subId, @SatelliteManager.DatagramType int datagramType,
             @SatelliteManager.SatelliteDatagramTransferState int datagramTransferState,
             int sendPendingCount, int errorCode) {
         synchronized (mLock) {
             logd("updateSendStatus"
                     + " subId: " + subId
+                    + " datagramType: " + datagramType
                     + " datagramTransferState: " + datagramTransferState
                     + " sendPendingCount: " + sendPendingCount + " errorCode: " + errorCode);
 
             mSendSubId = subId;
+            mDatagramType = datagramType;
             mSendDatagramTransferState = datagramTransferState;
             mSendPendingCount = sendPendingCount;
             mSendErrorCode = errorCode;
             notifyDatagramTransferStateChangedToSessionController();
-            mPointingAppController.updateSendDatagramTransferState(mSendSubId,
+            mPointingAppController.updateSendDatagramTransferState(mSendSubId, mDatagramType,
                     mSendDatagramTransferState, mSendPendingCount, mSendErrorCode);
             retryPollPendingDatagramsInDemoMode();
         }

@@ -150,6 +150,7 @@ public class PointingAppControllerTest extends TelephonyTest {
     }
     private class TestSatelliteTransmissionUpdateCallback
                                 extends ISatelliteTransmissionUpdateCallback.Stub {
+        int mDatagramType;
         int mState;
         int mSendPendingCount;
         int mReceivePendingCount;
@@ -163,8 +164,9 @@ public class PointingAppControllerTest extends TelephonyTest {
         }
 
         @Override
-        public void onSendDatagramStateChanged(int state, int sendPendingCount,
+        public void onSendDatagramStateChanged(int datagramType, int state, int sendPendingCount,
                                     int errorCode) {
+            mDatagramType = datagramType;
             mState = state;
             mSendPendingCount = sendPendingCount;
             mErrorCode = errorCode;
@@ -191,6 +193,10 @@ public class PointingAppControllerTest extends TelephonyTest {
             }
         }
 
+        public int getDatagramType() {
+            return mDatagramType;
+        }
+
         public int getState() {
             return mState;
         }
@@ -208,7 +214,7 @@ public class PointingAppControllerTest extends TelephonyTest {
         }
     }
 
-    private boolean waitForReceiveDatagramStateChangedRessult(
+    private boolean waitForReceiveDatagramStateChangedResult(
             int expectedNumberOfEvents) {
         for (int i = 0; i < expectedNumberOfEvents; i++) {
             try {
@@ -218,7 +224,7 @@ public class PointingAppControllerTest extends TelephonyTest {
                     return false;
                 }
             } catch (Exception ex) {
-                loge("waitForReceiveDatagramStateChangedRessult: Got exception=" + ex);
+                loge("waitForReceiveDatagramStateChangedResult: Got exception=" + ex);
                 return false;
             }
         }
@@ -347,9 +353,12 @@ public class PointingAppControllerTest extends TelephonyTest {
         mPointingAppController.registerForSatelliteTransmissionUpdates(SUB_ID,
                 mSatelliteTransmissionUpdateCallback);
         mPointingAppController.updateSendDatagramTransferState(SUB_ID,
+                SatelliteManager.DATAGRAM_TYPE_KEEP_ALIVE,
                 SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_SUCCESS, 1,
                 SatelliteManager.SATELLITE_RESULT_SUCCESS);
         assertTrue(waitForSendDatagramStateChangedRessult(1));
+        assertEquals(SatelliteManager.DATAGRAM_TYPE_KEEP_ALIVE,
+                mSatelliteTransmissionUpdateCallback.getDatagramType());
         assertEquals(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_SUCCESS,
                 mSatelliteTransmissionUpdateCallback.getState());
         assertEquals(1, mSatelliteTransmissionUpdateCallback.getSendPendingCount());
@@ -368,7 +377,7 @@ public class PointingAppControllerTest extends TelephonyTest {
         mPointingAppController.updateReceiveDatagramTransferState(SUB_ID,
                 SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_SUCCESS, 2,
                 SatelliteManager.SATELLITE_RESULT_SUCCESS);
-        assertTrue(waitForReceiveDatagramStateChangedRessult(1));
+        assertTrue(waitForReceiveDatagramStateChangedResult(1));
         assertEquals(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_SUCCESS,
                 mSatelliteTransmissionUpdateCallback.getState());
         assertEquals(2, mSatelliteTransmissionUpdateCallback.getReceivePendingCount());
