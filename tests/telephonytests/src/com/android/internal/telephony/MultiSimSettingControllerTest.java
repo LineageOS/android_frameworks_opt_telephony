@@ -911,6 +911,28 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         // This time user data should be disabled on phone1.
         verify(mDataSettingsManagerMock2).setDataEnabled(
                 TelephonyManager.DATA_ENABLED_REASON_USER, false, PHONE_PACKAGE);
+
+        // Remove and insert back SIM before it's loaded.
+        clearInvocations(mSubscriptionManagerService);
+        markSubscriptionInactive(1/*subid*/);
+        sendCarrierConfigChanged(0/*phoneid*/, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
+        verify(mSubscriptionManagerService).setDefaultDataSubId(
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
+        // insert it back, but carrier config not loaded yet
+        clearInvocations(mSubscriptionManagerService);
+        setSimSlotIndex(1/*subid*/, 0/*phoneid*/);
+        mMultiSimSettingControllerUT.notifySubscriptionInfoChanged();
+        sendCarrierConfigChanged(0/*phoneid*/, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
+        verify(mSubscriptionManagerService, never()).setDefaultDataSubId(
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
+        // carrier config loaded
+        clearInvocations(mContext);
+        sendCarrierConfigChanged(0/*phoneid*/, 1/*subid*/);
+        verify(mContext).sendBroadcast(any());
     }
 
     @Test
