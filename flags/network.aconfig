@@ -81,14 +81,3 @@ flag {
   description: "Elevate NRI#getRejectCause from System to Public"
   bug: "239730435"
 }
-
-# OWNER=sangyun TARGET=24Q3
-flag {
-    name: "backup_and_restore_for_2g_setting"
-    namespace: "telephony"
-    description: "Support backup & restore for allow 2g (setting) option."
-    bug:"314734614"
-    metadata {
-        purpose: PURPOSE_BUGFIX
-    }
-}
