@@ -1,14 +1,6 @@
 package: "com.android.internal.telephony.flags"
 container: "system"
 
-# OWNER=linggm TARGET=24Q1
-flag {
-  name: "reject_bad_sub_id_interaction"
-  namespace: "telephony"
-  description: "Previously, the DB allows insertion of a random sub Id, but doesn't allow query it. This change rejects such interaction."
-  bug: "294125411"
-}
-
 # OWNER=hwangoo TARGET=24Q2
 flag {
   name: "sms_domain_selection_enabled"
