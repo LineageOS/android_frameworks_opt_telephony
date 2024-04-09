@@ -53,3 +53,15 @@ flag {
   description: "Supports querying if a subscription is associated with the caller"
   bug: "325045841"
 }
+
+# OWNER=nharold TARGET=24Q3
+flag {
+  name: "safer_get_phone_number"
+  namespace: "telephony"
+  description: "Safety and performance improvements for getPhoneNumber()"
+  bug: "317673478"
+
+  metadata {
+    purpose: PURPOSE_BUGFIX
+  }
+}
