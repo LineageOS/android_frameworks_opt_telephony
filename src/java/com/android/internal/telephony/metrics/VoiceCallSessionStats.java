@@ -797,11 +797,8 @@ public class VoiceCallSessionStats {
                 }
             }
         }
-        if (bearer == VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS) {
-            return TelephonyManager.NETWORK_TYPE_UNKNOWN;
-        } else {
-            return ServiceStateStats.getRat(state, NetworkRegistrationInfo.DOMAIN_CS);
-        }
+
+        return ServiceStateStats.getRat(state, NetworkRegistrationInfo.DOMAIN_CS);
     }
 
     /** Resets the list of codecs used for the connection with only the codec currently in use. */
