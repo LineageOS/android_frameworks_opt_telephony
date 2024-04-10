@@ -3712,41 +3712,114 @@ public class SubscriptionManagerService extends ISub.Stub {
             "carrier privileges",
     })
     public String getPhoneNumber(int subId, @PhoneNumberSource int source,
-            @NonNull String callingPackage, @Nullable String callingFeatureId) {
+            @NonNull String callingPackage, @Nullable String callingFeatureId /* unused */) {
         TelephonyPermissions.enforceAnyPermissionGrantedOrCarrierPrivileges(
                 mContext, subId, Binder.getCallingUid(), "getPhoneNumber",
                 Manifest.permission.READ_PHONE_NUMBERS,
                 Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
-
         enforceTelephonyFeatureWithException(callingPackage, "getPhoneNumber");
 
-        final long identity = Binder.clearCallingIdentity();
-        try {
-            SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
-                    .getSubscriptionInfoInternal(subId);
+        if (mFeatureFlags.saferGetPhoneNumber()) {
+            checkPhoneNumberSource(source);
+            subId = checkAndGetSubId(subId);
+            if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) return "";
 
-            if (subInfo == null) {
-                loge("Invalid sub id " + subId + ", callingPackage=" + callingPackage);
-                return "";
+            final long identity = Binder.clearCallingIdentity();
+            try {
+                return getPhoneNumberFromSourceInternal(subId, source);
+            } finally {
+                Binder.restoreCallingIdentity(identity);
             }
+        } else {
+            final long identity = Binder.clearCallingIdentity();
+            try {
+                SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
+                        .getSubscriptionInfoInternal(subId);
 
-            switch(source) {
-                case SubscriptionManager.PHONE_NUMBER_SOURCE_UICC:
-                    Phone phone = PhoneFactory.getPhone(getSlotIndex(subId));
-                    if (phone != null) {
+                if (subInfo == null) {
+                    loge("Invalid sub id " + subId + ", callingPackage=" + callingPackage);
+                    return "";
+                }
+
+                switch(source) {
+                    case SubscriptionManager.PHONE_NUMBER_SOURCE_UICC:
+                        Phone phone = PhoneFactory.getPhone(getSlotIndex(subId));
+                        if (phone != null) {
                         return TextUtils.emptyIfNull(phone.getLine1Number());
-                    } else {
+                        } else {
                         return subInfo.getNumber();
-                    }
-                case SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER:
-                    return subInfo.getNumberFromCarrier();
-                case SubscriptionManager.PHONE_NUMBER_SOURCE_IMS:
-                    return subInfo.getNumberFromIms();
-                default:
-                    throw new IllegalArgumentException("Invalid number source " + source);
+                        }
+                    case SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER:
+                        return subInfo.getNumberFromCarrier();
+                    case SubscriptionManager.PHONE_NUMBER_SOURCE_IMS:
+                        return subInfo.getNumberFromIms();
+                    default:
+                        throw new IllegalArgumentException("Invalid number source " + source);
+                }
+            } finally {
+                Binder.restoreCallingIdentity(identity);
             }
-        } finally {
-            Binder.restoreCallingIdentity(identity);
+        }
+    }
+
+    /**
+     * Get a resolved subId based on what the user passed in.
+     *
+     * Only use this before clearing the calling binder. Used for compatibility (only).
+     * Do not use this behavior for new methods.
+     *
+     * @param subId the subId passed in by the user.
+     */
+    private int checkAndGetSubId(int subId) {
+        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            // for historical reasons, INVALID_SUB_ID fails gracefully
+            return subId;
+        } else if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
+            return getDefaultSubId();
+        } else if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+            throw new IllegalArgumentException("Invalid SubId=" + subId);
+        } else {
+            return subId;
+        }
+    }
+
+    private void checkPhoneNumberSource(int source) {
+        if (source == SubscriptionManager.PHONE_NUMBER_SOURCE_UICC
+                || source == SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER
+                || source == SubscriptionManager.PHONE_NUMBER_SOURCE_IMS) {
+            return;
+        }
+
+        throw new IllegalArgumentException("Invalid number source " + source);
+    }
+
+    private @NonNull String getPhoneNumberFromSourceInternal(
+            int subId,
+            @PhoneNumberSource int source) {
+
+        final SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
+                .getSubscriptionInfoInternal(subId);
+
+        if (subInfo == null) {
+            loge("No SubscriptionInfo found for subId=" + subId);
+            return "";
+        }
+
+        switch(source) {
+            case SubscriptionManager.PHONE_NUMBER_SOURCE_UICC:
+                final Phone phone = PhoneFactory.getPhone(getSlotIndex(subId));
+                if (phone != null) {
+                    return TextUtils.emptyIfNull(phone.getLine1Number());
+                } else {
+                    return subInfo.getNumber();
+                }
+            case SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER:
+                return subInfo.getNumberFromCarrier();
+            case SubscriptionManager.PHONE_NUMBER_SOURCE_IMS:
+                return subInfo.getNumberFromIms();
+            default:
+                loge("No SubscriptionInfo found for subId=" + subId);
+                return "";
         }
     }
 
@@ -3782,25 +3855,51 @@ public class SubscriptionManagerService extends ISub.Stub {
         enforceTelephonyFeatureWithException(callingPackage,
                 "getPhoneNumberFromFirstAvailableSource");
 
-        String numberFromCarrier = getPhoneNumber(subId,
-                SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER, callingPackage,
-                callingFeatureId);
-        if (!TextUtils.isEmpty(numberFromCarrier)) {
-            return numberFromCarrier;
+        if (mFeatureFlags.saferGetPhoneNumber()) {
+            subId = checkAndGetSubId(subId);
+            if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) return "";
+
+            final long identity = Binder.clearCallingIdentity();
+            try {
+                String number;
+                number = getPhoneNumberFromSourceInternal(
+                        subId,
+                        SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER);
+                if (!TextUtils.isEmpty(number)) return number;
+
+                number = getPhoneNumberFromSourceInternal(
+                        subId,
+                        SubscriptionManager.PHONE_NUMBER_SOURCE_UICC);
+                if (!TextUtils.isEmpty(number)) return number;
+
+                number = getPhoneNumberFromSourceInternal(
+                        subId,
+                        SubscriptionManager.PHONE_NUMBER_SOURCE_IMS);
+                return TextUtils.emptyIfNull(number);
+            } finally {
+                Binder.restoreCallingIdentity(identity);
+            }
+        } else {
+            String numberFromCarrier = getPhoneNumber(subId,
+                    SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER, callingPackage,
+                    callingFeatureId);
+            if (!TextUtils.isEmpty(numberFromCarrier)) {
+                return numberFromCarrier;
+            }
+            String numberFromUicc = getPhoneNumber(
+                    subId, SubscriptionManager.PHONE_NUMBER_SOURCE_UICC, callingPackage,
+                    callingFeatureId);
+            if (!TextUtils.isEmpty(numberFromUicc)) {
+                return numberFromUicc;
+            }
+            String numberFromIms = getPhoneNumber(
+                    subId, SubscriptionManager.PHONE_NUMBER_SOURCE_IMS, callingPackage,
+                    callingFeatureId);
+            if (!TextUtils.isEmpty(numberFromIms)) {
+                return numberFromIms;
+            }
+            return "";
         }
-        String numberFromUicc = getPhoneNumber(
-                subId, SubscriptionManager.PHONE_NUMBER_SOURCE_UICC, callingPackage,
-                callingFeatureId);
-        if (!TextUtils.isEmpty(numberFromUicc)) {
-            return numberFromUicc;
-        }
-        String numberFromIms = getPhoneNumber(
-                subId, SubscriptionManager.PHONE_NUMBER_SOURCE_IMS, callingPackage,
-                callingFeatureId);
-        if (!TextUtils.isEmpty(numberFromIms)) {
-            return numberFromIms;
-        }
-        return "";
     }
 
     /**
