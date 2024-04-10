@@ -1,6 +1,17 @@
 package: "com.android.internal.telephony.flags"
 container: "system"
 
+# OWNER=linggm TARGET=24Q4
+flag {
+  name: "keep_empty_requests_network"
+  namespace: "telephony"
+  description: "Don't tear down network even if no requests attached to it."
+  bug: "331301784"
+  metadata {
+    purpose: PURPOSE_BUGFIX
+  }
+}
+
 # OWNER=linggm TARGET=24Q3
 flag {
   name: "auto_data_switch_allow_roaming"

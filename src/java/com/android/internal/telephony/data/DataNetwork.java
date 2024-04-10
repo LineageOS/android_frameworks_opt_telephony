@@ -1438,7 +1438,10 @@ public class DataNetwork extends StateMachine {
                         setupData();
                     } else {
                         mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
-                        mFailCause = DataFailCause.NO_RETRY_FAILURE;
+                        if (!mFlags.keepEmptyRequestsNetwork()) {
+                            // This will mark the data profile as no retry perm failure.
+                            mFailCause = DataFailCause.NO_RETRY_FAILURE;
+                        }
                         transitionTo(mDisconnectedState);
                     }
                     break;
@@ -1564,12 +1567,7 @@ public class DataNetwork extends StateMachine {
 
                 updateDataNetwork(response);
 
-                // TODO: Evaluate all network requests and see if each request still can be
-                //  satisfied.
-                //  For requests that can't be satisfied anymore, we need to put them back to the
-                //  unsatisfied pool. If none of network requests can be satisfied, then there is no
-                //  need to mark network agent connected. Just silently deactivate the data network.
-                if (mAttachedNetworkRequestList.isEmpty()) {
+                if (!mFlags.keepEmptyRequestsNetwork() && mAttachedNetworkRequestList.isEmpty()) {
                     log("Tear down the network since there is no live network request.");
                     // Directly call onTearDown here. Calling tearDown will cause deadlock because
                     // EVENT_TEAR_DOWN_NETWORK is deferred until state machine enters connected

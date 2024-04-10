@@ -1239,6 +1239,29 @@ public class DataNetworkTest extends TelephonyTest {
     }
 
     @Test
+    public void testNetworkRequestDetachedBeforeConnected() throws Exception {
+        doReturn(true).when(mFeatureFlags).keepEmptyRequestsNetwork();
+        NetworkRequestList networkRequestList = new NetworkRequestList(new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                        .build(), mPhone, mFeatureFlags));
+        mDataNetworkUT = new DataNetwork(mPhone, mFeatureFlags, Looper.myLooper(),
+                mDataServiceManagers, mImsDataProfile, networkRequestList,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, DataAllowedReason.NORMAL,
+                mDataNetworkCallback);
+        replaceInstance(DataNetwork.class, "mDataCallSessionStats",
+                mDataNetworkUT, mDataCallSessionStats);
+
+        // Remove the request before the network connect.
+        mDataNetworkUT.detachNetworkRequest(networkRequestList.getFirst(), false/*should retry*/);
+        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
+        processAllMessages();
+
+        // Verify the request proceed to connected state even without requests.
+        assertThat(mDataNetworkUT.isConnected()).isTrue();
+    }
+
+    @Test
     public void testAdminAndOwnerUids() throws Exception {
         doReturn(ADMIN_UID2).when(mCarrierPrivilegesTracker).getCarrierServicePackageUid();
         setupDataNetwork();
