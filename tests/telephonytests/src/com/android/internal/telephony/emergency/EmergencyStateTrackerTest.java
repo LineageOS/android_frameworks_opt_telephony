@@ -260,6 +260,46 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         verify(testPhone).setEmergencyMode(eq(MODE_EMERGENCY_WWAN), any());
     }
 
+    @Test
+    @SmallTest
+    public void startEmergencyCall_radioOff_turnOnRadioHangupCallTurnOffRadio() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                true /* isSuplDdsSwitchRequiredForEmergencyCall */);
+        // Create test Phones and set radio off
+        Phone testPhone = setupTestPhoneForEmergencyCall(false /* isRoaming */,
+                false /* isRadioOn */);
+        setConfigForDdsSwitch(testPhone, null,
+                CarrierConfigManager.Gps.SUPL_EMERGENCY_MODE_TYPE_DP_ONLY, "150");
+        ServiceState ss = mock(ServiceState.class);
+        doReturn(ss).when(mSST).getServiceState();
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .build();
+        doReturn(nri).when(ss).getNetworkRegistrationInfo(anyInt(), anyInt());
+        CompletableFuture<Integer> future = emergencyStateTracker.startEmergencyCall(testPhone,
+                mTestConnection1, false);
+
+        // startEmergencyCall should trigger radio on
+        ArgumentCaptor<RadioOnStateListener.Callback> callback = ArgumentCaptor
+                .forClass(RadioOnStateListener.Callback.class);
+        verify(mRadioOnHelper).triggerRadioOnAndListen(callback.capture(), eq(true), eq(testPhone),
+                eq(false), eq(DEFAULT_WAIT_FOR_IN_SERVICE_TIMEOUT_MS));
+
+        // Hangup the call
+        emergencyStateTracker.endCall(mTestConnection1);
+
+        // onTimeout and isOkToCall should return true even in case radion is off
+        assertTrue(callback.getValue()
+                .isOkToCall(testPhone, ServiceState.STATE_POWER_OFF, false));
+        assertTrue(callback.getValue()
+                .onTimeout(testPhone, ServiceState.STATE_POWER_OFF, false));
+
+        callback.getValue().onComplete(null, true);
+
+        assertFalse(future.isDone());
+    }
+
     /**
      * Test that if startEmergencyCall fails to turn on radio, then it's future completes with
      * DisconnectCause.POWER_OFF.
