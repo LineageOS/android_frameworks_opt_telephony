@@ -1555,6 +1555,11 @@ public class EmergencyStateTracker {
 
                 @Override
                 public boolean isOkToCall(Phone phone, int serviceState, boolean imsVoiceCapable) {
+                    if (!Objects.equals(mOngoingConnection, expectedConnection)) {
+                        Rlog.i(TAG, "isOkToCall "
+                                + expectedConnection.getTelecomCallId() + " canceled.");
+                        return true;
+                    }
                     // Wait for normal service state or timeout if required.
                     if (phone == phoneForEmergency
                             && waitForInServiceTimeout > 0
@@ -1567,6 +1572,11 @@ public class EmergencyStateTracker {
 
                 @Override
                 public boolean onTimeout(Phone phone, int serviceState, boolean imsVoiceCapable) {
+                    if (!Objects.equals(mOngoingConnection, expectedConnection)) {
+                        Rlog.i(TAG, "onTimeout "
+                                + expectedConnection.getTelecomCallId() + " canceled.");
+                        return true;
+                    }
                     // onTimeout shall be called only with the Phone for emergency
                     return phone.getServiceStateTracker().isRadioOn()
                             && !satelliteController.isSatelliteEnabled();
