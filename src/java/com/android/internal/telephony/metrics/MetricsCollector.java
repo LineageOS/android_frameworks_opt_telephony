@@ -1053,7 +1053,9 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 session.isIwlanCrossSimAtEnd,
                 session.isIwlanCrossSimAtConnected,
                 session.vonrEnabled,
-                session.isNtn);
+                session.isNtn,
+                session.supportsBusinessCallComposer,
+                session.callComposerStatus);
 
     }
 
