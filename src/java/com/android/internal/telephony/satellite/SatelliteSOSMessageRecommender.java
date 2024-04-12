@@ -33,6 +33,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -221,7 +222,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected ComponentName getDefaultSmsApp() {
-        return SmsApplication.getDefaultSmsApplication(mContext, false);
+        return SmsApplication.getDefaultSendToApplication(mContext, false);
     }
 
     private void handleEmergencyCallStartedEvent(@NonNull Connection connection) {
@@ -627,14 +628,27 @@ public class SatelliteSOSMessageRecommender extends Handler {
         result.putInt(EXTRA_EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE, handoverType);
         if (!TextUtils.isEmpty(packageName) && !TextUtils.isEmpty(className)) {
             result.putParcelable(EXTRA_EMERGENCY_CALL_TO_SATELLITE_LAUNCH_INTENT,
-                    createHandoverAppLaunchPendingIntent(packageName, className, action));
+                    createHandoverAppLaunchPendingIntent(
+                            handoverType, packageName, className, action));
         }
         return result;
     }
 
-    @NonNull private PendingIntent createHandoverAppLaunchPendingIntent(
+    @NonNull private PendingIntent createHandoverAppLaunchPendingIntent(int handoverType,
             @NonNull String packageName, @NonNull String className, @Nullable String action) {
-        Intent intent = new Intent(action);
+        Intent intent;
+        if (handoverType == EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_T911) {
+            String emergencyNumber = "911";
+            if (mEmergencyConnection != null) {
+                emergencyNumber = mEmergencyConnection.getAddress().getSchemeSpecificPart();
+            }
+            logd("emergencyNumber=" + emergencyNumber);
+
+            Uri uri = Uri.parse("smsto:" + emergencyNumber);
+            intent = new Intent(Intent.ACTION_SENDTO, uri);
+        } else {
+            intent = new Intent(action);
+        }
         intent.setComponent(new ComponentName(packageName, className));
         return PendingIntent.getActivity(mContext, 0, intent,
                 PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
@@ -661,8 +675,10 @@ public class SatelliteSOSMessageRecommender extends Handler {
     private void handleCmdSendEventDisplayEmergencyMessageForcefully(
             @NonNull Connection connection) {
         logd("Sent EVENT_DISPLAY_EMERGENCY_MESSAGE to Dialer forcefully.");
+        mEmergencyConnection = connection;
         Bundle extras = createExtraBundleForEventDisplayEmergencyMessage();
         connection.sendConnectionEvent(TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE, extras);
+        mEmergencyConnection = null;
     }
 
     private boolean isMultiSim() {
