@@ -318,6 +318,12 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         mTelephonyRegistryMgr.notifyCallbackModeStopped(sender.getPhoneId(),
                 sender.getSubId(), type, reason);
     }
+
+    @Override
+    public void notifyCarrierRoamingNtnModeChanged(Phone sender, boolean active) {
+        mTelephonyRegistryMgr.notifyCarrierRoamingNtnModeChanged(sender.getSubId(), active);
+    }
+
     /**
      * Convert the {@link Call.State} enum into the PreciseCallState.PRECISE_CALL_STATE_* constants
      * for the public API.
