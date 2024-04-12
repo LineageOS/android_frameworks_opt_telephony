@@ -2822,22 +2822,22 @@ public class DataNetwork extends StateMachine {
                             == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
                             ? "RIL" : "IWLAN data service";
                     if (protocol == ApnSetting.PROTOCOL_IP) {
-                        if (response.getAddresses().stream().anyMatch(
-                                la -> la.getAddress() instanceof java.net.Inet6Address)) {
-                            loge("Invalid DataCallResponse. Requested IPv4 but got IPv6 address."
-                                    + response);
+                        if (response.getAddresses().stream().noneMatch(
+                                la -> la.getAddress() instanceof java.net.Inet4Address)) {
+                            loge("Invalid DataCallResponse. Requested IPv4 but didn't get an "
+                                    + "IPv4 address." + response);
                             reportAnomaly(underlyingDataService + " reported mismatched IP "
-                                            + "type. Requested IPv4 but got IPv6 address.",
-                                    "7744f920-fb64-4db0-ba47-de0eae485a81");
+                                    + "type. Requested IPv4 but didn't get an IPv4 "
+                                    + "address.", "7744f920-fb64-4db0-ba47-de0eae485a82");
                         }
                     } else if (protocol == ApnSetting.PROTOCOL_IPV6) {
-                        if (response.getAddresses().stream().anyMatch(
-                                la -> la.getAddress() instanceof java.net.Inet4Address)) {
-                            loge("Invalid DataCallResponse. Requested IPv6 but got IPv4 address."
-                                    + response);
+                        if (response.getAddresses().stream().noneMatch(
+                                la -> la.getAddress() instanceof java.net.Inet6Address)) {
+                            loge("Invalid DataCallResponse. Requested IPv6 but didn't get an "
+                                    + "IPv6 address." + response);
                             reportAnomaly(underlyingDataService + " reported mismatched IP "
-                                            + "type. Requested IPv6 but got IPv4 address.",
-                                    "7744f920-fb64-4db0-ba47-de0eae485a81");
+                                    + "type. Requested IPv6 but didn't get an IPv6 "
+                                    + "address.", "7744f920-fb64-4db0-ba47-de0eae485a82");
                         }
                     }
                 }
