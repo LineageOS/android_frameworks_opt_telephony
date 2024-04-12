@@ -43,6 +43,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.metrics.SatelliteStats;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
+import com.android.internal.telephony.satellite.metrics.SessionMetricsStats;
 
 import java.util.LinkedHashMap;
 import java.util.Map.Entry;
@@ -70,6 +71,7 @@ public class DatagramDispatcher extends Handler {
     @NonNull private final Context mContext;
     @NonNull private final DatagramController mDatagramController;
     @NonNull private final ControllerMetricsStats mControllerMetricsStats;
+    @NonNull private final SessionMetricsStats mSessionMetricsStats;
 
     private boolean mIsDemoMode = false;
     private boolean mIsAligned = false;
@@ -134,6 +136,7 @@ public class DatagramDispatcher extends Handler {
         mContext = context;
         mDatagramController = datagramController;
         mControllerMetricsStats = ControllerMetricsStats.getInstance();
+        mSessionMetricsStats = SessionMetricsStats.getInstance();
 
         synchronized (mLock) {
             mSendingDatagramInProgress = false;
@@ -276,6 +279,7 @@ public class DatagramDispatcher extends Handler {
                                 getPendingDatagramCount(), error);
                         mControllerMetricsStats.reportOutgoingDatagramSuccessCount(
                                 argument.datagramType);
+                        mSessionMetricsStats.addCountOfSuccessfulOutgoingDatagram();
                         startWaitForSimulatedPollDatagramsDelayTimer(request);
                         if (getPendingDatagramCount() > 0) {
                             // Send response for current datagram
@@ -304,6 +308,7 @@ public class DatagramDispatcher extends Handler {
                         // Abort sending all the pending datagrams
                         mControllerMetricsStats.reportOutgoingDatagramFailCount(
                                 argument.datagramType);
+                        mSessionMetricsStats.addCountOfFailedOutgoingDatagram();
                         abortSendingPendingDatagrams(argument.subId,
                                 SatelliteManager.SATELLITE_RESULT_REQUEST_ABORTED);
                     }
@@ -593,8 +598,10 @@ public class DatagramDispatcher extends Handler {
                         .setDatagramType(argument.datagramType)
                         .setResultCode(resultCode)
                         .setDatagramSizeBytes(argument.getDatagramRoundedSizeBytes())
-                        .setDatagramTransferTimeMillis(
-                                System.currentTimeMillis() - argument.datagramStartTime)
+                        /* In case pending datagram has not been attempted to send to modem
+                        interface. transfer time will be 0. */
+                        .setDatagramTransferTimeMillis(argument.datagramStartTime > 0
+                                ? (System.currentTimeMillis() - argument.datagramStartTime) : 0)
                         .build());
     }
 
@@ -719,6 +726,8 @@ public class DatagramDispatcher extends Handler {
                     0, SatelliteManager.SATELLITE_RESULT_SUCCESS);
             abortSendingPendingDatagrams(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                     SATELLITE_RESULT_NOT_REACHABLE);
+            mControllerMetricsStats.reportOutgoingDatagramFailCount(argument.datagramType);
+            mSessionMetricsStats.addCountOfFailedOutgoingDatagram();
         }
     }
 

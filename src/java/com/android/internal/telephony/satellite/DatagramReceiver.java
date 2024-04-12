@@ -17,6 +17,7 @@
 package com.android.internal.telephony.satellite;
 
 import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
 import static com.android.internal.telephony.satellite.DatagramController.ROUNDING_UNIT;
 
@@ -51,6 +52,7 @@ import com.android.internal.telephony.IVoidConsumer;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.metrics.SatelliteStats;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
+import com.android.internal.telephony.satellite.metrics.SessionMetricsStats;
 import com.android.internal.util.FunctionalUtils;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -79,6 +81,7 @@ public class DatagramReceiver extends Handler {
     @NonNull private SharedPreferences mSharedPreferences = null;
     @NonNull private final DatagramController mDatagramController;
     @NonNull private final ControllerMetricsStats mControllerMetricsStats;
+    @NonNull private final SessionMetricsStats mSessionMetricsStats;
     @NonNull private final Looper mLooper;
 
     private long mDatagramTransferStartTime = 0;
@@ -137,6 +140,7 @@ public class DatagramReceiver extends Handler {
         mContentResolver = context.getContentResolver();
         mDatagramController = datagramController;
         mControllerMetricsStats = ControllerMetricsStats.getInstance();
+        mSessionMetricsStats = SessionMetricsStats.getInstance();
 
         try {
             mSharedPreferences =
@@ -354,9 +358,6 @@ public class DatagramReceiver extends Handler {
                                     obtainMessage(EVENT_RETRY_DELIVERING_RECEIVED_DATAGRAM,
                                             argument), getTimeoutToReceiveAck());
                         });
-
-                        sInstance.mControllerMetricsStats.reportIncomingDatagramCount(
-                                SatelliteManager.SATELLITE_RESULT_SUCCESS);
                     }
 
                     if (pendingCount <= 0) {
@@ -377,8 +378,8 @@ public class DatagramReceiver extends Handler {
                     }
 
                     // Send the captured data about incoming datagram to metric
-                    sInstance.reportMetrics(
-                            satelliteDatagram, SatelliteManager.SATELLITE_RESULT_SUCCESS);
+                    sInstance.reportMetrics(satelliteDatagram,
+                            SatelliteManager.SATELLITE_RESULT_SUCCESS);
                     break;
                 }
 
@@ -468,7 +469,6 @@ public class DatagramReceiver extends Handler {
                             SatelliteManager.SATELLITE_RESULT_SUCCESS);
 
                     reportMetrics(null, error);
-                    mControllerMetricsStats.reportIncomingDatagramCount(error);
                 }
                 // Send response for current request
                 ((Consumer<Integer>) request.argument).accept(error);
@@ -712,7 +712,7 @@ public class DatagramReceiver extends Handler {
     private void reportMetrics(@Nullable SatelliteDatagram satelliteDatagram,
             @NonNull @SatelliteManager.SatelliteResult int resultCode) {
         int datagramSizeRoundedBytes = -1;
-        int datagramTransferTime = 0;
+        long datagramTransferTime = 0;
 
         if (satelliteDatagram != null) {
             if (satelliteDatagram.getSatelliteDatagram() != null) {
@@ -721,7 +721,7 @@ public class DatagramReceiver extends Handler {
                 datagramSizeRoundedBytes =
                         (int) (Math.round((double) sizeBytes / ROUNDING_UNIT) * ROUNDING_UNIT);
             }
-            datagramTransferTime = (int) (System.currentTimeMillis() - mDatagramTransferStartTime);
+            datagramTransferTime = (System.currentTimeMillis() - mDatagramTransferStartTime);
             mDatagramTransferStartTime = 0;
         }
 
@@ -731,6 +731,13 @@ public class DatagramReceiver extends Handler {
                         .setDatagramSizeBytes(datagramSizeRoundedBytes)
                         .setDatagramTransferTimeMillis(datagramTransferTime)
                         .build());
+
+        mControllerMetricsStats.reportIncomingDatagramCount(resultCode);
+        if (resultCode == SATELLITE_RESULT_SUCCESS) {
+            mSessionMetricsStats.addCountOfSuccessfulIncomingDatagram();
+        } else {
+            mSessionMetricsStats.addCountOfFailedIncomingDatagram();
+        }
     }
 
     /** Set demo mode
@@ -841,8 +848,6 @@ public class DatagramReceiver extends Handler {
                     SatelliteManager.SATELLITE_RESULT_SUCCESS);
 
             reportMetrics(null, SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE);
-            mControllerMetricsStats.reportIncomingDatagramCount(
-                    SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE);
 
             Consumer<Integer> callback =
                     (Consumer<Integer>) mPendingPollSatelliteDatagramsRequest.argument;

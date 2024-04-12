@@ -72,6 +72,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.anyVararg;
 import static org.mockito.ArgumentMatchers.eq;
@@ -516,13 +517,21 @@ public class SatelliteControllerTest extends TelephonyTest {
         doReturn(mMockSessionMetricsStats)
                 .when(mMockSessionMetricsStats).setInitializationResult(anyInt());
         doReturn(mMockSessionMetricsStats)
-                .when(mMockSessionMetricsStats).setRadioTechnology(anyInt());
+                .when(mMockSessionMetricsStats).setSatelliteTechnology(anyInt());
+        doReturn(mMockSessionMetricsStats)
+                .when(mMockSessionMetricsStats).setTerminationResult(anyInt());
+        doReturn(mMockSessionMetricsStats)
+                .when(mMockSessionMetricsStats).setInitializationProcessingTime(anyLong());
+        doReturn(mMockSessionMetricsStats)
+                .when(mMockSessionMetricsStats).setTerminationProcessingTime(anyLong());
+        doReturn(mMockSessionMetricsStats)
+                .when(mMockSessionMetricsStats).setSessionDurationSec(anyInt());
         doNothing().when(mMockSessionMetricsStats).reportSessionMetrics();
 
         doReturn(mMockProvisionMetricsStats).when(mMockProvisionMetricsStats)
                 .setResultCode(anyInt());
         doReturn(mMockProvisionMetricsStats).when(mMockProvisionMetricsStats)
-                .setIsProvisionRequest(eq(false));
+                .setIsProvisionRequest(anyBoolean());
         doNothing().when(mMockProvisionMetricsStats).reportProvisionMetrics();
         doNothing().when(mMockControllerMetricsStats).reportDeprovisionCount(anyInt());
         when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
@@ -814,9 +823,6 @@ public class SatelliteControllerTest extends TelephonyTest {
         verify(mMockDatagramController, times(4)).setDemoMode(eq(false));
         verify(mMockControllerMetricsStats, times(2)).onSatelliteEnabled();
         verify(mMockControllerMetricsStats, times(2)).reportServiceEnablementSuccessCount();
-        verify(mMockSessionMetricsStats, times(7)).setInitializationResult(anyInt());
-        verify(mMockSessionMetricsStats, times(7)).setRadioTechnology(anyInt());
-        verify(mMockSessionMetricsStats, times(7)).reportSessionMetrics();
 
         // Successfully enable satellite when it is already enabled.
         mIIntegerConsumerResults.clear();
@@ -903,6 +909,14 @@ public class SatelliteControllerTest extends TelephonyTest {
         // Should receive callback for the above request when satellite modem is turned off.
         assertTrue(waitForIIntegerConsumerResult(1));
         assertEquals(SATELLITE_RESULT_INVALID_MODEM_STATE, (long) mIIntegerConsumerResults.get(0));
+
+        verify(mMockSessionMetricsStats, times(15)).setInitializationResult(anyInt());
+        verify(mMockSessionMetricsStats, times(15)).setSatelliteTechnology(anyInt());
+        verify(mMockSessionMetricsStats, times(3)).setInitializationProcessingTime(anyLong());
+        verify(mMockSessionMetricsStats, times(2)).setTerminationResult(anyInt());
+        verify(mMockSessionMetricsStats, times(2)).setTerminationProcessingTime(anyLong());
+        verify(mMockSessionMetricsStats, times(2)).setSessionDurationSec(anyInt());
+        verify(mMockSessionMetricsStats, times(15)).reportSessionMetrics();
 
         /**
          * Make areAllRadiosDisabled return false and move mWaitingForRadioDisabled to true, which

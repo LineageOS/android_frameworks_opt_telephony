@@ -17,12 +17,12 @@
 package com.android.internal.telephony.satellite;
 
 import static android.provider.Settings.ACTION_SATELLITE_SETTING;
+import static android.telephony.CarrierConfigManager.KEY_CARRIER_ROAMING_SATELLITE_DEFAULT_SERVICES_INT_ARRAY;
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE;
 import static android.telephony.CarrierConfigManager.KEY_EMERGENCY_CALL_TO_SATELLITE_T911_HANDOVER_TIMEOUT_MILLIS_INT;
+import static android.telephony.CarrierConfigManager.KEY_EMERGENCY_MESSAGING_SUPPORTED_BOOL;
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL;
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_CONNECTION_HYSTERESIS_SEC_INT;
-import static android.telephony.CarrierConfigManager.KEY_CARRIER_ROAMING_SATELLITE_DEFAULT_SERVICES_INT_ARRAY;
-import static android.telephony.CarrierConfigManager.KEY_EMERGENCY_MESSAGING_SUPPORTED_BOOL;
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_ENTITLEMENT_SUPPORTED_BOOL;
 import static android.telephony.SubscriptionManager.SATELLITE_ATTACH_ENABLED_FOR_CARRIER;
 import static android.telephony.SubscriptionManager.SATELLITE_ENTITLEMENT_STATUS;
@@ -218,6 +218,7 @@ public class SatelliteController extends Handler {
     @NonNull private final DatagramController mDatagramController;
     @NonNull private final ControllerMetricsStats mControllerMetricsStats;
     @NonNull private final ProvisionMetricsStats mProvisionMetricsStats;
+    @NonNull private SessionMetricsStats mSessionMetricsStats;
     @NonNull private final SubscriptionManagerService mSubscriptionManagerService;
     private final CommandsInterface mCi;
     private ContentResolver mContentResolver;
@@ -411,6 +412,9 @@ public class SatelliteController extends Handler {
     private final BTWifiNFCStateReceiver mBTWifiNFCSateReceiver;
     private final UwbAdapterStateCallback mUwbAdapterStateCallback;
 
+    private long mSessionStartTimeStamp;
+    private long mSessionProcessingTimeStamp;
+
     /**
      * @return The singleton instance of SatelliteController.
      */
@@ -464,6 +468,7 @@ public class SatelliteController extends Handler {
         // should be called before making DatagramController
         mControllerMetricsStats = ControllerMetricsStats.make(mContext);
         mProvisionMetricsStats = ProvisionMetricsStats.getOrCreateInstance();
+        mSessionMetricsStats = SessionMetricsStats.getInstance();
         mSubscriptionManagerService = SubscriptionManagerService.getInstance();
 
         // Create the DatagramController singleton,
@@ -1005,18 +1010,31 @@ public class SatelliteController extends Handler {
                 }
 
                 if (argument.enableSatellite) {
+                    mSessionMetricsStats.setInitializationResult(error)
+                            .setSatelliteTechnology(getSupportedNtnRadioTechnology())
+                            .setInitializationProcessingTime(
+                                    System.currentTimeMillis() - mSessionProcessingTimeStamp);
+                    mSessionProcessingTimeStamp = 0;
+
                     if (error == SATELLITE_RESULT_SUCCESS) {
                         mControllerMetricsStats.onSatelliteEnabled();
                         mControllerMetricsStats.reportServiceEnablementSuccessCount();
                     } else {
+                        mSessionMetricsStats.reportSessionMetrics();
+                        mSessionStartTimeStamp = 0;
                         mControllerMetricsStats.reportServiceEnablementFailCount();
                     }
-                    SessionMetricsStats.getInstance()
-                            .setInitializationResult(error)
-                            .setRadioTechnology(getSupportedNtnRadioTechnology())
-                            .reportSessionMetrics();
                 } else {
+                    mSessionMetricsStats.setTerminationResult(error)
+                            .setTerminationProcessingTime(System.currentTimeMillis()
+                                    - mSessionProcessingTimeStamp)
+                            .setSessionDurationSec(calculateSessionDurationTimeSec())
+                            .reportSessionMetrics();
+                    mSessionStartTimeStamp = 0;
+                    mSessionProcessingTimeStamp = 0;
+
                     mControllerMetricsStats.onSatelliteDisabled();
+
                     synchronized (mIsSatelliteEnabledLock) {
                         mWaitingForDisableSatelliteModemResponse = false;
                     }
@@ -2966,6 +2984,10 @@ public class SatelliteController extends Handler {
         } else {
             callback.accept(result);
         }
+        mProvisionMetricsStats.setResultCode(result)
+                .setIsProvisionRequest(true)
+                .reportProvisionMetrics();
+        mControllerMetricsStats.reportProvisionCount(result);
     }
 
     private void handleEventDeprovisionSatelliteServiceDone(
@@ -3103,6 +3125,12 @@ public class SatelliteController extends Handler {
         mSatelliteModemInterface.requestSatelliteEnabled(argument.enableSatellite,
                 argument.enableDemoMode, argument.isEmergency, onCompleted);
         startWaitForSatelliteEnablingResponseTimer(argument);
+        // Logs satellite session timestamps for session metrics
+        if (argument.enableSatellite) {
+            mSessionStartTimeStamp = System.currentTimeMillis();
+        }
+        mSessionProcessingTimeStamp = System.currentTimeMillis();
+
     }
 
     private void handleRequestSatelliteAttachRestrictionForCarrierCmd(
@@ -4007,10 +4035,11 @@ public class SatelliteController extends Handler {
     private void sendErrorAndReportSessionMetrics(@SatelliteManager.SatelliteResult int error,
             Consumer<Integer> result) {
         result.accept(error);
-        SessionMetricsStats.getInstance()
-                .setInitializationResult(error)
-                .setRadioTechnology(getSupportedNtnRadioTechnology())
+        mSessionMetricsStats.setInitializationResult(error)
+                .setSatelliteTechnology(getSupportedNtnRadioTechnology())
                 .reportSessionMetrics();
+        mSessionStartTimeStamp = 0;
+        mSessionProcessingTimeStamp = 0;
     }
 
     private void registerForServiceStateChanged() {
@@ -4220,10 +4249,13 @@ public class SatelliteController extends Handler {
                     sendRequestAsync(CMD_SET_SATELLITE_ENABLED, request, null);
                 }
                 mControllerMetricsStats.reportServiceEnablementFailCount();
-                SessionMetricsStats.getInstance()
-                        .setInitializationResult(SATELLITE_RESULT_MODEM_TIMEOUT)
-                        .setRadioTechnology(getSupportedNtnRadioTechnology())
+                mSessionMetricsStats.setInitializationResult(SATELLITE_RESULT_MODEM_TIMEOUT)
+                        .setSatelliteTechnology(getSupportedNtnRadioTechnology())
+                        .setInitializationProcessingTime(
+                                System.currentTimeMillis() - mSessionProcessingTimeStamp)
                         .reportSessionMetrics();
+                mSessionStartTimeStamp = 0;
+                mSessionProcessingTimeStamp = 0;
             } else {
                 /*
                  * Unregister Importance Listener for Pointing UI when Satellite is disabled
@@ -4237,6 +4269,14 @@ public class SatelliteController extends Handler {
                 mControllerMetricsStats.onSatelliteDisabled();
                 mWaitingForDisableSatelliteModemResponse = false;
                 mWaitingForSatelliteModemOff = false;
+                mSessionMetricsStats.setTerminationResult(SATELLITE_RESULT_MODEM_TIMEOUT)
+                        .setSatelliteTechnology(getSupportedNtnRadioTechnology())
+                        .setTerminationProcessingTime(
+                                System.currentTimeMillis() - mSessionProcessingTimeStamp)
+                        .setSessionDurationSec(calculateSessionDurationTimeSec())
+                        .reportSessionMetrics();
+                mSessionStartTimeStamp = 0;
+                mSessionProcessingTimeStamp = 0;
             }
         }
     }
@@ -4415,6 +4455,14 @@ public class SatelliteController extends Handler {
             }
             return config;
         }
+    }
+
+    // Should be invoked only when session termination done or session termination failed.
+    private int calculateSessionDurationTimeSec() {
+        return (int) (
+                (System.currentTimeMillis() - mSessionStartTimeStamp
+                - mSessionMetricsStats.getSessionInitializationProcessingTimeMillis()
+                - mSessionMetricsStats.getSessionTerminationProcessingTimeMillis()) / 1000);
     }
 
     private static void logd(@NonNull String log) {

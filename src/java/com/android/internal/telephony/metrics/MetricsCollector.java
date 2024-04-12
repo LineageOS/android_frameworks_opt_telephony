@@ -1374,7 +1374,15 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 SATELLITE_SESSION,
                 satelliteSession.satelliteServiceInitializationResult,
                 satelliteSession.satelliteTechnology,
-                satelliteSession.count);
+                satelliteSession.count,
+                satelliteSession.satelliteServiceTerminationResult,
+                satelliteSession.initializationProcessingTimeMillis,
+                satelliteSession.terminationProcessingTimeMillis,
+                satelliteSession.sessionDurationSeconds,
+                satelliteSession.countOfOutgoingDatagramSuccess,
+                satelliteSession.countOfOutgoingDatagramFailed,
+                satelliteSession.countOfIncomingDatagramSuccess,
+                satelliteSession.countOfIncomingDatagramFailed);
     }
 
     private static StatsEvent buildStatsEvent(SatelliteIncomingDatagram stats) {
