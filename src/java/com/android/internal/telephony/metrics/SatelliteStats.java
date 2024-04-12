@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.metrics;
 
+import android.telephony.satellite.SatelliteManager;
+
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteController;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteIncomingDatagram;
@@ -385,11 +387,28 @@ public class SatelliteStats {
     public class SatelliteSessionParams {
         private final int mSatelliteServiceInitializationResult;
         private final int mSatelliteTechnology;
+        private final int mTerminationResult;
+        private final long mInitializationProcessingTimeMillis;
+        private final long mTerminationProcessingTimeMillis;
+        private final int mSessionDurationSec;
+        private final int mCountOfOutgoingDatagramSuccess;
+        private final int mCountOfOutgoingDatagramFailed;
+        private final int mCountOfIncomingDatagramSuccess;
+        private final int mCountOfIncomingDatagramFailed;
 
         private SatelliteSessionParams(Builder builder) {
             this.mSatelliteServiceInitializationResult =
                     builder.mSatelliteServiceInitializationResult;
             this.mSatelliteTechnology = builder.mSatelliteTechnology;
+            this.mTerminationResult = builder.mTerminationResult;
+            this.mInitializationProcessingTimeMillis = builder.mInitializationProcessingTimeMillis;
+            this.mTerminationProcessingTimeMillis =
+                    builder.mTerminationProcessingTimeMillis;
+            this.mSessionDurationSec = builder.mSessionDurationSec;
+            this.mCountOfOutgoingDatagramSuccess = builder.mCountOfOutgoingDatagramSuccess;
+            this.mCountOfOutgoingDatagramFailed = builder.mCountOfOutgoingDatagramFailed;
+            this.mCountOfIncomingDatagramSuccess = builder.mCountOfIncomingDatagramSuccess;
+            this.mCountOfIncomingDatagramFailed = builder.mCountOfIncomingDatagramFailed;
         }
 
         public int getSatelliteServiceInitializationResult() {
@@ -400,12 +419,52 @@ public class SatelliteStats {
             return mSatelliteTechnology;
         }
 
+        public int getTerminationResult() {
+            return mTerminationResult;
+        }
+
+        public long getInitializationProcessingTime() {
+            return mInitializationProcessingTimeMillis;
+        }
+
+        public long getTerminationProcessingTime() {
+            return mTerminationProcessingTimeMillis;
+        }
+
+        public int getSessionDuration() {
+            return mSessionDurationSec;
+        }
+
+        public int getCountOfOutgoingDatagramSuccess() {
+            return mCountOfOutgoingDatagramSuccess;
+        }
+
+        public int getCountOfOutgoingDatagramFailed() {
+            return mCountOfOutgoingDatagramFailed;
+        }
+
+        public int getCountOfIncomingDatagramSuccess() {
+            return mCountOfIncomingDatagramSuccess;
+        }
+
+        public int getCountOfIncomingDatagramFailed() {
+            return mCountOfIncomingDatagramFailed;
+        }
+
         /**
          * A builder class to create {@link SatelliteSessionParams} data structure class
          */
         public static class Builder {
             private int mSatelliteServiceInitializationResult = -1;
             private int mSatelliteTechnology = -1;
+            private int mTerminationResult = -1;
+            private long mInitializationProcessingTimeMillis = -1;
+            private long mTerminationProcessingTimeMillis = -1;
+            private int mSessionDurationSec = -1;
+            private int mCountOfOutgoingDatagramSuccess = -1;
+            private int mCountOfOutgoingDatagramFailed = -1;
+            private int mCountOfIncomingDatagramSuccess = -1;
+            private int mCountOfIncomingDatagramFailed = -1;
 
             /**
              * Sets satelliteServiceInitializationResult value of {@link SatelliteSession}
@@ -426,6 +485,55 @@ public class SatelliteStats {
                 return this;
             }
 
+            /** Sets the satellite de-initialization result. */
+            public Builder setTerminationResult(
+                    @SatelliteManager.SatelliteResult int result) {
+                this.mTerminationResult = result;
+                return this;
+            }
+
+            /** Sets the satellite initialization processing time. */
+            public Builder setInitializationProcessingTime(long processingTime) {
+                this.mInitializationProcessingTimeMillis = processingTime;
+                return this;
+            }
+
+            /** Sets the satellite de-initialization processing time. */
+            public Builder setTerminationProcessingTime(long processingTime) {
+                this.mTerminationProcessingTimeMillis = processingTime;
+                return this;
+            }
+
+            /** Sets the total enabled time for the satellite session. */
+            public Builder setSessionDuration(int sessionDurationSec) {
+                this.mSessionDurationSec = sessionDurationSec;
+                return this;
+            }
+
+            /** Sets the total number of successful outgoing datagram transmission. */
+            public Builder setCountOfOutgoingDatagramSuccess(int countOfoutgoingDatagramSuccess) {
+                this.mCountOfOutgoingDatagramSuccess = countOfoutgoingDatagramSuccess;
+                return this;
+            }
+
+            /** Sets the total number of failed outgoing datagram transmission. */
+            public Builder setCountOfOutgoingDatagramFailed(int countOfoutgoingDatagramFailed) {
+                this.mCountOfOutgoingDatagramFailed = countOfoutgoingDatagramFailed;
+                return this;
+            }
+
+            /** Sets the total number of successful incoming datagram transmission. */
+            public Builder setCountOfIncomingDatagramSuccess(int countOfincomingDatagramSuccess) {
+                this.mCountOfIncomingDatagramSuccess = countOfincomingDatagramSuccess;
+                return this;
+            }
+
+            /** Sets the total number of failed incoming datagram transmission. */
+            public Builder setCountOfIncomingDatagramFailed(int countOfincomingDatagramFailed) {
+                this.mCountOfIncomingDatagramFailed = countOfincomingDatagramFailed;
+                return this;
+            }
+
             /**
              * Returns SessionParams, which contains whole component of
              * {@link SatelliteSession} atom
@@ -441,7 +549,14 @@ public class SatelliteStats {
             return "SessionParams("
                     + ", satelliteServiceInitializationResult="
                     + mSatelliteServiceInitializationResult
-                    + ", satelliteTechnology=" + mSatelliteTechnology
+                    + ", TerminationResult=" + mTerminationResult
+                    + ", InitializationProcessingTimeMillis=" + mInitializationProcessingTimeMillis
+                    + ", TerminationProcessingTimeMillis=" + mTerminationProcessingTimeMillis
+                    + ", SessionDurationSec=" + mSessionDurationSec
+                    + ", CountOfOutgoingDatagramSuccess=" + mCountOfOutgoingDatagramSuccess
+                    + ", CountOfOutgoingDatagramFailed=" + mCountOfOutgoingDatagramFailed
+                    + ", CountOfIncomingDatagramSuccess=" + mCountOfIncomingDatagramSuccess
+                    + ", CountOfIncomingDatagramFailed=" + mCountOfIncomingDatagramFailed
                     + ")";
         }
     }
@@ -912,6 +1027,14 @@ public class SatelliteStats {
                 param.getSatelliteServiceInitializationResult();
         proto.satelliteTechnology = param.getSatelliteTechnology();
         proto.count = 1;
+        proto.satelliteServiceTerminationResult = param.getTerminationResult();
+        proto.initializationProcessingTimeMillis = param.getInitializationProcessingTime();
+        proto.terminationProcessingTimeMillis = param.getTerminationProcessingTime();
+        proto.sessionDurationSeconds = param.getSessionDuration();
+        proto.countOfOutgoingDatagramSuccess = param.getCountOfIncomingDatagramSuccess();
+        proto.countOfOutgoingDatagramFailed = param.getCountOfOutgoingDatagramFailed();
+        proto.countOfIncomingDatagramSuccess = param.getCountOfIncomingDatagramSuccess();
+        proto.countOfIncomingDatagramFailed = param.getCountOfOutgoingDatagramFailed();
         mAtomsStorage.addSatelliteSessionStats(proto);
     }
 

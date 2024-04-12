@@ -91,7 +91,7 @@ public class ProvisionMetricsStats {
                         .setIsCanceled(mIsCanceled)
                         .build();
         SatelliteStats.getInstance().onSatelliteProvisionMetrics(provisionParams);
-        logd(provisionParams.toString());
+        logd("reportProvisionMetrics: " + provisionParams.toString());
         initializeProvisionParams();
     }
 
