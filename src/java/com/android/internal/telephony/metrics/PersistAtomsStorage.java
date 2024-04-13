@@ -2109,7 +2109,17 @@ public class PersistAtomsStorage {
         for (SatelliteSession stats : mAtoms.satelliteSession) {
             if (stats.satelliteServiceInitializationResult
                     == key.satelliteServiceInitializationResult
-                    && stats.satelliteTechnology == key.satelliteTechnology) {
+                    && stats.satelliteTechnology == key.satelliteTechnology
+                    && stats.satelliteServiceTerminationResult
+                    == key.satelliteServiceTerminationResult
+                    && stats.initializationProcessingTimeMillis
+                    == key.initializationProcessingTimeMillis
+                    && stats.terminationProcessingTimeMillis == key.terminationProcessingTimeMillis
+                    && stats.sessionDurationSeconds == key.sessionDurationSeconds
+                    && stats.countOfOutgoingDatagramSuccess == key.countOfOutgoingDatagramSuccess
+                    && stats.countOfOutgoingDatagramFailed == key.countOfOutgoingDatagramFailed
+                    && stats.countOfIncomingDatagramSuccess == key.countOfIncomingDatagramSuccess
+                    && stats.countOfIncomingDatagramFailed == key.countOfIncomingDatagramFailed) {
                 return stats;
             }
         }

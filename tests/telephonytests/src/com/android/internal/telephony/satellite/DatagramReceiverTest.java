@@ -58,6 +58,7 @@ import android.util.Pair;
 import com.android.internal.telephony.IVoidConsumer;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
+import com.android.internal.telephony.satellite.metrics.SessionMetricsStats;
 
 import org.junit.After;
 import org.junit.Before;
@@ -90,6 +91,7 @@ public class DatagramReceiverTest extends TelephonyTest {
     @Mock private SatelliteModemInterface mMockSatelliteModemInterface;
     @Mock private ControllerMetricsStats mMockControllerMetricsStats;
     @Mock private SatelliteSessionController mMockSatelliteSessionController;
+    @Mock private SessionMetricsStats mMockSessionMetricsStats;
 
     /** Variables required to receive datagrams in the unit tests. */
     LinkedBlockingQueue<Integer> mResultListener;
@@ -120,6 +122,8 @@ public class DatagramReceiverTest extends TelephonyTest {
                 mMockControllerMetricsStats);
         replaceInstance(SatelliteSessionController.class, "sInstance", null,
                 mMockSatelliteSessionController);
+        replaceInstance(SessionMetricsStats.class, "sInstance", null,
+                mMockSessionMetricsStats);
 
         mDatagramReceiverUT = DatagramReceiver.make(mContext, Looper.myLooper(),
                 mMockDatagramController);
@@ -194,6 +198,7 @@ public class DatagramReceiverTest extends TelephonyTest {
         assertFalse(mDatagramReceiverUT.isDatagramWaitForConnectedStateTimerStarted());
 
         clearInvocations(mMockSatelliteModemInterface);
+        clearInvocations(mMockSessionMetricsStats);
         mResultListener.clear();
         doReturn(true).when(mMockDatagramController).needsWaitingForSatelliteConnected();
         mDatagramReceiverUT.pollPendingSatelliteDatagrams(SUB_ID, mResultListener::offer);
@@ -215,6 +220,7 @@ public class DatagramReceiverTest extends TelephonyTest {
         assertEquals(1, mResultListener.size());
         assertThat(mResultListener.peek()).isEqualTo(
                 SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE);
+        verify(mMockSessionMetricsStats, times(1)).addCountOfFailedIncomingDatagram();
         assertFalse(mDatagramReceiverUT.isDatagramWaitForConnectedStateTimerStarted());
 
         mResultListener.clear();
@@ -255,6 +261,8 @@ public class DatagramReceiverTest extends TelephonyTest {
 
         assertThat(mResultListener.peek()).isEqualTo(
                 SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR);
+
+        verify(mMockSessionMetricsStats, times(1)).addCountOfFailedIncomingDatagram();
     }
 
     @Test
@@ -273,6 +281,8 @@ public class DatagramReceiverTest extends TelephonyTest {
                 .updateReceiveStatus(eq(SUB_ID),
                         eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE),
                         eq(0), eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
+
+        verify(mMockSessionMetricsStats, never()).addCountOfFailedIncomingDatagram();
     }
 
     @Test
@@ -295,6 +305,7 @@ public class DatagramReceiverTest extends TelephonyTest {
                         eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE),
                         eq(0), eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
         assertTrue(testSatelliteDatagramCallback.waitForOnSatelliteDatagramReceived());
+        verify(mMockSessionMetricsStats, times(1)).addCountOfSuccessfulIncomingDatagram();
 
         assertTrue(testSatelliteDatagramCallback.sendInternalAck());
         try {
@@ -316,6 +327,7 @@ public class DatagramReceiverTest extends TelephonyTest {
                 .updateReceiveStatus(eq(SUB_ID),
                         eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_SUCCESS),
                         eq(10), eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
+        verify(mMockSessionMetricsStats, times(1)).addCountOfSuccessfulIncomingDatagram();
     }
 
     @Test
@@ -376,6 +388,7 @@ public class DatagramReceiverTest extends TelephonyTest {
                         eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
         assertThat(mResultListener.peek())
                 .isEqualTo(SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE);
+        verify(mMockSessionMetricsStats, times(1)).addCountOfFailedIncomingDatagram();
 
         mTestDemoModeDatagramReceiver.setDemoMode(false);
         mTestDemoModeDatagramReceiver.setDeviceAlignedWithSatellite(false);
