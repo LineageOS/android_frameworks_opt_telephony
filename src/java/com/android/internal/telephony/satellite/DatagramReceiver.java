@@ -730,9 +730,10 @@ public class DatagramReceiver extends Handler {
                         .setResultCode(resultCode)
                         .setDatagramSizeBytes(datagramSizeRoundedBytes)
                         .setDatagramTransferTimeMillis(datagramTransferTime)
+                        .setIsDemoMode(mIsDemoMode)
                         .build());
 
-        mControllerMetricsStats.reportIncomingDatagramCount(resultCode);
+        mControllerMetricsStats.reportIncomingDatagramCount(resultCode, mIsDemoMode);
         if (resultCode == SATELLITE_RESULT_SUCCESS) {
             mSessionMetricsStats.addCountOfSuccessfulIncomingDatagram();
         } else {
