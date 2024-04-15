@@ -980,23 +980,6 @@ public class DataProfileManager extends Handler {
                                 a.getLingeringNetworkTypeBitmask()),
                         "9af73e18-b523-4dc5-adab-4bb24355d838");
             }
-            for (int j = i + 1; j < profiles.size(); j++) {
-                ApnSetting b = profiles.get(j).getApnSetting();
-                if (b == null || b.getEditedStatus() != Telephony.Carriers.UNEDITED) continue;
-                String apnNameA = a.getApnName();
-                String apnNameB = b.getApnName();
-                if (TextUtils.equals(apnNameA, apnNameB)
-                        // TelephonyManager.NETWORK_TYPE_BITMASK_UNKNOWN means all network types
-                        && (a.getNetworkTypeBitmask()
-                        == (int) TelephonyManager.NETWORK_TYPE_BITMASK_UNKNOWN
-                        || b.getNetworkTypeBitmask()
-                        == (int) TelephonyManager.NETWORK_TYPE_BITMASK_UNKNOWN
-                        || (a.getNetworkTypeBitmask() & b.getNetworkTypeBitmask()) != 0)) {
-                    reportAnomaly("Found overlapped network type under the APN name "
-                                    + a.getApnName(),
-                            "9af73e18-b523-4dc5-adab-4bb24555d839");
-                }
-            }
         }
     }
 
