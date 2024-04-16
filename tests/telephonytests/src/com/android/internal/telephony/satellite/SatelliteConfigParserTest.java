@@ -25,6 +25,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 import android.testing.AndroidTestingRunner;
@@ -35,11 +36,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
@@ -183,9 +182,6 @@ public class SatelliteConfigParserTest extends TelephonyTest {
 
     @Test
     public void testGetSatelliteS2CellFile() {
-        final String filePath = "/data/user_de/0/com.android.phone/app_satellite/s2_cell_file";
-        Path targetSatS2FilePath = Paths.get(filePath);
-
         SatelliteConfigParser spySatelliteConfigParserNull = spy(
                 new SatelliteConfigParser((byte[]) null));
         assertNotNull(spySatelliteConfigParserNull);
@@ -201,10 +197,11 @@ public class SatelliteConfigParserTest extends TelephonyTest {
         assertNotNull(spySatelliteConfigParser.getConfig());
         assertFalse(spySatelliteConfigParser.getConfig().isFileExist(null));
 
-        SatelliteConfig mockedSatelliteConfig = Mockito.mock(SatelliteConfig.class);
-        doReturn(targetSatS2FilePath).when(mockedSatelliteConfig).getSatelliteS2CellFile(any());
+        SatelliteConfig mockedSatelliteConfig = mock(SatelliteConfig.class);
+        File mMockSatS2File = mock(File.class);
+        doReturn(mMockSatS2File).when(mockedSatelliteConfig).getSatelliteS2CellFile(any());
         doReturn(mockedSatelliteConfig).when(spySatelliteConfigParser).getConfig();
-        assertEquals(targetSatS2FilePath,
+        assertEquals(mMockSatS2File,
                 spySatelliteConfigParser.getConfig().getSatelliteS2CellFile(mContext));
     }
 
