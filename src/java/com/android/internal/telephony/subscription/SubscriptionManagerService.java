@@ -2490,7 +2490,7 @@ public class SubscriptionManagerService extends ISub.Stub {
     })
     public int setOpportunistic(boolean opportunistic, int subId, @NonNull String callingPackage) {
         TelephonyPermissions.enforceAnyPermissionGrantedOrCarrierPrivileges(
-                mContext, Binder.getCallingUid(), subId, true, "setOpportunistic",
+                mContext, subId, Binder.getCallingUid(), true, "setOpportunistic",
                 Manifest.permission.MODIFY_PHONE_STATE);
 
         enforceTelephonyFeatureWithException(callingPackage, "setOpportunistic");
