@@ -230,6 +230,7 @@ public class EuiccControllerTest extends TelephonyTest {
                 Settings.Global.EUICC_PROVISIONED, 0);
         Settings.Global.putInt(mContext.getContentResolver(),
                 Settings.Global.EUICC_PROVISIONED, 0);
+        setHasManageDevicePolicyManagedSubscriptionsPermission(false);
     }
 
     @After
@@ -894,7 +895,7 @@ public class EuiccControllerTest extends TelephonyTest {
 
     @Test
     @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
-    public void testDownloadSubscription_adminPermission_usingSwitchAfterDownload()
+    public void testDownloadSubscription_adminPermission_usingSwitchAfterDownload_fails()
             throws Exception {
         mSetFlagsRule.enableFlags(Flags.FLAG_ESIM_MANAGEMENT_ENABLED);
         setHasWriteEmbeddedPermission(false);
@@ -909,18 +910,99 @@ public class EuiccControllerTest extends TelephonyTest {
         when(mPackageManager.getPackageInfo(eq(PACKAGE_NAME), anyInt())).thenReturn(pi);
         setCanManageSubscriptionOnTargetSim(false /* isTargetEuicc */, false /* hasPrivileges */);
 
-        callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
+        callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */,
+                true /* complete */,
                 12345, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
 
-        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
-                0 /* detailedCode */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR, 0 /* detailedCode */);
         verify(mMockConnector, never()).downloadSubscription(anyInt(), anyInt(),
                 any(), anyBoolean(), anyBoolean(), any(), any());
     }
 
     @Test
     @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
-    public void testDownloadSubscription_onlyAdminManagedAllowed_callerNotAdmin_throws()
+    public void testDownloadSubscription_profileOwner_usingSwitchAfterDownload_fails()
+            throws Exception {
+        mSetFlagsRule.enableFlags(Flags.FLAG_ESIM_MANAGEMENT_ENABLED);
+        setHasWriteEmbeddedPermission(false);
+        setHasManageDevicePolicyManagedSubscriptionsPermission(true);
+        setUpUiccSlotData();
+        GetDownloadableSubscriptionMetadataResult result =
+                new GetDownloadableSubscriptionMetadataResult(EuiccService.RESULT_OK,
+                        SUBSCRIPTION_WITH_METADATA);
+        doReturn(true).when(mDevicePolicyManager).isProfileOwnerApp(PACKAGE_NAME);
+        doReturn(false).when(mDevicePolicyManager).isOrganizationOwnedDeviceWithManagedProfile();
+        doReturn(false).when(mDevicePolicyManager).isDeviceOwnerApp(PACKAGE_NAME);
+        prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
+        PackageInfo pi = new PackageInfo();
+        pi.packageName = PACKAGE_NAME;
+        when(mPackageManager.getPackageInfo(eq(PACKAGE_NAME), anyInt())).thenReturn(pi);
+        setCanManageSubscriptionOnTargetSim(false /* isTargetEuicc */, false /* hasPrivileges */);
+
+        callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */,
+                true /* complete */,
+                12345, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
+
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR, 0 /* detailedCode */);
+        verify(mMockConnector, never()).downloadSubscription(anyInt(), anyInt(), any(),
+                anyBoolean(), anyBoolean(), any(), any());
+    }
+
+    @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
+    public void testDownloadSubscription_orgOwnedProfileOwner_usingSwitchAfterDownload_success()
+            throws Exception {
+        mSetFlagsRule.enableFlags(Flags.FLAG_ESIM_MANAGEMENT_ENABLED);
+        setHasWriteEmbeddedPermission(false);
+        setHasManageDevicePolicyManagedSubscriptionsPermission(true);
+        setUpUiccSlotData();
+        GetDownloadableSubscriptionMetadataResult result =
+                new GetDownloadableSubscriptionMetadataResult(EuiccService.RESULT_OK,
+                        SUBSCRIPTION_WITH_METADATA);
+        doReturn(true).when(mDevicePolicyManager).isProfileOwnerApp(PACKAGE_NAME);
+        doReturn(true).when(mDevicePolicyManager).isOrganizationOwnedDeviceWithManagedProfile();
+        doReturn(false).when(mDevicePolicyManager).isDeviceOwnerApp(PACKAGE_NAME);
+        prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
+        PackageInfo pi = new PackageInfo();
+        pi.packageName = PACKAGE_NAME;
+        when(mPackageManager.getPackageInfo(eq(PACKAGE_NAME), anyInt())).thenReturn(pi);
+
+        callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
+                EuiccService.RESULT_OK, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
+
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        assertFalse(mController.mCalledRefreshSubscriptionsAndSendResult);
+    }
+
+    @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
+    public void testDownloadSubscription_deviceOwner_usingSwitchAfterDownload_success()
+            throws Exception {
+        mSetFlagsRule.enableFlags(Flags.FLAG_ESIM_MANAGEMENT_ENABLED);
+        setHasWriteEmbeddedPermission(false);
+        setHasManageDevicePolicyManagedSubscriptionsPermission(true);
+        setUpUiccSlotData();
+        GetDownloadableSubscriptionMetadataResult result =
+                new GetDownloadableSubscriptionMetadataResult(EuiccService.RESULT_OK,
+                        SUBSCRIPTION_WITH_METADATA);
+        doReturn(false).when(mDevicePolicyManager).isProfileOwnerApp(PACKAGE_NAME);
+        doReturn(false).when(mDevicePolicyManager).isOrganizationOwnedDeviceWithManagedProfile();
+        doReturn(true).when(mDevicePolicyManager).isDeviceOwnerApp(PACKAGE_NAME);
+        prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
+        PackageInfo pi = new PackageInfo();
+        pi.packageName = PACKAGE_NAME;
+        when(mPackageManager.getPackageInfo(eq(PACKAGE_NAME), anyInt())).thenReturn(pi);
+
+        callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
+                EuiccService.RESULT_OK, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
+
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        assertFalse(mController.mCalledRefreshSubscriptionsAndSendResult);
+    }
+
+    @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
+    public void testDownloadSubscription_onlyAdminManagedAllowed_callerNotAdmin_error()
             throws Exception {
         mSetFlagsRule.enableFlags(Flags.FLAG_ESIM_MANAGEMENT_ENABLED);
         setHasManageDevicePolicyManagedSubscriptionsPermission(false);
@@ -929,15 +1011,10 @@ public class EuiccControllerTest extends TelephonyTest {
                 .when(mUserManager)
                 .hasUserRestriction(UserManager.DISALLOW_SIM_GLOBALLY);
 
-        assertThrows(SecurityException.class,
-                () ->
-                        callDownloadSubscription(
-                                SUBSCRIPTION,
-                                false /* switchAfterDownload */,
-                                true /* complete */,
-                                EuiccService.RESULT_OK,
-                                0 /* resolvableError */,
-                                "whatever" /* callingPackage */));
+        callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
+                12345, 0 /* resolvableError */, "whatever" /* callingPackage */);
+
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR, 0 /* detailedCode */);
         assertFalse(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
 

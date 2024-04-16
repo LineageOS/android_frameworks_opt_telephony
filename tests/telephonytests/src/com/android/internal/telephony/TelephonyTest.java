@@ -35,6 +35,7 @@ import android.app.AppOpsManager;
 import android.app.IActivityManager;
 import android.app.KeyguardManager;
 import android.app.PropertyInvalidatedCache;
+import android.app.admin.DevicePolicyManager;
 import android.app.usage.NetworkStatsManager;
 import android.content.ContentProvider;
 import android.content.ContentResolver;
@@ -304,6 +305,7 @@ public abstract class TelephonyTest {
     protected AppOpsManager mAppOpsManager;
     protected CarrierConfigManager mCarrierConfigManager;
     protected UserManager mUserManager;
+    protected DevicePolicyManager mDevicePolicyManager;
     protected KeyguardManager mKeyguardManager;
     protected VcnManager mVcnManager;
     protected NetworkPolicyManager mNetworkPolicyManager;
@@ -630,6 +632,8 @@ public abstract class TelephonyTest {
         mCarrierConfigManager =
                 (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
+        mDevicePolicyManager = (DevicePolicyManager) mContext.getSystemService(
+                Context.DEVICE_POLICY_SERVICE);
         mKeyguardManager = (KeyguardManager) mContext.getSystemService(Context.KEYGUARD_SERVICE);
         mVcnManager = mContext.getSystemService(VcnManager.class);
         mNetworkPolicyManager = mContext.getSystemService(NetworkPolicyManager.class);
