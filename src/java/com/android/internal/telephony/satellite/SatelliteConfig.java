@@ -52,7 +52,7 @@ public class SatelliteConfig {
     private Map<Integer, Map<String, Set<Integer>>> mSupportedServicesPerCarrier;
     private List<String> mSatelliteRegionCountryCodes;
     private Boolean mIsSatelliteRegionAllowed;
-    private Path mSatS2FilePath;
+    private File mSatS2File;
     private SatelliteConfigData.SatelliteConfigProto mConfigData;
 
     public SatelliteConfig(SatelliteConfigData.SatelliteConfigProto configData) {
@@ -62,13 +62,14 @@ public class SatelliteConfig {
         mSatelliteRegionCountryCodes = List.of(
                 mConfigData.deviceSatelliteRegion.countryCodes);
         mIsSatelliteRegionAllowed = mConfigData.deviceSatelliteRegion.isAllowed;
-        mSatS2FilePath = null;
+        mSatS2File = null;
 
         Log.d(TAG, "mVersion:" + mVersion + " | "
                 + "mSupportedServicesPerCarrier:" + mSupportedServicesPerCarrier + " | "
-                + "mSatelliteRegionCountryCodes:" + mSatelliteRegionCountryCodes + " | "
+                + "mSatelliteRegionCountryCodes:"
+                + String.join(",", mSatelliteRegionCountryCodes) + " | "
                 + "mIsSatelliteRegionAllowed:" + mIsSatelliteRegionAllowed + " | "
-                + "s2CellFile size:" + mConfigData.deviceSatelliteRegion.s2CellFile.length);
+                + " | s2CellFile size:" + mConfigData.deviceSatelliteRegion.s2CellFile.length);
     }
 
     /**
@@ -181,23 +182,23 @@ public class SatelliteConfig {
      * @return satellite s2_cell_file path
      */
     @Nullable
-    public Path getSatelliteS2CellFile(@Nullable Context context) {
+    public File getSatelliteS2CellFile(@Nullable Context context) {
         if (context == null) {
             Log.d(TAG, "getSatelliteS2CellFile : context is null");
             return null;
         }
 
-        if (isFileExist(mSatS2FilePath)) {
-            Log.d(TAG, "File mSatS2FilePath is already exist");
-            return mSatS2FilePath;
+        if (isFileExist(mSatS2File)) {
+            Log.d(TAG, "File mSatS2File is already exist");
+            return mSatS2File;
         }
 
         if (mConfigData != null && mConfigData.deviceSatelliteRegion != null) {
-            mSatS2FilePath = copySatS2FileToPhoneDirectory(context,
-                    mConfigData.deviceSatelliteRegion.s2CellFile);
-            return mSatS2FilePath;
+            mSatS2File = copySatS2FileToPhoneDirectory(
+                    context, mConfigData.deviceSatelliteRegion.s2CellFile);
+            return mSatS2File;
         }
-        Log.d(TAG, "getSatelliteS2CellFile :"
+        Log.d(TAG, "getSatelliteS2CellFile: "
                 + "mConfigData is null or mConfigData.deviceSatelliteRegion is null");
         return null;
     }
@@ -209,7 +210,7 @@ public class SatelliteConfig {
      */
     @Nullable
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
-    public Path copySatS2FileToPhoneDirectory(@Nullable Context context,
+    public File copySatS2FileToPhoneDirectory(@Nullable Context context,
             @Nullable byte[] byteArrayFile) {
 
         if (context == null || byteArrayFile == null) {
@@ -234,18 +235,18 @@ public class SatelliteConfig {
         } catch (IOException ex) {
             Log.e(TAG, "copySatS2FileToPhoneDirectory: ex=" + ex);
         }
-        return targetSatS2FilePath;
+        return targetSatS2FilePath.toFile();
     }
 
     /**
      * @return {@code true} if the SatS2File is already existed and {@code false} otherwise.
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
-    public boolean isFileExist(Path filePath) {
-        if (filePath == null) {
-            Log.d(TAG, "isFileExist : filePath is null");
+    public boolean isFileExist(@Nullable File file) {
+        if (file == null) {
+            Log.d(TAG, "isFileExist : file is null");
             return false;
         }
-        return Files.exists(filePath);
+        return file.exists();
     }
 }
