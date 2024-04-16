@@ -17,14 +17,14 @@
 package com.android.internal.telephony;
 
 import android.os.AsyncResult;
-import android.os.RemoteException;
 import android.os.Trace;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
 import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * This class is the AIDL implementation of IRadioConfigIndication interface.
@@ -58,9 +58,11 @@ public class RadioConfigIndicationAidl extends
      */
     @Override
     public void onSimultaneousCallingSupportChanged(int[] enabledLogicalSlots) {
-        ArrayList<Integer> ret = RILUtils.primitiveArrayToArrayList(enabledLogicalSlots);
+        List<Integer> ret = (enabledLogicalSlots == null) ? Collections.emptyList() :
+                RILUtils.primitiveArrayToArrayList(enabledLogicalSlots);
         logd("onSimultaneousCallingSupportChanged: enabledLogicalSlots = " + ret);
         if (mRadioConfig.mSimultaneousCallingSupportStatusRegistrant != null) {
+            logd("onSimultaneousCallingSupportChanged: notifying registrant");
             mRadioConfig.mSimultaneousCallingSupportStatusRegistrant.notifyRegistrant(
                     new AsyncResult(null, ret, null));
         }
