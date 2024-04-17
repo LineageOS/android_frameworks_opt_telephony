@@ -42,3 +42,11 @@ flag {
     description: "This flag controls eSIM available memory feature."
     bug:"318348580"
 }
+
+# OWNER=rambowang TARGET=24Q3
+flag {
+    name: "cleanup_open_logical_channel_record_on_dispose"
+    namespace: "telephony"
+    description: "This flag cleans up the OpenLogicalChannelRecord once SIM is removed"
+    bug:"335046531"
+}
