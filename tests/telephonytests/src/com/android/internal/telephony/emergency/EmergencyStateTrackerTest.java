@@ -118,6 +118,9 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         MockitoAnnotations.initMocks(this);
+
+        doReturn(TelephonyManager.SIM_STATE_READY)
+                .when(mTelephonyManagerProxy).getSimState(anyInt());
     }
 
     @After
@@ -2395,6 +2398,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         // Verify carrier config for valid subscription
         assertTrue(testEst.isEmergencyCallbackModeSupported(phone));
 
+        // onCarrierConfigurationChanged is not called yet.
         // SIM removed
         when(phone.getSubId()).thenReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         setEcmSupportedConfig(phone, false);
@@ -2423,7 +2427,35 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         // Verify saved config for valid subscription
         assertTrue(testEst.isEmergencyCallbackModeSupported(phone));
 
-        // Insert SIM again, but emergency callback mode not supported
+        // Insert SIM in PIN locked again, but emergency callback mode not supported
+        doReturn(TelephonyManager.SIM_STATE_PIN_REQUIRED)
+                .when(mTelephonyManagerProxy).getSimState(anyInt());
+        when(phone.getSubId()).thenReturn(1);
+        setEcmSupportedConfig(phone, false);
+
+        // onCarrierConfigChanged with valid subscription
+        carrierConfigChangeListener.onCarrierConfigChanged(
+                phone.getPhoneId(), phone.getSubId(),
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
+
+        // Verify carrier config for valid subscription in PIN locked state, saved configuration
+        assertTrue(testEst.isEmergencyCallbackModeSupported(phone));
+
+        // SIM removed again
+        when(phone.getSubId()).thenReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        setEcmSupportedConfig(phone, false);
+
+        // onCarrierConfigChanged with invalid subscription
+        carrierConfigChangeListener.onCarrierConfigChanged(
+                phone.getPhoneId(), phone.getSubId(),
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
+
+        // Verify saved config for valid subscription
+        assertTrue(testEst.isEmergencyCallbackModeSupported(phone));
+
+        // Insert SIM, PIN verified, again, but emergency callback mode not supported
+        doReturn(TelephonyManager.SIM_STATE_READY)
+                .when(mTelephonyManagerProxy).getSimState(anyInt());
         when(phone.getSubId()).thenReturn(1);
         setEcmSupportedConfig(phone, false);
 
