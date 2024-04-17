@@ -227,6 +227,7 @@ public class EmergencyStateTracker {
     @VisibleForTesting
     public interface TelephonyManagerProxy {
         int getPhoneCount();
+        int getSimState(int slotIndex);
     }
 
     private final TelephonyManagerProxy mTelephonyManagerProxy;
@@ -241,6 +242,11 @@ public class EmergencyStateTracker {
         @Override
         public int getPhoneCount() {
             return mTelephonyManager.getActiveModemCount();
+        }
+
+        @Override
+        public int getSimState(int slotIndex) {
+            return mTelephonyManager.getSimState(slotIndex);
         }
     }
 
@@ -1072,10 +1078,10 @@ public class EmergencyStateTracker {
     @VisibleForTesting
     public boolean isEmergencyCallbackModeSupported(Phone phone) {
         int subId = phone.getSubId();
-        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+        int phoneId = phone.getPhoneId();
+        if (!isSimReady(phoneId, subId)) {
             // If there is no SIM, refer to the saved last carrier configuration with valid
             // subscription.
-            int phoneId = phone.getPhoneId();
             Boolean savedConfig = mNoSimEcbmSupported.get(Integer.valueOf(phoneId));
             if (savedConfig == null) {
                 // Exceptional case such as with poor boot performance.
@@ -1788,8 +1794,8 @@ public class EmergencyStateTracker {
                     + ", ecbmSupported=" + savedConfig);
         }
 
-        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
-            // invalid subId
+        if (!isSimReady(slotIndex, subId)) {
+            Rlog.i(TAG, "onCarrierConfigChanged SIM not ready");
             return;
         }
 
@@ -1831,6 +1837,12 @@ public class EmergencyStateTracker {
 
         Rlog.i(TAG, "onCarrierConfigChanged preference updated slotIndex=" + slotIndex
                 + ", ecbmSupported=" + carrierConfig);
+    }
+
+    private boolean isSimReady(int slotIndex, int subId) {
+        return SubscriptionManager.isValidSubscriptionId(subId)
+                && mTelephonyManagerProxy.getSimState(slotIndex)
+                        == TelephonyManager.SIM_STATE_READY;
     }
 
     private boolean getBroadcastEmergencyCallStateChanges(Phone phone) {

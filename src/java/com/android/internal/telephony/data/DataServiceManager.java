@@ -82,8 +82,6 @@ public class DataServiceManager extends Handler {
 
     private static final int EVENT_BIND_DATA_SERVICE = 1;
 
-    private static final int EVENT_WATCHDOG_TIMEOUT = 2;
-
     private static final long REQUEST_UNRESPONDED_TIMEOUT = 10 * MINUTE_IN_MILLIS; // 10 mins
 
     private static final long CHANGE_PERMISSION_TIMEOUT_MS = 15 * SECOND_IN_MILLIS; // 15 secs
@@ -212,7 +210,6 @@ public class DataServiceManager extends Handler {
             mDeathRecipient = new DataServiceManagerDeathRecipient();
             mBound = true;
             mLastBoundPackageName = getDataServicePackageName();
-            removeMessages(EVENT_WATCHDOG_TIMEOUT);
 
             try {
                 service.linkToDeath(mDeathRecipient, 0);
@@ -230,7 +227,6 @@ public class DataServiceManager extends Handler {
         @Override
         public void onServiceDisconnected(ComponentName name) {
             if (DBG) log("onServiceDisconnected");
-            removeMessages(EVENT_WATCHDOG_TIMEOUT);
             mIDataService = null;
             mBound = false;
             mServiceBindingChangedRegistrants.notifyResult(false);
@@ -257,7 +253,6 @@ public class DataServiceManager extends Handler {
                 log("onSetupDataCallComplete. resultCode = " + resultCode + ", response = "
                         + response);
             }
-            removeMessages(EVENT_WATCHDOG_TIMEOUT, DataServiceCallbackWrapper.this);
             Message msg = mMessageMap.remove(asBinder());
             if (msg != null) {
                 msg.getData().putParcelable(DATA_CALL_RESPONSE, response);
@@ -270,7 +265,6 @@ public class DataServiceManager extends Handler {
         @Override
         public void onDeactivateDataCallComplete(@DataServiceCallback.ResultCode int resultCode) {
             if (DBG) log("onDeactivateDataCallComplete. resultCode = " + resultCode);
-            removeMessages(EVENT_WATCHDOG_TIMEOUT, DataServiceCallbackWrapper.this);
             Message msg = mMessageMap.remove(asBinder());
             sendCompleteMessage(msg, resultCode);
         }
@@ -334,7 +328,6 @@ public class DataServiceManager extends Handler {
         @Override
         public void onHandoverStarted(@DataServiceCallback.ResultCode int resultCode) {
             if (DBG) log("onHandoverStarted. resultCode = " + resultCode);
-            removeMessages(EVENT_WATCHDOG_TIMEOUT, DataServiceCallbackWrapper.this);
             Message msg = mMessageMap.remove(asBinder());
             sendCompleteMessage(msg, resultCode);
         }
@@ -342,7 +335,6 @@ public class DataServiceManager extends Handler {
         @Override
         public void onHandoverCancelled(@DataServiceCallback.ResultCode int resultCode) {
             if (DBG) log("onHandoverCancelled. resultCode = " + resultCode);
-            removeMessages(EVENT_WATCHDOG_TIMEOUT, DataServiceCallbackWrapper.this);
             Message msg = mMessageMap.remove(asBinder());
             sendCompleteMessage(msg, resultCode);
         }
@@ -420,9 +412,6 @@ public class DataServiceManager extends Handler {
         switch (msg.what) {
             case EVENT_BIND_DATA_SERVICE:
                 rebindDataService();
-                break;
-            case EVENT_WATCHDOG_TIMEOUT:
-                handleRequestUnresponded((DataServiceCallbackWrapper) msg.obj);
                 break;
             default:
                 loge("Unhandled event " + msg.what);
@@ -680,8 +669,6 @@ public class DataServiceManager extends Handler {
             mMessageMap.put(callback.asBinder(), onCompleteMessage);
         }
         try {
-            sendMessageDelayed(obtainMessage(EVENT_WATCHDOG_TIMEOUT, callback),
-                    REQUEST_UNRESPONDED_TIMEOUT);
             mIDataService.setupDataCall(mPhone.getPhoneId(), accessNetworkType, dataProfile,
                     isRoaming, allowRoaming, reason, linkProperties, pduSessionId, sliceInfo,
                     trafficDescriptor, matchAllRuleAllowed, callback);
@@ -720,8 +707,6 @@ public class DataServiceManager extends Handler {
             mMessageMap.put(callback.asBinder(), onCompleteMessage);
         }
         try {
-            sendMessageDelayed(obtainMessage(EVENT_WATCHDOG_TIMEOUT, callback),
-                    REQUEST_UNRESPONDED_TIMEOUT);
             mIDataService.deactivateDataCall(mPhone.getPhoneId(), cid, reason, callback);
         } catch (RemoteException e) {
             loge("Cannot invoke deactivateDataCall on data service.");
@@ -761,8 +746,6 @@ public class DataServiceManager extends Handler {
         }
 
         try {
-            sendMessageDelayed(obtainMessage(EVENT_WATCHDOG_TIMEOUT, callback),
-                    REQUEST_UNRESPONDED_TIMEOUT);
             mIDataService.startHandover(mPhone.getPhoneId(), cid, callback);
         } catch (RemoteException e) {
             loge("Cannot invoke startHandover on data service.");
@@ -796,8 +779,6 @@ public class DataServiceManager extends Handler {
         }
 
         try {
-            sendMessageDelayed(obtainMessage(EVENT_WATCHDOG_TIMEOUT, callback),
-                    REQUEST_UNRESPONDED_TIMEOUT);
             mIDataService.cancelHandover(mPhone.getPhoneId(), cid, callback);
         } catch (RemoteException e) {
             loge("Cannot invoke cancelHandover on data service.");
