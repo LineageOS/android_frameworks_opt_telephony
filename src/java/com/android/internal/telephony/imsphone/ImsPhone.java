@@ -21,6 +21,7 @@ import static android.telephony.ims.ImsManager.EXTRA_WFC_REGISTRATION_FAILURE_ME
 import static android.telephony.ims.ImsManager.EXTRA_WFC_REGISTRATION_FAILURE_TITLE;
 import static android.telephony.ims.RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED;
 import static android.telephony.ims.RegistrationManager.REGISTRATION_STATE_REGISTERED;
+import static android.telephony.ims.RegistrationManager.REGISTRATION_STATE_REGISTERING;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_NONE;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_CLEAR_RAT_BLOCKS;
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK;
@@ -263,6 +264,14 @@ public class ImsPhone extends ImsPhoneBase {
             this.isWpsCall = b.mIsWpsCall;
         }
     }
+
+    /**
+     * Container to transfer IMS registration radio tech.
+     * This will be used as result value of AsyncResult to the handler that called
+     * {@link #registerForImsRegistrationChanges(Handler, int, Object)}
+     */
+    public record ImsRegistrationRadioTechInfo(int phoneId, int imsRegistrationTech,
+                                                int imsRegistrationState) {}
 
     // Instance Variables
     Phone mDefaultPhone;
@@ -2509,7 +2518,15 @@ public class ImsPhone extends ImsPhoneBase {
             updateImsRegistrationInfo(REGISTRATION_STATE_REGISTERED,
                     attributes.getRegistrationTechnology(), SUGGESTED_ACTION_NONE,
                     imsTransportType);
-            AsyncResult ar = new AsyncResult(null, null, null);
+
+            AsyncResult ar;
+            if (mFeatureFlags.changeMethodOfObtainingImsRegistrationRadioTech()) {
+                ar = new AsyncResult(null, new ImsRegistrationRadioTechInfo(mPhoneId,
+                        attributes.getRegistrationTechnology(), REGISTRATION_STATE_REGISTERED),
+                        null);
+            } else {
+                ar = new AsyncResult(null, null, null);
+            }
             mImsRegistrationUpdateRegistrants.notifyRegistrants(ar);
         }
 
@@ -2526,7 +2543,15 @@ public class ImsPhone extends ImsPhoneBase {
             mMetrics.writeOnImsConnectionState(mPhoneId, ImsConnectionState.State.PROGRESSING,
                     null);
             mImsStats.onImsRegistering(imsRadioTech);
-            AsyncResult ar = new AsyncResult(null, null, null);
+
+            AsyncResult ar;
+            if (mFeatureFlags.changeMethodOfObtainingImsRegistrationRadioTech()) {
+                ar = new AsyncResult(null, new ImsRegistrationRadioTechInfo(mPhoneId,
+                        imsRadioTech, REGISTRATION_STATE_REGISTERING),
+                        null);
+            } else {
+                ar = new AsyncResult(null, null, null);
+            }
             mImsRegistrationUpdateRegistrants.notifyRegistrants(ar);
         }
 
@@ -2569,7 +2594,15 @@ public class ImsPhone extends ImsPhoneBase {
                 setCurrentSubscriberUris(null);
                 clearPhoneNumberForSourceIms();
             }
-            AsyncResult ar = new AsyncResult(null, null, null);
+
+            AsyncResult ar;
+            if (mFeatureFlags.changeMethodOfObtainingImsRegistrationRadioTech()) {
+                ar = new AsyncResult(null, new ImsRegistrationRadioTechInfo(mPhoneId,
+                        REGISTRATION_TECH_NONE, REGISTRATION_STATE_NOT_REGISTERED),
+                        null);
+            } else {
+                ar = new AsyncResult(null, null, null);
+            }
             mImsRegistrationUpdateRegistrants.notifyRegistrants(ar);
         }
 
