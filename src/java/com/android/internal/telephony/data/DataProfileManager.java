@@ -45,6 +45,7 @@ import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
+import android.util.LruCache;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
@@ -102,8 +103,9 @@ public class DataProfileManager extends Handler {
     /** The preferred data profile used for internet. */
     private @Nullable DataProfile mPreferredDataProfile = null;
 
-    /** The last data profile that's successful for internet connection. */
-    private @Nullable DataProfile mLastInternetDataProfile = null;
+    /** The last data profile that's successful for internet connection by subscription id. */
+    private @NonNull LruCache<Integer, DataProfile> mLastInternetDataProfiles =
+            new LruCache<>(256);
 
     /** Preferred data profile set id. */
     private int mPreferredDataProfileSetId = Telephony.Carriers.NO_APN_SET_ID;
@@ -452,9 +454,11 @@ public class DataProfileManager extends Handler {
             }
         }
 
-        // Update a working internet data profile as a future candidate for preferred data profile
-        // after APNs are reset to default
-        mLastInternetDataProfile = defaultProfile;
+        // Update a working internet data profile by subid as a future candidate for preferred
+        // data profile after APNs are reset to default
+        if (defaultProfile != null) {
+            mLastInternetDataProfiles.put(mPhone.getSubId(), defaultProfile);
+        }
 
         // If the live default internet network is not using the preferred data profile, since
         // brought up a network means it passed sophisticated checks, update the preferred data
@@ -542,7 +546,8 @@ public class DataProfileManager extends Handler {
      */
     private boolean updatePreferredDataProfile() {
         DataProfile preferredDataProfile;
-        if (SubscriptionManager.isValidSubscriptionId(mPhone.getSubId())) {
+        int subId = mPhone.getSubId();
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
             preferredDataProfile = getPreferredDataProfileFromDb();
             if (preferredDataProfile == null) {
                 preferredDataProfile = getPreferredDataProfileFromConfig();
@@ -551,7 +556,8 @@ public class DataProfileManager extends Handler {
                     setPreferredDataProfile(preferredDataProfile);
                 } else {
                     preferredDataProfile = mAllDataProfiles.stream()
-                            .filter(dp -> areDataProfilesSharingApn(dp, mLastInternetDataProfile))
+                            .filter(dp -> areDataProfilesSharingApn(dp,
+                                    mLastInternetDataProfiles.get(subId)))
                             .findFirst()
                             .orElse(null);
                     if (preferredDataProfile != null) {
@@ -1208,7 +1214,10 @@ public class DataProfileManager extends Handler {
         pw.println("Preferred data profile from db=" + getPreferredDataProfileFromDb());
         pw.println("Preferred data profile from config=" + getPreferredDataProfileFromConfig());
         pw.println("Preferred data profile set id=" + mPreferredDataProfileSetId);
-        pw.println("Last internet data profile=" + mLastInternetDataProfile);
+        pw.println("Last internet data profile for=");
+        pw.increaseIndent();
+        mLastInternetDataProfiles.snapshot().forEach((key, value) -> pw.println(key + ":" + value));
+        pw.decreaseIndent();
         pw.println("Initial attach data profile=" + mInitialAttachDataProfile);
         pw.println("isTetheringDataProfileExisting=" + isTetheringDataProfileExisting(
                 TelephonyManager.NETWORK_TYPE_LTE));
