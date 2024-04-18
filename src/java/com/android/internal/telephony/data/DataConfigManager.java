@@ -64,6 +64,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -162,6 +163,13 @@ public class DataConfigManager extends Handler {
 
     /** Network type NR_SA_MMWAVE. Should not be used outside of DataConfigManager. */
     private static final String DATA_CONFIG_NETWORK_TYPE_NR_SA_MMWAVE = "NR_SA_MMWAVE";
+
+    /**
+     * The delay in milliseconds to re-evaluate existing data networks for bootstrap sim data usage
+     * limit.
+     */
+    private static final long REEVALUATE_BOOTSTRAP_SIM_DATA_USAGE_MILLIS =
+            TimeUnit.SECONDS.toMillis(60);
 
     @StringDef(prefix = {"DATA_CONFIG_NETWORK_TYPE_"}, value = {
             DATA_CONFIG_NETWORK_TYPE_GPRS,
@@ -875,6 +883,21 @@ public class DataConfigManager extends Handler {
     public long getEsimBootStrapMaxDataLimitBytes() {
         return mResources.getInteger(
                 com.android.internal.R.integer.config_esim_bootstrap_data_limit_bytes);
+    }
+
+    /**
+     * @return the interval in millisecond used to re-evaluate bootstrap sim data usage during esim
+     * bootstrap activation
+     */
+    public long getReevaluateBootstrapSimDataUsageMillis() {
+        long bootStrapSimDataUsageReevaluateInterval = mResources.getInteger(
+                com.android.internal.R.integer.config_reevaluate_bootstrap_sim_data_usage_millis);
+
+        if (bootStrapSimDataUsageReevaluateInterval <= 0) {
+            bootStrapSimDataUsageReevaluateInterval = REEVALUATE_BOOTSTRAP_SIM_DATA_USAGE_MILLIS;
+        }
+
+        return bootStrapSimDataUsageReevaluateInterval;
     }
 
     /**

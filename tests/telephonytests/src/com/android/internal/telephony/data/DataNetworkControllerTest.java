@@ -855,6 +855,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mContextFixture.putStringArrayResource(com.android.internal.R.array
                 .config_force_cellular_transport_capabilities,
                 new String[] {"ims", "eims", "xcap"});
+        mContextFixture.putIntResource(com.android.internal.R.integer
+                .config_reevaluate_bootstrap_sim_data_usage_millis, 60000);
     }
 
     @Before
