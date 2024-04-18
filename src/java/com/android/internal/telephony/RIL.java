@@ -206,6 +206,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     boolean mIsRadioProxyInitialized = false;
 
+    Boolean mIsRadioVersion20Cached = null;
+
     // When we are testing emergency calls using ril.test.emergencynumber, this will trigger test
     // ECbM when the call is ended.
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
@@ -1124,7 +1126,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         // Set radio callback; needed to set RadioIndication callback (should be done after
         // wakelock stuff is initialized above as callbacks are received on separate binder threads)
         for (int service = MIN_SERVICE_IDX; service <= MAX_SERVICE_IDX; service++) {
-            if (!isRadioServiceSupported(service)) {
+            if (isRadioVersion2_0() && !isRadioServiceSupported(service)) {
                 riljLog("Not initializing " + serviceToString(service) + " (not supported)");
                 continue;
             }
@@ -1146,12 +1148,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     private boolean isRadioVersion2_0() {
+        if (mIsRadioVersion20Cached != null) return mIsRadioVersion20Cached;
         for (int service = HAL_SERVICE_DATA; service <= MAX_SERVICE_IDX; service++) {
             if (isRadioServiceSupported(service)) {
-                return true;
+                return mIsRadioVersion20Cached = true;
             }
         }
-        return false;
+        return mIsRadioVersion20Cached = false;
     }
 
     private boolean isRadioServiceSupported(int service) {
