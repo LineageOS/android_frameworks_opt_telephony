@@ -31,6 +31,7 @@ import static org.mockito.Mockito.verify;
 
 import android.compat.testing.PlatformCompatChangeRule;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.telephony.TelephonyManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -295,10 +296,14 @@ public class SmsControllerTest extends TelephonyTest {
 
     @Test
     @EnableCompatChanges({TelephonyManager.ENABLE_FEATURE_MAPPING})
-    public void sendTextForSubscriberTestEnabledTelephonyFeature() {
+    public void sendTextForSubscriberTestEnabledTelephonyFeature() throws Exception {
         int subId = 1;
         doReturn(true).when(mSubscriptionManager)
                 .isSubscriptionAssociatedWithUser(eq(subId), any());
+
+        // Replace field to set SDK version of vendor partition to Android V
+        int vendorApiLevel = Build.VERSION_CODES.VANILLA_ICE_CREAM;
+        replaceInstance(SmsController.class, "mVendorApiLevel", mSmsControllerUT, vendorApiLevel);
 
         // Feature enabled, device does not have required telephony feature.
         doReturn(true).when(mFeatureFlags).enforceTelephonyFeatureMappingForPublicApis();
