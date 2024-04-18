@@ -4394,7 +4394,7 @@ public class SatelliteController extends Handler {
                         R.string.satellite_notification_title))
                 .setContentText(mContext.getResources().getString(
                         R.string.satellite_notification_summary))
-                .setSmallIcon(R.drawable.ic_satellite_alt_24px)
+                .setSmallIcon(R.drawable.ic_android_satellite_24px)
                 .setChannelId(NOTIFICATION_CHANNEL_ID)
                 .setAutoCancel(true)
                 .setColor(mContext.getColor(
