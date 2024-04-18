@@ -31,8 +31,10 @@ import android.content.SharedPreferences;
 import android.content.pm.ComponentInfo;
 import android.content.pm.PackageManager;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Handler;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.service.euicc.EuiccProfileInfo;
@@ -75,6 +77,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     private UiccController mUiccController;
     private FeatureFlags mFeatureFlags;
     private PackageManager mPackageManager;
+    private final int mVendorApiLevel;
 
     private static EuiccCardController sInstance;
 
@@ -143,6 +146,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         mEuiccController = euiccController;
         mFeatureFlags = featureFlags;
         mPackageManager = context.getPackageManager();
+        mVendorApiLevel = SystemProperties.getInt(
+                "ro.vendor.api_level", Build.VERSION.DEVICE_INITIAL_SDK_INT);
 
         if (isBootUp(mContext)) {
             mSimSlotStatusChangeReceiver = new SimSlotStatusChangedBroadcastReceiver();
@@ -1541,7 +1546,11 @@ public class EuiccCardController extends IEuiccCardController.Stub {
 
         if (!mFeatureFlags.enforceTelephonyFeatureMappingForPublicApis()
                 || !CompatChanges.isChangeEnabled(ENABLE_FEATURE_MAPPING, callingPackage,
-                Binder.getCallingUserHandle())) {
+                Binder.getCallingUserHandle())
+                || mVendorApiLevel < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            // Skip to check associated telephony feature,
+            // if compatibility change is not enabled for the current process or
+            // the SDK version of vendor partition is less than Android V.
             return;
         }
 

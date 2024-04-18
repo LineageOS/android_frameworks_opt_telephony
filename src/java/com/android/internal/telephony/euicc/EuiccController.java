@@ -34,7 +34,9 @@ import android.content.pm.ComponentInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Settings;
@@ -124,6 +126,7 @@ public class EuiccController extends IEuiccController.Stub {
     private final AppOpsManager mAppOpsManager;
     private final PackageManager mPackageManager;
     private final FeatureFlags mFeatureFlags;
+    private final int mVendorApiLevel;
 
     // These values should be set or updated upon 1) system boot, 2) EuiccService/LPA is bound to
     // the phone process, 3) values are updated remotely by server flags.
@@ -172,6 +175,8 @@ public class EuiccController extends IEuiccController.Stub {
         mAppOpsManager = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
         mPackageManager = context.getPackageManager();
         mFeatureFlags = featureFlags;
+        mVendorApiLevel = SystemProperties.getInt(
+                "ro.vendor.api_level", Build.VERSION.DEVICE_INITIAL_SDK_INT);
     }
 
     /**
@@ -2351,7 +2356,11 @@ public class EuiccController extends IEuiccController.Stub {
 
         if (!mFeatureFlags.enforceTelephonyFeatureMappingForPublicApis()
                 || !CompatChanges.isChangeEnabled(ENABLE_FEATURE_MAPPING, callingPackage,
-                Binder.getCallingUserHandle())) {
+                Binder.getCallingUserHandle())
+                || mVendorApiLevel < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            // Skip to check associated telephony feature,
+            // if compatibility change is not enabled for the current process or
+            // the SDK version of vendor partition is less than Android V.
             return;
         }
 
