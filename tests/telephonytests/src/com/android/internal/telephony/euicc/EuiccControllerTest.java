@@ -48,6 +48,7 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
+import android.os.Build;
 import android.os.Parcelable;
 import android.os.RemoteException;
 import android.os.UserManager;
@@ -1682,7 +1683,12 @@ public class EuiccControllerTest extends TelephonyTest {
     @Test
     @EnableCompatChanges({EuiccManager.INACTIVE_PORT_AVAILABILITY_CHECK,
             TelephonyManager.ENABLE_FEATURE_MAPPING})
-    public void testIsSimPortAvailable_WithTelephonyFeatureMapping() {
+    public void testIsSimPortAvailable_WithTelephonyFeatureMapping() throws Exception {
+        // Replace field to set SDK version of vendor partition to Android V
+        int vendorApiLevel = Build.VERSION_CODES.VANILLA_ICE_CREAM;
+        replaceInstance(EuiccController.class, "mVendorApiLevel", (EuiccController) mController,
+                vendorApiLevel);
+
         // Feature flag enabled, device has required telephony feature.
         doReturn(true).when(mFeatureFlags).enforceTelephonyFeatureMappingForPublicApis();
         doReturn(true).when(mPackageManager).hasSystemFeature(
