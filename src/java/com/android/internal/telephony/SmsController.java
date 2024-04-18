@@ -38,6 +38,7 @@ import android.os.BaseBundle;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemProperties;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.os.UserHandle;
 import android.provider.Telephony.Sms.Intents;
@@ -70,6 +71,8 @@ public class SmsController extends ISmsImplBase {
 
     private final Context mContext;
     private final PackageManager mPackageManager;
+    private final int mVendorApiLevel;
+
     @NonNull private final FeatureFlags mFlags;
 
     @VisibleForTesting
@@ -83,6 +86,9 @@ public class SmsController extends ISmsImplBase {
         if (smsServiceRegisterer.get() == null) {
             smsServiceRegisterer.register(this);
         }
+
+        mVendorApiLevel = SystemProperties.getInt(
+                "ro.vendor.api_level", Build.VERSION.DEVICE_INITIAL_SDK_INT);
     }
 
     private Phone getPhone(int subId) {
@@ -1224,7 +1230,11 @@ public class SmsController extends ISmsImplBase {
 
         if (!mFlags.enforceTelephonyFeatureMappingForPublicApis()
                 || !CompatChanges.isChangeEnabled(ENABLE_FEATURE_MAPPING, callingPackage,
-                Binder.getCallingUserHandle())) {
+                Binder.getCallingUserHandle())
+                || mVendorApiLevel < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            // Skip to check associated telephony feature,
+            // if compatibility change is not enabled for the current process or
+            // the SDK version of vendor partition is less than Android V.
             return;
         }
 

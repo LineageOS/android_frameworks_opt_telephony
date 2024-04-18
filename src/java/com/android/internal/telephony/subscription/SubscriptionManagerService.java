@@ -313,6 +313,9 @@ public class SubscriptionManagerService extends ISub.Stub {
     @NonNull
     private final int[] mSimState;
 
+    /** Vendor API level from system property. */
+    private final int mVendorApiLevel;
+
     /**
      * {@code true} if a user profile can only see the SIMs associated with it, unless it possesses
      * no SIMs on the device.
@@ -467,6 +470,8 @@ public class SubscriptionManagerService extends ISub.Stub {
         mEuiccManager = context.getSystemService(EuiccManager.class);
         mAppOpsManager = context.getSystemService(AppOpsManager.class);
         mPackageManager = context.getPackageManager();
+        mVendorApiLevel = SystemProperties.getInt(
+                "ro.vendor.api_level", Build.VERSION.DEVICE_INITIAL_SDK_INT);
 
         mUiccController = UiccController.getInstance();
         mHandler = new Handler(looper);
@@ -4588,7 +4593,11 @@ public class SubscriptionManagerService extends ISub.Stub {
 
         if (!mFeatureFlags.enforceTelephonyFeatureMappingForPublicApis()
                 || !CompatChanges.isChangeEnabled(ENABLE_FEATURE_MAPPING, callingPackage,
-                Binder.getCallingUserHandle())) {
+                Binder.getCallingUserHandle())
+                || mVendorApiLevel < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            // Skip to check associated telephony feature,
+            // if compatibility change is not enabled for the current process or
+            // the SDK version of vendor partition is less than Android V.
             return;
         }
 
