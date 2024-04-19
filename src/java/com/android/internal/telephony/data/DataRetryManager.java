@@ -1168,7 +1168,7 @@ public class DataRetryManager extends Handler {
             // when unthrottling happens, we still want to retry and we'll need
             // a type there so we know what to retry. Using RETRY_TYPE_NONE
             // ThrottleStatus is just for API backwards compatibility reason.
-            updateThrottleStatus(dataProfile, requestList, null,
+            throttleDataProfile(dataProfile, requestList, null,
                     ThrottleStatus.RETRY_TYPE_NEW_CONNECTION, transport, Long.MAX_VALUE);
             return;
         } else if (retryDelayMillis != DataCallResponse.RETRY_DURATION_UNDEFINED) {
@@ -1180,7 +1180,7 @@ public class DataRetryManager extends Handler {
                     .setDataProfile(dataProfile)
                     .setTransport(transport)
                     .build();
-            updateThrottleStatus(dataProfile, requestList, null,
+            throttleDataProfile(dataProfile, requestList, null,
                     ThrottleStatus.RETRY_TYPE_NEW_CONNECTION, transport,
                     dataSetupRetryEntry.retryElapsedTime);
             schedule(dataSetupRetryEntry);
@@ -1298,7 +1298,7 @@ public class DataRetryManager extends Handler {
             // when unthrottling happens, we still want to retry and we'll need
             // a type there so we know what to retry. Using RETRY_TYPE_NONE
             // ThrottleStatus is just for API backwards compatibility reason.
-            updateThrottleStatus(dataNetwork.getDataProfile(),
+            throttleDataProfile(dataNetwork.getDataProfile(),
                     dataNetwork.getAttachedNetworkRequestList(), dataNetwork,
                     ThrottleStatus.RETRY_TYPE_HANDOVER, targetTransport, Long.MAX_VALUE);
         } else if (retryDelayMillis != DataCallResponse.RETRY_DURATION_UNDEFINED) {
@@ -1308,7 +1308,7 @@ public class DataRetryManager extends Handler {
                     .setDataNetwork(dataNetwork)
                     .build();
 
-            updateThrottleStatus(dataNetwork.getDataProfile(),
+            throttleDataProfile(dataNetwork.getDataProfile(),
                     dataNetwork.getAttachedNetworkRequestList(), dataNetwork,
                     ThrottleStatus.RETRY_TYPE_HANDOVER, targetTransport,
                     dataHandoverRetryEntry.retryElapsedTime);
@@ -1534,7 +1534,7 @@ public class DataRetryManager extends Handler {
      * @param expirationTime The expiration time of data throttling. This is the time retrieved from
      * {@link SystemClock#elapsedRealtime()}.
      */
-    private void updateThrottleStatus(@NonNull DataProfile dataProfile,
+    private void throttleDataProfile(@NonNull DataProfile dataProfile,
             @Nullable NetworkRequestList networkRequestList,
             @Nullable DataNetwork dataNetwork, @RetryType int retryType,
             @TransportType int transport, @ElapsedRealtimeLong long expirationTime) {
@@ -1565,21 +1565,7 @@ public class DataRetryManager extends Handler {
                 ? ThrottleStatus.RETRY_TYPE_NONE : retryType;
 
         // Report to the clients.
-        final List<ThrottleStatus> throttleStatusList = new ArrayList<>();
-        if (dataProfile.getApnSetting() != null) {
-            throttleStatusList.addAll(dataProfile.getApnSetting().getApnTypes().stream()
-                    .map(apnType -> new ThrottleStatus.Builder()
-                            .setApnType(apnType)
-                            .setRetryType(dataRetryType)
-                            .setSlotIndex(mPhone.getPhoneId())
-                            .setThrottleExpiryTimeMillis(expirationTime)
-                            .setTransportType(transport)
-                            .build())
-                    .collect(Collectors.toList()));
-        }
-
-        mDataRetryManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
-                () -> callback.onThrottleStatusChanged(throttleStatusList)));
+        notifyThrottleStatus(dataProfile, expirationTime, dataRetryType, transport);
     }
 
     /**
@@ -1650,23 +1636,9 @@ public class DataRetryManager extends Handler {
         // Make it final so it can be used in the lambda function below.
         final int dataRetryType = retryType;
 
-        if (unthrottledProfile != null && unthrottledProfile.getApnSetting() != null) {
-            unthrottledProfile.getApnSetting().setPermanentFailed(false);
-            throttleStatusList.addAll(unthrottledProfile.getApnSetting().getApnTypes().stream()
-                    .map(apnType -> new ThrottleStatus.Builder()
-                            .setApnType(apnType)
-                            .setSlotIndex(mPhone.getPhoneId())
-                            .setNoThrottle()
-                            .setRetryType(dataRetryType)
-                            .setTransportType(transport)
-                            .build())
-                    .collect(Collectors.toList()));
-        }
-
-        mDataRetryManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
-                () -> callback.onThrottleStatusChanged(throttleStatusList)));
-
         if (unthrottledProfile != null) {
+            notifyThrottleStatus(unthrottledProfile, ThrottleStatus.Builder.NO_THROTTLE_EXPIRY_TIME,
+                    dataRetryType, transport);
             // cancel pending retries since we will soon schedule an immediate retry
             cancelRetriesForDataProfile(unthrottledProfile, transport);
         }
@@ -1799,6 +1771,60 @@ public class DataRetryManager extends Handler {
                         && ((DataHandoverRetryEntry) entry).dataNetwork == dataNetwork
                         && entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED)
                 .forEach(entry -> entry.setState(DataRetryEntry.RETRY_STATE_CANCELLED));
+
+        long now = SystemClock.elapsedRealtime();
+        DataThrottlingEntry dataUnThrottlingEntry = mDataThrottlingEntries.stream()
+                .filter(entry -> dataNetwork == entry.dataNetwork
+                        && entry.expirationTimeMillis > now).findAny().orElse(null);
+        if (dataUnThrottlingEntry == null) {
+            return;
+        }
+        log("onCancelPendingHandoverRetry removed throttling entry:" + dataUnThrottlingEntry);
+        DataProfile unThrottledProfile =
+                dataUnThrottlingEntry.dataNetwork.getDataProfile();
+        final int transport = dataUnThrottlingEntry.transport;
+
+        notifyThrottleStatus(unThrottledProfile, ThrottleStatus.Builder.NO_THROTTLE_EXPIRY_TIME,
+                ThrottleStatus.RETRY_TYPE_HANDOVER, transport);
+        mDataThrottlingEntries.removeIf(entry -> dataNetwork == entry.dataNetwork);
+    }
+
+    /**
+     * Notify listeners of throttle status for a given data profile
+     *
+     * @param dataProfile Data profile for this throttling status notification
+     * @param expirationTime Expiration time of throttling status. {@link
+     * ThrottleStatus.Builder#NO_THROTTLE_EXPIRY_TIME} indicates un-throttling.
+     * @param dataRetryType Retry type of this throttling notification.
+     * @param transportType Transport type of this throttling notification.
+     */
+    private void notifyThrottleStatus(
+            @NonNull DataProfile dataProfile, long expirationTime, @RetryType int dataRetryType,
+            @TransportType int transportType) {
+        if (dataProfile.getApnSetting() != null) {
+            final boolean unThrottled =
+                    expirationTime == ThrottleStatus.Builder.NO_THROTTLE_EXPIRY_TIME;
+            if (unThrottled) {
+                dataProfile.getApnSetting().setPermanentFailed(false);
+            }
+            final List<ThrottleStatus> throttleStatusList = new ArrayList<>(
+                    dataProfile.getApnSetting().getApnTypes().stream()
+                            .map(apnType -> {
+                                ThrottleStatus.Builder builder = new ThrottleStatus.Builder()
+                                        .setApnType(apnType)
+                                        .setSlotIndex(mPhone.getPhoneId())
+                                        .setRetryType(dataRetryType)
+                                        .setTransportType(transportType);
+                                if (unThrottled) {
+                                    builder.setNoThrottle();
+                                } else {
+                                    builder.setThrottleExpiryTimeMillis(expirationTime);
+                                }
+                                return builder.build();
+                            }).toList());
+            mDataRetryManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                    () -> callback.onThrottleStatusChanged(throttleStatusList)));
+        }
     }
 
     /**
