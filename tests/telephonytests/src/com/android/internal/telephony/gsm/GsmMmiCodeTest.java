@@ -20,12 +20,15 @@ import static com.google.common.truth.Truth.assertThat;
 
 import static junit.framework.Assert.fail;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.verify;
 
+import android.content.Context;
 import android.os.AsyncResult;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
@@ -330,6 +333,44 @@ public class GsmMmiCodeTest extends TelephonyTest {
         mGsmMmiCode.getErrorMessage(ar);
         verify(mContext.getResources()).getText(
                 eq(com.android.internal.R.string.mmiErrorNotSupported));
+    }
+
+    @Test
+    public void testFacCode() {
+        // Put a valid FAC code into the carrier config.
+        CarrierConfigManager ccm = (CarrierConfigManager) mGsmCdmaPhoneUT.getContext()
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle cc = ccm.getConfigForSubId(0);
+        cc.putStringArray(CarrierConfigManager.KEY_FEATURE_ACCESS_CODES_STRING_ARRAY,
+                new String[] {"112"});
+
+        // Try using a dial string with the FAC; this should result in a NULL GsmMmiCode.
+        GsmMmiCode validFac = GsmMmiCode.newFromDialString("#112#6505551212*", mGsmCdmaPhoneUT,
+                null, null);
+        assertNull(validFac);
+
+        // Try using a dial string with the FAC; this should result in a NULL GsmMmiCode.
+        // Note this case is somewhat contrived, however the GsmMmiCode parsing does allow non-digit
+        // characters, so we will here too.
+        GsmMmiCode validFac2 = GsmMmiCode.newFromDialString("#112#650-555-1212*", mGsmCdmaPhoneUT,
+                null, null);
+        assertNull(validFac2);
+
+        // Try using a dial string with a different made up FAC; this one is not in the carrier
+        // config so should just return an MMI code.
+        GsmMmiCode invalidFac = GsmMmiCode.newFromDialString("#113#6505551212*", mGsmCdmaPhoneUT,
+                null, null);
+        assertNotNull(invalidFac);
+
+        // Now try the carrier config FAC code, but it's formatted as if it a USSD.
+        GsmMmiCode ussd = GsmMmiCode.newFromDialString("*#112*6505551212#", mGsmCdmaPhoneUT,
+                null, null);
+        assertNotNull(ussd);
+
+        // Now try the carrier config FAC code, but it's not a valid FAC formatted string
+        GsmMmiCode invalidFormat = GsmMmiCode.newFromDialString("*#112*6505551212", mGsmCdmaPhoneUT,
+                null, null);
+        assertNull(invalidFormat);
     }
 
     private void setCarrierSupportsCallerIdVerticalServiceCodesCarrierConfig() {
