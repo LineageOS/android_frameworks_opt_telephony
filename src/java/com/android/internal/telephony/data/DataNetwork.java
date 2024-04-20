@@ -1524,7 +1524,7 @@ public class DataNetwork extends StateMachine {
 
             int apnTypeBitmask = mDataProfile.getApnSetting() != null
                     ? mDataProfile.getApnSetting().getApnTypeBitmask() : ApnSetting.TYPE_NONE;
-            mDataCallSessionStats.onSetupDataCall(apnTypeBitmask);
+            mDataCallSessionStats.onSetupDataCall(apnTypeBitmask, isSatellite());
 
             logl("setupData: accessNetwork="
                     + AccessNetworkType.toString(accessNetwork) + ", " + mDataProfile

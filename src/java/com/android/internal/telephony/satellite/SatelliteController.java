@@ -1013,7 +1013,8 @@ public class SatelliteController extends Handler {
                     mSessionMetricsStats.setInitializationResult(error)
                             .setSatelliteTechnology(getSupportedNtnRadioTechnology())
                             .setInitializationProcessingTime(
-                                    System.currentTimeMillis() - mSessionProcessingTimeStamp);
+                                    System.currentTimeMillis() - mSessionProcessingTimeStamp)
+                            .setIsDemoMode(mIsDemoModeEnabled);
                     mSessionProcessingTimeStamp = 0;
 
                     if (error == SATELLITE_RESULT_SUCCESS) {
@@ -4037,6 +4038,7 @@ public class SatelliteController extends Handler {
         result.accept(error);
         mSessionMetricsStats.setInitializationResult(error)
                 .setSatelliteTechnology(getSupportedNtnRadioTechnology())
+                .setIsDemoMode(mIsDemoModeEnabled)
                 .reportSessionMetrics();
         mSessionStartTimeStamp = 0;
         mSessionProcessingTimeStamp = 0;
@@ -4253,6 +4255,7 @@ public class SatelliteController extends Handler {
                         .setSatelliteTechnology(getSupportedNtnRadioTechnology())
                         .setInitializationProcessingTime(
                                 System.currentTimeMillis() - mSessionProcessingTimeStamp)
+                        .setIsDemoMode(mIsDemoModeEnabled)
                         .reportSessionMetrics();
                 mSessionStartTimeStamp = 0;
                 mSessionProcessingTimeStamp = 0;
