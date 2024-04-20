@@ -2227,6 +2227,7 @@ public class DataNetwork extends StateMachine {
         // will always be registered with NOT_SUSPENDED capability.
         mNetworkAgent = createNetworkAgent();
         mNetworkAgent.markConnected();
+        notifyPreciseDataConnectionState();
         // Because network agent is always created with NOT_SUSPENDED, we need to update
         // the suspended if it's was in suspended state.
         if (mSuspended) {
@@ -3417,6 +3418,7 @@ public class DataNetwork extends StateMachine {
         return new PreciseDataConnectionState.Builder()
                 .setTransportType(mTransport)
                 .setId(mCid.get(mTransport))
+                .setNetworkAgentId(mNetworkAgent.getId())
                 .setState(getState())
                 .setApnSetting(mDataProfile.getApnSetting())
                 .setLinkProperties(mLinkProperties)
@@ -3432,14 +3434,16 @@ public class DataNetwork extends StateMachine {
      * {@link android.telephony.TelephonyCallback.PreciseDataConnectionStateListener}.
      *
      * Note that notify only when {@link DataState} or {@link
-     * PreciseDataConnectionState.NetworkValidationStatus} changes.
+     * PreciseDataConnectionState.NetworkValidationStatus} or {@link TelephonyNetworkAgent#getId}
+     * changes.
      */
     private void notifyPreciseDataConnectionState() {
         PreciseDataConnectionState pdcs = getPreciseDataConnectionState();
         if (mPreciseDataConnectionState == null
                 || mPreciseDataConnectionState.getState() != pdcs.getState()
                 || mPreciseDataConnectionState.getNetworkValidationStatus()
-                        != pdcs.getNetworkValidationStatus()) {
+                        != pdcs.getNetworkValidationStatus()
+                || mPreciseDataConnectionState.getNetId() != pdcs.getNetId()) {
             mPreciseDataConnectionState = pdcs;
             logv("notifyPreciseDataConnectionState=" + pdcs);
             mPhone.notifyDataConnection(pdcs);
