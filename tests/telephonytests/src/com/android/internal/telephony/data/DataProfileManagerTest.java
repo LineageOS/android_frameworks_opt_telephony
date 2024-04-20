@@ -1119,6 +1119,97 @@ public class DataProfileManagerTest extends TelephonyTest {
     }
 
     @Test
+    public void testSetPreferredDataProfileBySubscriptionId() {
+        // NetworkRequest.
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build(), mPhone, mFeatureFlags);
+        // DataNetwork for internet
+        DataNetwork internetNetwork = Mockito.mock(DataNetwork.class);
+
+        // Step 1. With sudId 1, connect to internet and set as prefer APN.
+        // Test for SubId 1.
+        doReturn(1).when(mPhone).getSubId();
+
+        // Sim Loaded and loads profiles.
+        changeSimStateTo(TelephonyManager.SIM_STATE_LOADED);
+        mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
+        processAllMessages();
+
+        // Find DataProfile based on network request
+        DataProfile dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
+                tnr, TelephonyManager.NETWORK_TYPE_LTE, false, false, false);
+        assertThat(dataProfile.getApnSetting().getApnName()).isEqualTo(GENERAL_PURPOSE_APN);
+        dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
+
+        // Connected to internet. At this time, This test expects that dataProfile is stored in
+        // mLastInternetDataProfiles for subid 1.
+        doReturn(dataProfile).when(internetNetwork).getDataProfile();
+        doReturn(new DataNetworkController.NetworkRequestList(List.of(tnr)))
+                .when(internetNetwork).getAttachedNetworkRequestList();
+        mDataNetworkControllerCallback.onConnectedInternetDataNetworksChanged(
+                Set.of(internetNetwork));
+        processAllMessages();
+
+        // After internet connected, preferred APN should be set
+        assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isTrue();
+
+
+        // Step 2. test prefer apn for subId 2.
+        // Test for SubId 2.
+        doReturn(2).when(mPhone).getSubId();
+        // Sim Loaded and loads profiles.
+        changeSimStateTo(TelephonyManager.SIM_STATE_ABSENT);
+        changeSimStateTo(TelephonyManager.SIM_STATE_LOADED);
+        mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
+        processAllMessages();
+
+        // Find DataProfile based on network request
+        dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
+                tnr, TelephonyManager.NETWORK_TYPE_CDMA, false, false, false);
+        assertThat(dataProfile.getApnSetting().getApnName())
+                .isEqualTo(GENERAL_PURPOSE_APN_LEGACY_RAT);
+        dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
+        doReturn(dataProfile).when(internetNetwork).getDataProfile();
+
+        // APN reset
+        mPreferredApnId = -1;
+        mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
+        processAllMessages();
+
+        // Since a new subid has been loaded, preferred APN should be null regardless of the last
+        // internet connection of previous subid.
+        assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isFalse();
+
+
+        // Step 3. try again back to subId 1.
+        // Test for SubId 1.
+        doReturn(1).when(mPhone).getSubId();
+        // Sim Loaded and loads profiles.
+        changeSimStateTo(TelephonyManager.SIM_STATE_ABSENT);
+        changeSimStateTo(TelephonyManager.SIM_STATE_LOADED);
+        mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
+        processAllMessages();
+
+        // Find DataProfile based on network request
+        dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
+                tnr, TelephonyManager.NETWORK_TYPE_LTE, false, false, false);
+        assertThat(dataProfile.getApnSetting().getApnName()).isEqualTo(GENERAL_PURPOSE_APN);
+        dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
+        doReturn(dataProfile).when(internetNetwork).getDataProfile();
+
+        // APN reset
+        mPreferredApnId = -1;
+        mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
+        processAllMessages();
+
+        // Since the old subid has been loaded, Even if preferapn for subid 1 is not in the db, the
+        // preferapn can be loaded by mLastInternetDataProfiles
+        assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isTrue();
+    }
+
+    @Test
     public void testSetInitialAttachDataProfile() {
         ArgumentCaptor<DataProfile> dataProfileCaptor =
                 ArgumentCaptor.forClass(DataProfile.class);

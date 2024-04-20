@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 import static android.telephony.SubscriptionManager.PROFILE_CLASS_PROVISIONING;
+import static android.telephony.SubscriptionManager.TRANSFER_STATUS_CONVERTED;
 import static android.telephony.TelephonyManager.ACTION_PRIMARY_SUBSCRIPTION_LIST_CHANGED;
 import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE;
 import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL;
@@ -158,6 +159,11 @@ public class MultiSimSettingController extends Handler {
     /** The number of active modem count. */
     private int mActiveModemCount;
 
+    private boolean mNeedSetDefaultVoice;
+    private boolean mNeedSetDefaultSms;
+    private boolean mNeedSetDefaultData;
+    private int mConvertedPsimSubId;
+
     private static final String SETTING_USER_PREF_DATA_SUB = "user_preferred_data_sub";
 
     private static class DataSettingsControllerCallback extends DataSettingsManagerCallback {
@@ -243,6 +249,8 @@ public class MultiSimSettingController extends Handler {
         ccm.registerCarrierConfigChangeListener(this::post,
                 (slotIndex, subId, carrierId, specificCarrierId) ->
                         onCarrierConfigChanged(slotIndex, subId));
+
+        mConvertedPsimSubId = getConvertedPsimSubscriptionId();
     }
 
     private boolean hasCalling() {
@@ -403,6 +411,7 @@ public class MultiSimSettingController extends Handler {
         if (DBG) log("onAllSubscriptionsLoaded: mSubInfoInitialized=" + mSubInfoInitialized);
         if (!mSubInfoInitialized) {
             mSubInfoInitialized = true;
+            mConvertedPsimSubId = getConvertedPsimSubscriptionId();
             for (Phone phone : PhoneFactory.getPhones()) {
                 phone.mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
             }
@@ -599,7 +608,6 @@ public class MultiSimSettingController extends Handler {
      */
     protected void updateDefaults() {
         if (DBG) log("updateDefaults");
-
         if (!isReadyToReevaluate()) return;
 
         List<SubscriptionInfo> activeSubInfos = mSubscriptionManagerService
@@ -678,7 +686,12 @@ public class MultiSimSettingController extends Handler {
         // preference auto selection logic or display notification for end used to
         // select voice/data/SMS preferences.
         if (!autoFallbackEnabled) {
-            sendSubChangeNotificationIfNeeded(change, dataSelected, voiceSelected, smsSelected);
+            // Hide the dialog for preferred SIM/data pick if the primary subscription change is
+            // due to the pSIM conversion.
+            if (!setDefaultForPsimConversionChanged(change, dataSelected, voiceSelected,
+                    smsSelected)) {
+                sendSubChangeNotificationIfNeeded(change, dataSelected, voiceSelected, smsSelected);
+            }
         } else {
             updateUserPreferences(mPrimarySubList, dataSelected, voiceSelected, smsSelected);
         }
@@ -792,6 +805,119 @@ public class MultiSimSettingController extends Handler {
             }
             mContext.sendBroadcast(intent);
         }
+    }
+
+    /**
+     * Check that the primary subscription has changed due to the pSIM conversion.
+     * @param change Whether to update the mPrimarySubList.
+     * @param dataSelected Whether the default data subscription is updated
+     * @param voiceSelected Whether the default voice subscription is updated
+     * @param smsSelected Whether the default sms subscription is updated
+     * @return {@code true} if the primary subscription has changed due to the pSIM conversion,
+     * {@code false} otherwise.
+     */
+    private boolean setDefaultForPsimConversionChanged(int change, boolean dataSelected,
+            boolean voiceSelected, boolean smsSelected) {
+        if (!mFeatureFlags.supportPsimToEsimConversion()) {
+            log("pSIM to eSIM conversion is not supported");
+            return false;
+        }
+        if (mSubscriptionManagerService.isEsimBootStrapProvisioningActivated()) {
+            log("esim bootstrap activation in progress, skip notification");
+            return false;
+        }
+
+        @TelephonyManager.DefaultSubscriptionSelectType
+        int simSelectDialogType = getSimSelectDialogType(
+                change, dataSelected, voiceSelected, smsSelected);
+        SimCombinationWarningParams simCombinationParams = getSimCombinationWarningParams(change);
+        log("[setDefaultForPsimConversionChanged]showing dialog type:" + simSelectDialogType);
+        if (simSelectDialogType != EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_NONE
+                || simCombinationParams.mWarningType != EXTRA_SIM_COMBINATION_WARNING_TYPE_NONE) {
+            log("[setDefaultForPsimConversionChanged]Converted pSIM:" + mConvertedPsimSubId);
+            int subId = getConvertedPsimSubscriptionId();
+            if (subId != INVALID_SUBSCRIPTION_ID && subId != mConvertedPsimSubId) {
+                // If a primary subscription is removed and only one is left active, ask user
+                // for preferred sub selection if any default setting is not set.
+                if (simSelectDialogType == EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL) {
+                    // check if pSIM's preference is voice.
+                    if (mSubscriptionManagerService.getDefaultVoiceSubId()
+                            == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                        mNeedSetDefaultVoice = true;
+                    }
+                    // check if pSIM's preference is sms.
+                    if (mSubscriptionManagerService.getDefaultSmsSubId()
+                            == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                        mNeedSetDefaultSms = true;
+                    }
+                    // check if pSIM's preference is data.
+                    if (mSubscriptionManagerService.getDefaultDataSubId()
+                            == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                        mNeedSetDefaultData = true;
+                    }
+                    log("select type all, set preferred SIM :" + mPrimarySubList.get(0));
+                    mSubscriptionManagerService.setDefaultVoiceSubId(mPrimarySubList.get(0));
+                    mSubscriptionManagerService.setDefaultSmsSubId(mPrimarySubList.get(0));
+                    mSubscriptionManagerService.setDefaultDataSubId(mPrimarySubList.get(0));
+                    return true;
+                } else if (simSelectDialogType == EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_DATA) {
+                    // If another primary subscription is added or default data is not selected, ask
+                    // user to select default for data as it's most important.
+                    int newSubId = mPrimarySubList.get(0);
+                    log("need to set voice:" + mNeedSetDefaultVoice
+                            + ", sms:" + mNeedSetDefaultSms
+                            + ", data:" + mNeedSetDefaultData);
+                    // if the converted pSIM's preference is voice, set the default
+                    // setting for the changed primary subscription to voice.
+                    if (mNeedSetDefaultVoice) {
+                        log("set preferred call, subId:" + newSubId);
+                        mSubscriptionManagerService.setDefaultVoiceSubId(newSubId);
+                        mNeedSetDefaultVoice = false;
+                    }
+                    // if the converted pSIM's preference is sms, set the default
+                    // setting for the changed primary subscription to sms.
+                    if (mNeedSetDefaultSms) {
+                        log("set preferred sms, subId:" + newSubId);
+                        mSubscriptionManagerService.setDefaultSmsSubId(newSubId);
+                        mNeedSetDefaultSms = false;
+                    }
+                    // if the converted pSIM's preference is data, set the default
+                    // setting for the changed primary subscription to data.
+                    if (mNeedSetDefaultData) {
+                        log("set preferred data, subId:" + newSubId);
+                        mSubscriptionManagerService.setDefaultDataSubId(newSubId);
+                        mNeedSetDefaultData = false;
+                    }
+                    mConvertedPsimSubId = subId;
+                    log("set converted pSIM subId:" + mConvertedPsimSubId);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private int getConvertedPsimSubscriptionId() {
+        // Check to see if any subscription has been converted due to the pSIM conversion.
+        // When the primary subscription is changed, if it is the same subscription as
+        // the previously converted subscription, it is not due to the pSIM conversion.
+        // So the dialog for preferred SIM/data pick should show.
+        // TODO(b/332261793): On Android W, we need to add CONVERTING status.
+        //  The CONVERTING status allows us to determine if pSIM is in the process of converting,
+        //  so we don't need to check for information about previously converted subscriptions.
+        int convertedSubId = INVALID_SUBSCRIPTION_ID;
+        if (mFeatureFlags.supportPsimToEsimConversion()) {
+            List<SubscriptionInfo> infos =
+                    mSubscriptionManagerService.getAvailableSubscriptionInfoList(
+                            mContext.getOpPackageName(), mContext.getAttributionTag());
+            for (SubscriptionInfo info : infos) {
+                if (!info.isEmbedded() && info.getTransferStatus() == TRANSFER_STATUS_CONVERTED) {
+                    convertedSubId = info.getSubscriptionId();
+                }
+            }
+        }
+        log("getConvertedPsimSubscriptionId: convertedSubId=" + convertedSubId);
+        return convertedSubId;
     }
 
     private int getSimSelectDialogType(int change, boolean dataSelected,

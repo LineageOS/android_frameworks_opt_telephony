@@ -3728,10 +3728,18 @@ public class ServiceStateTracker extends Handler {
             // because operatorNumeric would be SIM's mcc/mnc when device is on IWLAN), but if the
             // device has camped on a cell either to attempt registration or for emergency services,
             // then for purposes of setting the locale, we don't care if registration fails or is
-            // incomplete.
+            // incomplete. Additionally, if there is no cellular service and ims is registered over
+            // the IWLAN, the locale will not be updated.
             // CellIdentity can return a null MCC and MNC in CDMA
             String localeOperator = operatorNumeric;
-            if (mSS.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN) {
+            int dataNetworkType = mSS.getDataNetworkType();
+            if (dataNetworkType == TelephonyManager.NETWORK_TYPE_IWLAN
+                    || (dataNetworkType == TelephonyManager.NETWORK_TYPE_UNKNOWN
+                            && getImsRegistrationTech()
+                                    == ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN)) {
+                // TODO(b/333346537#comment10): Complete solution would be ignore mcc/mnc reported
+                //  by the unsolicited indication OPERATOR from RIL, but only relies on MCC/MNC from
+                //  data registration or voice registration.
                 localeOperator = null;
             }
             if (isInvalidOperatorNumeric(localeOperator)) {
@@ -5910,5 +5918,18 @@ public class ServiceStateTracker extends Handler {
      */
     public @Nullable CellIdentity getLastKnownCellIdentity() {
         return mLastKnownCellIdentity;
+    }
+
+    /**
+     * Get the tech where ims is currently registered.
+     * @return Returns the tech of ims registered. if not registered or no phome for ims, returns
+     *   {@link ImsRegistrationImplBase#REGISTRATION_TECH_NONE}.
+     */
+    private @ImsRegistrationImplBase.ImsRegistrationTech int getImsRegistrationTech() {
+        ImsPhone imsPhone = (ImsPhone) mPhone.getImsPhone();
+        if (imsPhone != null) {
+            return imsPhone.getImsRegistrationTech();
+        }
+        return ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
     }
 }

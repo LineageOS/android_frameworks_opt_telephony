@@ -2605,10 +2605,15 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
 
         // PS WLAN
+        int wlanRat = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        if (wlanState == NetworkRegistrationInfo.REGISTRATION_STATE_HOME
+                || wlanState == NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING) {
+            wlanRat = TelephonyManager.NETWORK_TYPE_IWLAN;
+        }
         NetworkRegistrationInfo dataIwlanResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
-                wlanState, TelephonyManager.NETWORK_TYPE_IWLAN, 0, false,
-                null, null, "", 1, false, false, false, lteVopsSupportInfo);
+                wlanState, wlanRat, 0, false, null, null,
+                "", 1, false, false, false, lteVopsSupportInfo);
         sst.sendMessage(sst.obtainMessage(
                 ServiceStateTracker.EVENT_POLL_STATE_PS_IWLAN_REGISTRATION,
                 new AsyncResult(sst.mPollingContext, dataIwlanResult, null)));
@@ -2645,6 +2650,47 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         verify(mLocaleTracker).updateOperatorNumeric(eq(""));
     }
 
+    /**
+     * Ensure that LocaleTracker is not updated with mcc when only IWLAN is not in-service and the
+     * ims registration status is connected over iwlan,
+     */
+    @Test
+    public void testLocaleTrackerUpdateWithImsRegistrationTechIwlan() {
+        // Start state: Cell data only LTE + IWLAN
+        final String[] OpNamesResult = new String[] { "carrier long", "carrier", "310310" };
+        // Clear invocations for mLocaleTracker as precondition before test case execution & as part
+        // test setup
+        Mockito.clearInvocations(mLocaleTracker);
+
+        // Both Cellular abd Iwlan is in-service.
+        changeRegStateWithIwlanOperatorNumeric(
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME,
+                TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, OpNamesResult, true);
+        verify(mLocaleTracker).updateOperatorNumeric(eq(OpNamesResult[2]));
+
+        // Test with Cellular as NOT_REG
+        changeRegStateWithIwlanOperatorNumeric(
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
+                TelephonyManager.NETWORK_TYPE_UNKNOWN,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, OpNamesResult, true);
+        /* cellId based mccmnc */
+        verify(mLocaleTracker).updateOperatorNumeric(eq("00101"));
+
+        // IMS over Iwlan is registered.
+        doReturn(mImsPhone)
+                .when(mPhone).getImsPhone();
+        doReturn(ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN)
+                .when(mImsPhone).getImsRegistrationTech();
+
+        // Test with Iwlan as NOT_REG
+        changeRegStateWithIwlanOperatorNumeric(
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
+                TelephonyManager.NETWORK_TYPE_UNKNOWN,
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
+                OpNamesResult, false);
+        verify(mLocaleTracker).updateOperatorNumeric(eq(""));
+    }
     @Test
     public void testGetServiceProviderNameWithBrandOverride() {
         String brandOverride = "spn from brand override";
