@@ -135,7 +135,7 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         mTestStats.initializeParams();
         int datagramType = SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE;
         for (int i = 0; i < 10; i++) {
-            mControllerMetricsStatsUT.reportOutgoingDatagramSuccessCount(datagramType);
+            mControllerMetricsStatsUT.reportOutgoingDatagramSuccessCount(datagramType, false);
         }
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsSuccess);
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsFail);
@@ -154,15 +154,23 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mTotalServiceUptimeSec);
         assertEquals(0, mTestStats.mTotalBatteryConsumptionPercent);
         assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveSuccess);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveFail);
         mTestStats.initializeParams();
 
         datagramType = SatelliteManager.DATAGRAM_TYPE_LOCATION_SHARING;
         for (int i = 0; i < 10; i++) {
-            mControllerMetricsStatsUT.reportOutgoingDatagramSuccessCount(datagramType);
+            mControllerMetricsStatsUT.reportOutgoingDatagramSuccessCount(datagramType, true);
         }
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsSuccess);
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsFail);
-        assertEquals(10, mTestStats.mCountOfOutgoingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfOutgoingDatagramSuccess);
         assertEquals(0, mTestStats.mCountOfOutgoingDatagramFail);
         assertEquals(0, mTestStats.mCountOfIncomingDatagramSuccess);
         assertEquals(0, mTestStats.mCountOfIncomingDatagramFail);
@@ -177,11 +185,19 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mTotalServiceUptimeSec);
         assertEquals(0, mTestStats.mTotalBatteryConsumptionPercent);
         assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsFail);
+        assertEquals(10, mTestStats.mCountOfDemoModeOutgoingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveSuccess);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveFail);
         mTestStats.initializeParams();
 
-        datagramType = SatelliteManager.DATAGRAM_TYPE_UNKNOWN;
+        datagramType = SatelliteManager.DATAGRAM_TYPE_KEEP_ALIVE;
         for (int i = 0; i < 10; i++) {
-            mControllerMetricsStatsUT.reportOutgoingDatagramSuccessCount(datagramType);
+            mControllerMetricsStatsUT.reportOutgoingDatagramSuccessCount(datagramType, false);
         }
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsSuccess);
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsFail);
@@ -200,6 +216,14 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mTotalServiceUptimeSec);
         assertEquals(0, mTestStats.mTotalBatteryConsumptionPercent);
         assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramFail);
+        assertEquals(10, mTestStats.mCountOfDatagramTypeKeepAliveSuccess);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveFail);
         mTestStats.initializeParams();
     }
 
@@ -208,7 +232,7 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         mTestStats.initializeParams();
         int datagramType = SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE;
         for (int i = 0; i < 10; i++) {
-            mControllerMetricsStatsUT.reportOutgoingDatagramFailCount(datagramType);
+            mControllerMetricsStatsUT.reportOutgoingDatagramFailCount(datagramType, false);
         }
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsSuccess);
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsFail);
@@ -227,16 +251,24 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mTotalServiceUptimeSec);
         assertEquals(0, mTestStats.mTotalBatteryConsumptionPercent);
         assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveSuccess);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveFail);
         mTestStats.initializeParams();
 
         datagramType = SatelliteManager.DATAGRAM_TYPE_LOCATION_SHARING;
         for (int i = 0; i < 10; i++) {
-            mControllerMetricsStatsUT.reportOutgoingDatagramFailCount(datagramType);
+            mControllerMetricsStatsUT.reportOutgoingDatagramFailCount(datagramType, true);
         }
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsSuccess);
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsFail);
         assertEquals(0, mTestStats.mCountOfOutgoingDatagramSuccess);
-        assertEquals(10, mTestStats.mCountOfOutgoingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfOutgoingDatagramFail);
         assertEquals(0, mTestStats.mCountOfIncomingDatagramSuccess);
         assertEquals(0, mTestStats.mCountOfIncomingDatagramFail);
         assertEquals(0, mTestStats.mCountOfDatagramTypeSosSmsSuccess);
@@ -250,11 +282,19 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mTotalServiceUptimeSec);
         assertEquals(0, mTestStats.mTotalBatteryConsumptionPercent);
         assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramSuccess);
+        assertEquals(10, mTestStats.mCountOfDemoModeOutgoingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveSuccess);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveFail);
         mTestStats.initializeParams();
 
-        datagramType = SatelliteManager.DATAGRAM_TYPE_UNKNOWN;
+        datagramType = SatelliteManager.DATAGRAM_TYPE_KEEP_ALIVE;
         for (int i = 0; i < 10; i++) {
-            mControllerMetricsStatsUT.reportOutgoingDatagramFailCount(datagramType);
+            mControllerMetricsStatsUT.reportOutgoingDatagramFailCount(datagramType, false);
         }
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsSuccess);
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsFail);
@@ -273,6 +313,14 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mTotalServiceUptimeSec);
         assertEquals(0, mTestStats.mTotalBatteryConsumptionPercent);
         assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveSuccess);
+        assertEquals(10, mTestStats.mCountOfDatagramTypeKeepAliveFail);
         mTestStats.initializeParams();
     }
 
@@ -282,7 +330,7 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
 
         int result = SatelliteManager.SATELLITE_RESULT_SUCCESS;
         for (int i = 0; i < 10; i++) {
-            mControllerMetricsStatsUT.reportIncomingDatagramCount(result);
+            mControllerMetricsStatsUT.reportIncomingDatagramCount(result, false);
         }
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsSuccess);
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsFail);
@@ -301,18 +349,26 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mTotalServiceUptimeSec);
         assertEquals(0, mTestStats.mTotalBatteryConsumptionPercent);
         assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveSuccess);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveFail);
         mTestStats.initializeParams();
 
         result = SatelliteManager.SATELLITE_RESULT_SERVER_ERROR;
         for (int i = 0; i < 10; i++) {
-            mControllerMetricsStatsUT.reportIncomingDatagramCount(result);
+            mControllerMetricsStatsUT.reportIncomingDatagramCount(result, true);
         }
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsSuccess);
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsFail);
         assertEquals(0, mTestStats.mCountOfOutgoingDatagramSuccess);
         assertEquals(0, mTestStats.mCountOfOutgoingDatagramFail);
         assertEquals(0, mTestStats.mCountOfIncomingDatagramSuccess);
-        assertEquals(10, mTestStats.mCountOfIncomingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfIncomingDatagramFail);
         assertEquals(0, mTestStats.mCountOfDatagramTypeSosSmsSuccess);
         assertEquals(0, mTestStats.mCountOfDatagramTypeSosSmsFail);
         assertEquals(0, mTestStats.mCountOfDatagramTypeLocationSharingSuccess);
@@ -324,11 +380,19 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mTotalServiceUptimeSec);
         assertEquals(0, mTestStats.mTotalBatteryConsumptionPercent);
         assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramSuccess);
+        assertEquals(10, mTestStats.mCountOfDemoModeIncomingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveSuccess);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveFail);
         mTestStats.initializeParams();
 
         result = SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE;
         for (int i = 0; i < 10; i++) {
-            mControllerMetricsStatsUT.reportIncomingDatagramCount(result);
+            mControllerMetricsStatsUT.reportIncomingDatagramCount(result, false);
         }
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsSuccess);
         assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsFail);
@@ -347,6 +411,14 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mTotalServiceUptimeSec);
         assertEquals(0, mTestStats.mTotalBatteryConsumptionPercent);
         assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramSuccess);
+        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramFail);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveSuccess);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveFail);
         mTestStats.initializeParams();
     }
 
@@ -558,6 +630,14 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         public int mTotalServiceUptimeSec;
         public int mTotalBatteryConsumptionPercent;
         public int mTotalBatteryChargedTimeSec;
+        private int mCountOfDemoModeSatelliteServiceEnablementsSuccess = 0;
+        private int mCountOfDemoModeSatelliteServiceEnablementsFail = 0;
+        private int mCountOfDemoModeOutgoingDatagramSuccess = 0;
+        private int mCountOfDemoModeOutgoingDatagramFail = 0;
+        private int mCountOfDemoModeIncomingDatagramSuccess = 0;
+        private int mCountOfDemoModeIncomingDatagramFail = 0;
+        private int mCountOfDatagramTypeKeepAliveSuccess = 0;
+        private int mCountOfDatagramTypeKeepAliveFail = 0;
 
         @Override
         public synchronized void onSatelliteControllerMetrics(SatelliteControllerParams param) {
@@ -582,6 +662,18 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
             mTotalServiceUptimeSec += param.getTotalServiceUptimeSec();
             mTotalBatteryConsumptionPercent += param.getTotalBatteryConsumptionPercent();
             mTotalBatteryChargedTimeSec += param.getTotalBatteryChargedTimeSec();
+            mCountOfDemoModeSatelliteServiceEnablementsSuccess +=
+                    param.getCountOfDemoModeSatelliteServiceEnablementsSuccess();
+            mCountOfDemoModeSatelliteServiceEnablementsFail +=
+                    param.getCountOfDemoModeSatelliteServiceEnablementsFail();
+            mCountOfDemoModeOutgoingDatagramSuccess +=
+                    param.getCountOfDemoModeOutgoingDatagramSuccess();
+            mCountOfDemoModeOutgoingDatagramFail += param.getCountOfDemoModeOutgoingDatagramFail();
+            mCountOfDemoModeIncomingDatagramSuccess +=
+                    param.getCountOfDemoModeIncomingDatagramSuccess();
+            mCountOfDemoModeIncomingDatagramFail += param.getCountOfDemoModeIncomingDatagramFail();
+            mCountOfDatagramTypeKeepAliveSuccess += param.getCountOfDatagramTypeKeepAliveSuccess();
+            mCountOfDatagramTypeKeepAliveFail += param.getCountOfDatagramTypeKeepAliveFail();
         }
 
         public void initializeParams() {
@@ -602,6 +694,14 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
             mTotalServiceUptimeSec = 0;
             mTotalBatteryConsumptionPercent = 0;
             mTotalBatteryChargedTimeSec = 0;
+            mCountOfDemoModeSatelliteServiceEnablementsSuccess = 0;
+            mCountOfDemoModeSatelliteServiceEnablementsFail = 0;
+            mCountOfDemoModeOutgoingDatagramSuccess = 0;
+            mCountOfDemoModeOutgoingDatagramFail = 0;
+            mCountOfDemoModeIncomingDatagramSuccess = 0;
+            mCountOfDemoModeIncomingDatagramFail = 0;
+            mCountOfDatagramTypeKeepAliveSuccess = 0;
+            mCountOfDatagramTypeKeepAliveFail = 0;
         }
     }
 }

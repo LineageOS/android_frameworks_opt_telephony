@@ -1366,7 +1366,15 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 satelliteController.countOfDeprovisionFail,
                 satelliteController.totalServiceUptimeSec,
                 satelliteController.totalBatteryConsumptionPercent,
-                satelliteController.totalBatteryChargedTimeSec);
+                satelliteController.totalBatteryChargedTimeSec,
+                satelliteController.countOfDemoModeSatelliteServiceEnablementsSuccess,
+                satelliteController.countOfDemoModeSatelliteServiceEnablementsFail,
+                satelliteController.countOfDemoModeOutgoingDatagramSuccess,
+                satelliteController.countOfDemoModeOutgoingDatagramFail,
+                satelliteController.countOfDemoModeIncomingDatagramSuccess,
+                satelliteController.countOfDemoModeIncomingDatagramFail,
+                satelliteController.countOfDatagramTypeKeepAliveSuccess,
+                satelliteController.countOfDatagramTypeKeepAliveFail);
     }
 
     private static StatsEvent buildStatsEvent(SatelliteSession satelliteSession) {
@@ -1382,7 +1390,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 satelliteSession.countOfOutgoingDatagramSuccess,
                 satelliteSession.countOfOutgoingDatagramFailed,
                 satelliteSession.countOfIncomingDatagramSuccess,
-                satelliteSession.countOfIncomingDatagramFailed);
+                satelliteSession.countOfIncomingDatagramFailed,
+                satelliteSession.isDemoMode);
     }
 
     private static StatsEvent buildStatsEvent(SatelliteIncomingDatagram stats) {
@@ -1390,7 +1399,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 SATELLITE_INCOMING_DATAGRAM,
                 stats.resultCode,
                 stats.datagramSizeBytes,
-                stats.datagramTransferTimeMillis);
+                stats.datagramTransferTimeMillis,
+                stats.isDemoMode);
     }
 
     private static StatsEvent buildStatsEvent(SatelliteOutgoingDatagram stats) {
@@ -1399,7 +1409,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.datagramType,
                 stats.resultCode,
                 stats.datagramSizeBytes,
-                stats.datagramTransferTimeMillis);
+                stats.datagramTransferTimeMillis,
+                stats.isDemoMode);
     }
 
     private static StatsEvent buildStatsEvent(SatelliteProvision stats) {
