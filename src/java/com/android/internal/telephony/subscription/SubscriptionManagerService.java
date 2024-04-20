@@ -42,6 +42,7 @@ import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -142,6 +143,9 @@ public class SubscriptionManagerService extends ISub.Stub {
     private static final String LOG_TAG = "SMSVC";
     private static final String ALLOW_MOCK_MODEM_PROPERTY = "persist.radio.allow_mock_modem";
     private static final String BOOT_ALLOW_MOCK_MODEM_PROPERTY = "ro.boot.radio.allow_mock_modem";
+
+    private static final int CHECK_BOOTSTRAP_TIMER_IN_MS = 20 * 60 * 1000; // 20 minutes
+    private static CountDownTimer bootstrapProvisioningTimer;
 
     /** Whether enabling verbose debugging message or not. */
     private static final boolean VDBG = false;
@@ -1584,6 +1588,43 @@ public class SubscriptionManagerService extends ISub.Stub {
 
         updateGroupDisabled();
         updateDefaultSubId();
+
+        if (mSlotIndexToSubId.containsKey(phoneId) &&
+                isEsimBootStrapProvisioningActiveForSubId(mSlotIndexToSubId.get(phoneId))) {
+            startEsimBootstrapTimer();
+        } else {
+            cancelEsimBootstrapTimer();
+        }
+    }
+
+    private void cancelEsimBootstrapTimer() {
+        if (bootstrapProvisioningTimer != null) {
+            bootstrapProvisioningTimer.cancel();
+            bootstrapProvisioningTimer = null;
+            log("bootstrapProvisioningTimer timer cancelled.");
+        }
+    }
+
+    private void startEsimBootstrapTimer() {
+        if (bootstrapProvisioningTimer == null) {
+            bootstrapProvisioningTimer = new CountDownTimer(CHECK_BOOTSTRAP_TIMER_IN_MS,
+                    CHECK_BOOTSTRAP_TIMER_IN_MS) {
+                @Override
+                public void onTick(long millisUntilFinished) {
+                    // Do nothing
+                }
+
+                @Override
+                public void onFinish() {
+                    AnomalyReporter.reportAnomaly(UUID.fromString("40587b0f-27c9-4b39-b94d"
+                                    + "-71fc9771f354"), "eSim bootstrap has been active for too "
+                            + "long.");
+                    log("bootstrapProvisioningTimer: timer finished esim was not disabled.");
+                    cancelEsimBootstrapTimer();
+                }
+            }.start();
+            log("bootstrapProvisioningTimer timer started.");
+        }
     }
 
     /**
