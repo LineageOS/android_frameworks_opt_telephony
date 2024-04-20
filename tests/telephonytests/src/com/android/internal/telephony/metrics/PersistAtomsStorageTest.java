@@ -1091,6 +1091,14 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteController1.totalServiceUptimeSec = 60 * 60 * 24 * 7;
         mSatelliteController1.totalBatteryConsumptionPercent = 7;
         mSatelliteController1.totalBatteryChargedTimeSec = 60 * 60 * 3 * 1;
+        mSatelliteController1.countOfDemoModeSatelliteServiceEnablementsSuccess = 3;
+        mSatelliteController1.countOfDemoModeSatelliteServiceEnablementsFail = 1;
+        mSatelliteController1.countOfDemoModeOutgoingDatagramSuccess = 4;
+        mSatelliteController1.countOfDemoModeOutgoingDatagramFail = 2;
+        mSatelliteController1.countOfDemoModeIncomingDatagramSuccess = 3;
+        mSatelliteController1.countOfDemoModeIncomingDatagramFail = 2;
+        mSatelliteController1.countOfDatagramTypeKeepAliveSuccess = 1;
+        mSatelliteController1.countOfDatagramTypeKeepAliveFail = 2;
 
         mSatelliteController2 = new SatelliteController();
         mSatelliteController2.countOfSatelliteServiceEnablementsSuccess = 2 + 1;
@@ -1109,7 +1117,15 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteController2.countOfDeprovisionFail = 16;
         mSatelliteController2.totalServiceUptimeSec = 60 * 60 * 12;
         mSatelliteController2.totalBatteryConsumptionPercent = 14;
-        mSatelliteController1.totalBatteryChargedTimeSec = 60 * 60 * 3;
+        mSatelliteController2.totalBatteryChargedTimeSec = 60 * 60 * 3;
+        mSatelliteController2.countOfDemoModeSatelliteServiceEnablementsSuccess = 5;
+        mSatelliteController2.countOfDemoModeSatelliteServiceEnablementsFail = 4;
+        mSatelliteController2.countOfDemoModeOutgoingDatagramSuccess = 3;
+        mSatelliteController2.countOfDemoModeOutgoingDatagramFail = 7;
+        mSatelliteController2.countOfDemoModeIncomingDatagramSuccess = 2;
+        mSatelliteController2.countOfDemoModeIncomingDatagramFail = 3;
+        mSatelliteController2.countOfDatagramTypeKeepAliveSuccess = 4;
+        mSatelliteController2.countOfDatagramTypeKeepAliveFail = 5;
 
         // SatelliteController atom has one data point
         mSatelliteControllers =
@@ -1132,6 +1148,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteSession1.countOfOutgoingDatagramFailed = 0;
         mSatelliteSession1.countOfIncomingDatagramSuccess = 1;
         mSatelliteSession1.countOfIncomingDatagramFailed = 0;
+        mSatelliteSession1.isDemoMode = false;
 
         mSatelliteSession2 = new SatelliteSession();
         mSatelliteSession2.satelliteServiceInitializationResult =
@@ -1148,6 +1165,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteSession1.countOfOutgoingDatagramFailed = 2;
         mSatelliteSession1.countOfIncomingDatagramSuccess = 0;
         mSatelliteSession1.countOfIncomingDatagramFailed = 1;
+        mSatelliteSession2.isDemoMode = true;
 
         mSatelliteSessions =
                 new SatelliteSession[] {
@@ -1158,11 +1176,13 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteIncomingDatagram1.resultCode = SatelliteProtoEnums.SATELLITE_ERROR_NONE;
         mSatelliteIncomingDatagram1.datagramSizeBytes = 1 * 1024;
         mSatelliteIncomingDatagram1.datagramTransferTimeMillis = 3 * 1000;
+        mSatelliteIncomingDatagram1.isDemoMode = false;
 
         mSatelliteIncomingDatagram2 = new SatelliteIncomingDatagram();
         mSatelliteIncomingDatagram2.resultCode = SatelliteProtoEnums.SATELLITE_MODEM_ERROR;
         mSatelliteIncomingDatagram2.datagramSizeBytes = 512;
         mSatelliteIncomingDatagram2.datagramTransferTimeMillis = 1 * 1000;
+        mSatelliteIncomingDatagram1.isDemoMode = true;
 
         mSatelliteIncomingDatagrams =
                 new SatelliteIncomingDatagram[] {
@@ -1175,6 +1195,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteOutgoingDatagram1.resultCode = SatelliteProtoEnums.SATELLITE_ERROR_NONE;
         mSatelliteOutgoingDatagram1.datagramSizeBytes = 1 * 1024;
         mSatelliteOutgoingDatagram1.datagramTransferTimeMillis = 3 * 1000;
+        mSatelliteOutgoingDatagram1.isDemoMode = false;
 
         mSatelliteOutgoingDatagram2 = new SatelliteOutgoingDatagram();
         mSatelliteOutgoingDatagram2.datagramType =
@@ -1182,6 +1203,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteOutgoingDatagram2.resultCode = SatelliteProtoEnums.SATELLITE_MODEM_ERROR;
         mSatelliteOutgoingDatagram2.datagramSizeBytes = 512;
         mSatelliteOutgoingDatagram2.datagramTransferTimeMillis = 1 * 1000;
+        mSatelliteOutgoingDatagram1.isDemoMode = true;
 
         mSatelliteOutgoingDatagrams =
                 new SatelliteOutgoingDatagram[] {
@@ -4126,6 +4148,30 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         expected.totalBatteryChargedTimeSec =
                 mSatelliteController1.totalBatteryChargedTimeSec
                         + mSatelliteController2.totalBatteryChargedTimeSec;
+        expected.countOfDemoModeSatelliteServiceEnablementsSuccess =
+                mSatelliteController1.countOfDemoModeSatelliteServiceEnablementsSuccess
+                        + mSatelliteController2.countOfDemoModeSatelliteServiceEnablementsSuccess;
+        expected.countOfDemoModeSatelliteServiceEnablementsFail =
+                mSatelliteController1.countOfDemoModeSatelliteServiceEnablementsFail
+                        + mSatelliteController2.countOfDemoModeSatelliteServiceEnablementsFail;
+        expected.countOfDemoModeOutgoingDatagramSuccess =
+                mSatelliteController1.countOfDemoModeOutgoingDatagramSuccess
+                        + mSatelliteController2.countOfDemoModeOutgoingDatagramSuccess;
+        expected.countOfDemoModeOutgoingDatagramFail =
+                mSatelliteController1.countOfDemoModeOutgoingDatagramFail
+                        + mSatelliteController2.countOfDemoModeOutgoingDatagramFail;
+        expected.countOfDemoModeIncomingDatagramSuccess =
+                mSatelliteController1.countOfDemoModeIncomingDatagramSuccess
+                        + mSatelliteController2.countOfDemoModeIncomingDatagramSuccess;
+        expected.countOfDemoModeIncomingDatagramFail =
+                mSatelliteController1.countOfDemoModeIncomingDatagramFail
+                        + mSatelliteController2.countOfDemoModeIncomingDatagramFail;
+        expected.countOfDatagramTypeKeepAliveSuccess =
+                mSatelliteController1.countOfDatagramTypeKeepAliveSuccess
+                        + mSatelliteController2.countOfDatagramTypeKeepAliveSuccess;
+        expected.countOfDatagramTypeKeepAliveFail =
+                mSatelliteController1.countOfDatagramTypeKeepAliveFail
+                        + mSatelliteController2.countOfDatagramTypeKeepAliveFail;
 
         // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
@@ -4952,6 +4998,18 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                 expectedStats.totalBatteryConsumptionPercent);
         assertEquals(tested[0].totalBatteryChargedTimeSec,
                 expectedStats.totalBatteryChargedTimeSec);
+        assertEquals(tested[0].countOfDemoModeSatelliteServiceEnablementsSuccess,
+                expectedStats.countOfDemoModeSatelliteServiceEnablementsSuccess);
+        assertEquals(tested[0].countOfDemoModeSatelliteServiceEnablementsFail,
+                expectedStats.countOfDemoModeSatelliteServiceEnablementsFail);
+        assertEquals(tested[0].countOfDemoModeOutgoingDatagramSuccess,
+                expectedStats.countOfDemoModeOutgoingDatagramSuccess);
+        assertEquals(tested[0].countOfDemoModeOutgoingDatagramFail,
+                expectedStats.countOfDemoModeOutgoingDatagramFail);
+        assertEquals(tested[0].countOfDemoModeIncomingDatagramSuccess,
+                expectedStats.countOfDemoModeIncomingDatagramSuccess);
+        assertEquals(tested[0].countOfDemoModeIncomingDatagramFail,
+                expectedStats.countOfDemoModeIncomingDatagramFail);
     }
 
     private static void assertHasStatsAndCount(
@@ -4964,20 +5022,21 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                     == expectedStats.satelliteServiceInitializationResult
                     && stats.satelliteTechnology == expectedStats.satelliteTechnology
                     && stats.satelliteServiceTerminationResult
-                    == expectedStats.satelliteServiceTerminationResult
+                        == expectedStats.satelliteServiceTerminationResult
                     && stats.initializationProcessingTimeMillis
-                    == expectedStats.initializationProcessingTimeMillis
+                        == expectedStats.initializationProcessingTimeMillis
                     && stats.terminationProcessingTimeMillis
-                    == expectedStats.terminationProcessingTimeMillis
+                        == expectedStats.terminationProcessingTimeMillis
                     && stats.sessionDurationSeconds == expectedStats.sessionDurationSeconds
                     && stats.countOfOutgoingDatagramSuccess
-                    == expectedStats.countOfOutgoingDatagramSuccess
+                        == expectedStats.countOfOutgoingDatagramSuccess
                     && stats.countOfOutgoingDatagramFailed
-                    == expectedStats.countOfOutgoingDatagramFailed
+                        == expectedStats.countOfOutgoingDatagramFailed
                     && stats.countOfIncomingDatagramSuccess
-                    == expectedStats.countOfIncomingDatagramSuccess
+                        == expectedStats.countOfIncomingDatagramSuccess
                     && stats.countOfIncomingDatagramFailed
-                    == expectedStats.countOfIncomingDatagramFailed) {
+                        == expectedStats.countOfIncomingDatagramFailed
+                    && stats.isDemoMode == expectedStats.isDemoMode) {
                 actualCount = stats.count;
             }
         }
@@ -4993,7 +5052,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
             if (stats.resultCode == expectedStats.resultCode
                     && stats.datagramSizeBytes == expectedStats.datagramSizeBytes
                     && stats.datagramTransferTimeMillis
-                        == expectedStats.datagramTransferTimeMillis) {
+                        == expectedStats.datagramTransferTimeMillis
+                    && stats.isDemoMode == expectedStats.isDemoMode) {
                 actualCount++;
             }
         }
@@ -5010,7 +5070,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                     && stats.resultCode == expectedStats.resultCode
                     && stats.datagramSizeBytes == expectedStats.datagramSizeBytes
                     && stats.datagramTransferTimeMillis
-                        == expectedStats.datagramTransferTimeMillis) {
+                        == expectedStats.datagramTransferTimeMillis
+                    && stats.isDemoMode == expectedStats.isDemoMode) {
                 actualCount++;
             }
         }

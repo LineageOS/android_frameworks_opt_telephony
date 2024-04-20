@@ -659,6 +659,14 @@ message SatelliteController {
     optional int32 total_service_uptime_sec = 15;
     optional int32 total_battery_consumption_percent = 16;
     optional int32 total_battery_charged_time_sec = 17;
+    optional int32 count_of_demo_mode_satellite_service_enablements_success = 18;
+    optional int32 count_of_demo_mode_satellite_service_enablements_fail = 19;
+    optional int32 count_of_demo_mode_outgoing_datagram_success = 20;
+    optional int32 count_of_demo_mode_outgoing_datagram_fail = 21;
+    optional int32 count_of_demo_mode_incoming_datagram_success = 22;
+    optional int32 count_of_demo_mode_incoming_datagram_fail = 23;
+    optional int32 count_of_datagram_type_keep_alive_success = 24;
+    optional int32 count_of_datagram_type_keep_alive_fail = 25;
 }
 
 message SatelliteSession {
@@ -673,12 +681,14 @@ message SatelliteSession {
     optional int32 count_of_outgoing_datagram_failed = 9;
     optional int32 count_of_incoming_datagram_success = 10;
     optional int32 count_of_incoming_datagram_failed = 11;
+    optional bool is_demo_mode = 12;
 }
 
 message SatelliteIncomingDatagram {
     optional int32 result_code = 1;
     optional int32 datagram_size_bytes = 2;
     optional int64 datagram_transfer_time_millis = 3;
+    optional bool is_demo_mode = 4;
 }
 
 message SatelliteOutgoingDatagram {
@@ -686,6 +696,7 @@ message SatelliteOutgoingDatagram {
     optional int32 result_code = 2;
     optional int32 datagram_size_bytes = 3;
     optional int64 datagram_transfer_time_millis = 4;
+    optional bool is_demo_mode = 5;
 }
 
 message SatelliteProvision {

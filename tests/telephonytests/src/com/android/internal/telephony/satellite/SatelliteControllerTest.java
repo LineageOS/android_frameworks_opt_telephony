@@ -526,6 +526,8 @@ public class SatelliteControllerTest extends TelephonyTest {
                 .when(mMockSessionMetricsStats).setTerminationProcessingTime(anyLong());
         doReturn(mMockSessionMetricsStats)
                 .when(mMockSessionMetricsStats).setSessionDurationSec(anyInt());
+        doReturn(mMockSessionMetricsStats)
+                .when(mMockSessionMetricsStats).setIsDemoMode(anyBoolean());
         doNothing().when(mMockSessionMetricsStats).reportSessionMetrics();
 
         doReturn(mMockProvisionMetricsStats).when(mMockProvisionMetricsStats)

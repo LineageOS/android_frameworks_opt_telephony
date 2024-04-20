@@ -40,6 +40,7 @@ public class SessionMetricsStats {
     private int mCountOfFailedOutgoingDatagram;
     private int mCountOfSuccessfulIncomingDatagram;
     private int mCountOfIncomingDatagramFailed;
+    private boolean mIsDemoMode;
 
 
     private SessionMetricsStats() {
@@ -136,6 +137,13 @@ public class SessionMetricsStats {
         return this;
     }
 
+    /** Sets whether the session is enabled for demo mode or not. */
+    public SessionMetricsStats setIsDemoMode(boolean isDemoMode) {
+        mIsDemoMode = isDemoMode;
+        logd("setIsDemoMode(" + mIsDemoMode + ")");
+        return this;
+    }
+
     /** Report the session metrics atoms to PersistAtomsStorage in telephony. */
     public void reportSessionMetrics() {
         SatelliteStats.SatelliteSessionParams sessionParams =
@@ -150,6 +158,7 @@ public class SessionMetricsStats {
                         .setCountOfOutgoingDatagramFailed(mCountOfFailedOutgoingDatagram)
                         .setCountOfIncomingDatagramSuccess(mCountOfSuccessfulIncomingDatagram)
                         .setCountOfIncomingDatagramFailed(mCountOfIncomingDatagramFailed)
+                        .setIsDemoMode(mIsDemoMode)
                         .build();
         logd("reportSessionMetrics: " + sessionParams.toString());
         SatelliteStats.getInstance().onSatelliteSessionMetrics(sessionParams);
@@ -177,6 +186,7 @@ public class SessionMetricsStats {
         mCountOfFailedOutgoingDatagram = 0;
         mCountOfSuccessfulIncomingDatagram = 0;
         mCountOfIncomingDatagramFailed = 0;
+        mIsDemoMode = false;
     }
 
     private static void logd(@NonNull String log) {
