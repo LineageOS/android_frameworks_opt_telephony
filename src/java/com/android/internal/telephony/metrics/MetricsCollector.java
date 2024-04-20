@@ -1131,7 +1131,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 dataCallSession.handoverFailureRat,
                 dataCallSession.isNonDds,
                 dataCallSession.isIwlanCrossSim,
-                dataCallSession.isNtn);
+                dataCallSession.isNtn,
+                dataCallSession.isSatelliteTransport);
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationStats stats) {

@@ -381,6 +381,7 @@ message DataCallSession {
     optional bool is_non_dds = 22;
     optional bool is_iwlan_cross_sim = 23;
     optional bool is_ntn = 24;
+    optional bool is_satellite_transport = 25;
 }
 
 message CellularServiceState {
@@ -470,6 +471,12 @@ message NetworkRequestsV2 {
         PRIORITIZE_BANDWIDTH = 2;
         CBS = 3;
         ENTERPRISE = 4;
+        SATELLITE_INTERNET_RESTRICTED = 5;
+        SATELLITE_MMS_RESTRICTED = 6;
+        SATELLITE_IMS_RESTRICTED = 7;
+        SATELLITE_XCAP_RESTRICTED = 8;
+        SATELLITE_EIMS_RESTRICTED = 9;
+        SATELLITE_SUPL_RESTRICTED =10;
     }
     optional int32 carrier_id = 1;
     optional NetworkCapability capability = 2;
