@@ -143,6 +143,7 @@ public class EmergencyStateTracker {
     private EmergencyRegistrationResult mLastEmergencyRegistrationResult;
     private boolean mIsEmergencyModeInProgress;
     private boolean mIsEmergencyCallStartedDuringEmergencySms;
+    private boolean mIsWaitingForRadioOff;
 
     /** For emergency calls */
     private final long mEcmExitTimeoutMs;
@@ -268,6 +269,8 @@ public class EmergencyStateTracker {
     private static final int MSG_EXIT_SCBM = 4;
     @VisibleForTesting
     public static final int MSG_NEW_RINGING_CONNECTION = 5;
+    @VisibleForTesting
+    public static final int MSG_VOICE_REG_STATE_CHANGED = 6;
 
     private class MyHandler extends Handler {
 
@@ -429,6 +432,16 @@ public class EmergencyStateTracker {
                 }
                 case MSG_NEW_RINGING_CONNECTION: {
                     handleNewRingingConnection(msg);
+                    break;
+                }
+                case MSG_VOICE_REG_STATE_CHANGED: {
+                    if (mIsWaitingForRadioOff && isPowerOff()) {
+                        unregisterForVoiceRegStateOrRatChanged();
+                        if (mPhone != null) {
+                            turnOnRadioAndSwitchDds(mPhone, EMERGENCY_TYPE_CALL,
+                                    mIsTestEmergencyNumber);
+                        }
+                    }
                     break;
                 }
                 default:
@@ -643,6 +656,7 @@ public class EmergencyStateTracker {
             mOngoingConnection = null;
             mOngoingCallProperties = 0;
             sendEmergencyCallStateChange(mPhone, false);
+            unregisterForVoiceRegStateOrRatChanged();
         }
 
         if (wasActive && mActiveEmergencyCalls.isEmpty()
@@ -1495,6 +1509,34 @@ public class EmergencyStateTracker {
     }
 
     /**
+     * Returns {@code true} if service states of all phones from PhoneFactory are radio off.
+     */
+    private boolean isPowerOff() {
+        for (Phone phone : mPhoneFactoryProxy.getPhones()) {
+            ServiceState ss = phone.getServiceStateTracker().getServiceState();
+            if (ss.getState() != ServiceState.STATE_POWER_OFF) return false;
+        }
+        return true;
+    }
+
+    private void registerForVoiceRegStateOrRatChanged() {
+        if (mIsWaitingForRadioOff) return;
+        for (Phone phone : mPhoneFactoryProxy.getPhones()) {
+            phone.getServiceStateTracker().registerForVoiceRegStateOrRatChanged(mHandler,
+                    MSG_VOICE_REG_STATE_CHANGED, null);
+        }
+        mIsWaitingForRadioOff = true;
+    }
+
+    private void unregisterForVoiceRegStateOrRatChanged() {
+        if (!mIsWaitingForRadioOff) return;
+        for (Phone phone : mPhoneFactoryProxy.getPhones()) {
+            phone.getServiceStateTracker().unregisterForVoiceRegStateOrRatChanged(mHandler);
+        }
+        mIsWaitingForRadioOff = false;
+    }
+
+    /**
      * Returns {@code true} if airplane mode is on.
      */
     private boolean isAirplaneModeOn(Context context) {
@@ -1523,6 +1565,14 @@ public class EmergencyStateTracker {
         boolean needToTurnOnRadio = !isRadioOn() || isAirplaneModeOn;
         final SatelliteController satelliteController = SatelliteController.getInstance();
         boolean needToTurnOffSatellite = satelliteController.isSatelliteEnabled();
+
+        if (isAirplaneModeOn && !isPowerOff()
+                && !phone.getServiceStateTracker().getDesiredPowerState()) {
+            // power off is delayed to disconnect data connections
+            Rlog.i(TAG, "turnOnRadioAndSwitchDds: wait for the delayed power off");
+            registerForVoiceRegStateOrRatChanged();
+            return;
+        }
 
         if (needToTurnOnRadio || needToTurnOffSatellite) {
             Rlog.i(TAG, "turnOnRadioAndSwitchDds: phoneId=" + phone.getPhoneId() + " for "
