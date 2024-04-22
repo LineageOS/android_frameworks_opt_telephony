@@ -3000,6 +3000,30 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         verify(phone0, times(2)).setEmergencyMode(eq(MODE_EMERGENCY_WWAN), any(Message.class));
     }
 
+    /**
+     * Test that the EmergencyStateTracker waits for the delayed radio power off.
+     */
+    @Test
+    @SmallTest
+    public void startEmergencyCall_delayedRadioOff_waitForRadioOff() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                true /* isSuplDdsSwitchRequiredForEmergencyCall */);
+        // Create test Phones and set radio on
+        Phone testPhone = setupTestPhoneForEmergencyCall(false /* isRoaming */,
+                true /* isRadioOn */);
+
+        // Airplane mode is ON, but radio power state is still ON
+        Settings.Global.putInt(mContext.getContentResolver(), Settings.Global.AIRPLANE_MODE_ON, 1);
+
+        CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                mTestConnection1, false);
+
+        // Wait for the radio off for all phones
+        verify(mSST, times(2)).registerForVoiceRegStateOrRatChanged(any(), anyInt(), any());
+        verify(mRadioOnHelper, never()).triggerRadioOnAndListen(any(), anyBoolean(), any(),
+                anyBoolean(), eq(0));
+    }
+
     private EmergencyStateTracker setupEmergencyStateTracker(
             boolean isSuplDdsSwitchRequiredForEmergencyCall) {
         doReturn(mPhoneSwitcher).when(mPhoneSwitcherProxy).getPhoneSwitcher();
