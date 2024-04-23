@@ -5313,6 +5313,18 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mNotifier.notifyCallbackModeStopped(this, type, reason);
     }
 
+    /**
+     * Notify carrier roaming non-terrestrial network mode changed
+     * @param active {@code true} If the device is connected to carrier roaming
+     *                           non-terrestrial network or was connected within the
+     *                           {CarrierConfigManager#KEY_SATELLITE_CONNECTION_HYSTERESIS_SEC_INT}
+     *                           duration, {code false} otherwise.
+     */
+    public void notifyCarrierRoamingNtnModeChanged(boolean active) {
+        logd("notifyCarrierRoamingNtnModeChanged active:" + active);
+        mNotifier.notifyCarrierRoamingNtnModeChanged(this, active);
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);

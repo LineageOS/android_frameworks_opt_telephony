@@ -392,4 +392,13 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
         verify(mTelephonyRegistryManager).notifySimultaneousCellularCallingSubscriptionsChanged(
                 eq(subs));
     }
+
+    @Test
+    @SmallTest
+    public void testCarrierRoamingNtnModeChanged() {
+        int subId = mPhone.getSubId();
+        mDefaultPhoneNotifierUT.notifyCarrierRoamingNtnModeChanged(mPhone, true);
+        verify(mTelephonyRegistryManager).notifyCarrierRoamingNtnModeChanged(
+                eq(subId), eq(true));
+    }
 }
