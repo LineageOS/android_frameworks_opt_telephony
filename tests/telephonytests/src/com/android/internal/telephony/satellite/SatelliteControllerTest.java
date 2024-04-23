@@ -475,8 +475,10 @@ public class SatelliteControllerTest extends TelephonyTest {
         mServiceState2 = Mockito.mock(ServiceState.class);
         when(mPhone.getServiceState()).thenReturn(mServiceState);
         when(mPhone.getSubId()).thenReturn(SUB_ID);
+        when(mPhone.getPhoneId()).thenReturn(0);
         when(mPhone2.getServiceState()).thenReturn(mServiceState2);
         when(mPhone2.getSubId()).thenReturn(SUB_ID1);
+        when(mPhone2.getPhoneId()).thenReturn(1);
 
         mContextFixture.putStringArrayResource(
                 R.array.config_satellite_providers,
@@ -2560,10 +2562,12 @@ public class SatelliteControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testCarrierEnabledSatelliteConnectionHysteresisTime() {
+    public void testCarrierEnabledSatelliteConnectionHysteresisTime() throws Exception {
         when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(false);
         assertFalse(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
 
+        when(mServiceState.getState()).thenReturn(ServiceState.STATE_OUT_OF_SERVICE);
+        when(mServiceState2.getState()).thenReturn(ServiceState.STATE_OUT_OF_SERVICE);
         when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(true);
         mCarrierConfigBundle.putInt(KEY_SATELLITE_CONNECTION_HYSTERESIS_SEC_INT, 1 * 60);
         mCarrierConfigBundle.putBoolean(KEY_SATELLITE_ATTACH_SUPPORTED_BOOL, true);
@@ -2586,6 +2590,10 @@ public class SatelliteControllerTest extends TelephonyTest {
         assertFalse(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
         assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
         assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone2));
+        verify(mPhone, times(1)).notifyCarrierRoamingNtnModeChanged(eq(false));
+        verify(mPhone2, times(1)).notifyCarrierRoamingNtnModeChanged(eq(false));
+        clearInvocations(mPhone);
+        clearInvocations(mPhone2);
 
         // Last satellite connected time of Phone2 should be 0
         when(mServiceState2.isUsingNonTerrestrialNetwork()).thenReturn(true);
@@ -2597,6 +2605,10 @@ public class SatelliteControllerTest extends TelephonyTest {
         assertTrue(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
         assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
         assertTrue(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone2));
+        verify(mPhone, times(0)).notifyCarrierRoamingNtnModeChanged(eq(false));
+        verify(mPhone2, times(1)).notifyCarrierRoamingNtnModeChanged(eq(true));
+        clearInvocations(mPhone);
+        clearInvocations(mPhone2);
 
         // Last satellite disconnected time of Phone2 should be 2 * 60 * 1000
         when(mServiceState2.isUsingNonTerrestrialNetwork()).thenReturn(false);
@@ -2606,12 +2618,20 @@ public class SatelliteControllerTest extends TelephonyTest {
         assertTrue(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
         assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
         assertTrue(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone2));
+        verify(mPhone, times(0)).notifyCarrierRoamingNtnModeChanged(eq(false));
+        verify(mPhone2, times(0)).notifyCarrierRoamingNtnModeChanged(anyBoolean());
+        clearInvocations(mPhone);
+        clearInvocations(mPhone2);
 
         // Current time (4) - last disconnected time (2) > hysteresis timeout (1)
         mSatelliteControllerUT.elapsedRealtime = 4 * 60 * 1000;
+        moveTimeForward(2 * 60 * 1000);
+        processAllMessages();
         assertFalse(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
         assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
         assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone2));
+        verify(mPhone, times(0)).notifyCarrierRoamingNtnModeChanged(eq(false));
+        verify(mPhone2, times(1)).notifyCarrierRoamingNtnModeChanged(eq(false));
     }
 
     @Test

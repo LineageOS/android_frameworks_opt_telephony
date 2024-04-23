@@ -400,12 +400,6 @@ public class DataNetworkController extends Handler {
     private @NonNull SlidingWindowEventCounter mSetupDataCallWwanFailureCounter;
 
     /**
-     * {@code true} if {@link #tearDownAllDataNetworks(int)} was invoked and waiting for all
-     * networks torn down.
-     */
-    private boolean mPendingTearDownAllNetworks = false;
-
-    /**
      * The capabilities of the latest released IMS request. To detect back to back release/request
      * IMS network.
      */
@@ -1628,7 +1622,7 @@ public class DataNetworkController extends Handler {
         }
 
         // Check if there are pending tear down all networks request.
-        if (mPendingTearDownAllNetworks) {
+        if (mPhone.getServiceStateTracker().isPendingRadioPowerOffAfterDataOff()) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.PENDING_TEAR_DOWN_ALL);
         }
 
@@ -2944,7 +2938,6 @@ public class DataNetworkController extends Handler {
         mDataNetworkList.remove(dataNetwork);
         trackSetupDataCallFailure(dataNetwork.getTransport(), cause);
         if (mAnyDataNetworkExisting && mDataNetworkList.isEmpty()) {
-            mPendingTearDownAllNetworks = false;
             mAnyDataNetworkExisting = false;
             mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                     () -> callback.onAnyDataNetworkExistingChanged(mAnyDataNetworkExisting)));
@@ -3275,7 +3268,6 @@ public class DataNetworkController extends Handler {
 
         if (mAnyDataNetworkExisting && mDataNetworkList.isEmpty()) {
             log("All data networks disconnected now.");
-            mPendingTearDownAllNetworks = false;
             mAnyDataNetworkExisting = false;
             mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                     () -> callback.onAnyDataNetworkExistingChanged(mAnyDataNetworkExisting)));
@@ -4009,14 +4001,13 @@ public class DataNetworkController extends Handler {
      *
      * @param reason The reason to tear down.
      */
-    public void onTearDownAllDataNetworks(@TearDownReason int reason) {
+    private void onTearDownAllDataNetworks(@TearDownReason int reason) {
         log("onTearDownAllDataNetworks: reason=" + DataNetwork.tearDownReasonToString(reason));
         if (mDataNetworkList.isEmpty()) {
             log("tearDownAllDataNetworks: No pending networks. All disconnected now.");
             return;
         }
 
-        mPendingTearDownAllNetworks = true;
         for (DataNetwork dataNetwork : mDataNetworkList) {
             if (!dataNetwork.isDisconnecting()) {
                 tearDownGracefully(dataNetwork, reason);

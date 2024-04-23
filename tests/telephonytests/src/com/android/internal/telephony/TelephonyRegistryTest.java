@@ -117,6 +117,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
     private CellIdentity mCellIdentityForRegiFail;
     private int mRegistrationFailReason;
     private Set<Integer> mSimultaneousCallingSubscriptions;
+    private boolean mCarrierRoamingNtnMode;
 
     // All events contribute to TelephonyRegistry#isPhoneStatePermissionRequired
     private static final Set<Integer> READ_PHONE_STATE_EVENTS;
@@ -192,7 +193,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
             TelephonyCallback.BarringInfoListener,
             TelephonyCallback.RegistrationFailedListener,
             TelephonyCallback.DataActivityListener,
-            TelephonyCallback.SimultaneousCellularCallingSupportListener {
+            TelephonyCallback.SimultaneousCellularCallingSupportListener,
+            TelephonyCallback.CarrierRoamingNtnModeListener {
         // This class isn't mockable to get invocation counts because the IBinder is null and
         // crashes the TelephonyRegistry. Make a cheesy verify(times()) alternative.
         public AtomicInteger invocationCount = new AtomicInteger(0);
@@ -286,6 +288,12 @@ public class TelephonyRegistryTest extends TelephonyTest {
                 @NonNull Set<Integer> simultaneousCallingSubscriptionIds) {
             invocationCount.incrementAndGet();
             mSimultaneousCallingSubscriptions = simultaneousCallingSubscriptionIds;
+        }
+
+        @Override
+        public void onCarrierRoamingNtnModeChanged(boolean active) {
+            invocationCount.incrementAndGet();
+            mCarrierRoamingNtnMode = active;
         }
     }
 
@@ -1561,5 +1569,20 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifySimultaneousCellularCallingSubscriptionsChanged(subIds);
         processAllMessages();
         assertEquals(subIdSet, mSimultaneousCallingSubscriptions);
+    }
+
+    @Test
+    public void testNotifyCarrierRoamingNtnModeChanged() {
+        int subId = INVALID_SUBSCRIPTION_ID;
+        doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(anyInt());
+        doReturn(0/*slotIndex*/).when(mMockSubInfo).getSimSlotIndex();
+        int[] events = {TelephonyCallback.EVENT_CARRIER_ROAMING_NTN_MODE_CHANGED};
+
+        mTelephonyRegistry.listenWithEventList(false, false, subId, mContext.getOpPackageName(),
+                mContext.getAttributionTag(), mTelephonyCallback.callback, events, true);
+
+        mTelephonyRegistry.notifyCarrierRoamingNtnModeChanged(subId, true);
+        processAllMessages();
+        assertTrue(mCarrierRoamingNtnMode);
     }
 }
