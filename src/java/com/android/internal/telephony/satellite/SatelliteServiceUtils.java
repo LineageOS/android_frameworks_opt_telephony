@@ -361,7 +361,7 @@ public class SatelliteServiceUtils {
      * @return phone associated with {@code subId} or {@code null} if it doesn't exist.
      */
     public static @Nullable Phone getPhone(int subId) {
-        return PhoneFactory.getPhone(subId);
+        return PhoneFactory.getPhone(SubscriptionManager.getPhoneId(subId));
     }
 
     private static void logd(@NonNull String log) {
