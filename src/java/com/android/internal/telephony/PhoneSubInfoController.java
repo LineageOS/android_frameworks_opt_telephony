@@ -33,6 +33,7 @@ import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneNumberUtils;
@@ -64,6 +65,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     private AppOpsManager mAppOps;
     private FeatureFlags mFeatureFlags;
     private PackageManager mPackageManager;
+    private final int mVendorApiLevel;
 
     public PhoneSubInfoController(Context context) {
         this(context, new FeatureFlagsImpl());
@@ -80,6 +82,8 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         mContext = context;
         mPackageManager = context.getPackageManager();
         mFeatureFlags = featureFlags;
+        mVendorApiLevel = SystemProperties.getInt(
+                "ro.vendor.api_level", Build.VERSION.DEVICE_INITIAL_SDK_INT);
     }
 
     @Deprecated
@@ -799,7 +803,11 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
 
         if (!mFeatureFlags.enforceTelephonyFeatureMappingForPublicApis()
                 || !CompatChanges.isChangeEnabled(ENABLE_FEATURE_MAPPING, callingPackage,
-                Binder.getCallingUserHandle())) {
+                Binder.getCallingUserHandle())
+                || mVendorApiLevel < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            // Skip to check associated telephony feature,
+            // if compatibility change is not enabled for the current process or
+            // the SDK version of vendor partition is less than Android V.
             return;
         }
 
