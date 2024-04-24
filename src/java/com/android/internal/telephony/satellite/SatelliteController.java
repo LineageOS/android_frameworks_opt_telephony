@@ -1006,6 +1006,7 @@ public class SatelliteController extends Handler {
                                     SATELLITE_RESULT_SUCCESS);
                         }
                     }
+                    notifyEnablementFailedToSatelliteSessionController();
                     resetSatelliteEnabledRequest();
 
                     // If Satellite enable/disable request returned Error, no need to wait for radio
@@ -3128,6 +3129,12 @@ public class SatelliteController extends Handler {
     private void handleSatelliteEnabled(SatelliteControllerHandlerRequest request) {
         RequestSatelliteEnabledArgument argument =
                 (RequestSatelliteEnabledArgument) request.argument;
+        if (mSatelliteSessionController != null) {
+            mSatelliteSessionController.onSatelliteEnablementStarted(argument.enableSatellite);
+        } else {
+            loge("handleSatelliteEnabled: mSatelliteSessionController is not initialized yet");
+        }
+
         if (!argument.enableSatellite && mSatelliteModemInterface.isSatelliteServiceSupported()) {
             synchronized (mIsSatelliteEnabledLock) {
                 mWaitingForDisableSatelliteModemResponse = true;
@@ -3144,7 +3151,6 @@ public class SatelliteController extends Handler {
             mSessionStartTimeStamp = System.currentTimeMillis();
         }
         mSessionProcessingTimeStamp = System.currentTimeMillis();
-
     }
 
     private void handleRequestSatelliteAttachRestrictionForCarrierCmd(
@@ -4294,6 +4300,7 @@ public class SatelliteController extends Handler {
                     }
                     sendRequestAsync(CMD_SET_SATELLITE_ENABLED, request, null);
                 }
+                notifyEnablementFailedToSatelliteSessionController();
                 mControllerMetricsStats.reportServiceEnablementFailCount();
                 mSessionMetricsStats.setInitializationResult(SATELLITE_RESULT_MODEM_TIMEOUT)
                         .setSatelliteTechnology(getSupportedNtnRadioTechnology())
@@ -4521,6 +4528,15 @@ public class SatelliteController extends Handler {
                 (System.currentTimeMillis() - mSessionStartTimeStamp
                 - mSessionMetricsStats.getSessionInitializationProcessingTimeMillis()
                 - mSessionMetricsStats.getSessionTerminationProcessingTimeMillis()) / 1000);
+    }
+
+    private void notifyEnablementFailedToSatelliteSessionController() {
+        if (mSatelliteSessionController != null) {
+            mSatelliteSessionController.onSatelliteEnablementFailed();
+        } else {
+            loge("notifyEnablementFailedToSatelliteSessionController: mSatelliteSessionController"
+                    + " is not initialized yet");
+        }
     }
 
     private static void logd(@NonNull String log) {
