@@ -80,13 +80,17 @@ public final class CellularNetworkSecuritySafetySourceTest extends TelephonyTest
         mContextFixture.putResource(R.string.scCellularNetworkSecuritySummary, "fake");
         mContextFixture.putResource(R.string.scCellularNetworkSecurityLearnMore,
                 "https://support.google.com/android?p=cellular_security");
-        mContextFixture.putResource(R.string.scNullCipherIssueNonEncryptedTitle, "fake %1$s");
-        mContextFixture.putResource(R.string.scNullCipherIssueNonEncryptedSummary, "fake");
+        mContextFixture.putResource(R.string.scNullCipherIssueNonEncryptedTitle, "fake");
+        mContextFixture.putResource(R.string.scNullCipherIssueNonEncryptedSummary, "fake %1$s");
+        mContextFixture.putResource(R.string.scNullCipherIssueNonEncryptedSummaryNotification,
+                "fake %1$s");
         mContextFixture.putResource(R.string.scNullCipherIssueEncryptedTitle, "fake %1$s");
-        mContextFixture.putResource(R.string.scNullCipherIssueEncryptedSummary, "fake");
+        mContextFixture.putResource(R.string.scNullCipherIssueEncryptedSummary, "fake %1$s");
         mContextFixture.putResource(R.string.scIdentifierDisclosureIssueTitle, "fake");
+        mContextFixture.putResource(R.string.scIdentifierDisclosureIssueSummaryNotification,
+                "fake %1$s %2$s");
         mContextFixture.putResource(
-                R.string.scIdentifierDisclosureIssueSummary, "fake %1$d %2$tr %3$tr %4$s");
+                R.string.scIdentifierDisclosureIssueSummary, "fake %1$s %2$s");
         mContextFixture.putResource(R.string.scNullCipherIssueActionSettings, "fake");
         mContextFixture.putResource(R.string.scNullCipherIssueActionLearnMore, "fake");
 
