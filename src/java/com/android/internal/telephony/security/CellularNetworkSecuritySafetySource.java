@@ -32,6 +32,7 @@ import android.safetycenter.SafetyEvent;
 import android.safetycenter.SafetySourceData;
 import android.safetycenter.SafetySourceIssue;
 import android.safetycenter.SafetySourceStatus;
+import android.text.format.DateFormat;
 
 import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
@@ -41,8 +42,10 @@ import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.time.Instant;
-import java.util.Date;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -214,6 +217,7 @@ public class CellularNetworkSecuritySafetySource {
         SubscriptionInfoInternal subInfo =
                 mSubscriptionManagerService.getSubscriptionInfoInternal(subId);
         final SafetySourceIssue.Builder builder;
+        final SafetySourceIssue.Notification customNotification;
         switch (state) {
             case NULL_CIPHER_STATE_ENCRYPTED:
                 return Optional.empty();
@@ -221,20 +225,40 @@ public class CellularNetworkSecuritySafetySource {
                 builder = new SafetySourceIssue.Builder(
                         NULL_CIPHER_ISSUE_NON_ENCRYPTED_ID + "_" + subId,
                         context.getString(
-                                R.string.scNullCipherIssueNonEncryptedTitle,
-                                subInfo.getDisplayName()),
-                        context.getString(R.string.scNullCipherIssueNonEncryptedSummary),
+                                R.string.scNullCipherIssueNonEncryptedTitle),
+                        context.getString(
+                              R.string.scNullCipherIssueNonEncryptedSummary,
+                              subInfo.getDisplayName()),
                         SEVERITY_LEVEL_RECOMMENDATION,
                         NULL_CIPHER_ISSUE_NON_ENCRYPTED_ID);
+                customNotification =
+                         new SafetySourceIssue.Notification.Builder(
+                                context.getString(R.string.scNullCipherIssueNonEncryptedTitle),
+                                context.getString(
+                                        R.string.scNullCipherIssueNonEncryptedSummaryNotification,
+                                        subInfo.getDisplayName()))
+                        .build();
                 break;
             case NULL_CIPHER_STATE_NOTIFY_ENCRYPTED:
                 builder = new SafetySourceIssue.Builder(
                         NULL_CIPHER_ISSUE_NON_ENCRYPTED_ID + "_" + subId,
                         context.getString(
-                                R.string.scNullCipherIssueEncryptedTitle, subInfo.getDisplayName()),
-                        context.getString(R.string.scNullCipherIssueEncryptedSummary),
+                                R.string.scNullCipherIssueEncryptedTitle,
+                                subInfo.getDisplayName()),
+                        context.getString(
+                                R.string.scNullCipherIssueEncryptedSummary,
+                                subInfo.getDisplayName()),
                         SEVERITY_LEVEL_INFORMATION,
                         NULL_CIPHER_ISSUE_ENCRYPTED_ID);
+                customNotification =
+                        new SafetySourceIssue.Notification.Builder(
+                                context.getString(
+                                      R.string.scNullCipherIssueEncryptedTitle,
+                                      subInfo.getDisplayName()),
+                                context.getString(
+                                      R.string.scNullCipherIssueEncryptedSummary,
+                                      subInfo.getDisplayName()))
+                        .build();
                 break;
             default:
                 throw new AssertionError();
@@ -242,7 +266,8 @@ public class CellularNetworkSecuritySafetySource {
         builder
                 .setNotificationBehavior(
                         SafetySourceIssue.NOTIFICATION_BEHAVIOR_IMMEDIATELY)
-                .setIssueCategory(SafetySourceIssue.ISSUE_CATEGORY_DEVICE)
+                .setIssueCategory(SafetySourceIssue.ISSUE_CATEGORY_DATA)
+                .setCustomNotification(customNotification)
                 .addAction(
                         new SafetySourceIssue.Action.Builder(
                                 NULL_CIPHER_ACTION_SETTINGS_ID,
@@ -276,21 +301,28 @@ public class CellularNetworkSecuritySafetySource {
         SubscriptionInfoInternal subInfo =
                 mSubscriptionManagerService.getSubscriptionInfoInternal(subId);
 
+        // Notifications have no buttons
+        final SafetySourceIssue.Notification customNotification =
+                new SafetySourceIssue.Notification.Builder(
+                        context.getString(R.string.scIdentifierDisclosureIssueTitle),
+                        context.getString(
+                                R.string.scIdentifierDisclosureIssueSummaryNotification,
+                                getCurrentTime(),
+                                subInfo.getDisplayName())).build();
         SafetySourceIssue.Builder builder =
                 new SafetySourceIssue.Builder(
                         IDENTIFIER_DISCLOSURE_ISSUE_ID + "_" + subId,
                         context.getString(R.string.scIdentifierDisclosureIssueTitle),
                         context.getString(
                                 R.string.scIdentifierDisclosureIssueSummary,
-                                disclosure.getDisclosureCount(),
-                                Date.from(disclosure.getWindowStart()),
-                                Date.from(disclosure.getWindowEnd()),
+                                getCurrentTime(),
                                 subInfo.getDisplayName()),
                         SEVERITY_LEVEL_RECOMMENDATION,
                         IDENTIFIER_DISCLOSURE_ISSUE_ID)
                         .setNotificationBehavior(
                                 SafetySourceIssue.NOTIFICATION_BEHAVIOR_IMMEDIATELY)
-                        .setIssueCategory(SafetySourceIssue.ISSUE_CATEGORY_DEVICE)
+                        .setIssueCategory(SafetySourceIssue.ISSUE_CATEGORY_DATA)
+                        .setCustomNotification(customNotification)
                         .addAction(
                                 new SafetySourceIssue.Action.Builder(
                                         NULL_CIPHER_ACTION_SETTINGS_ID,
@@ -313,6 +345,12 @@ public class CellularNetworkSecuritySafetySource {
         }
 
         return Optional.of(builder.build());
+    }
+
+    private String getCurrentTime() {
+        String pattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), "hh:mm");
+        return Instant.now().atZone(ZoneId.systemDefault())
+              .format(DateTimeFormatter.ofPattern(pattern)).toString();
     }
 
     /**
