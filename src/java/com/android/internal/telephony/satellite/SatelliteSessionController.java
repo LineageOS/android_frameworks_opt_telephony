@@ -1053,8 +1053,13 @@ public class SatelliteSessionController extends StateMachine {
     }
 
     private long getSatelliteNbIotInactivityTimeoutMillis() {
-        return mContext.getResources().getInteger(
-                R.integer.config_satellite_nb_iot_inactivity_timeout_millis);
+        if (isDemoMode()) {
+            return mContext.getResources().getInteger(
+                    R.integer.config_satellite_demo_mode_nb_iot_inactivity_timeout_millis);
+        } else {
+            return mContext.getResources().getInteger(
+                    R.integer.config_satellite_nb_iot_inactivity_timeout_millis);
+        }
     }
 
     private void restartNbIotInactivityTimer() {
