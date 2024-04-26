@@ -104,3 +104,14 @@ flag {
         purpose: PURPOSE_BUGFIX
     }
 }
+
+# OWNER=joonhunshin TARGET=24Q3
+flag {
+    name: "set_number_of_sim_for_ims_enable"
+    namespace: "telephony"
+    description: "This flag allows to set number of SIM for IMS enable/disable for each slot when the eSIM is added while the binding with ImsService exists"
+    bug:"331971397"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
+}
