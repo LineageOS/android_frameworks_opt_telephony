@@ -17,11 +17,13 @@
 package com.android.internal.telephony.satellite;
 
 import static android.telephony.SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
+import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_KEEP_ALIVE;
 import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_UNKNOWN;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_IDLE;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_OFF;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
@@ -241,6 +243,10 @@ public class DatagramController {
                     + " datagramType: " + datagramType
                     + " datagramTransferState: " + datagramTransferState
                     + " sendPendingCount: " + sendPendingCount + " errorCode: " + errorCode);
+            if (shouldSuppressDatagramTransferStateUpdate(datagramType)) {
+                logd("Ignore the request to update send status");
+                return;
+            }
 
             mSendSubId = subId;
             mDatagramType = datagramType;
@@ -251,6 +257,20 @@ public class DatagramController {
             mPointingAppController.updateSendDatagramTransferState(mSendSubId, mDatagramType,
                     mSendDatagramTransferState, mSendPendingCount, mSendErrorCode);
             retryPollPendingDatagramsInDemoMode();
+        }
+    }
+
+    private boolean shouldSuppressDatagramTransferStateUpdate(
+            @SatelliteManager.DatagramType int datagramType) {
+        synchronized (mLock) {
+            if (!SatelliteController.getInstance().isSatelliteAttachRequired()) {
+                return false;
+            }
+            if (datagramType == DATAGRAM_TYPE_KEEP_ALIVE
+                    && mSatelltieModemState == SATELLITE_MODEM_STATE_NOT_CONNECTED) {
+                return true;
+            }
+            return false;
         }
     }
 
@@ -334,10 +354,17 @@ public class DatagramController {
      * before transferring datagrams via satellite.
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
-    public boolean needsWaitingForSatelliteConnected() {
+    public boolean needsWaitingForSatelliteConnected(
+            @SatelliteManager.DatagramType int datagramType) {
         synchronized (mLock) {
-            if (SatelliteController.getInstance().isSatelliteAttachRequired()
-                    && mSatelltieModemState != SATELLITE_MODEM_STATE_CONNECTED
+            if (!SatelliteController.getInstance().isSatelliteAttachRequired()) {
+                return false;
+            }
+            if (datagramType == DATAGRAM_TYPE_KEEP_ALIVE
+                    && mSatelltieModemState == SATELLITE_MODEM_STATE_NOT_CONNECTED) {
+                return false;
+            }
+            if (mSatelltieModemState != SATELLITE_MODEM_STATE_CONNECTED
                     && mSatelltieModemState != SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING) {
                 return true;
             }
