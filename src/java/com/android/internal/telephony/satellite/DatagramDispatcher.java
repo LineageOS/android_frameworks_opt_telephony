@@ -379,7 +379,7 @@ public class DatagramDispatcher extends Handler {
                 mPendingNonEmergencyDatagramsMap.put(datagramId, datagramArgs);
             }
 
-            if (mDatagramController.needsWaitingForSatelliteConnected()) {
+            if (mDatagramController.needsWaitingForSatelliteConnected(datagramType)) {
                 logd("sendDatagram: wait for satellite connected");
                 mDatagramController.updateSendStatus(subId, datagramType,
                         SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_WAITING_TO_CONNECT,
@@ -513,9 +513,14 @@ public class DatagramDispatcher extends Handler {
         }
 
         if ((pendingDatagram != null) && pendingDatagram.iterator().hasNext()) {
-            mSendingDatagramInProgress = true;
             SendSatelliteDatagramArgument datagramArg =
                     pendingDatagram.iterator().next().getValue();
+            if (mDatagramController.needsWaitingForSatelliteConnected(datagramArg.datagramType)) {
+                logd("sendPendingDatagrams: wait for satellite connected");
+                return;
+            }
+
+            mSendingDatagramInProgress = true;
             // Sets the trigger time for getting pending datagrams
             datagramArg.setDatagramStartTime();
             mDatagramController.updateSendStatus(datagramArg.subId, datagramArg.datagramType,
