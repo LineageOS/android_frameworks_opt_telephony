@@ -62,6 +62,7 @@ import androidx.test.filters.SmallTest;
 
 import com.android.ims.ImsFeatureBinderRepository;
 import com.android.internal.telephony.PhoneConfigurationManager;
+import com.android.internal.telephony.flags.FeatureFlags;
 
 import org.junit.After;
 import org.junit.Before;
@@ -113,6 +114,7 @@ public class ImsResolverTest extends ImsTestBase {
     private BroadcastReceiver mTestBootCompleteReceiver;
     private ImsServiceFeatureQueryManager.Listener mDynamicQueryListener;
     private PersistableBundle[] mCarrierConfigs;
+    private FeatureFlags mFeatureFlags;
 
     @Before
     @Override
@@ -127,6 +129,7 @@ public class ImsResolverTest extends ImsTestBase {
         mMockQueryManagerFactory = mock(ImsResolver.ImsDynamicQueryManagerFactory.class);
         mMockQueryManager = mock(ImsServiceFeatureQueryManager.class);
         mMockRepo = mock(ImsFeatureBinderRepository.class);
+        mFeatureFlags = mock(FeatureFlags.class);
     }
 
     @After
@@ -1969,7 +1972,7 @@ public class ImsResolverTest extends ImsTestBase {
         }
 
         mTestImsResolver = new ImsResolver(mMockContext, deviceMmTelPkgName, deviceRcsPkgName,
-                numSlots, mMockRepo, Looper.myLooper());
+                numSlots, mMockRepo, Looper.myLooper(), mFeatureFlags);
 
         mTestImsResolver.setSubscriptionManagerProxy(mTestSubscriptionManagerProxy);
         mTestImsResolver.setTelephonyManagerProxy(mTestTelephonyManagerProxy);
@@ -2008,7 +2011,7 @@ public class ImsResolverTest extends ImsTestBase {
                     @Override
                     public ImsServiceController create(Context context, ComponentName componentName,
                             ImsServiceController.ImsServiceControllerCallbacks callbacks,
-                            ImsFeatureBinderRepository r) {
+                            ImsFeatureBinderRepository r, FeatureFlags featureFlags) {
                         when(controller.getComponentName()).thenReturn(componentName);
                         return controller;
                     }
@@ -2118,7 +2121,7 @@ public class ImsResolverTest extends ImsTestBase {
                     @Override
                     public ImsServiceController create(Context context, ComponentName componentName,
                             ImsServiceController.ImsServiceControllerCallbacks callbacks,
-                            ImsFeatureBinderRepository r) {
+                            ImsFeatureBinderRepository r, FeatureFlags featureFlags) {
                         return controllerMap.get(componentName.getPackageName());
                     }
                 });
@@ -2136,7 +2139,7 @@ public class ImsResolverTest extends ImsTestBase {
                     @Override
                     public ImsServiceController create(Context context, ComponentName componentName,
                             ImsServiceController.ImsServiceControllerCallbacks callbacks,
-                            ImsFeatureBinderRepository r) {
+                            ImsFeatureBinderRepository r, FeatureFlags featureFlags) {
                         if (TEST_DEVICE_DEFAULT_NAME.getPackageName().equals(
                                 componentName.getPackageName())) {
                             when(deviceController.getComponentName()).thenReturn(componentName);
@@ -2163,7 +2166,7 @@ public class ImsResolverTest extends ImsTestBase {
                     @Override
                     public ImsServiceController create(Context context, ComponentName componentName,
                             ImsServiceController.ImsServiceControllerCallbacks callbacks,
-                            ImsFeatureBinderRepository r) {
+                            ImsFeatureBinderRepository r, FeatureFlags featureFlags) {
                         if (TEST_DEVICE_DEFAULT_NAME.getPackageName().equals(
                                 componentName.getPackageName())) {
                             when(deviceController.getComponentName()).thenReturn(componentName);
@@ -2195,7 +2198,7 @@ public class ImsResolverTest extends ImsTestBase {
                     @Override
                     public ImsServiceController create(Context context, ComponentName componentName,
                             ImsServiceController.ImsServiceControllerCallbacks callbacks,
-                            ImsFeatureBinderRepository r) {
+                            ImsFeatureBinderRepository r, FeatureFlags featureFlags) {
                         if (TEST_DEVICE_DEFAULT_NAME.getPackageName().equals(
                                 componentName.getPackageName())) {
                             when(deviceController1.getComponentName()).thenReturn(componentName);
