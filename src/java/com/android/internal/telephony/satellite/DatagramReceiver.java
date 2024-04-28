@@ -594,7 +594,8 @@ public class DatagramReceiver extends Handler {
             return;
         }
 
-        if (mDatagramController.needsWaitingForSatelliteConnected()) {
+        if (mDatagramController.needsWaitingForSatelliteConnected(
+                SatelliteManager.DATAGRAM_TYPE_UNKNOWN)) {
             logd("pollPendingSatelliteDatagramsInternal: wait for satellite connected");
             synchronized (mLock) {
                 mPendingPollSatelliteDatagramsRequest = new DatagramReceiverHandlerRequest(
