@@ -50,6 +50,7 @@ import android.util.Pair;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.util.ArrayUtils;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
@@ -60,6 +61,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -101,7 +103,7 @@ public class SignalStrengthController extends Handler {
     private static final int EVENT_GET_SIGNAL_STRENGTH                      = 6;
     private static final int EVENT_POLL_SIGNAL_STRENGTH                     = 7;
     private static final int EVENT_SIGNAL_STRENGTH_UPDATE                   = 8;
-    private static final int EVENT_POLL_SIGNAL_STRENGTH_DONE                = 9;
+    public static final int EVENT_POLL_SIGNAL_STRENGTH_DONE                = 9;
     private static final int EVENT_SERVICE_STATE_CHANGED                    = 10;
 
     @NonNull
@@ -330,7 +332,7 @@ public class SignalStrengthController extends Handler {
      * @param signalStrength The new SignalStrength used for updating {@code mSignalStrength}.
      */
     private void updateSignalStrength(@NonNull SignalStrength signalStrength) {
-        mSignalStrength = signalStrength;
+        mSignalStrength = maybeOverrideSignalStrengthForTest(signalStrength);
         ServiceStateTracker serviceStateTracker = mPhone.getServiceStateTracker();
         if (serviceStateTracker != null) {
             mSignalStrength.updateLevel(mCarrierConfig, serviceStateTracker.mSS);
@@ -339,6 +341,18 @@ public class SignalStrengthController extends Handler {
         }
         mSignalStrengthUpdatedTime = System.currentTimeMillis();
         notifySignalStrength();
+    }
+
+    /**
+     * For debug test build, override signal strength for testing.
+     * @param original The real signal strength to use if not in testing mode.
+     * @return The signal strength to broadcast to the external.
+     */
+    @NonNull private SignalStrength maybeOverrideSignalStrengthForTest(
+            @NonNull SignalStrength original) {
+        return TelephonyUtils.IS_DEBUGGABLE && mPhone.getTelephonyTester() != null
+                ? Objects.requireNonNullElse(mPhone.getTelephonyTester()
+                .getOverriddenSignalStrength(), original) : original;
     }
 
     /**
@@ -750,7 +764,7 @@ public class SignalStrengthController extends Handler {
     }
 
     void setSignalStrengthDefaultValues() {
-        mSignalStrength = new SignalStrength();
+        mSignalStrength = maybeOverrideSignalStrengthForTest(new SignalStrength());
         mSignalStrengthUpdatedTime = System.currentTimeMillis();
     }
 
