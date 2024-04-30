@@ -1,4 +1,5 @@
 package: "com.android.internal.telephony.flags"
+container: "system"
 
 flag {
     name: "ap_domain_selection_enabled"
