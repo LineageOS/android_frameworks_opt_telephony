@@ -67,3 +67,15 @@ flag {
         purpose: PURPOSE_BUGFIX
     }
 }
+
+# OWNER=sasindran TARGET=24Q3
+flag {
+    name: "use_relaxed_id_match"
+    namespace: "telephony"
+    description: "This flag supports relaxed id match for radio state changes"
+    bug:"336916327"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
+}
+
