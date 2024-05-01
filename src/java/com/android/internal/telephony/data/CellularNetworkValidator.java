@@ -58,9 +58,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class CellularNetworkValidator {
     private static final String LOG_TAG = "NetworkValidator";
-    // If true, upon validated network cache hit, we report validationDone only when
-    // network becomes available. Otherwise, we report validationDone immediately.
-    private static boolean sWaitForNetworkAvailableWhenCacheHit = true;
 
     // States of validator. Only one validation can happen at once.
     // IDLE: no validation going on.
@@ -69,7 +66,7 @@ public class CellularNetworkValidator {
     private static final int STATE_VALIDATING          = 1;
     // VALIDATED: validation is done and successful.
     // Waiting for stopValidation() to release
-    // validationg NetworkRequest.
+    // validation NetworkRequest.
     private static final int STATE_VALIDATED           = 2;
 
     // Singleton instance.
@@ -79,13 +76,11 @@ public class CellularNetworkValidator {
 
     private int mState = STATE_IDLE;
     private int mSubId;
-    private long mTimeoutInMs;
     private boolean mReleaseAfterValidation;
 
-    private NetworkRequest mNetworkRequest;
     private ValidationCallback mValidationCallback;
-    private Context mContext;
-    private ConnectivityManager mConnectivityManager;
+    private final Context mContext;
+    private final ConnectivityManager mConnectivityManager;
     @VisibleForTesting
     public Handler mHandler = new Handler();
     @VisibleForTesting
@@ -96,18 +91,11 @@ public class CellularNetworkValidator {
         // A cache with fixed size. It remembers 10 most recently successfully validated networks.
         private static final int VALIDATED_NETWORK_CACHE_SIZE = 10;
         private final PriorityQueue<ValidatedNetwork> mValidatedNetworkPQ =
-                new PriorityQueue((Comparator<ValidatedNetwork>) (n1, n2) -> {
-                    if (n1.mValidationTimeStamp < n2.mValidationTimeStamp) {
-                        return -1;
-                    } else if (n1.mValidationTimeStamp > n2.mValidationTimeStamp) {
-                        return 1;
-                    } else {
-                        return 0;
-                    }
-                });
-        private final Map<String, ValidatedNetwork> mValidatedNetworkMap = new HashMap();
+                new PriorityQueue<>((Comparator<ValidatedNetwork>) Comparator.comparingLong(
+                        (ValidatedNetwork n) -> n.mValidationTimeStamp));
+        private final Map<String, ValidatedNetwork> mValidatedNetworkMap = new HashMap<>();
 
-        private final class ValidatedNetwork {
+        private static final class ValidatedNetwork {
             ValidatedNetwork(String identity, long timeStamp) {
                 mValidationIdentity = identity;
                 mValidationTimeStamp = timeStamp;
@@ -165,7 +153,6 @@ public class CellularNetworkValidator {
 
         private String getValidationNetworkIdentity(int subId) {
             if (!SubscriptionManager.isUsableSubscriptionId(subId)) return null;
-            if (SubscriptionManagerService.getInstance() == null) return null;
             Phone phone = PhoneFactory.getPhone(SubscriptionManagerService.getInstance()
                     .getPhoneId(subId));
             if (phone == null || phone.getServiceState() == null) return null;
@@ -270,26 +257,18 @@ public class CellularNetworkValidator {
             stopValidation();
         }
 
-        if (!sWaitForNetworkAvailableWhenCacheHit && mValidatedNetworkCache
-                .isRecentlyValidated(subId)) {
-            callback.onValidationDone(true, subId);
-            return;
-        }
-
         mState = STATE_VALIDATING;
         mSubId = subId;
-        mTimeoutInMs = timeoutInMs;
         mValidationCallback = callback;
         mReleaseAfterValidation = releaseAfterValidation;
-        mNetworkRequest = createNetworkRequest();
 
-        logd("Start validating subId " + mSubId + " mTimeoutInMs " + mTimeoutInMs
+        logd("Start validating subId " + mSubId + " timeoutInMs " + timeoutInMs
                 + " mReleaseAfterValidation " + mReleaseAfterValidation);
 
         mNetworkCallback = new ConnectivityNetworkCallback(subId);
 
-        mConnectivityManager.requestNetwork(mNetworkRequest, mNetworkCallback, mHandler);
-        mHandler.postDelayed(() -> onValidationTimeout(subId), mTimeoutInMs);
+        mConnectivityManager.requestNetwork(createNetworkRequest(), mNetworkCallback, mHandler);
+        mHandler.postDelayed(() -> onValidationTimeout(subId), timeoutInMs);
     }
 
     private synchronized void onValidationTimeout(int subId) {
@@ -351,7 +330,7 @@ public class CellularNetworkValidator {
             mState = STATE_VALIDATED;
             // If validation passed and per request to NOT release after validation, delay cleanup.
             if (!mReleaseAfterValidation && passed) {
-                mHandler.postDelayed(()-> stopValidation(), 500);
+                mHandler.postDelayed(this::stopValidation, 500);
             } else {
                 stopValidation();
             }

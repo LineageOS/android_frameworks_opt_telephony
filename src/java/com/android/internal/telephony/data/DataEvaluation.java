@@ -418,7 +418,7 @@ public class DataEvaluation {
     public String toString() {
         StringBuilder evaluationStr = new StringBuilder();
         evaluationStr.append("Data evaluation: evaluation reason:" + mDataEvaluationReason + ", ");
-        if (mDataDisallowedReasons.size() > 0) {
+        if (!mDataDisallowedReasons.isEmpty()) {
             evaluationStr.append("Data disallowed reasons:");
             for (DataDisallowedReason reason : mDataDisallowedReasons) {
                 evaluationStr.append(" ").append(reason);

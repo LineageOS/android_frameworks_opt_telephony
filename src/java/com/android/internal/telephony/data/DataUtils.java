@@ -36,7 +36,6 @@ import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ApnType;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataCallResponse.LinkStatus;
-import android.telephony.data.DataProfile;
 import android.telephony.ims.feature.ImsFeature;
 import android.util.ArrayMap;
 
@@ -49,7 +48,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -382,25 +380,6 @@ public class DataUtils {
                 loge("Unknown IMS feature(" + imsFeature + ")");
                 return "Unknown(" + imsFeature + ")";
         }
-    }
-
-    /**
-     * Get the highest priority supported network capability from the specified data profile.
-     *
-     * @param dataConfigManager The data config that contains network priority information.
-     * @param dataProfile The data profile
-     * @return The highest priority network capability. -1 if cannot find one.
-     */
-    public static @NetCapability int getHighestPriorityNetworkCapabilityFromDataProfile(
-            @NonNull DataConfigManager dataConfigManager, @NonNull DataProfile dataProfile) {
-        if (dataProfile.getApnSetting() == null
-                || dataProfile.getApnSetting().getApnTypes().isEmpty()) return -1;
-        return dataProfile.getApnSetting().getApnTypes().stream()
-                .map(DataUtils::apnTypeToNetworkCapability)
-                .sorted(Comparator.comparing(dataConfigManager::getNetworkCapabilityPriority)
-                        .reversed())
-                .collect(Collectors.toList())
-                .get(0);
     }
 
     /**

@@ -56,9 +56,6 @@ public class TelephonyNetworkAgent extends NetworkAgent {
     /** The parent data network. */
     private final @NonNull DataNetwork mDataNetwork;
 
-    /** Network agent config. For unit test use only. */
-    private final @NonNull NetworkAgentConfig mNetworkAgentConfig;
-
     /** This is the id from {@link NetworkAgent#register()}. */
     private final int mId;
 
@@ -165,7 +162,6 @@ public class TelephonyNetworkAgent extends NetworkAgent {
                 config, provider);
         register();
         mDataNetwork = dataNetwork;
-        mNetworkAgentConfig = config;
         mTelephonyNetworkAgentCallbacks.add(callback);
         mId = getNetwork().getNetId();
         mLogTag = "TNA-" + mId;
@@ -342,15 +338,6 @@ public class TelephonyNetworkAgent extends NetworkAgent {
      */
     private void loge(@NonNull String s) {
         Rlog.e(mLogTag, s);
-    }
-
-    /**
-     * Log debug messages and also log into the local log.
-     * @param s debug messages
-     */
-    private void logl(@NonNull String s) {
-        log(s);
-        mLocalLog.log(s);
     }
 
     /**

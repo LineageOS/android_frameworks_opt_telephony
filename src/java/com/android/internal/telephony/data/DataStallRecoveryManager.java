@@ -73,12 +73,11 @@ public class DataStallRecoveryManager extends Handler {
             value = {
                 RECOVERY_ACTION_GET_DATA_CALL_LIST,
                 RECOVERY_ACTION_CLEANUP,
-                RECOVERY_ACTION_REREGISTER,
                 RECOVERY_ACTION_RADIO_RESTART,
                 RECOVERY_ACTION_RESET_MODEM
             })
     @Retention(RetentionPolicy.SOURCE)
-    public @interface RecoveryAction {};
+    public @interface RecoveryAction {}
 
     /* DataStallRecoveryManager queries RIL for link properties (IP addresses, DNS server addresses
      * etc) using RIL_REQUEST_GET_DATA_CALL_LIST.  This will help in cases where the data stall
@@ -91,16 +90,6 @@ public class DataStallRecoveryManager extends Handler {
      * It will help to reestablish the channel between RIL and modem.
      */
     public static final int RECOVERY_ACTION_CLEANUP = 1;
-
-    /**
-     * Add the RECOVERY_ACTION_REREGISTER to align the RecoveryActions between
-     * DataStallRecoveryManager and atoms.proto. In Android T, This action will not process because
-     * the boolean array for skip recovery action is default true in carrier config setting.
-     *
-     * @deprecated Do not use.
-     */
-    @java.lang.Deprecated
-    public static final int RECOVERY_ACTION_REREGISTER = 2;
 
     /* DataStallRecoveryManager will request ServiceStateTracker to send RIL_REQUEST_RADIO_POWER
      * to restart radio. It will restart the radio and re-attch to the network.
@@ -121,9 +110,9 @@ public class DataStallRecoveryManager extends Handler {
                 RECOVERED_REASON_USER
             })
     @Retention(RetentionPolicy.SOURCE)
-    public @interface RecoveredReason {};
+    public @interface RecoveredReason {}
 
-    /** The reason when data stall recovered. */
+    // The reason when data stall recovered.
     /** The data stall not recovered yet. */
     private static final int RECOVERED_REASON_NONE = 0;
     /** The data stall recovered by our DataStallRecoveryManager. */
@@ -476,9 +465,8 @@ public class DataStallRecoveryManager extends Handler {
 
             // Copy the values from the durationMillisArray array to the
             // mDataStallRecoveryDelayMillisArray array.
-            for (int i = 0; i < minLength; i++) {
-                mDataStallRecoveryDelayMillisArray[i] = durationMillisArray[i];
-            }
+            System.arraycopy(durationMillisArray, 0, mDataStallRecoveryDelayMillisArray,
+                    0, minLength);
             log("DataStallRecoveryDelayMillis: "
                     + Arrays.toString(mDataStallRecoveryDelayMillisArray));
             mPredictWaitingMillis = DSRM_PREDICT_WAITING_MILLIS;
@@ -872,7 +860,7 @@ public class DataStallRecoveryManager extends Handler {
                     isFirstValidationAfterDoRecovery, timeDurationOfCurrentAction);
             logl(
                     "data stall: "
-                    + (isFirstDataStall == true ? "start" : isValid == false ? "in process" : "end")
+                    + (isFirstDataStall ? "start" : !isValid ? "in process" : "end")
                     + ", lastaction="
                     + recoveryActionToString(mLastAction)
                     + ", isRecovered="
@@ -965,18 +953,13 @@ public class DataStallRecoveryManager extends Handler {
      * @return The recovered reason in string format.
      */
     private static @NonNull String recoveredReasonToString(@RecoveredReason int reason) {
-        switch (reason) {
-            case RECOVERED_REASON_NONE:
-                return "RECOVERED_REASON_NONE";
-            case RECOVERED_REASON_DSRM:
-                return "RECOVERED_REASON_DSRM";
-            case RECOVERED_REASON_MODEM:
-                return "RECOVERED_REASON_MODEM";
-            case RECOVERED_REASON_USER:
-                return "RECOVERED_REASON_USER";
-            default:
-                return "Unknown(" + reason + ")";
-        }
+        return switch (reason) {
+            case RECOVERED_REASON_NONE -> "RECOVERED_REASON_NONE";
+            case RECOVERED_REASON_DSRM -> "RECOVERED_REASON_DSRM";
+            case RECOVERED_REASON_MODEM -> "RECOVERED_REASON_MODEM";
+            case RECOVERED_REASON_USER -> "RECOVERED_REASON_USER";
+            default -> "Unknown(" + reason + ")";
+        };
     }
 
     /**
@@ -1005,18 +988,13 @@ public class DataStallRecoveryManager extends Handler {
      * @return The recovery action in string format.
      */
     private static @NonNull String recoveryActionToString(@RecoveryAction int action) {
-        switch (action) {
-            case RECOVERY_ACTION_GET_DATA_CALL_LIST:
-                return "RECOVERY_ACTION_GET_DATA_CALL_LIST";
-            case RECOVERY_ACTION_CLEANUP:
-                return "RECOVERY_ACTION_CLEANUP";
-            case RECOVERY_ACTION_RADIO_RESTART:
-                return "RECOVERY_ACTION_RADIO_RESTART";
-            case RECOVERY_ACTION_RESET_MODEM:
-                return "RECOVERY_ACTION_RESET_MODEM";
-            default:
-                return "Unknown(" + action + ")";
-        }
+        return switch (action) {
+            case RECOVERY_ACTION_GET_DATA_CALL_LIST -> "RECOVERY_ACTION_GET_DATA_CALL_LIST";
+            case RECOVERY_ACTION_CLEANUP -> "RECOVERY_ACTION_CLEANUP";
+            case RECOVERY_ACTION_RADIO_RESTART -> "RECOVERY_ACTION_RADIO_RESTART";
+            case RECOVERY_ACTION_RESET_MODEM -> "RECOVERY_ACTION_RESET_MODEM";
+            default -> "Unknown(" + action + ")";
+        };
     }
 
     /**

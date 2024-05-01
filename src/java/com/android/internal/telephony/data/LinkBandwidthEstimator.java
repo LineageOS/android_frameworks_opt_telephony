@@ -185,15 +185,15 @@ public class LinkBandwidthEstimator extends Handler {
     private int mTac;
     @NonNull private String mPlmn = UNKNOWN_PLMN;
     private NetworkCapabilities mNetworkCapabilities;
-    private NetworkBandwidth mPlaceholderNetwork;
+    private final NetworkBandwidth mPlaceholderNetwork;
     private long mFilterUpdateTimeMs;
 
     private int mBandwidthUpdateSignalDbm = -1;
     private int mBandwidthUpdateSignalLevel = -1;
     private int mBandwidthUpdateDataRat = TelephonyManager.NETWORK_TYPE_UNKNOWN;
     private String mBandwidthUpdatePlmn = UNKNOWN_PLMN;
-    private BandwidthState mTxState = new BandwidthState(LINK_TX);
-    private BandwidthState mRxState = new BandwidthState(LINK_RX);
+    private final BandwidthState mTxState = new BandwidthState(LINK_TX);
+    private final BandwidthState mRxState = new BandwidthState(LINK_RX);
     private long mLastPlmnOrRatChangeTimeMs;
     private long mLastDrsOrRatChangeTimeMs;
 
@@ -1059,7 +1059,6 @@ public class LinkBandwidthEstimator extends Handler {
             mPlmn = plmn;
         }
 
-        boolean updatedRat = false;
         NetworkRegistrationInfo nri = getDataNri();
         if (nri != null) {
             int dataRat = nri.getAccessNetworkTechnology();
