@@ -273,17 +273,6 @@ public class DataNetwork extends StateMachine {
     /** Invalid context id. */
     private static final int INVALID_CID = -1;
 
-    /**
-     * The data network providing default internet will have a higher score of 50. Other network
-     * will have a slightly lower score of 45. The intention is other connections will not cause
-     * connectivity service to tear down default internet connection. For example, to validate
-     * internet connection on non-default data SIM, we'll set up a temporary internet network on
-     * that data SIM. In this case, score of 45 is assigned so connectivity service will not replace
-     * the default internet network with it.
-     */
-    private static final int DEFAULT_INTERNET_NETWORK_SCORE = 50;
-    private static final int OTHER_NETWORK_SCORE = 45;
-
     @IntDef(prefix = {"TEAR_DOWN_REASON_"},
             value = {
                     TEAR_DOWN_REASON_NONE,
@@ -715,7 +704,7 @@ public class DataNetwork extends StateMachine {
     private final boolean mIsSatellite;
 
     /** The reason that why setting up this data network is allowed. */
-    private @NonNull DataAllowedReason mDataAllowedReason;
+    private final @NonNull DataAllowedReason mDataAllowedReason;
 
     /**
      * PCO (Protocol Configuration Options) data received from the network. The first key is the
@@ -1189,7 +1178,7 @@ public class DataNetwork extends StateMachine {
 
             mCarrierPrivilegesCallback =
                     (Set<String> privilegedPackageNames, Set<Integer> privilegedUids) -> {
-                        log("onCarrierPrivilegesChanged, Uids=" + privilegedUids.toString());
+                        log("onCarrierPrivilegesChanged, Uids=" + privilegedUids);
                         Message message = obtainMessage(EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED);
                         AsyncResult.forMessage(
                                 message,
@@ -1659,9 +1648,7 @@ public class DataNetwork extends StateMachine {
 
             // If we've ever received PCO data before connected, now it's the time to process it.
             mPcoData.getOrDefault(mCid.get(mTransport), Collections.emptyMap())
-                    .forEach((pcoId, pcoData) -> {
-                        onPcoDataChanged(pcoData);
-                    });
+                    .forEach((pcoId, pcoData) -> onPcoDataChanged(pcoData));
 
             mDataNetworkCallback.invokeFromExecutor(
                     () -> mDataNetworkCallback.onLinkStatusChanged(DataNetwork.this, mLinkStatus));
@@ -2043,7 +2030,7 @@ public class DataNetwork extends StateMachine {
                 log("Successfully attached network request " + networkRequest);
             }
         }
-        if (failedList.size() > 0) {
+        if (!failedList.isEmpty()) {
             mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
                     .onAttachFailed(DataNetwork.this, failedList));
         }
@@ -2208,8 +2195,7 @@ public class DataNetwork extends StateMachine {
     private static boolean areImmutableCapabilitiesChanged(
             @NonNull NetworkCapabilities oldCapabilities,
             @NonNull NetworkCapabilities newCapabilities) {
-        if (oldCapabilities == null
-                || ArrayUtils.isEmpty(oldCapabilities.getCapabilities())) return false;
+        if (ArrayUtils.isEmpty(oldCapabilities.getCapabilities())) return false;
 
         // Remove mutable capabilities from both old and new capabilities, the remaining
         // capabilities would be immutable capabilities.
@@ -2570,7 +2556,6 @@ public class DataNetwork extends StateMachine {
         // Never set suspended for emergency apn. Emergency data connection
         // can work while device is not in service.
         if (mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)) {
-            newSuspendedState = false;
             // If we are not in service, change to suspended.
         } else if (nri.getRegistrationState()
                 != NetworkRegistrationInfo.REGISTRATION_STATE_HOME
@@ -2672,7 +2657,7 @@ public class DataNetwork extends StateMachine {
         }
 
         // Set link addresses
-        if (response.getAddresses().size() > 0) {
+        if (!response.getAddresses().isEmpty()) {
             for (LinkAddress la : response.getAddresses()) {
                 if (!la.getAddress().isAnyLocalAddress()) {
                     logv("addr/pl=" + la.getAddress() + "/" + la.getPrefixLength());
@@ -2684,7 +2669,7 @@ public class DataNetwork extends StateMachine {
         }
 
         // Set DNS servers
-        if (response.getDnsAddresses().size() > 0) {
+        if (!response.getDnsAddresses().isEmpty()) {
             for (InetAddress dns : response.getDnsAddresses()) {
                 if (!dns.isAnyLocalAddress()) {
                     linkProperties.addDnsServer(dns);
@@ -2695,7 +2680,7 @@ public class DataNetwork extends StateMachine {
         }
 
         // Set PCSCF
-        if (response.getPcscfAddresses().size() > 0) {
+        if (!response.getPcscfAddresses().isEmpty()) {
             for (InetAddress pcscf : response.getPcscfAddresses()) {
                 linkProperties.addPcscfServer(pcscf);
             }
@@ -3065,12 +3050,12 @@ public class DataNetwork extends StateMachine {
         NetworkBandwidth bandwidthFromConfig = mDataConfigManager.getBandwidthForNetworkType(
                 mTelephonyDisplayInfo);
 
-        if (downlinkBandwidthKbps == LinkCapacityEstimate.INVALID && bandwidthFromConfig != null) {
+        if (downlinkBandwidthKbps == LinkCapacityEstimate.INVALID) {
             // Fallback to carrier config.
             downlinkBandwidthKbps = bandwidthFromConfig.downlinkBandwidthKbps;
         }
 
-        if (uplinkBandwidthKbps == LinkCapacityEstimate.INVALID && bandwidthFromConfig != null) {
+        if (uplinkBandwidthKbps == LinkCapacityEstimate.INVALID) {
             // Fallback to carrier config.
             uplinkBandwidthKbps = bandwidthFromConfig.uplinkBandwidthKbps;
         }
@@ -3719,7 +3704,7 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * The network validation requests moves to process on the statemachich handler. A request is
+     * The network validation requests moves to process on the state machine handler. A request is
      * processed according to state of the data network.
      */
     public void requestNetworkValidation(@NonNull Consumer<Integer> resultCodeCallback) {
@@ -3806,76 +3791,52 @@ public class DataNetwork extends StateMachine {
      * @return The deactivation reason in string format.
      */
     public static @NonNull String tearDownReasonToString(@TearDownReason int reason) {
-        switch (reason) {
-            case TEAR_DOWN_REASON_NONE:
-                return "NONE";
-            case TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED:
-                return "CONNECTIVITY_SERVICE_UNWANTED";
-            case TEAR_DOWN_REASON_SIM_REMOVAL:
-                return "SIM_REMOVAL";
-            case TEAR_DOWN_REASON_AIRPLANE_MODE_ON:
-                return "AIRPLANE_MODE_ON";
-            case TEAR_DOWN_REASON_DATA_DISABLED:
-                return "DATA_DISABLED";
-            case TEAR_DOWN_REASON_NO_LIVE_REQUEST:
-                return "TEAR_DOWN_REASON_NO_LIVE_REQUEST";
-            case TEAR_DOWN_REASON_RAT_NOT_ALLOWED:
-                return "TEAR_DOWN_REASON_RAT_NOT_ALLOWED";
-            case TEAR_DOWN_REASON_ROAMING_DISABLED:
-                return "TEAR_DOWN_REASON_ROAMING_DISABLED";
-            case TEAR_DOWN_REASON_CONCURRENT_VOICE_DATA_NOT_ALLOWED:
-                return "TEAR_DOWN_REASON_CONCURRENT_VOICE_DATA_NOT_ALLOWED";
-            case TEAR_DOWN_REASON_SERVICE_OPTION_NOT_SUPPORTED:
-                return "TEAR_DOWN_REASON_SERVICE_OPTION_NOT_SUPPORTED";
-            case TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY:
-                return "TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY";
-            case TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER:
-                return "TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER";
-            case TEAR_DOWN_REASON_DATA_STALL:
-                return "TEAR_DOWN_REASON_DATA_STALL";
-            case TEAR_DOWN_REASON_HANDOVER_FAILED:
-                return "TEAR_DOWN_REASON_HANDOVER_FAILED";
-            case TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED:
-                return "TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED";
-            case TEAR_DOWN_REASON_VCN_REQUESTED:
-                return "TEAR_DOWN_REASON_VCN_REQUESTED";
-            case TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED:
-                return "TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED";
-            case TEAR_DOWN_REASON_DEFAULT_DATA_UNSELECTED:
-                return "TEAR_DOWN_REASON_DEFAULT_DATA_UNSELECTED";
-            case TEAR_DOWN_REASON_NOT_IN_SERVICE:
-                return "TEAR_DOWN_REASON_NOT_IN_SERVICE";
-            case TEAR_DOWN_REASON_DATA_CONFIG_NOT_READY:
-                return "TEAR_DOWN_REASON_DATA_CONFIG_NOT_READY";
-            case TEAR_DOWN_REASON_PENDING_TEAR_DOWN_ALL:
-                return "TEAR_DOWN_REASON_PENDING_TEAR_DOWN_ALL";
-            case TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE:
-                return "TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE";
-            case TEAR_DOWN_REASON_CDMA_EMERGENCY_CALLBACK_MODE:
-                return "TEAR_DOWN_REASON_CDMA_EMERGENCY_CALLBACK_MODE";
-            case TEAR_DOWN_REASON_RETRY_SCHEDULED:
-                return "TEAR_DOWN_REASON_RETRY_SCHEDULED";
-            case TEAR_DOWN_REASON_DATA_THROTTLED:
-                return "TEAR_DOWN_REASON_DATA_THROTTLED";
-            case TEAR_DOWN_REASON_DATA_PROFILE_INVALID:
-                return "TEAR_DOWN_REASON_DATA_PROFILE_INVALID";
-            case TEAR_DOWN_REASON_DATA_PROFILE_NOT_PREFERRED:
-                return "TEAR_DOWN_REASON_DATA_PROFILE_NOT_PREFERRED";
-            case TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY:
-                return "TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY";
-            case TEAR_DOWN_REASON_ILLEGAL_STATE:
-                return "TEAR_DOWN_REASON_ILLEGAL_STATE";
-            case TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK:
-                return "TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK";
-            case TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED:
-                return "TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED";
-            case TEAR_DOWN_REASON_DATA_LIMIT_REACHED:
-                return "TEAR_DOWN_REASON_DATA_LIMIT_REACHED";
-            case TEAR_DOWN_REASON_DATA_NETWORK_TRANSPORT_NOT_ALLOWED:
-                return "TEAR_DOWN_REASON_DATA_NETWORK_TRANSPORT_NOT_ALLOWED";
-            default:
-                return "UNKNOWN(" + reason + ")";
-        }
+        return switch (reason) {
+            case TEAR_DOWN_REASON_NONE -> "NONE";
+            case TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED -> "CONNECTIVITY_SERVICE_UNWANTED";
+            case TEAR_DOWN_REASON_SIM_REMOVAL -> "SIM_REMOVAL";
+            case TEAR_DOWN_REASON_AIRPLANE_MODE_ON -> "AIRPLANE_MODE_ON";
+            case TEAR_DOWN_REASON_DATA_DISABLED -> "DATA_DISABLED";
+            case TEAR_DOWN_REASON_NO_LIVE_REQUEST -> "TEAR_DOWN_REASON_NO_LIVE_REQUEST";
+            case TEAR_DOWN_REASON_RAT_NOT_ALLOWED -> "TEAR_DOWN_REASON_RAT_NOT_ALLOWED";
+            case TEAR_DOWN_REASON_ROAMING_DISABLED -> "TEAR_DOWN_REASON_ROAMING_DISABLED";
+            case TEAR_DOWN_REASON_CONCURRENT_VOICE_DATA_NOT_ALLOWED ->
+                    "TEAR_DOWN_REASON_CONCURRENT_VOICE_DATA_NOT_ALLOWED";
+            case TEAR_DOWN_REASON_SERVICE_OPTION_NOT_SUPPORTED ->
+                    "TEAR_DOWN_REASON_SERVICE_OPTION_NOT_SUPPORTED";
+            case TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY ->
+                    "TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY";
+            case TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER -> "TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER";
+            case TEAR_DOWN_REASON_DATA_STALL -> "TEAR_DOWN_REASON_DATA_STALL";
+            case TEAR_DOWN_REASON_HANDOVER_FAILED -> "TEAR_DOWN_REASON_HANDOVER_FAILED";
+            case TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED -> "TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED";
+            case TEAR_DOWN_REASON_VCN_REQUESTED -> "TEAR_DOWN_REASON_VCN_REQUESTED";
+            case TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED -> "TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED";
+            case TEAR_DOWN_REASON_DEFAULT_DATA_UNSELECTED ->
+                    "TEAR_DOWN_REASON_DEFAULT_DATA_UNSELECTED";
+            case TEAR_DOWN_REASON_NOT_IN_SERVICE -> "TEAR_DOWN_REASON_NOT_IN_SERVICE";
+            case TEAR_DOWN_REASON_DATA_CONFIG_NOT_READY -> "TEAR_DOWN_REASON_DATA_CONFIG_NOT_READY";
+            case TEAR_DOWN_REASON_PENDING_TEAR_DOWN_ALL -> "TEAR_DOWN_REASON_PENDING_TEAR_DOWN_ALL";
+            case TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE ->
+                    "TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE";
+            case TEAR_DOWN_REASON_CDMA_EMERGENCY_CALLBACK_MODE ->
+                    "TEAR_DOWN_REASON_CDMA_EMERGENCY_CALLBACK_MODE";
+            case TEAR_DOWN_REASON_RETRY_SCHEDULED -> "TEAR_DOWN_REASON_RETRY_SCHEDULED";
+            case TEAR_DOWN_REASON_DATA_THROTTLED -> "TEAR_DOWN_REASON_DATA_THROTTLED";
+            case TEAR_DOWN_REASON_DATA_PROFILE_INVALID -> "TEAR_DOWN_REASON_DATA_PROFILE_INVALID";
+            case TEAR_DOWN_REASON_DATA_PROFILE_NOT_PREFERRED ->
+                    "TEAR_DOWN_REASON_DATA_PROFILE_NOT_PREFERRED";
+            case TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY -> "TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY";
+            case TEAR_DOWN_REASON_ILLEGAL_STATE -> "TEAR_DOWN_REASON_ILLEGAL_STATE";
+            case TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK ->
+                    "TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK";
+            case TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED ->
+                    "TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED";
+            case TEAR_DOWN_REASON_DATA_LIMIT_REACHED -> "TEAR_DOWN_REASON_DATA_LIMIT_REACHED";
+            case TEAR_DOWN_REASON_DATA_NETWORK_TRANSPORT_NOT_ALLOWED ->
+                    "TEAR_DOWN_REASON_DATA_NETWORK_TRANSPORT_NOT_ALLOWED";
+            default -> "UNKNOWN(" + reason + ")";
+        };
     }
 
     /**
@@ -3885,66 +3846,41 @@ public class DataNetwork extends StateMachine {
      * @return The event in string format.
      */
     private static @NonNull String eventToString(int event) {
-        switch (event) {
-            case EVENT_DATA_CONFIG_UPDATED:
-                return "EVENT_DATA_CONFIG_UPDATED";
-            case EVENT_ATTACH_NETWORK_REQUEST:
-                return "EVENT_ATTACH_NETWORK_REQUEST";
-            case EVENT_DETACH_NETWORK_REQUEST:
-                return "EVENT_DETACH_NETWORK_REQUEST";
-            case EVENT_RADIO_NOT_AVAILABLE:
-                return "EVENT_RADIO_NOT_AVAILABLE";
-            case EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE:
-                return "EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE";
-            case EVENT_SETUP_DATA_NETWORK_RESPONSE:
-                return "EVENT_SETUP_DATA_NETWORK_RESPONSE";
-            case EVENT_TEAR_DOWN_NETWORK:
-                return "EVENT_TEAR_DOWN_NETWORK";
-            case EVENT_DATA_STATE_CHANGED:
-                return "EVENT_DATA_STATE_CHANGED";
-            case EVENT_SERVICE_STATE_CHANGED:
-                return "EVENT_DATA_NETWORK_TYPE_REG_STATE_CHANGED";
-            case EVENT_DETACH_ALL_NETWORK_REQUESTS:
-                return "EVENT_DETACH_ALL_NETWORK_REQUESTS";
-            case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
-                return "EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED";
-            case EVENT_CANCEL_HANDOVER_NO_RESPONSE:
-                return "EVENT_CANCEL_HANDOVER_NO_RESPONSE";
-            case EVENT_DISPLAY_INFO_CHANGED:
-                return "EVENT_DISPLAY_INFO_CHANGED";
-            case EVENT_HANDOVER_RESPONSE:
-                return "EVENT_HANDOVER_RESPONSE";
-            case EVENT_SUBSCRIPTION_PLAN_OVERRIDE:
-                return "EVENT_SUBSCRIPTION_PLAN_OVERRIDE";
-            case EVENT_PCO_DATA_RECEIVED:
-                return "EVENT_PCO_DATA_RECEIVED";
-            case EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED:
-                return "EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED";
-            case EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE:
-                return "EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE";
-            case EVENT_STUCK_IN_TRANSIENT_STATE:
-                return "EVENT_STUCK_IN_TRANSIENT_STATE";
-            case EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET:
-                return "EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET";
-            case EVENT_VOICE_CALL_STARTED:
-                return "EVENT_VOICE_CALL_STARTED";
-            case EVENT_VOICE_CALL_ENDED:
-                return "EVENT_VOICE_CALL_ENDED";
-            case EVENT_CSS_INDICATOR_CHANGED:
-                return "EVENT_CSS_INDICATOR_CHANGED";
-            case EVENT_NOTIFY_HANDOVER_STARTED:
-                return "EVENT_NOTIFY_HANDOVER_STARTED";
-            case EVENT_NOTIFY_HANDOVER_STARTED_RESPONSE:
-                return "EVENT_NOTIFY_HANDOVER_STARTED_RESPONSE";
-            case EVENT_NOTIFY_HANDOVER_CANCELLED_RESPONSE:
-                return "EVENT_NOTIFY_HANDOVER_CANCELLED_RESPONSE";
-            case EVENT_DATA_NETWORK_VALIDATION_REQUESTED:
-                return "EVENT_DATA_NETWORK_VALIDATION_REQUESTED";
-            case EVENT_DATA_NETWORK_VALIDATION_RESPONSE:
-                return "EVENT_DATA_NETWORK_VALIDATION_RESPONSE";
-            default:
-                return "Unknown(" + event + ")";
-        }
+        return switch (event) {
+            case EVENT_DATA_CONFIG_UPDATED -> "EVENT_DATA_CONFIG_UPDATED";
+            case EVENT_ATTACH_NETWORK_REQUEST -> "EVENT_ATTACH_NETWORK_REQUEST";
+            case EVENT_DETACH_NETWORK_REQUEST -> "EVENT_DETACH_NETWORK_REQUEST";
+            case EVENT_RADIO_NOT_AVAILABLE -> "EVENT_RADIO_NOT_AVAILABLE";
+            case EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE -> "EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE";
+            case EVENT_SETUP_DATA_NETWORK_RESPONSE -> "EVENT_SETUP_DATA_NETWORK_RESPONSE";
+            case EVENT_TEAR_DOWN_NETWORK -> "EVENT_TEAR_DOWN_NETWORK";
+            case EVENT_DATA_STATE_CHANGED -> "EVENT_DATA_STATE_CHANGED";
+            case EVENT_SERVICE_STATE_CHANGED -> "EVENT_DATA_NETWORK_TYPE_REG_STATE_CHANGED";
+            case EVENT_DETACH_ALL_NETWORK_REQUESTS -> "EVENT_DETACH_ALL_NETWORK_REQUESTS";
+            case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED ->
+                    "EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED";
+            case EVENT_CANCEL_HANDOVER_NO_RESPONSE -> "EVENT_CANCEL_HANDOVER_NO_RESPONSE";
+            case EVENT_DISPLAY_INFO_CHANGED -> "EVENT_DISPLAY_INFO_CHANGED";
+            case EVENT_HANDOVER_RESPONSE -> "EVENT_HANDOVER_RESPONSE";
+            case EVENT_SUBSCRIPTION_PLAN_OVERRIDE -> "EVENT_SUBSCRIPTION_PLAN_OVERRIDE";
+            case EVENT_PCO_DATA_RECEIVED -> "EVENT_PCO_DATA_RECEIVED";
+            case EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED -> "EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED";
+            case EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE -> "EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE";
+            case EVENT_STUCK_IN_TRANSIENT_STATE -> "EVENT_STUCK_IN_TRANSIENT_STATE";
+            case EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET ->
+                    "EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET";
+            case EVENT_VOICE_CALL_STARTED -> "EVENT_VOICE_CALL_STARTED";
+            case EVENT_VOICE_CALL_ENDED -> "EVENT_VOICE_CALL_ENDED";
+            case EVENT_CSS_INDICATOR_CHANGED -> "EVENT_CSS_INDICATOR_CHANGED";
+            case EVENT_NOTIFY_HANDOVER_STARTED -> "EVENT_NOTIFY_HANDOVER_STARTED";
+            case EVENT_NOTIFY_HANDOVER_STARTED_RESPONSE -> "EVENT_NOTIFY_HANDOVER_STARTED_RESPONSE";
+            case EVENT_NOTIFY_HANDOVER_CANCELLED_RESPONSE ->
+                    "EVENT_NOTIFY_HANDOVER_CANCELLED_RESPONSE";
+            case EVENT_DATA_NETWORK_VALIDATION_REQUESTED ->
+                    "EVENT_DATA_NETWORK_VALIDATION_REQUESTED";
+            case EVENT_DATA_NETWORK_VALIDATION_RESPONSE -> "EVENT_DATA_NETWORK_VALIDATION_RESPONSE";
+            default -> "Unknown(" + event + ")";
+        };
     }
 
     @Override
