@@ -56,6 +56,7 @@ import android.util.Log;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.flags.FeatureFlags;
+import com.android.internal.telephony.satellite.SatelliteController;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.util.ArrayUtils;
@@ -506,11 +507,20 @@ public class MultiSimSettingController extends Handler {
      */
     private boolean isReadyToReevaluate() {
         boolean carrierConfigsLoaded = isCarrierConfigLoadedForAllSub();
+        SatelliteController satelliteController = SatelliteController.getInstance();
+        boolean isSatelliteEnabledOrBeingEnabled = false;
+        if (satelliteController != null) {
+            isSatelliteEnabledOrBeingEnabled = satelliteController.isSatelliteEnabled()
+                    || satelliteController.isSatelliteBeingEnabled();
+        }
+
         if (DBG) {
             log("isReadyToReevaluate: subInfoInitialized=" + mSubInfoInitialized
-                    + ", carrierConfigsLoaded=" + carrierConfigsLoaded);
+                    + ", carrierConfigsLoaded=" + carrierConfigsLoaded
+                    + ", satelliteEnabledOrBeingEnabled=" + isSatelliteEnabledOrBeingEnabled);
         }
-        return mSubInfoInitialized && carrierConfigsLoaded;
+        return mSubInfoInitialized && carrierConfigsLoaded
+                && !isSatelliteEnabledOrBeingEnabled;
     }
 
     private void reEvaluateAll() {

@@ -398,6 +398,16 @@ public class SatelliteSessionController extends StateMachine {
         mIsDemoMode = isDemoMode;
     }
 
+    /**
+     * Get whether state machine is in enabling state.
+     *
+     * @return {@code true} if state machine is in enabling state and {@code false} otherwise.
+     */
+    public boolean isInEnablingState() {
+        if (DBG) logd("isInEnablingState: getCurrentState=" + getCurrentState());
+        return getCurrentState() == mEnablingState;
+    }
+
     private boolean isDemoMode() {
         return mIsDemoMode;
     }
