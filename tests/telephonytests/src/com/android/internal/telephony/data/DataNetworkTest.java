@@ -660,6 +660,19 @@ public class DataNetworkTest extends TelephonyTest {
         // The final network should not have NOT_SUSPENDED because the device is OOS.
         assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)).isFalse();
+
+        // Verify recreation triggers notifyDataConnection with new network agent Id.
+        ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
+                ArgumentCaptor.forClass(PreciseDataConnectionState.class);
+
+        // 4 times connecting, connected, data state changed, re-create network agent
+        verify(mPhone, times(4)).notifyDataConnection(pdcsCaptor.capture());
+        List<PreciseDataConnectionState> pdcsList = pdcsCaptor.getAllValues();
+        assertThat(pdcsList.get(0).getState()).isEqualTo(TelephonyManager.DATA_CONNECTING);
+        assertThat(pdcsList.get(1).getState()).isEqualTo(TelephonyManager.DATA_CONNECTED);
+        assertThat(pdcsList.get(2).getState()).isEqualTo(TelephonyManager.DATA_SUSPENDED);
+        assertThat(pdcsList.get(3).getNetId())
+                .isNotEqualTo(pdcsList.get(2).getNetId());
     }
 
     @Test
