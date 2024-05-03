@@ -1554,6 +1554,23 @@ public class SatelliteController extends Handler {
     }
 
     /**
+     * Get whether satellite modem is being enabled.
+     *
+     * @return {@code true} if the satellite modem is being enabled and {@code false} otherwise.
+     */
+    public boolean isSatelliteBeingEnabled() {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("isSatelliteBeingEnabled: oemEnabledSatelliteFlag is disabled");
+            return false;
+        }
+
+        if (mSatelliteSessionController != null) {
+            return mSatelliteSessionController.isInEnablingState();
+        }
+        return false;
+    }
+
+    /**
      * Request to get whether the satellite service demo mode is enabled.
      *
      * @param subId The subId of the subscription to check whether the satellite demo mode
