@@ -1178,7 +1178,11 @@ public class SatelliteController extends Handler {
             case EVENT_RADIO_STATE_CHANGED: {
                 if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON) {
                     mIsRadioOn = true;
+                } else if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) {
+                    mIsRadioOn = false;
+                    resetCarrierRoamingSatelliteModeParams();
                 }
+
                 if (mCi.getRadioState() != TelephonyManager.RADIO_POWER_UNAVAILABLE) {
                     if (mSatelliteModemInterface.isSatelliteServiceConnected()) {
                         synchronized (mIsSatelliteSupportedLock) {
@@ -4514,6 +4518,14 @@ public class SatelliteController extends Handler {
 
         notificationManager.notifyAsUser(NOTIFICATION_TAG, NOTIFICATION_ID,
                 notificationBuilder.build(), UserHandle.ALL);
+    }
+
+    private void resetCarrierRoamingSatelliteModeParams() {
+        if (!mFeatureFlags.carrierEnabledSatelliteFlag()) return;
+
+        for (Phone phone : PhoneFactory.getPhones()) {
+            resetCarrierRoamingSatelliteModeParams(phone.getSubId());
+        }
     }
 
     private void resetCarrierRoamingSatelliteModeParams(int subId) {

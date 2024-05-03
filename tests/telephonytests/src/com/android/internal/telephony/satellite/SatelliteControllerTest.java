@@ -19,6 +19,7 @@ package com.android.internal.telephony.satellite;
 import static android.telephony.CarrierConfigManager.KEY_EMERGENCY_CALL_TO_SATELLITE_T911_HANDOVER_TIMEOUT_MILLIS_INT;
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL;
 import static android.telephony.CarrierConfigManager.KEY_SATELLITE_CONNECTION_HYSTERESIS_SEC_INT;
+import static android.telephony.NetworkRegistrationInfo.SERVICE_TYPE_DATA;
 import static android.telephony.SubscriptionManager.SATELLITE_ENTITLEMENT_STATUS;
 import static android.telephony.satellite.NtnSignalStrength.NTN_SIGNAL_STRENGTH_GOOD;
 import static android.telephony.satellite.NtnSignalStrength.NTN_SIGNAL_STRENGTH_GREAT;
@@ -102,6 +103,7 @@ import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.os.ResultReceiver;
 import android.telephony.CarrierConfigManager;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.satellite.INtnSignalStrengthCallback;
@@ -174,6 +176,8 @@ public class SatelliteControllerTest extends TelephonyTest {
     private static final int[] ACTIVE_SUB_IDS = {SUB_ID};
     private static final int TEST_WAIT_FOR_SATELLITE_ENABLING_RESPONSE_TIMEOUT_MILLIS =
             (int) TimeUnit.SECONDS.toMillis(60);
+
+    private static final String SATELLITE_PLMN = "00103";
     private List<Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener>>
             mCarrierConfigChangedListenerList = new ArrayList<>();
 
@@ -698,6 +702,37 @@ public class SatelliteControllerTest extends TelephonyTest {
         processAllMessages();
         verify(mMockSatelliteModemInterface, times(5))
                 .requestIsSatelliteSupported(any(Message.class));
+    }
+
+    @Test
+    public void testRadioPowerOff() {
+        when(mFeatureFlags.carrierEnabledSatelliteFlag()).thenReturn(true);
+        NetworkRegistrationInfo satelliteNri = new NetworkRegistrationInfo.Builder()
+                .setIsNonTerrestrialNetwork(true)
+                .setAvailableServices(List.of(NetworkRegistrationInfo.SERVICE_TYPE_DATA))
+                .build();
+        mCarrierConfigBundle.putInt(KEY_SATELLITE_CONNECTION_HYSTERESIS_SEC_INT, 1 * 60);
+        mCarrierConfigBundle.putBoolean(KEY_SATELLITE_ATTACH_SUPPORTED_BOOL, true);
+        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
+                : mCarrierConfigChangedListenerList) {
+            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
+                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
+            );
+        }
+        when(mServiceState.getNetworkRegistrationInfoList()).thenReturn(List.of(satelliteNri));
+        when(mServiceState.isUsingNonTerrestrialNetwork()).thenReturn(true);
+        sendServiceStateChangedEvent();
+        processAllMessages();
+        assertTrue(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
+        assertEquals(List.of(SERVICE_TYPE_DATA),
+                mSatelliteControllerUT.getCapabilitiesForCarrierRoamingSatelliteMode(mPhone));
+
+        when(mServiceState.isUsingNonTerrestrialNetwork()).thenReturn(false);
+        setRadioPower(false);
+        processAllMessages();
+        assertFalse(mSatelliteControllerUT.isInSatelliteModeForCarrierRoaming(mPhone));
+        assertEquals(new ArrayList<>(),
+                mSatelliteControllerUT.getCapabilitiesForCarrierRoamingSatelliteMode(mPhone));
     }
 
     @Test
