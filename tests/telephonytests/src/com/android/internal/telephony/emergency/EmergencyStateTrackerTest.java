@@ -1158,12 +1158,45 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertEquals(future.getNow(DisconnectCause.ERROR_UNSPECIFIED),
                 Integer.valueOf(DisconnectCause.NOT_DISCONNECTED));
 
-        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_CS);
+        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_CS, true);
 
         verify(phone0).exitEmergencyMode(any(Message.class));
         assertFalse(emergencyStateTracker.isInEmergencyMode());
         // CS domain doesn't support SCBM.
         assertFalse(emergencyStateTracker.isInScbm());
+    }
+
+    @Test
+    @SmallTest
+    public void testEndSmsForMultipartMessage() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        Phone phone0 = setupTestPhoneForEmergencyCall(/* isRoaming= */ false,
+                /* isRadioOn= */ true);
+        setUpAsyncResultForSetEmergencyMode(phone0, E_REG_RESULT);
+        CompletableFuture<Integer> future = emergencyStateTracker.startEmergencySms(phone0,
+                TEST_SMS_ID, false);
+        processAllMessages();
+
+        assertTrue(emergencyStateTracker.isInEmergencyMode());
+        verify(phone0).setEmergencyMode(eq(MODE_EMERGENCY_WWAN), any(Message.class));
+
+        assertTrue(emergencyStateTracker.getEmergencyRegistrationResult().equals(E_REG_RESULT));
+        // Expect: DisconnectCause#NOT_DISCONNECTED.
+        assertEquals(future.getNow(DisconnectCause.ERROR_UNSPECIFIED),
+                Integer.valueOf(DisconnectCause.NOT_DISCONNECTED));
+
+        // First SMS part of multipart message.
+        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_CS, false);
+
+        // exitEmergencyMode is not called and it's still in emergency mode.
+        assertTrue(emergencyStateTracker.isInEmergencyMode());
+
+        // Last SMS part is sent successfully.
+        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_CS, true);
+
+        verify(phone0).exitEmergencyMode(any(Message.class));
+        assertFalse(emergencyStateTracker.isInEmergencyMode());
     }
 
     @Test
@@ -1186,7 +1219,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertEquals(future.getNow(DisconnectCause.ERROR_UNSPECIFIED),
                 Integer.valueOf(DisconnectCause.NOT_DISCONNECTED));
 
-        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS);
+        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS, true);
 
         verify(mCarrierConfigManager).getConfigForSubId(anyInt(),
                 eq(CarrierConfigManager.KEY_EMERGENCY_SMS_MODE_TIMER_MS_INT));
@@ -1218,7 +1251,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
                 EmergencyStateTracker.EMERGENCY_TYPE_SMS, MODE_EMERGENCY_WWAN);
 
         // When MO SMS fails while in SCBM.
-        emergencyStateTracker.endSms(TEST_SMS_ID_2, false, DOMAIN_PS);
+        emergencyStateTracker.endSms(TEST_SMS_ID_2, false, DOMAIN_PS, true);
 
         verify(mCarrierConfigManager).getConfigForSubId(anyInt(),
                 eq(CarrierConfigManager.KEY_EMERGENCY_SMS_MODE_TIMER_MS_INT));
@@ -1250,7 +1283,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
                 EmergencyStateTracker.EMERGENCY_TYPE_SMS, MODE_EMERGENCY_WWAN);
 
         // When MO SMS is successfully sent while in SCBM.
-        emergencyStateTracker.endSms(TEST_SMS_ID_2, true, DOMAIN_PS);
+        emergencyStateTracker.endSms(TEST_SMS_ID_2, true, DOMAIN_PS, true);
 
         verify(mCarrierConfigManager, times(2)).getConfigForSubId(anyInt(),
                 eq(CarrierConfigManager.KEY_EMERGENCY_SMS_MODE_TIMER_MS_INT));
@@ -1679,7 +1712,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
                 Integer.valueOf(DisconnectCause.NOT_DISCONNECTED));
         assertFalse(emergencyStateTracker.isInScbm());
 
-        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS);
+        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS, true);
 
         assertTrue(emergencyStateTracker.isInScbm());
         assertTrue(emergencyStateTracker.isInEmergencyMode());
@@ -1801,7 +1834,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertFalse(smsFuture.isDone());
         assertFalse(callFuture.isDone());
 
-        emergencyStateTracker.endSms(TEST_SMS_ID, false, DOMAIN_PS);
+        emergencyStateTracker.endSms(TEST_SMS_ID, false, DOMAIN_PS, true);
 
         // Response message for setEmergencyMode by SMS.
         Message msg = smsCaptor.getValue();
@@ -2035,7 +2068,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
 
         assertTrue(emergencyStateTracker.isInEmergencyMode());
 
-        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS);
+        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS, true);
         processAllMessages();
 
         assertFalse(emergencyStateTracker.isInEmergencyMode());
@@ -2072,7 +2105,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertEquals(future.getNow(DisconnectCause.ERROR_UNSPECIFIED),
                 Integer.valueOf(DisconnectCause.NOT_DISCONNECTED));
 
-        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS);
+        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS, true);
 
         assertTrue(emergencyStateTracker.isInEmergencyMode());
 
@@ -2119,7 +2152,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertTrue(emergencyStateTracker.isInEcm());
         assertFalse(emergencyStateTracker.isInEmergencyCall());
 
-        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS);
+        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS, true);
         processAllMessages();
 
         verify(phone0).setEmergencyMode(eq(MODE_EMERGENCY_CALLBACK), any(Message.class));
@@ -2174,7 +2207,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
 
         emergencyStateTracker.onEmergencyTransportChanged(
                 EmergencyStateTracker.EMERGENCY_TYPE_SMS, MODE_EMERGENCY_WWAN);
-        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS);
+        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS, true);
         processAllMessages();
 
         // Enter emergency callback mode and emergency mode changed by SMS end.
@@ -2223,7 +2256,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertEquals(future.getNow(DisconnectCause.ERROR_UNSPECIFIED),
                 Integer.valueOf(DisconnectCause.NOT_DISCONNECTED));
 
-        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS);
+        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS, true);
 
         assertTrue(emergencyStateTracker.isInEmergencyMode());
 
@@ -2279,7 +2312,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertFalse(emergencyStateTracker.isInEmergencyCall());
 
         setScbmTimerValue(phone0, TEST_ECM_EXIT_TIMEOUT_MS + 100);
-        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS);
+        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS, true);
         processAllMessages();
 
         verify(phone0).setEmergencyMode(eq(MODE_EMERGENCY_CALLBACK), any(Message.class));
@@ -2341,7 +2374,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertFalse(emergencyStateTracker.isInEmergencyCall());
 
         setScbmTimerValue(phone0, TEST_ECM_EXIT_TIMEOUT_MS - 100);
-        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS);
+        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS, true);
         processAllMessages();
 
         verify(phone0).setEmergencyMode(eq(MODE_EMERGENCY_CALLBACK), any(Message.class));
@@ -2977,7 +3010,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
                 Integer.valueOf(DisconnectCause.NOT_DISCONNECTED));
 
         ArgumentCaptor<Message> msgCaptor = ArgumentCaptor.forClass(Message.class);
-        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_CS);
+        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_CS, true);
 
         verify(phone0).exitEmergencyMode(msgCaptor.capture());
 
@@ -3129,7 +3162,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
                 Integer.valueOf(DisconnectCause.NOT_DISCONNECTED));
 
         // Expect: entering SCBM.
-        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS);
+        emergencyStateTracker.endSms(TEST_SMS_ID, true, DOMAIN_PS, true);
 
         verify(mCarrierConfigManager).getConfigForSubId(anyInt(),
                 eq(CarrierConfigManager.KEY_EMERGENCY_SMS_MODE_TIMER_MS_INT));
