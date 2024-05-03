@@ -40,6 +40,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
@@ -57,6 +59,7 @@ import com.android.ims.ImsException;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.GsmCdmaCall;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.imsphone.ImsPhone.ImsDialArgs;
@@ -95,6 +98,8 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         mForeGroundCall = mock(ImsPhoneCall.class);
         mBackGroundCall = mock(ImsPhoneCall.class);
         mRingGroundCall = mock(ImsPhoneCall.class);
+        mTelephonyManager = mock(TelephonyManager.class);
+        mCarrierConfigManager = mock(CarrierConfigManager.class);
         replaceInstance(Handler.class, "mLooper", mImsCT, Looper.myLooper());
         replaceInstance(ImsPhoneCallTracker.class, "mForegroundCall", mImsCT, mForeGroundCall);
         replaceInstance(ImsPhoneCallTracker.class, "mBackgroundCall", mImsCT, mBackGroundCall);
@@ -103,6 +108,10 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
 
         mImsCallProfile.mCallExtras = mBundle;
         doReturn(ImsPhoneCall.State.IDLE).when(mForeGroundCall).getState();
+
+        // By default, turn off the business composer
+        setUserEnabledBusinessComposer(false);
+        setCarrierConfigBusinessComposer(false);
     }
 
     @After
@@ -431,6 +440,97 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
                 ImsPhoneConnection.toTelecomVerificationStatus(90210));
     }
 
+    /**
+     * Assert the helper method
+     * {@link ImsPhoneConnection#isBusinessOnlyCallComposerEnabledByUser(Phone)} is Working As
+     * Intended.
+     */
+    @Test
+    @SmallTest
+    public void testIsBusinessOnlyCallComposerEnabledByUser() {
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
+        assertFalse(mConnectionUT.isBusinessOnlyCallComposerEnabledByUser(mImsPhone));
+        setUserEnabledBusinessComposer(true);
+        assertTrue(mConnectionUT.isBusinessOnlyCallComposerEnabledByUser(mImsPhone));
+        setUserEnabledBusinessComposer(false);
+        assertFalse(mConnectionUT.isBusinessOnlyCallComposerEnabledByUser(mImsPhone));
+    }
+
+    /**
+     * Assert the helper method
+     * {@link ImsPhoneConnection#isBusinessComposerEnabledByConfig(Phone)} is Working As
+     * Intended.
+     */
+    @Test
+    @SmallTest
+    public void testBusinessComposerEnabledByCarrierConfig() {
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
+        assertFalse(mConnectionUT.isBusinessComposerEnabledByConfig(mImsPhone));
+        setCarrierConfigBusinessComposer(true);
+        assertTrue(mConnectionUT.isBusinessComposerEnabledByConfig(mImsPhone));
+        setCarrierConfigBusinessComposer(false);
+        assertFalse(mConnectionUT.isBusinessComposerEnabledByConfig(mImsPhone));
+    }
+
+    /**
+     * Verify that the {@link ImsPhoneConnection#getIsBusinessComposerFeatureEnabled()} only
+     * returns true when it is enabled by the CarrierConfigManager and user.
+     */
+    @Test
+    @SmallTest
+    public void testIncomingImsCallSetsTheBusinessComposerFeatureStatus() {
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
+        assertFalse(mConnectionUT.getIsBusinessComposerFeatureEnabled());
+
+        setUserEnabledBusinessComposer(true);
+        setCarrierConfigBusinessComposer(false);
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
+        assertFalse(mConnectionUT.getIsBusinessComposerFeatureEnabled());
+
+        setUserEnabledBusinessComposer(false);
+        setCarrierConfigBusinessComposer(true);
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
+        assertFalse(mConnectionUT.getIsBusinessComposerFeatureEnabled());
+
+        setUserEnabledBusinessComposer(true);
+        setCarrierConfigBusinessComposer(true);
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
+        assertTrue(mConnectionUT.getIsBusinessComposerFeatureEnabled());
+    }
+
+    /**
+     * If the business composer feature is off but ImsCallProfile extras still injected by the lower
+     * layer, Telephony should NOT inject the telecom call extras.
+     */
+    @Test
+    @SmallTest
+    public void testMaybeInjectBusinessExtrasWithFeatureOff() {
+        setUserEnabledBusinessComposer(false);
+        setCarrierConfigBusinessComposer(false);
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
+        assertFalse(mConnectionUT.getIsBusinessComposerFeatureEnabled());
+        Bundle businessExtras = getBusinessExtras();
+        mConnectionUT.maybeInjectBusinessComposerExtras(businessExtras);
+        assertFalse(businessExtras.containsKey(android.telecom.Call.EXTRA_IS_BUSINESS_CALL));
+        assertFalse(businessExtras.containsKey(android.telecom.Call.EXTRA_ASSERTED_DISPLAY_NAME));
+    }
+
+    /**
+     * Verify if the business composer feature is on, telephony is injecting the telecom call extras
+     */
+    @Test
+    @SmallTest
+    public void testMaybeInjectBusinessExtrasWithFeatureOn() {
+        setUserEnabledBusinessComposer(true);
+        setCarrierConfigBusinessComposer(true);
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
+        assertTrue(mConnectionUT.getIsBusinessComposerFeatureEnabled());
+        Bundle businessExtras = getBusinessExtras();
+        mConnectionUT.maybeInjectBusinessComposerExtras(businessExtras);
+        assertTrue(businessExtras.containsKey(android.telecom.Call.EXTRA_IS_BUSINESS_CALL));
+        assertTrue(businessExtras.containsKey(android.telecom.Call.EXTRA_ASSERTED_DISPLAY_NAME));
+    }
+
     @Test
     @SmallTest
     public void testSetRedirectingAddress() {
@@ -480,5 +580,33 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
 
         latch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
         assertTrue(receivedCountCallback[0]);
+    }
+
+    private void setUserEnabledBusinessComposer(boolean isEnabled) {
+        when(mPhone.getContext()).thenReturn(mContext);
+        when(mContext.getSystemService(TelephonyManager.class)).thenReturn(mTelephonyManager);
+        if (isEnabled) {
+            when(mTelephonyManager.getCallComposerStatus()).thenReturn(
+                    TelephonyManager.CALL_COMPOSER_STATUS_BUSINESS_ONLY);
+        } else {
+            when(mTelephonyManager.getCallComposerStatus()).thenReturn(
+                    TelephonyManager.CALL_COMPOSER_STATUS_OFF);
+        }
+    }
+
+    private void setCarrierConfigBusinessComposer(boolean isEnabled) {
+        when(mPhone.getContext()).thenReturn(mContext);
+        when(mContext.getSystemService(CarrierConfigManager.class)).thenReturn(
+                mCarrierConfigManager);
+        PersistableBundle b = new PersistableBundle();
+        b.putBoolean(CarrierConfigManager.KEY_SUPPORTS_BUSINESS_CALL_COMPOSER_BOOL, isEnabled);
+        when(mCarrierConfigManager.getConfigForSubId(mPhone.getSubId())).thenReturn(b);
+    }
+
+    private Bundle getBusinessExtras() {
+        Bundle businessExtras = new Bundle();
+        businessExtras.putBoolean(ImsCallProfile.EXTRA_IS_BUSINESS_CALL, true);
+        businessExtras.putString(ImsCallProfile.EXTRA_ASSERTED_DISPLAY_NAME, "Google");
+        return businessExtras;
     }
 }
