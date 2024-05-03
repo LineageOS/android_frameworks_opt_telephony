@@ -1,4 +1,5 @@
 package: "com.android.internal.telephony.flags"
+container: "system"
 
 flag {
   name: "reject_bad_sub_id_interaction"
