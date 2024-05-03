@@ -806,7 +806,8 @@ public class SatelliteControllerTest extends TelephonyTest {
         assertTrue(waitForIIntegerConsumerResult(1));
         assertEquals(SATELLITE_RESULT_INVALID_MODEM_STATE, (long) mIIntegerConsumerResults.get(0));
         verifySatelliteEnabled(false, SATELLITE_RESULT_SUCCESS);
-        verify(mMockPointingAppController, never()).startPointingUI(anyBoolean());
+        verify(mMockPointingAppController, never()).startPointingUI(anyBoolean(), anyBoolean(),
+                anyBoolean());
         assertFalse(mSatelliteControllerUT.setSettingsKeyForSatelliteModeCalled);
         verify(mMockControllerMetricsStats, times(1)).reportServiceEnablementFailCount();
 
@@ -1416,7 +1417,8 @@ public class SatelliteControllerTest extends TelephonyTest {
         verify(mMockDatagramController, times(1)).sendSatelliteDatagram(anyInt(),
                 eq(SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE), eq(datagram), eq(true),
                 any());
-        verify(mMockPointingAppController, times(1)).startPointingUI(eq(true));
+        verify(mMockPointingAppController, times(1)).startPointingUI(eq(true), anyBoolean(),
+                anyBoolean());
     }
 
     @Test
