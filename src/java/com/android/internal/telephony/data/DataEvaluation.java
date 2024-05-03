@@ -36,18 +36,23 @@ import java.util.Set;
  */
 public class DataEvaluation {
     /** The reason for this evaluation */
-    private final @NonNull DataEvaluationReason mDataEvaluationReason;
+    @NonNull
+    private final DataEvaluationReason mDataEvaluationReason;
 
     /** Data disallowed reasons. There could be multiple reasons for not allowing data. */
-    private final @NonNull Set<DataDisallowedReason> mDataDisallowedReasons = new HashSet<>();
+    @NonNull
+    private final Set<DataDisallowedReason> mDataDisallowedReasons = new HashSet<>();
 
     /** Data allowed reason. It is intended to only have one allowed reason. */
-    private @NonNull DataAllowedReason mDataAllowedReason = DataAllowedReason.NONE;
+    @NonNull
+    private DataAllowedReason mDataAllowedReason = DataAllowedReason.NONE;
 
-    private @Nullable DataProfile mCandidateDataProfile = null;
+    @Nullable
+    private DataProfile mCandidateDataProfile = null;
 
     /** The timestamp of evaluation time */
-    private @CurrentTimeMillisLong long mEvaluatedTime = 0;
+    @CurrentTimeMillisLong
+    private long mEvaluatedTime = 0;
 
     /**
      * Constructor

@@ -689,7 +689,7 @@ public abstract class TelephonyTest {
         doReturn(mEriManager).when(mTelephonyComponentFactory)
                 .makeEriManager(nullable(Phone.class), anyInt());
         doReturn(mLinkBandwidthEstimator).when(mTelephonyComponentFactory)
-                .makeLinkBandwidthEstimator(nullable(Phone.class));
+                .makeLinkBandwidthEstimator(nullable(Phone.class), any(Looper.class));
         doReturn(mDataProfileManager).when(mTelephonyComponentFactory)
                 .makeDataProfileManager(any(Phone.class), any(DataNetworkController.class),
                         any(DataServiceManager.class), any(Looper.class),

@@ -72,14 +72,15 @@ public class TelephonyNetworkFactory extends NetworkFactory {
 
     private final Phone mPhone;
 
-    private AccessNetworksManager mAccessNetworksManager;
+    private final AccessNetworksManager mAccessNetworksManager;
 
     private int mSubscriptionId;
 
     @VisibleForTesting
     public final Handler mInternalHandler;
 
-    private final @NonNull FeatureFlags mFlags;
+    @NonNull
+    private final FeatureFlags mFlags;
 
 
     /**
@@ -109,19 +110,18 @@ public class TelephonyNetworkFactory extends NetworkFactory {
                 null);
 
         mSubscriptionId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-        SubscriptionManager.from(mPhone.getContext()).addOnSubscriptionsChangedListener(
-                mSubscriptionsChangedListener);
+        SubscriptionManager.OnSubscriptionsChangedListener subscriptionsChangedListener =
+                new SubscriptionManager.OnSubscriptionsChangedListener() {
+                    @Override
+                    public void onSubscriptionsChanged() {
+                        mInternalHandler.sendEmptyMessage(EVENT_SUBSCRIPTION_CHANGED);
+                    }};
+
+        mPhone.getContext().getSystemService(SubscriptionManager.class)
+                .addOnSubscriptionsChangedListener(subscriptionsChangedListener);
 
         register();
     }
-
-    private final SubscriptionManager.OnSubscriptionsChangedListener mSubscriptionsChangedListener =
-            new SubscriptionManager.OnSubscriptionsChangedListener() {
-                @Override
-                public void onSubscriptionsChanged() {
-                    mInternalHandler.sendEmptyMessage(EVENT_SUBSCRIPTION_CHANGED);
-                }
-            };
 
     private NetworkCapabilities makeNetworkFilterByPhoneId(int phoneId) {
         return makeNetworkFilter(SubscriptionManager.getSubscriptionId(phoneId));
@@ -291,13 +291,13 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     }
 
     @Override
-    public void releaseNetworkFor(NetworkRequest networkRequest) {
+    public void releaseNetworkFor(@NonNull NetworkRequest networkRequest) {
         Message msg = mInternalHandler.obtainMessage(EVENT_NETWORK_RELEASE);
         msg.obj = networkRequest;
         msg.sendToTarget();
     }
 
-    private void onReleaseNetworkFor(Message msg) {
+    private void onReleaseNetworkFor(@NonNull Message msg) {
         TelephonyNetworkRequest networkRequest =
                 new TelephonyNetworkRequest((NetworkRequest) msg.obj, mPhone, mFlags);
         boolean applied = mNetworkRequests.get(networkRequest)

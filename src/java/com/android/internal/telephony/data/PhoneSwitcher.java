@@ -108,7 +108,7 @@ import java.util.concurrent.Executor;
 /**
  * Utility singleton to monitor subscription changes and incoming NetworkRequests
  * and determine which phone/phones are active.
- *
+ * <p>
  * Manages the ALLOW_DATA calls to modems and notifies phones about changes to
  * the active phones.  Note we don't wait for data attach (which may not happen anyway).
  */
@@ -1928,12 +1928,6 @@ public class PhoneSwitcher extends Handler {
      */
     public int getAutoSelectedDataSubId() {
         return mAutoSelectedDataSubId;
-    }
-
-    // TODO (b/148396668): add an internal callback method to monitor phone capability change,
-    // and hook this call to that callback.
-    private void onPhoneCapabilityChanged(PhoneCapability capability) {
-        onPhoneCapabilityChangedInternal(capability);
     }
 
     public void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
