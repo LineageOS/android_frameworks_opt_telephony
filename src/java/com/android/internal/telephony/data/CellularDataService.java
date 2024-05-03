@@ -147,8 +147,7 @@ public class CellularDataService extends DataService {
             if (t == null) {
                 return RESULT_SUCCESS;
             } else {
-                if (t instanceof CommandException) {
-                    CommandException ce = (CommandException) t;
+                if (t instanceof CommandException ce) {
                     if (ce.getCommandError() == CommandException.Error.REQUEST_NOT_SUPPORTED) {
                         return DataServiceCallback.RESULT_ERROR_UNSUPPORTED;
                     } else {
@@ -229,7 +228,7 @@ public class CellularDataService extends DataService {
                 mCallbackMap.put(message, callback);
             }
 
-            mPhone.mCi.setDataProfile(dps.toArray(new DataProfile[dps.size()]), message);
+            mPhone.mCi.setDataProfile(dps.toArray(new DataProfile[0]), message);
         }
 
         @Override

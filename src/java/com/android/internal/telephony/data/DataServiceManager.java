@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony.data;
 
-import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
 import static android.text.format.DateUtils.SECOND_IN_MILLIS;
 
 import android.annotation.NonNull;
@@ -81,8 +80,6 @@ public class DataServiceManager extends Handler {
     static final String DATA_CALL_RESPONSE = "data_call_response";
 
     private static final int EVENT_BIND_DATA_SERVICE = 1;
-
-    private static final long REQUEST_UNRESPONDED_TIMEOUT = 10 * MINUTE_IN_MILLIS; // 10 mins
 
     private static final long CHANGE_PERMISSION_TIMEOUT_MS = 15 * SECOND_IN_MILLIS; // 15 secs
 
@@ -418,17 +415,6 @@ public class DataServiceManager extends Handler {
         }
     }
 
-    private void handleRequestUnresponded(DataServiceCallbackWrapper callback) {
-        String message = "Request " + callback.getTag() + " unresponded on transport "
-                + AccessNetworkConstants.transportTypeToString(mTransportType) + " in "
-                + REQUEST_UNRESPONDED_TIMEOUT / 1000 + " seconds.";
-        log(message);
-        // Using fixed UUID to avoid duplicate bugreport notification
-        AnomalyReporter.reportAnomaly(
-                UUID.fromString("f5d5cbe6-9bd6-4009-b764-42b1b649b1de"),
-                message, mPhone.getCarrierId());
-    }
-
     private void unbindDataService() {
         // Start by cleaning up all packages that *shouldn't* have permissions.
         revokePermissionsFromUnusedDataServices();
@@ -462,7 +448,7 @@ public class DataServiceManager extends Handler {
             return;
         }
 
-        Intent intent = null;
+        Intent intent;
         String className = getDataServiceClassName();
         if (TextUtils.isEmpty(className)) {
             intent = new Intent(DataService.SERVICE_INTERFACE);
@@ -541,21 +527,19 @@ public class DataServiceManager extends Handler {
         String packageName;
         int resourceId;
         String carrierConfig;
-
         switch (transportType) {
-            case AccessNetworkConstants.TRANSPORT_TYPE_WWAN:
+            case AccessNetworkConstants.TRANSPORT_TYPE_WWAN -> {
                 resourceId = com.android.internal.R.string.config_wwan_data_service_package;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_DATA_SERVICE_WWAN_PACKAGE_OVERRIDE_STRING;
-                break;
-            case AccessNetworkConstants.TRANSPORT_TYPE_WLAN:
+            }
+            case AccessNetworkConstants.TRANSPORT_TYPE_WLAN -> {
                 resourceId = com.android.internal.R.string.config_wlan_data_service_package;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_DATA_SERVICE_WLAN_PACKAGE_OVERRIDE_STRING;
-                break;
-            default:
-                throw new IllegalStateException("Transport type not WWAN or WLAN. type="
-                        + AccessNetworkConstants.transportTypeToString(mTransportType));
+            }
+            default -> throw new IllegalStateException("Transport type not WWAN or WLAN. type="
+                    + AccessNetworkConstants.transportTypeToString(mTransportType));
         }
 
         // Read package name from resource overlay
@@ -593,19 +577,18 @@ public class DataServiceManager extends Handler {
         int resourceId;
         String carrierConfig;
         switch (transportType) {
-            case AccessNetworkConstants.TRANSPORT_TYPE_WWAN:
+            case AccessNetworkConstants.TRANSPORT_TYPE_WWAN -> {
                 resourceId = com.android.internal.R.string.config_wwan_data_service_class;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_DATA_SERVICE_WWAN_CLASS_OVERRIDE_STRING;
-                break;
-            case AccessNetworkConstants.TRANSPORT_TYPE_WLAN:
+            }
+            case AccessNetworkConstants.TRANSPORT_TYPE_WLAN -> {
                 resourceId = com.android.internal.R.string.config_wlan_data_service_class;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_DATA_SERVICE_WLAN_CLASS_OVERRIDE_STRING;
-                break;
-            default:
-                throw new IllegalStateException("Transport type not WWAN or WLAN. type="
-                        + transportType);
+            }
+            default -> throw new IllegalStateException("Transport type not WWAN or WLAN. type="
+                    + transportType);
         }
 
         // Read package name from resource overlay
@@ -741,9 +724,7 @@ public class DataServiceManager extends Handler {
 
         DataServiceCallbackWrapper callback =
                 new DataServiceCallbackWrapper("startHandover");
-        if (onCompleteMessage != null) {
-            mMessageMap.put(callback.asBinder(), onCompleteMessage);
-        }
+        mMessageMap.put(callback.asBinder(), onCompleteMessage);
 
         try {
             mIDataService.startHandover(mPhone.getPhoneId(), cid, callback);
@@ -918,17 +899,6 @@ public class DataServiceManager extends Handler {
     }
 
     /**
-     * Unregister for apn unthrottled event
-     *
-     * @param h The handler
-     */
-    public void unregisterForApnUnthrottled(Handler h) {
-        if (h != null) {
-            mApnUnthrottledRegistrants.remove(h);
-        }
-    }
-
-    /**
      * Request data network validation.
      *
      * <p>Validates a given data network to ensure that the network can work properly.
@@ -962,9 +932,7 @@ public class DataServiceManager extends Handler {
             mIDataService.requestNetworkValidation(mPhone.getPhoneId(), cid, callback);
         } catch (RemoteException e) {
             loge("Cannot invoke requestNetworkValidation on data service.");
-            if (callback != null) {
-                mMessageMap.remove(callback.asBinder());
-            }
+            mMessageMap.remove(callback.asBinder());
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
         }
     }
@@ -983,17 +951,6 @@ public class DataServiceManager extends Handler {
             if (mBound) {
                 r.notifyResult(true);
             }
-        }
-    }
-
-    /**
-     * Unregister for data service binding status changed event.
-     *
-     * @param h The handler
-     */
-    public void unregisterForServiceBindingChanged(Handler h) {
-        if (h != null) {
-            mServiceBindingChangedRegistrants.remove(h);
         }
     }
 
