@@ -104,7 +104,7 @@ public class DataProfileManager extends Handler {
     private @Nullable DataProfile mPreferredDataProfile = null;
 
     /** The last data profile that's successful for internet connection by subscription id. */
-    private @NonNull LruCache<Integer, DataProfile> mLastInternetDataProfiles =
+    private final @NonNull LruCache<Integer, DataProfile> mLastInternetDataProfiles =
             new LruCache<>(256);
 
     /** Preferred data profile set id. */
@@ -603,7 +603,7 @@ public class DataProfileManager extends Handler {
         // Sort the data profiles so the preferred data profile is at the beginning.
         List<DataProfile> allDataProfiles = mAllDataProfiles.stream()
                 .sorted(Comparator.comparing((DataProfile dp) -> !dp.equals(mPreferredDataProfile)))
-                .collect(Collectors.toList());
+                .toList();
         // Search in the order. "IA" type should be the first from getAllowedInitialAttachApnTypes.
         for (int apnType : mDataConfigManager.getAllowedInitialAttachApnTypes()) {
             initialAttachDataProfile = allDataProfiles.stream()
@@ -799,7 +799,7 @@ public class DataProfileManager extends Handler {
             logv("Satisfied profile: " + dataProfile + ", last setup="
                     + DataUtils.elapsedTimeToString(dataProfile.getLastSetupTimestamp()));
         }
-        if (dataProfiles.size() == 0) {
+        if (dataProfiles.isEmpty()) {
             log("Can't find any data profile that can satisfy " + networkRequest);
             return null;
         }
@@ -816,16 +816,14 @@ public class DataProfileManager extends Handler {
                                 ApnSetting.INFRASTRUCTURE_SATELLITE)) {
                             return false;
                         }
-                        if (!isNtn && !dp.getApnSetting().isForInfrastructure(
-                                ApnSetting.INFRASTRUCTURE_CELLULAR)) {
-                            return false;
-                        }
+                        return isNtn || dp.getApnSetting().isForInfrastructure(
+                                ApnSetting.INFRASTRUCTURE_CELLULAR);
                     }
 
                     return true;
                 })
                 .collect(Collectors.toList());
-        if (dataProfiles.size() == 0) {
+        if (dataProfiles.isEmpty()) {
             String ntnReason = "";
             if (mFeatureFlags.carrierEnabledSatelliteFlag()) {
                 ntnReason = " and infrastructure for "
@@ -843,7 +841,7 @@ public class DataProfileManager extends Handler {
                         == Telephony.Carriers.MATCH_ALL_APN_SET_ID
                         || dp.getApnSetting().getApnSetId() == mPreferredDataProfileSetId))
                 .collect(Collectors.toList());
-        if (dataProfiles.size() == 0) {
+        if (dataProfiles.isEmpty()) {
             log("Can't find any data profile has APN set id matched. mPreferredDataProfileSetId="
                     + mPreferredDataProfileSetId);
             return null;
@@ -851,9 +849,10 @@ public class DataProfileManager extends Handler {
 
         // Check if data profiles are permanently failed.
         dataProfiles = dataProfiles.stream()
-                .filter(dp -> ignorePermanentFailure || !dp.getApnSetting().getPermanentFailed())
+                .filter(dp -> ignorePermanentFailure || (dp.getApnSetting() != null
+                        && !dp.getApnSetting().getPermanentFailed()))
                 .collect(Collectors.toList());
-        if (dataProfiles.size() == 0) {
+        if (dataProfiles.isEmpty()) {
             log("The suitable data profiles are all in permanent failed state.");
             return null;
         }
@@ -1096,10 +1095,6 @@ public class DataProfileManager extends Handler {
      * @return {@code true} if the provided data profile can be still used in current environment.
      */
     public boolean isDataProfileCompatible(@NonNull DataProfile dataProfile) {
-        if (dataProfile == null) {
-            return false;
-        }
-
         if (dataProfile.getApnSetting() == null && dataProfile.getTrafficDescriptor() != null) {
             // A traffic descriptor only data profile can be always used. Traffic descriptors are
             // always generated on the fly instead loaded from the database.

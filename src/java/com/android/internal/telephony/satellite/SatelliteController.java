@@ -1178,7 +1178,11 @@ public class SatelliteController extends Handler {
             case EVENT_RADIO_STATE_CHANGED: {
                 if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON) {
                     mIsRadioOn = true;
+                } else if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) {
+                    mIsRadioOn = false;
+                    resetCarrierRoamingSatelliteModeParams();
                 }
+
                 if (mCi.getRadioState() != TelephonyManager.RADIO_POWER_UNAVAILABLE) {
                     if (mSatelliteModemInterface.isSatelliteServiceConnected()) {
                         synchronized (mIsSatelliteSupportedLock) {
@@ -1551,6 +1555,23 @@ public class SatelliteController extends Handler {
         }
         if (mIsSatelliteEnabled == null) return false;
         return mIsSatelliteEnabled;
+    }
+
+    /**
+     * Get whether satellite modem is being enabled.
+     *
+     * @return {@code true} if the satellite modem is being enabled and {@code false} otherwise.
+     */
+    public boolean isSatelliteBeingEnabled() {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("isSatelliteBeingEnabled: oemEnabledSatelliteFlag is disabled");
+            return false;
+        }
+
+        if (mSatelliteSessionController != null) {
+            return mSatelliteSessionController.isInEnablingState();
+        }
+        return false;
     }
 
     /**
@@ -4497,6 +4518,14 @@ public class SatelliteController extends Handler {
 
         notificationManager.notifyAsUser(NOTIFICATION_TAG, NOTIFICATION_ID,
                 notificationBuilder.build(), UserHandle.ALL);
+    }
+
+    private void resetCarrierRoamingSatelliteModeParams() {
+        if (!mFeatureFlags.carrierEnabledSatelliteFlag()) return;
+
+        for (Phone phone : PhoneFactory.getPhones()) {
+            resetCarrierRoamingSatelliteModeParams(phone.getSubId());
+        }
     }
 
     private void resetCarrierRoamingSatelliteModeParams(int subId) {

@@ -214,7 +214,7 @@ public class DataRetryManager extends Handler {
         public final @Nullable NetworkRequestList networkRequestList;
 
         /**
-         * @param dataNetwork The data network that is being throttled for handover retry. Should be
+         * The data network that is being throttled for handover retry. Should be
          * {@code null} when retryType is {@link ThrottleStatus#RETRY_TYPE_NEW_CONNECTION}.
          */
         public final @Nullable DataNetwork dataNetwork;
@@ -487,7 +487,7 @@ public class DataRetryManager extends Handler {
          * @param cause Fail cause from previous setup data request.
          * @return {@code true} if the retry rule can be matched.
          */
-        public boolean canBeMatched(@NonNull @NetCapability int networkCapability,
+        public boolean canBeMatched(@NetCapability int networkCapability,
                 @DataFailureCause int cause) {
             if (!mFailCauses.isEmpty() && !mFailCauses.contains(cause)) {
                 return false;
@@ -628,13 +628,13 @@ public class DataRetryManager extends Handler {
          * @return Retry state in string format.
          */
         public static String retryStateToString(@DataRetryState int retryState) {
-            switch (retryState) {
-                case RETRY_STATE_NOT_RETRIED: return "NOT_RETRIED";
-                case RETRY_STATE_FAILED: return "FAILED";
-                case RETRY_STATE_SUCCEEDED: return "SUCCEEDED";
-                case RETRY_STATE_CANCELLED: return "CANCELLED";
-                default: return "Unknown(" + retryState + ")";
-            }
+            return switch (retryState) {
+                case RETRY_STATE_NOT_RETRIED -> "NOT_RETRIED";
+                case RETRY_STATE_FAILED -> "FAILED";
+                case RETRY_STATE_SUCCEEDED -> "SUCCEEDED";
+                case RETRY_STATE_CANCELLED -> "CANCELLED";
+                default -> "Unknown(" + retryState + ")";
+            };
         }
 
         /**
@@ -1866,22 +1866,15 @@ public class DataRetryManager extends Handler {
      * @return The reason in string format.
      */
     private static @NonNull String resetReasonToString(int reason) {
-        switch (reason) {
-            case RESET_REASON_DATA_PROFILES_CHANGED:
-                return "DATA_PROFILES_CHANGED";
-            case RESET_REASON_RADIO_ON:
-                return "RADIO_ON";
-            case RESET_REASON_MODEM_RESTART:
-                return "MODEM_RESTART";
-            case RESET_REASON_DATA_SERVICE_BOUND:
-                return "DATA_SERVICE_BOUND";
-            case RESET_REASON_DATA_CONFIG_CHANGED:
-                return "DATA_CONFIG_CHANGED";
-            case RESET_REASON_TAC_CHANGED:
-                return "TAC_CHANGED";
-            default:
-                return "UNKNOWN(" + reason + ")";
-        }
+        return switch (reason) {
+            case RESET_REASON_DATA_PROFILES_CHANGED -> "DATA_PROFILES_CHANGED";
+            case RESET_REASON_RADIO_ON -> "RADIO_ON";
+            case RESET_REASON_MODEM_RESTART -> "MODEM_RESTART";
+            case RESET_REASON_DATA_SERVICE_BOUND -> "DATA_SERVICE_BOUND";
+            case RESET_REASON_DATA_CONFIG_CHANGED -> "DATA_CONFIG_CHANGED";
+            case RESET_REASON_TAC_CHANGED -> "TAC_CHANGED";
+            default -> "UNKNOWN(" + reason + ")";
+        };
     }
 
     /**

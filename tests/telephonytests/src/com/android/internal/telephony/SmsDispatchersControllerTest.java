@@ -111,8 +111,8 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
         }
 
         public void testNotifySmsSentToEmergencyStateTracker(String destAddr, long messageId,
-                boolean isOverIms) {
-            notifySmsSentToEmergencyStateTracker(destAddr, messageId, isOverIms);
+                boolean isOverIms, boolean isLastSmsPart) {
+            notifySmsSentToEmergencyStateTracker(destAddr, messageId, isOverIms, isLastSmsPart);
         }
 
         public void testNotifySmsSentFailedToEmergencyStateTracker(String destAddr,
@@ -456,7 +456,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testSendEmergencyTextWhenDomainPs() throws Exception {
+    public void testSendTextForEmergencyWhenDomainPs() throws Exception {
         setUpDomainSelectionConnection();
         setUpSmsDispatchers();
         setUpEmergencyStateTracker(DisconnectCause.NOT_DISCONNECTED);
@@ -488,7 +488,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testSendEmergencyTextWhenEmergencyStateTrackerReturnsFailure() throws Exception {
+    public void testSendTextForEmergencyWhenEmergencyStateTrackerReturnsFailure() throws Exception {
         setUpDomainSelectionConnection();
         setUpSmsDispatchers();
         setUpEmergencyStateTracker(DisconnectCause.OUT_OF_SERVICE);
@@ -503,16 +503,88 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testSendMultipartTextForEmergencyWhenDomainPs() throws Exception {
+        setUpDomainSelectionConnection();
+        setUpSmsDispatchers();
+        setUpEmergencyStateTracker(DisconnectCause.NOT_DISCONNECTED);
+
+        ArrayList<String> parts = new ArrayList<>();
+        ArrayList<PendingIntent> sentIntents = new ArrayList<>();
+        ArrayList<PendingIntent> deliveryIntents = new ArrayList<>();
+        mSmsDispatchersController.testSendMultipartText("911", "2222", parts, sentIntents,
+                deliveryIntents, null, "test-app", false, 0, false, 10, 1L);
+        processAllMessages();
+
+        SmsDispatchersController.DomainSelectionConnectionHolder holder =
+                mSmsDispatchersController.testGetDomainSelectionConnectionHolder(true);
+        verify(mEmergencySmsDsc).requestDomainSelection(any(), any());
+        assertNotNull(holder);
+        assertNotNull(holder.getConnection());
+        assertTrue(holder.isEmergency());
+        assertTrue(holder.isDomainSelectionRequested());
+        assertEquals(1, holder.getPendingRequests().size());
+
+        mDscFuture.complete(NetworkRegistrationInfo.DOMAIN_PS);
+        processAllMessages();
+
+        verify(mEmergencySmsDsc).finishSelection();
+        verify(mImsSmsDispatcher).sendMultipartText(eq("911"), eq("2222"), eq(parts),
+                eq(sentIntents), eq(deliveryIntents), any(), eq("test-app"), eq(false), eq(0),
+                eq(false), eq(10), eq(1L));
+        assertNull(holder.getConnection());
+        assertFalse(holder.isDomainSelectionRequested());
+        assertEquals(0, holder.getPendingRequests().size());
+    }
+
+    @Test
+    @SmallTest
+    public void testSendRetrySmsForEmergencyWhenDomainPs() throws Exception {
+        setUpDomainSelectionConnection();
+        setUpSmsDispatchers();
+        setUpEmergencyStateTracker(DisconnectCause.NOT_DISCONNECTED);
+
+        when(mPhone.getPhoneType()).thenReturn(PhoneConstants.PHONE_TYPE_GSM);
+        when(mImsSmsDispatcher.getFormat()).thenReturn(SmsConstants.FORMAT_3GPP);
+        when(mCdmaSmsDispatcher.getFormat()).thenReturn(SmsConstants.FORMAT_3GPP2);
+        when(mGsmSmsDispatcher.getFormat()).thenReturn(SmsConstants.FORMAT_3GPP);
+        replaceInstance(SMSDispatcher.SmsTracker.class,
+                "mFormat", mTracker, SmsConstants.FORMAT_3GPP);
+        replaceInstance(SMSDispatcher.SmsTracker.class, "mDestAddress", mTracker, "911");
+
+        mSmsDispatchersController.sendRetrySms(mTracker);
+        processAllMessages();
+
+        SmsDispatchersController.DomainSelectionConnectionHolder holder =
+                mSmsDispatchersController.testGetDomainSelectionConnectionHolder(true);
+        verify(mEmergencySmsDsc).requestDomainSelection(any(), any());
+        assertNotNull(holder);
+        assertNotNull(holder.getConnection());
+        assertTrue(holder.isEmergency());
+        assertTrue(holder.isDomainSelectionRequested());
+        assertEquals(1, holder.getPendingRequests().size());
+
+        mDscFuture.complete(NetworkRegistrationInfo.DOMAIN_PS);
+        processAllMessages();
+
+        verify(mEmergencySmsDsc).finishSelection();
+        verify(mImsSmsDispatcher).sendSms(eq(mTracker));
+        assertNull(holder.getConnection());
+        assertFalse(holder.isDomainSelectionRequested());
+        assertEquals(0, holder.getPendingRequests().size());
+    }
+
+    @Test
+    @SmallTest
     public void testNotifySmsSentToEmergencyStateTrackerOnDomainCs() throws Exception {
         setUpDomainSelectionEnabled(true);
         setUpEmergencyStateTracker(DisconnectCause.NOT_DISCONNECTED);
 
-        mSmsDispatchersController.testNotifySmsSentToEmergencyStateTracker("911", 1L, false);
+        mSmsDispatchersController.testNotifySmsSentToEmergencyStateTracker("911", 1L, false, true);
         processAllMessages();
 
         verify(mTelephonyManager).isEmergencyNumber(eq("911"));
         verify(mEmergencyStateTracker)
-                .endSms(eq("1"), eq(true), eq(NetworkRegistrationInfo.DOMAIN_CS));
+                .endSms(eq("1"), eq(true), eq(NetworkRegistrationInfo.DOMAIN_CS), eq(true));
     }
 
     @Test
@@ -521,12 +593,12 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
         setUpDomainSelectionEnabled(true);
         setUpEmergencyStateTracker(DisconnectCause.NOT_DISCONNECTED);
 
-        mSmsDispatchersController.testNotifySmsSentToEmergencyStateTracker("911", 1L, true);
+        mSmsDispatchersController.testNotifySmsSentToEmergencyStateTracker("911", 1L, true, true);
         processAllMessages();
 
         verify(mTelephonyManager).isEmergencyNumber(eq("911"));
         verify(mEmergencyStateTracker)
-                .endSms(eq("1"), eq(true), eq(NetworkRegistrationInfo.DOMAIN_PS));
+                .endSms(eq("1"), eq(true), eq(NetworkRegistrationInfo.DOMAIN_PS), eq(true));
     }
 
     @Test
@@ -535,11 +607,12 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
         setUpDomainSelectionEnabled(true);
         setUpEmergencyStateTracker(DisconnectCause.NOT_DISCONNECTED);
 
-        mSmsDispatchersController.testNotifySmsSentToEmergencyStateTracker("1234", 1L, true);
+        mSmsDispatchersController.testNotifySmsSentToEmergencyStateTracker("1234", 1L, true, true);
         processAllMessages();
 
         verify(mTelephonyManager).isEmergencyNumber(eq("1234"));
-        verify(mEmergencyStateTracker, never()).endSms(anyString(), anyBoolean(), anyInt());
+        verify(mEmergencyStateTracker, never())
+                .endSms(anyString(), anyBoolean(), anyInt(), anyBoolean());
     }
 
     @Test
@@ -547,7 +620,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
     public void testNotifySmsSentToEmergencyStateTrackerWithoutEmergencyStateTracker()
             throws Exception {
         setUpDomainSelectionEnabled(true);
-        mSmsDispatchersController.testNotifySmsSentToEmergencyStateTracker("911", 1L, true);
+        mSmsDispatchersController.testNotifySmsSentToEmergencyStateTracker("911", 1L, true, true);
 
         verify(mTelephonyManager, never()).isEmergencyNumber(anyString());
     }
@@ -563,7 +636,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
 
         verify(mTelephonyManager).isEmergencyNumber(eq("911"));
         verify(mEmergencyStateTracker)
-                .endSms(eq("1"), eq(false), eq(NetworkRegistrationInfo.DOMAIN_CS));
+                .endSms(eq("1"), eq(false), eq(NetworkRegistrationInfo.DOMAIN_CS), eq(true));
     }
 
     @Test
@@ -577,7 +650,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
 
         verify(mTelephonyManager).isEmergencyNumber(eq("911"));
         verify(mEmergencyStateTracker)
-                .endSms(eq("1"), eq(false), eq(NetworkRegistrationInfo.DOMAIN_PS));
+                .endSms(eq("1"), eq(false), eq(NetworkRegistrationInfo.DOMAIN_PS), eq(true));
     }
 
     @Test
@@ -591,7 +664,8 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
         processAllMessages();
 
         verify(mTelephonyManager).isEmergencyNumber(eq("1234"));
-        verify(mEmergencyStateTracker, never()).endSms(anyString(), anyBoolean(), anyInt());
+        verify(mEmergencyStateTracker, never())
+                .endSms(anyString(), anyBoolean(), anyInt(), anyBoolean());
     }
 
     @Test
@@ -843,7 +917,8 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
                 mSmsDispatchersController, mEmergencyStateTracker);
         when(mEmergencyStateTracker.startEmergencySms(any(Phone.class), anyString(), anyBoolean()))
                 .thenReturn(mEmergencySmsFuture);
-        doNothing().when(mEmergencyStateTracker).endSms(anyString(), anyBoolean(), anyInt());
+        doNothing().when(mEmergencyStateTracker)
+                .endSms(anyString(), anyBoolean(), anyInt(), anyBoolean());
         mEmergencySmsFuture.complete(result);
         when(mTelephonyManager.isEmergencyNumber(eq("911"))).thenReturn(true);
     }

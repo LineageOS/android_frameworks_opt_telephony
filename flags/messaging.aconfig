@@ -17,3 +17,14 @@ flag {
   description: "This flag controls the support of the new MMS error code MMS_ERROR_MMS_DISABLED."
   bug: "305062594"
 }
+
+# OWNER=linggm TARGET=24Q4
+flag {
+  name: "mms_get_apn_from_pdsc"
+  namespace: "telephony"
+  description: "This flag controls get APN details from PDSC instead of telephony provider."
+  bug: "324280016"
+  metadata {
+    purpose: PURPOSE_BUGFIX
+  }
+}

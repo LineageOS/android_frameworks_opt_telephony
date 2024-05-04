@@ -1091,6 +1091,9 @@ public class EmergencyStateTracker {
      */
     @VisibleForTesting
     public boolean isEmergencyCallbackModeSupported(Phone phone) {
+        if (phone == null) {
+            return false;
+        }
         int subId = phone.getSubId();
         int phoneId = phone.getPhoneId();
         if (!isSimReady(phoneId, subId)) {
@@ -1363,10 +1366,17 @@ public class EmergencyStateTracker {
      * @param success the flag specifying whether an emergency SMS is successfully sent or not.
      *                {@code true} if SMS is successfully sent, {@code false} otherwise.
      * @param domain the domain that MO SMS was sent.
+     * @param isLastSmsPart the flag specifying whether this result is for the last SMS part or not.
      */
     public void endSms(@NonNull String smsId, boolean success,
-            @NetworkRegistrationInfo.Domain int domain) {
-        mOngoingEmergencySmsIds.remove(smsId);
+            @NetworkRegistrationInfo.Domain int domain, boolean isLastSmsPart) {
+        if (success && !isLastSmsPart) {
+            // Waits until all SMS parts are sent successfully.
+            // Ensures that all SMS parts are sent while in the emergency mode.
+            Rlog.i(TAG, "endSms: wait for additional SMS parts to be sent.");
+        } else {
+            mOngoingEmergencySmsIds.remove(smsId);
+        }
 
         // If the outgoing emergency SMSs are empty, we can try to exit the emergency mode.
         if (mOngoingEmergencySmsIds.isEmpty()) {
@@ -1389,7 +1399,9 @@ public class EmergencyStateTracker {
                 // Sets the emergency mode to CALLBACK without re-initiating SCBM timer.
                 setEmergencyCallbackMode(mSmsPhone, EMERGENCY_TYPE_SMS);
             } else {
-                exitEmergencyMode(mSmsPhone, EMERGENCY_TYPE_SMS);
+                if (mSmsPhone != null) {
+                    exitEmergencyMode(mSmsPhone, EMERGENCY_TYPE_SMS);
+                }
                 clearEmergencySmsInfo();
             }
         }

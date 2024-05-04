@@ -328,14 +328,14 @@ public class AccessNetworksManager extends Handler {
             log("onNetworkValidationRequested: networkCapability = ["
                     + DataUtils.networkCapabilityToString(networkCapability) + "]");
 
-            dnc.requestNetworkValidation(networkCapability, new Consumer<Integer>() {
+            dnc.requestNetworkValidation(networkCapability, new Consumer<>() {
                 @Override
                 public void accept(Integer result) {
                     post(() -> {
                         try {
                             log("onNetworkValidationRequestDone:"
                                     + DataServiceCallback.resultCodeToString(result));
-                            resultCodeCallback.accept(result.intValue());
+                            resultCodeCallback.accept(result);
                         } catch (RemoteException e) {
                             // Ignore if the remote process is no longer available to call back.
                             loge("onNetworkValidationRequestDone RemoteException" + e);
