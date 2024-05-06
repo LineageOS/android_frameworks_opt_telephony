@@ -1370,7 +1370,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 satelliteSession.countOfOutgoingDatagramFailed,
                 satelliteSession.countOfIncomingDatagramSuccess,
                 satelliteSession.countOfIncomingDatagramFailed,
-                satelliteSession.isDemoMode);
+                satelliteSession.isDemoMode,
+                satelliteSession.maxNtnSignalStrengthLevel);
     }
 
     private static StatsEvent buildStatsEvent(SatelliteIncomingDatagram stats) {

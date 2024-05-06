@@ -3430,6 +3430,7 @@ public class SatelliteController extends Handler {
         synchronized (mNtnSignalsStrengthLock) {
             mNtnSignalStrength = ntnSignalStrength;
         }
+        mSessionMetricsStats.updateMaxNtnSignalStrengthLevel(ntnSignalStrength.getLevel());
 
         List<INtnSignalStrengthCallback> deadCallersList = new ArrayList<>();
         mNtnSignalStrengthChangedListeners.values().forEach(listener -> {

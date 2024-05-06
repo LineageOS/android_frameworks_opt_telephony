@@ -16,7 +16,10 @@
 
 package com.android.internal.telephony.satellite.metrics;
 
+import static android.telephony.satellite.NtnSignalStrength.NTN_SIGNAL_STRENGTH_NONE;
+
 import android.annotation.NonNull;
+import android.telephony.satellite.NtnSignalStrength;
 import android.telephony.satellite.SatelliteManager;
 import android.util.Log;
 
@@ -41,7 +44,7 @@ public class SessionMetricsStats {
     private int mCountOfSuccessfulIncomingDatagram;
     private int mCountOfIncomingDatagramFailed;
     private boolean mIsDemoMode;
-
+    private @NtnSignalStrength.NtnSignalStrengthLevel int mMaxNtnSignalStrengthLevel;
 
     private SessionMetricsStats() {
         initializeSessionMetricsParam();
@@ -144,6 +147,17 @@ public class SessionMetricsStats {
         return this;
     }
 
+    /** Updates the max Ntn signal strength level for the session. */
+    public SessionMetricsStats updateMaxNtnSignalStrengthLevel(
+            @NtnSignalStrength.NtnSignalStrengthLevel int latestNtnSignalStrengthLevel) {
+        if (latestNtnSignalStrengthLevel > mMaxNtnSignalStrengthLevel) {
+            mMaxNtnSignalStrengthLevel = latestNtnSignalStrengthLevel;
+        }
+        logd("updateMaxNtnSignalsStrength: latest signal strength=" + latestNtnSignalStrengthLevel
+                + ", max signal strength=" + mMaxNtnSignalStrengthLevel);
+        return this;
+    }
+
     /** Report the session metrics atoms to PersistAtomsStorage in telephony. */
     public void reportSessionMetrics() {
         SatelliteStats.SatelliteSessionParams sessionParams =
@@ -159,6 +173,7 @@ public class SessionMetricsStats {
                         .setCountOfIncomingDatagramSuccess(mCountOfSuccessfulIncomingDatagram)
                         .setCountOfIncomingDatagramFailed(mCountOfIncomingDatagramFailed)
                         .setIsDemoMode(mIsDemoMode)
+                        .setMaxNtnSignalStrengthLevel(mMaxNtnSignalStrengthLevel)
                         .build();
         logd("reportSessionMetrics: " + sessionParams.toString());
         SatelliteStats.getInstance().onSatelliteSessionMetrics(sessionParams);
@@ -187,6 +202,7 @@ public class SessionMetricsStats {
         mCountOfSuccessfulIncomingDatagram = 0;
         mCountOfIncomingDatagramFailed = 0;
         mIsDemoMode = false;
+        mMaxNtnSignalStrengthLevel = NTN_SIGNAL_STRENGTH_NONE;
     }
 
     private static void logd(@NonNull String log) {

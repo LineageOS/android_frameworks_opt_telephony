@@ -1149,6 +1149,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteSession1.countOfIncomingDatagramSuccess = 1;
         mSatelliteSession1.countOfIncomingDatagramFailed = 0;
         mSatelliteSession1.isDemoMode = false;
+        mSatelliteSession1.maxNtnSignalStrengthLevel = 2;
 
         mSatelliteSession2 = new SatelliteSession();
         mSatelliteSession2.satelliteServiceInitializationResult =
@@ -1156,16 +1157,17 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteSession2.satelliteTechnology =
                 SatelliteProtoEnums.NT_RADIO_TECHNOLOGY_NB_IOT_NTN;
         mSatelliteSession2.count = 1;
-        mSatelliteSession1.satelliteServiceTerminationResult =
+        mSatelliteSession2.satelliteServiceTerminationResult =
                 SatelliteProtoEnums.SATELLITE_ERROR_NONE;
-        mSatelliteSession1.initializationProcessingTimeMillis = 300;
-        mSatelliteSession1.terminationProcessingTimeMillis = 100;
-        mSatelliteSession1.sessionDurationSeconds = 10;
-        mSatelliteSession1.countOfOutgoingDatagramSuccess = 0;
-        mSatelliteSession1.countOfOutgoingDatagramFailed = 2;
-        mSatelliteSession1.countOfIncomingDatagramSuccess = 0;
-        mSatelliteSession1.countOfIncomingDatagramFailed = 1;
+        mSatelliteSession2.initializationProcessingTimeMillis = 300;
+        mSatelliteSession2.terminationProcessingTimeMillis = 100;
+        mSatelliteSession2.sessionDurationSeconds = 10;
+        mSatelliteSession2.countOfOutgoingDatagramSuccess = 0;
+        mSatelliteSession2.countOfOutgoingDatagramFailed = 2;
+        mSatelliteSession2.countOfIncomingDatagramSuccess = 0;
+        mSatelliteSession2.countOfIncomingDatagramFailed = 1;
         mSatelliteSession2.isDemoMode = true;
+        mSatelliteSession2.maxNtnSignalStrengthLevel = 4;
 
         mSatelliteSessions =
                 new SatelliteSession[] {
