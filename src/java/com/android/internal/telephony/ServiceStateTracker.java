@@ -681,7 +681,7 @@ public class ServiceStateTracker extends Handler {
         }
         mLocaleTracker = TelephonyComponentFactory.getInstance()
                 .inject(LocaleTracker.class.getName())
-                .makeLocaleTracker(mPhone, mNitzState, getLooper());
+                .makeLocaleTracker(mPhone, mNitzState, getLooper(), featureFlags);
 
         mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
         mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
@@ -739,7 +739,7 @@ public class ServiceStateTracker extends Handler {
 
         mAccessNetworksManagerCallback = new AccessNetworksManagerCallback(this::post) {
             @Override
-            public void onPreferredTransportChanged(int networkCapability) {
+            public void onPreferredTransportChanged(int networkCapability, boolean forceReconnect) {
                 // Check if preferred on IWLAN was changed in ServiceState.
                 boolean isIwlanPreferred = mAccessNetworksManager.isAnyApnOnIwlan();
                 if (mSS.isIwlanPreferred() != isIwlanPreferred) {

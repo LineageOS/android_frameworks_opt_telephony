@@ -203,12 +203,12 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         mTrackers.remove(token);
                         mPhone.notifySmsSent(tracker.mDestAddress);
                         mSmsDispatchersController.notifySmsSentToEmergencyStateTracker(
-                                tracker.mDestAddress, tracker.mMessageId);
+                                tracker.mDestAddress, tracker.mMessageId, true);
                         break;
                     case ImsSmsImplBase.SEND_STATUS_ERROR:
                         tracker.onFailed(mContext, reason, networkReasonCode);
                         mTrackers.remove(token);
-                        notifySmsSentFailedToEmergencyStateTracker(tracker);
+                        notifySmsSentFailedToEmergencyStateTracker(tracker, true);
                         break;
                     case ImsSmsImplBase.SEND_STATUS_ERROR_RETRY:
                         int maxRetryCountOverIms = getMaxRetryCountOverIms();
@@ -227,7 +227,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         } else {
                             tracker.onFailed(mContext, reason, networkReasonCode);
                             mTrackers.remove(token);
-                            notifySmsSentFailedToEmergencyStateTracker(tracker);
+                            notifySmsSentFailedToEmergencyStateTracker(tracker, true);
                         }
                         break;
                     case ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK:
@@ -304,6 +304,11 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     switch (result) {
                         case Intents.RESULT_SMS_HANDLED:
                             mappedResult = ImsSmsImplBase.DELIVER_STATUS_OK;
+                            if (message != null) {
+                                mSmsDispatchersController
+                                        .notifySmsReceivedViaImsToEmergencyStateTracker(
+                                                message.getOriginatingAddress());
+                            }
                             break;
                         case Intents.RESULT_SMS_OUT_OF_MEMORY:
                             mappedResult = ImsSmsImplBase.DELIVER_STATUS_ERROR_NO_MEMORY;

@@ -22,8 +22,10 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.content.Intent;
 import android.os.AsyncResult;
@@ -34,15 +36,18 @@ import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+
+import androidx.test.filters.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -65,13 +70,18 @@ public class LocaleTrackerTest extends TelephonyTest {
     private LocaleTracker mLocaleTracker;
 
     private CellInfoGsm mCellInfo;
+    @Mock TelephonyCountryDetector mCountryDetector;
 
     @Before
     public void setUp() throws Exception {
-        logd("LocaleTrackerTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        MockitoAnnotations.initMocks(this);
+        logd(TAG + " Setup!");
 
-        mLocaleTracker = new LocaleTracker(mPhone, mNitzStateMachine, Looper.myLooper());
+        mLocaleTracker =
+                new LocaleTracker(mPhone, mNitzStateMachine, Looper.myLooper(), mFeatureFlags);
+        replaceInstance(TelephonyCountryDetector.class, "sInstance", null,
+                mCountryDetector);
 
         // This is a workaround to bypass setting system properties, which causes access violation.
         doReturn(-1).when(mPhone).getPhoneId();
@@ -333,5 +343,32 @@ public class LocaleTrackerTest extends TelephonyTest {
         sendServiceState(ServiceState.STATE_POWER_OFF);
         sendServiceState(ServiceState.STATE_IN_SERVICE);
         assertEquals(COUNTRY_CODE_UNAVAILABLE, mLocaleTracker.getCurrentCountry());
+    }
+
+    @Test
+    public void testNotifyCountryCodeChangedToTelephonyCountryDetector_featureFlagEnabled() {
+        testNotifyCountryCodeChangedToTelephonyCountryDetector(true);
+    }
+
+    @Test
+    public void testNotifyCountryCodeChangedToTelephonyCountryDetector_featureFlagDisabled() {
+        testNotifyCountryCodeChangedToTelephonyCountryDetector(false);
+    }
+
+    private void testNotifyCountryCodeChangedToTelephonyCountryDetector(
+            boolean oemEnabledSatelliteFlag) {
+        reset(mCountryDetector);
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(oemEnabledSatelliteFlag);
+        doReturn(true).when(mPhone).isRadioOn();
+        sendServiceState(ServiceState.STATE_IN_SERVICE);
+        mLocaleTracker.updateOperatorNumeric(US_MCC + FAKE_MNC);
+        assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
+        assertEquals(US_COUNTRY_CODE, mLocaleTracker.getLastKnownCountryIso());
+        verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE});
+        assertFalse(mLocaleTracker.isTracking());
+
+        int notifiedCount = oemEnabledSatelliteFlag ? 1 : 0;
+        verify(mCountryDetector, times(notifiedCount))
+                .onNetworkCountryCodeChanged(mPhone, US_COUNTRY_CODE);
     }
 }

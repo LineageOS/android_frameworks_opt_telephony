@@ -34,6 +34,7 @@ import android.app.DownloadManager;
 import android.app.KeyguardManager;
 import android.app.NotificationManager;
 import android.app.UiModeManager;
+import android.app.admin.DevicePolicyManager;
 import android.app.usage.UsageStatsManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -310,6 +311,8 @@ public class ContextFixture implements TestFixture<Context> {
                     return mNetworkPolicyManager;
                 case Context.TELEPHONY_IMS_SERVICE:
                     return mImsManager;
+                case Context.DEVICE_POLICY_SERVICE:
+                    return mDevicePolicyManager;
                 default:
                     return null;
             }
@@ -357,6 +360,8 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.EUICC_SERVICE;
             } else if (serviceClass == AlarmManager.class) {
                 return Context.ALARM_SERVICE;
+            } else if (serviceClass == DevicePolicyManager.class) {
+                return Context.DEVICE_POLICY_SERVICE;
             }
             return super.getSystemServiceName(serviceClass);
         }
@@ -731,6 +736,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final VcnManager mVcnManager = mock(VcnManager.class);
     private final NetworkPolicyManager mNetworkPolicyManager = mock(NetworkPolicyManager.class);
     private final ImsManager mImsManager = mock(ImsManager.class);
+    private final DevicePolicyManager mDevicePolicyManager = mock(DevicePolicyManager.class);
     private final Configuration mConfiguration = new Configuration();
     private final DisplayMetrics mDisplayMetrics = new DisplayMetrics();
     private final SharedPreferences mSharedPreferences = PreferenceManager

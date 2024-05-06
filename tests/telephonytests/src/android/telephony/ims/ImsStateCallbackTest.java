@@ -28,7 +28,8 @@ import static org.mockito.Mockito.verify;
 
 import android.telephony.BinderCacheManager;
 import android.telephony.ims.aidl.IImsRcsController;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.IImsStateCallback;
 import com.android.internal.telephony.ITelephony;

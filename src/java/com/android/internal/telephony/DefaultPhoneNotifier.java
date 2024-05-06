@@ -45,6 +45,7 @@ import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.telephony.Rlog;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * broadcast intents
@@ -298,6 +299,11 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
             List<LinkCapacityEstimate> linkCapacityEstimateList) {
         mTelephonyRegistryMgr.notifyLinkCapacityEstimateChanged(sender.getPhoneId(),
                 sender.getSubId(), linkCapacityEstimateList);
+    }
+
+    @Override
+    public void notifySimultaneousCellularCallingSubscriptionsChanged(Set<Integer> subIds) {
+        mTelephonyRegistryMgr.notifySimultaneousCellularCallingSubscriptionsChanged(subIds);
     }
 
     @Override

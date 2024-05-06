@@ -48,9 +48,9 @@ import android.telephony.ims.aidl.IImsRegistration;
 import android.telephony.ims.aidl.IImsServiceController;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.stub.ImsFeatureConfiguration;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.util.SparseIntArray;
 
+import androidx.test.filters.SmallTest;
 import androidx.test.runner.AndroidJUnit4;
 
 import com.android.ims.ImsFeatureBinderRepository;

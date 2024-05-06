@@ -76,7 +76,7 @@ public class NtnCapabilityResolverTest extends TelephonyTest {
         replaceInstance(SatelliteController.class, "sInstance", null,
                 mMockSatelliteController);
         doReturn(Arrays.asList(SATELLITE_PLMN_ARRAY))
-                .when(mMockSatelliteController).getSatellitePlmnList(anyInt());
+                .when(mMockSatelliteController).getSatellitePlmnsForCarrier(anyInt());
         doReturn(mSatelliteSupportedServiceList).when(mMockSatelliteController)
                 .getSupportedSatelliteServices(SUB_ID, SATELLITE_PLMN);
     }

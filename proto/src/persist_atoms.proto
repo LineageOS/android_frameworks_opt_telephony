@@ -421,6 +421,7 @@ message ImsRegistrationTermination {
 }
 
 message ImsRegistrationStats {
+    reserved 16;
     optional int32 carrier_id = 1;
     optional int32 sim_slot_index = 2;
     optional int32 rat = 3;
@@ -437,6 +438,7 @@ message ImsRegistrationStats {
     optional int64 registering_millis = 13;
     optional int64 unregistered_millis = 14;
     optional bool is_iwlan_cross_sim = 15;
+    optional int32 registered_times = 17;
 
     // Internal use only
     optional int64 last_used_millis = 10001;

@@ -20,7 +20,8 @@ import static org.junit.Assert.assertEquals;
 
 import android.os.Parcel;
 import android.test.AndroidTestCase;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import java.util.Arrays;
 

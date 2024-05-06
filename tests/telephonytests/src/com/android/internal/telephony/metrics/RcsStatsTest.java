@@ -30,9 +30,10 @@ import android.telephony.TelephonyProtoEnums;
 import android.telephony.ims.DelegateRegistrationState;
 import android.telephony.ims.FeatureTagState;
 import android.telephony.ims.SipDelegateManager;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.util.ArraySet;
 import android.util.Log;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.ims.rcs.uce.util.FeatureTags;
 import com.android.internal.telephony.TelephonyStatsLog;

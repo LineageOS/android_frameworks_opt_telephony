@@ -19,10 +19,10 @@ package com.android.internal.telephony;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.telephony.VoLteServiceState;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import junit.framework.TestCase;
-
 
 public class VoLteServiceStateTest extends TestCase {
 

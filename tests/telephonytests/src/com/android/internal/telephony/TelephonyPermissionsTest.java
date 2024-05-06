@@ -46,7 +46,8 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.util.test.FakeSettingsProvider;
@@ -58,6 +59,7 @@ import org.junit.Test;
 
 import java.lang.reflect.Field;
 import java.util.Map;
+
 @SmallTest
 public class TelephonyPermissionsTest {
 
@@ -168,8 +170,10 @@ public class TelephonyPermissionsTest {
     public void testCheckReadPhoneState_hasPermissionAndAppOp() {
         doNothing().when(mMockContext).enforcePermission(
                 android.Manifest.permission.READ_PHONE_STATE, PID, UID, MSG);
-        when(mMockAppOps.noteOp(eq(AppOpsManager.OPSTR_READ_PHONE_STATE), eq(UID), eq(PACKAGE),
-                eq(FEATURE), nullable(String.class))).thenReturn(AppOpsManager.MODE_ALLOWED);
+        when(mMockAppOps
+                .noteOpNoThrow(eq(AppOpsManager.OPSTR_READ_PHONE_STATE), eq(UID), eq(PACKAGE),
+                        eq(FEATURE), nullable(String.class)))
+                .thenReturn(AppOpsManager.MODE_ALLOWED);
         assertTrue(TelephonyPermissions.checkReadPhoneState(
                 mMockContext, SUB_ID, PID, UID, PACKAGE, FEATURE, MSG));
     }
@@ -210,8 +214,10 @@ public class TelephonyPermissionsTest {
     public void testCheckReadPhoneStateOnAnyActiveSub_hasPermissionAndAppOp() {
         doNothing().when(mMockContext).enforcePermission(
                 android.Manifest.permission.READ_PHONE_STATE, PID, UID, MSG);
-        when(mMockAppOps.noteOp(eq(AppOpsManager.OPSTR_READ_PHONE_STATE), eq(UID), eq(PACKAGE),
-                eq(FEATURE), nullable(String.class))).thenReturn(AppOpsManager.MODE_ALLOWED);
+        when(mMockAppOps
+                .noteOpNoThrow(eq(AppOpsManager.OPSTR_READ_PHONE_STATE), eq(UID), eq(PACKAGE),
+                        eq(FEATURE), nullable(String.class)))
+                .thenReturn(AppOpsManager.MODE_ALLOWED);
         assertTrue(TelephonyPermissions.checkReadPhoneStateOnAnyActiveSub(
                 mMockContext, PID, UID, PACKAGE, FEATURE, MSG));
     }

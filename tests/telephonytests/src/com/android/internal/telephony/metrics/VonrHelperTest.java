@@ -21,7 +21,8 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.doReturn;
 
 import android.annotation.NonNull;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.flags.FeatureFlags;

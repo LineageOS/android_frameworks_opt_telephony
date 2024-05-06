@@ -40,6 +40,7 @@ import android.os.UserHandle;
 import android.os.test.TestLooper;
 import android.service.euicc.EuiccService;
 import android.service.euicc.IEuiccService;
+import android.service.euicc.IGetAvailableMemoryInBytesCallback;
 import android.service.euicc.IGetEidCallback;
 
 import androidx.test.runner.AndroidJUnit4;
@@ -70,6 +71,7 @@ public class EuiccConnectorTest extends TelephonyTest {
 
     private static final int CARD_ID = 15;
     private static final int PORT_INDEX = 0;
+    private static final long AVAILABLE_MEMORY = 123L;
 
     @Before
     public void setUp() throws Exception {
@@ -131,6 +133,36 @@ public class EuiccConnectorTest extends TelephonyTest {
                 assertTrue("Callback called twice", called.compareAndSet(false, true));
             }
         });
+        mLooper.dispatchAll();
+        assertTrue(called.get());
+    }
+
+    @Test
+    public void testInitialState_forAvailableMemory_commandRejected() {
+        prepareEuiccApp(
+                false /* hasPermission */,
+                false /* requiresBindPermission */,
+                false /* hasPriority */);
+        mConnector = new EuiccConnector(mContext, mLooper.getLooper());
+        final AtomicBoolean called = new AtomicBoolean(false);
+        mConnector.getAvailableMemoryInBytes(
+                CARD_ID,
+                new EuiccConnector.GetAvailableMemoryInBytesCommandCallback() {
+                    @Override
+                    public void onGetAvailableMemoryInBytesComplete(long availableMemoryInBytes) {
+                        fail("Command should have failed");
+                    }
+
+                    @Override
+                    public void onUnsupportedOperationExceptionComplete(String message) {
+                        fail("Command should have failed");
+                    }
+
+                    @Override
+                    public void onEuiccServiceUnavailable() {
+                        assertTrue("Callback called twice", called.compareAndSet(false, true));
+                    }
+                });
         mLooper.dispatchAll();
         assertTrue(called.get());
     }
@@ -236,6 +268,100 @@ public class EuiccConnectorTest extends TelephonyTest {
     }
 
     @Test
+    public void testCommandDispatch_forAvailableMemory_success() throws Exception {
+        prepareEuiccApp(
+                true /* hasPermission */,
+                true /* requiresBindPermission */,
+                true /* hasPriority */);
+        mConnector = new EuiccConnector(mContext, mLooper.getLooper());
+        doAnswer(
+                new Answer<Void>() {
+                    @Override
+                    public Void answer(InvocationOnMock invocation) throws Exception {
+                        IGetAvailableMemoryInBytesCallback callback =
+                                invocation.getArgument(1);
+                        callback.onSuccess(AVAILABLE_MEMORY);
+                        return null;
+                    }
+                })
+                .when(mEuiccService)
+                .getAvailableMemoryInBytes(
+                        anyInt(), Mockito.<IGetAvailableMemoryInBytesCallback>any());
+        final AtomicReference<Long> availableMemoryInBytesRef = new AtomicReference<>();
+        mConnector.getAvailableMemoryInBytes(
+                CARD_ID,
+                new EuiccConnector.GetAvailableMemoryInBytesCommandCallback() {
+                    @Override
+                    public void onGetAvailableMemoryInBytesComplete(long availableMemoryInBytes) {
+                        if (availableMemoryInBytesRef.get() != null) {
+                            fail("Callback called twice");
+                        }
+                        availableMemoryInBytesRef.set(availableMemoryInBytes);
+                    }
+
+                    @Override
+                    public void onUnsupportedOperationExceptionComplete(String message) {
+                        fail("Command should have failed");
+                    }
+
+                    @Override
+                    public void onEuiccServiceUnavailable() {
+                        fail("Command should have succeeded");
+                    }
+                });
+        mLooper.dispatchAll();
+        assertEquals(AVAILABLE_MEMORY, availableMemoryInBytesRef.get().longValue());
+    }
+
+    @Test
+    public void testCommandDispatch_forAvailableMemory_unsupportedOperationException()
+            throws Exception {
+        prepareEuiccApp(
+                true /* hasPermission */,
+                true /* requiresBindPermission */,
+                true /* hasPriority */);
+        mConnector = new EuiccConnector(mContext, mLooper.getLooper());
+        doAnswer(
+                new Answer<Void>() {
+                    @Override
+                    public Void answer(InvocationOnMock invocation) throws Exception {
+                        IGetAvailableMemoryInBytesCallback callback =
+                                invocation.getArgument(1);
+                        callback.onUnsupportedOperationException("exception message");
+                        return null;
+                    }
+                })
+                .when(mEuiccService)
+                .getAvailableMemoryInBytes(
+                        anyInt(), Mockito.<IGetAvailableMemoryInBytesCallback>any());
+        final AtomicReference<String> exceptionRef = new AtomicReference<>();
+        mConnector.getAvailableMemoryInBytes(
+                CARD_ID,
+                new EuiccConnector.GetAvailableMemoryInBytesCommandCallback() {
+                    @Override
+                    public void onGetAvailableMemoryInBytesComplete(long availableMemoryInBytes) {
+                        fail("Command should have failed");
+                    }
+
+                    @Override
+                    public void onUnsupportedOperationExceptionComplete(String message) {
+                        if (exceptionRef.get() != null) {
+                            fail("Callback called twice");
+                        }
+                        exceptionRef.set(message);
+                    }
+
+                    @Override
+                    public void onEuiccServiceUnavailable() {
+                        fail("Command should have succeeded");
+                    }
+                });
+        mLooper.dispatchAll();
+        String message = exceptionRef.get();
+        assertTrue(message != null && !message.isEmpty());
+    }
+
+    @Test
     public void testCommandDispatch_remoteException() throws Exception {
         prepareEuiccApp(true /* hasPermission */, true /* requiresBindPermission */,
                 true /* hasPriority */);
@@ -259,6 +385,40 @@ public class EuiccConnectorTest extends TelephonyTest {
     }
 
     @Test
+    public void testCommandDispatch_forAvailableMemory_remoteException() throws Exception {
+        prepareEuiccApp(
+                true /* hasPermission */,
+                true /* requiresBindPermission */,
+                true /* hasPriority */);
+        mConnector = new EuiccConnector(mContext, mLooper.getLooper());
+        doThrow(new RemoteException("failure"))
+                .when(mEuiccService)
+                .getAvailableMemoryInBytes(
+                        anyInt(), Mockito.<IGetAvailableMemoryInBytesCallback>any());
+        final AtomicBoolean called = new AtomicBoolean(false);
+        mConnector.getAvailableMemoryInBytes(
+                CARD_ID,
+                new EuiccConnector.GetAvailableMemoryInBytesCommandCallback() {
+                    @Override
+                    public void onGetAvailableMemoryInBytesComplete(long availableMemoryInBytes) {
+                        fail("Command should have failed");
+                    }
+
+                    @Override
+                    public void onUnsupportedOperationExceptionComplete(String message) {
+                        fail("Command should have failed");
+                    }
+
+                    @Override
+                    public void onEuiccServiceUnavailable() {
+                        assertTrue("Callback called twice", called.compareAndSet(false, true));
+                    }
+                });
+        mLooper.dispatchAll();
+        assertTrue(called.get());
+    }
+
+    @Test
     public void testCommandDispatch_processDied() throws Exception {
         // Kick off the asynchronous command.
         prepareEuiccApp(true /* hasPermission */, true /* requiresBindPermission */,
@@ -276,6 +436,44 @@ public class EuiccConnectorTest extends TelephonyTest {
                 assertTrue("Callback called twice", called.compareAndSet(false, true));
             }
         });
+        mLooper.dispatchAll();
+        assertFalse(called.get());
+
+        // Now, pretend the remote process died.
+        mConnector.onServiceDisconnected(null /* name */);
+        mLooper.dispatchAll();
+
+        // Callback should have been called.
+        assertTrue(called.get());
+    }
+
+    @Test
+    public void testCommandDispatch_forAvailableMemory_processDied() throws Exception {
+        // Kick off the asynchronous command.
+        prepareEuiccApp(
+                true /* hasPermission */,
+                true /* requiresBindPermission */,
+                true /* hasPriority */);
+        mConnector = new EuiccConnector(mContext, mLooper.getLooper());
+        final AtomicBoolean called = new AtomicBoolean(false);
+        mConnector.getAvailableMemoryInBytes(
+                CARD_ID,
+                new EuiccConnector.GetAvailableMemoryInBytesCommandCallback() {
+                    @Override
+                    public void onGetAvailableMemoryInBytesComplete(long availableMemoryInBytes) {
+                        fail("Unexpected command success callback");
+                    }
+
+                    @Override
+                    public void onUnsupportedOperationExceptionComplete(String message) {
+                        fail("Command should have failed");
+                    }
+
+                    @Override
+                    public void onEuiccServiceUnavailable() {
+                        assertTrue("Callback called twice", called.compareAndSet(false, true));
+                    }
+                });
         mLooper.dispatchAll();
         assertFalse(called.get());
 

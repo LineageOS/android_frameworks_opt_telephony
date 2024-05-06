@@ -18,8 +18,9 @@ package com.android.internal.telephony.uicc;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 
-import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Log;
+
+import androidx.test.filters.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;

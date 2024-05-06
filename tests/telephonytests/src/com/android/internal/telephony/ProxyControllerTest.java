@@ -35,9 +35,10 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.RadioAccessFamily;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+
+import androidx.test.filters.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;
@@ -55,7 +56,7 @@ public class ProxyControllerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         replaceInstance(ProxyController.class, "sProxyController", null, null);
-        mProxyController = ProxyController.getInstance(mContext);
+        mProxyController = new ProxyController(mContext, mFeatureFlags);
     }
 
     @After

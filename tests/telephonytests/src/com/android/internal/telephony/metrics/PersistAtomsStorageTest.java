@@ -55,7 +55,8 @@ import android.telephony.TelephonyManager;
 import android.telephony.TelephonyProtoEnums;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.SipDelegateManager;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.TelephonyTest;
@@ -159,6 +160,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private CellularServiceState[] mServiceStates;
 
     // IMS registrations for slot 0 and 1
+    private ImsRegistrationStats mImsRegStatsUnregisteredLte0;
+    private ImsRegistrationStats mImsRegStatsRegisteringLte0;
     private ImsRegistrationStats mImsRegistrationStatsLte0;
     private ImsRegistrationStats mImsRegistrationStatsWifi0;
     private ImsRegistrationStats mImsRegistrationStatsLte1;
@@ -503,6 +506,42 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                     mServiceState5Proto
                 };
 
+        // IMS over LTE on slot 0, unregistered for 5 seconds at the registered state
+        mImsRegStatsUnregisteredLte0 = new ImsRegistrationStats();
+        mImsRegStatsUnregisteredLte0.carrierId = CARRIER1_ID;
+        mImsRegStatsUnregisteredLte0.simSlotIndex = 0;
+        mImsRegStatsUnregisteredLte0.rat = TelephonyManager.NETWORK_TYPE_LTE;
+        mImsRegStatsUnregisteredLte0.registeredMillis = 0;
+        mImsRegStatsUnregisteredLte0.voiceCapableMillis = 5000L;
+        mImsRegStatsUnregisteredLte0.voiceAvailableMillis = 5000L;
+        mImsRegStatsUnregisteredLte0.smsCapableMillis = 5000L;
+        mImsRegStatsUnregisteredLte0.smsAvailableMillis = 5000L;
+        mImsRegStatsUnregisteredLte0.videoCapableMillis = 5000L;
+        mImsRegStatsUnregisteredLte0.videoAvailableMillis = 5000L;
+        mImsRegStatsUnregisteredLte0.utCapableMillis = 5000L;
+        mImsRegStatsUnregisteredLte0.utAvailableMillis = 5000L;
+        mImsRegStatsUnregisteredLte0.registeringMillis = 0;
+        mImsRegStatsUnregisteredLte0.unregisteredMillis = 5000L;
+        mImsRegStatsUnregisteredLte0.registeredTimes = 0;
+
+        // IMS over LTE on slot 0, registering for 5 seconds at the registered state
+        mImsRegStatsRegisteringLte0 = new ImsRegistrationStats();
+        mImsRegStatsRegisteringLte0.carrierId = CARRIER1_ID;
+        mImsRegStatsRegisteringLte0.simSlotIndex = 0;
+        mImsRegStatsRegisteringLte0.rat = TelephonyManager.NETWORK_TYPE_LTE;
+        mImsRegStatsRegisteringLte0.registeredMillis = 0;
+        mImsRegStatsRegisteringLte0.voiceCapableMillis = 5000L;
+        mImsRegStatsRegisteringLte0.voiceAvailableMillis = 5000L;
+        mImsRegStatsRegisteringLte0.smsCapableMillis = 5000L;
+        mImsRegStatsRegisteringLte0.smsAvailableMillis = 5000L;
+        mImsRegStatsRegisteringLte0.videoCapableMillis = 5000L;
+        mImsRegStatsRegisteringLte0.videoAvailableMillis = 5000L;
+        mImsRegStatsRegisteringLte0.utCapableMillis = 5000L;
+        mImsRegStatsRegisteringLte0.utAvailableMillis = 5000L;
+        mImsRegStatsRegisteringLte0.registeringMillis = 5000L;
+        mImsRegStatsRegisteringLte0.unregisteredMillis = 0;
+        mImsRegStatsRegisteringLte0.registeredTimes = 1;
+
         // IMS over LTE on slot 0, registered for 5 seconds
         mImsRegistrationStatsLte0 = new ImsRegistrationStats();
         mImsRegistrationStatsLte0.carrierId = CARRIER1_ID;
@@ -517,6 +556,9 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mImsRegistrationStatsLte0.videoAvailableMillis = 5000L;
         mImsRegistrationStatsLte0.utCapableMillis = 5000L;
         mImsRegistrationStatsLte0.utAvailableMillis = 5000L;
+        mImsRegistrationStatsLte0.registeringMillis = 0;
+        mImsRegistrationStatsLte0.unregisteredMillis = 0;
+        mImsRegistrationStatsLte0.registeredTimes = 0;
 
         // IMS over WiFi on slot 0, registered for 10 seconds (voice only)
         mImsRegistrationStatsWifi0 = new ImsRegistrationStats();
@@ -541,6 +583,9 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mImsRegistrationStatsLte1.videoAvailableMillis = 20000L;
         mImsRegistrationStatsLte1.utCapableMillis = 20000L;
         mImsRegistrationStatsLte1.utAvailableMillis = 20000L;
+        mImsRegistrationStatsLte1.registeringMillis = 0;
+        mImsRegistrationStatsLte1.unregisteredMillis = 0;
+        mImsRegistrationStatsLte1.registeredTimes = 0;
 
         // IMS terminations on LTE
         mImsRegistrationTerminationLte = new ImsRegistrationTermination();
@@ -566,8 +611,13 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
         mImsRegistrationStats =
                 new ImsRegistrationStats[] {
-                    mImsRegistrationStatsLte0, mImsRegistrationStatsWifi0, mImsRegistrationStatsLte1
+                    mImsRegStatsUnregisteredLte0,
+                    mImsRegStatsRegisteringLte0,
+                    mImsRegistrationStatsLte0,
+                    mImsRegistrationStatsWifi0,
+                    mImsRegistrationStatsLte1
                 };
+
         mImsRegistrationTerminations =
                 new ImsRegistrationTermination[] {
                     mImsRegistrationTerminationLte, mImsRegistrationTerminationWifi
@@ -1143,6 +1193,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mServiceState5Proto = null;
         mServiceSwitches = null;
         mServiceStates = null;
+        mImsRegStatsUnregisteredLte0 = null;
+        mImsRegStatsRegisteringLte0 = null;
         mImsRegistrationStatsLte0 = null;
         mImsRegistrationStatsWifi0 = null;
         mImsRegistrationStatsLte1 = null;
@@ -1752,7 +1804,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegistrationStatsLte0));
         mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS);
 
-        // Service state and service switch should be added successfully
+        // mImsRegistrationStatsLte0 should be added successfully
         verifyCurrentStateSavedToFileOnce();
         ImsRegistrationStats[] regStats = mPersistAtomsStorage.getImsRegistrationStats(0L);
         assertProtoArrayEquals(new ImsRegistrationStats[] {mImsRegistrationStatsLte0}, regStats);
@@ -1768,7 +1820,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegistrationStatsWifi0));
         mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS);
 
-        // Service state and service switch should be added successfully
+        // mImsRegistrationStatsLte0 and mImsRegistrationStatsWifi0 should be added successfully
         verifyCurrentStateSavedToFileOnce();
         ImsRegistrationStats[] regStats = mPersistAtomsStorage.getImsRegistrationStats(0L);
         assertProtoArrayEqualsIgnoringOrder(
@@ -1778,18 +1830,34 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void addImsRegistrationStats_updateExistingEntries() throws Exception {
-        createTestFile(START_TIME_MILLIS);
-        ImsRegistrationStats newImsRegistrationStatsLte0 = copyOf(mImsRegistrationStatsLte0);
+    public void addImsRegistrationStats_withExistingRegisteringEntries() throws Exception {
+        createEmptyTestFile();
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
-
-        mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegistrationStatsLte0));
+        mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegStatsRegisteringLte0));
         mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS);
 
-        // mImsRegistrationStatsLte0's durations should be doubled
+        // mImsRegStatsRegisteringLte0's info should be added successfully
         verifyCurrentStateSavedToFileOnce();
-        ImsRegistrationStats[] serviceStates = mPersistAtomsStorage.getImsRegistrationStats(0L);
-        newImsRegistrationStatsLte0.registeredMillis *= 2;
+        ImsRegistrationStats[] regStats = mPersistAtomsStorage.getImsRegistrationStats(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new ImsRegistrationStats[] {mImsRegStatsRegisteringLte0},
+                regStats);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsRegistrationStats_updateExistingEntries() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+        ImsRegistrationStats newImsRegistrationStatsLte0 = copyOf(mImsRegStatsUnregisteredLte0);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegStatsUnregisteredLte0));
+        mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS);
+
+        // mImsRegStatsUnregisteredLte0's durations should be doubled
+        verifyCurrentStateSavedToFileOnce();
+        ImsRegistrationStats[] regStats = mPersistAtomsStorage.getImsRegistrationStats(0L);
+        newImsRegistrationStatsLte0.unregisteredMillis *= 2;
         newImsRegistrationStatsLte0.voiceCapableMillis *= 2;
         newImsRegistrationStatsLte0.voiceAvailableMillis *= 2;
         newImsRegistrationStatsLte0.smsCapableMillis *= 2;
@@ -1801,10 +1869,12 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         assertProtoArrayEqualsIgnoringOrder(
                 new ImsRegistrationStats[] {
                     newImsRegistrationStatsLte0,
+                    mImsRegStatsRegisteringLte0,
+                    mImsRegistrationStatsLte0,
                     mImsRegistrationStatsWifi0,
                     mImsRegistrationStatsLte1
                 },
-                serviceStates);
+                regStats);
     }
 
     @Test
@@ -1829,6 +1899,39 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         expectedRegistrationStats.remove();
         assertProtoArrayEqualsIgnoringOrder(
                 expectedRegistrationStats.toArray(new ImsRegistrationStats[0]), stats);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsRegistrationStats_withExistingDurationEntries() throws Exception {
+        createEmptyTestFile();
+        ImsRegistrationStats newImsRegStatsLte0 = copyOf(mImsRegistrationStatsLte0);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegStatsUnregisteredLte0));
+        mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegStatsRegisteringLte0));
+        mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegistrationStatsLte0));
+        mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS);
+
+        // UnregisteredMillis, registeringMillis and registeredTimes should be added successfully
+        // capable and available durations should be tripled
+        verifyCurrentStateSavedToFileOnce();
+        ImsRegistrationStats[] regStats = mPersistAtomsStorage.getImsRegistrationStats(0L);
+        newImsRegStatsLte0.unregisteredMillis += newImsRegStatsLte0.registeredMillis;
+        newImsRegStatsLte0.registeringMillis += newImsRegStatsLte0.registeredMillis;
+        newImsRegStatsLte0.registeredTimes += 1;
+        newImsRegStatsLte0.voiceCapableMillis *= 3;
+        newImsRegStatsLte0.voiceAvailableMillis *= 3;
+        newImsRegStatsLte0.smsCapableMillis *= 3;
+        newImsRegStatsLte0.smsAvailableMillis *= 3;
+        newImsRegStatsLte0.videoCapableMillis *= 3;
+        newImsRegStatsLte0.videoAvailableMillis *= 3;
+        newImsRegStatsLte0.utCapableMillis *= 3;
+        newImsRegStatsLte0.utAvailableMillis *= 3;
+        assertProtoArrayEqualsIgnoringOrder(
+                new ImsRegistrationStats[] {
+                    newImsRegStatsLte0
+                },
+                regStats);
     }
 
     @Test
@@ -1942,7 +2045,11 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         // pull timestamp should be updated and saved
         assertProtoArrayEqualsIgnoringOrder(
                 new ImsRegistrationStats[] {
-                    mImsRegistrationStatsLte0, mImsRegistrationStatsWifi0, mImsRegistrationStatsLte1
+                    mImsRegStatsUnregisteredLte0,
+                    mImsRegStatsRegisteringLte0,
+                    mImsRegistrationStatsLte0,
+                    mImsRegistrationStatsWifi0,
+                    mImsRegistrationStatsLte1
                 },
                 stats1);
         assertProtoArrayEquals(new ImsRegistrationStats[0], stats2);

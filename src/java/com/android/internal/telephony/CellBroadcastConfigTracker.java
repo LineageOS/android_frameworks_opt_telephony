@@ -54,6 +54,8 @@ public final class CellBroadcastConfigTracker extends StateMachine {
     private static final int EVENT_ACTIVATION_DONE = 3;
     private static final int EVENT_RADIO_OFF = 4;
     private static final int EVENT_SUBSCRIPTION_CHANGED = 5;
+    @VisibleForTesting
+    public static final int EVENT_RADIO_RESET = 6;
 
     private static final int SMS_CB_CODE_SCHEME_MIN = 0;
     private static final int SMS_CB_CODE_SCHEME_MAX = 255;
@@ -122,6 +124,7 @@ public final class CellBroadcastConfigTracker extends StateMachine {
         @Override
         public void enter() {
             mPhone.registerForRadioOffOrNotAvailable(getHandler(), EVENT_RADIO_OFF, null);
+            mPhone.mCi.registerForModemReset(getHandler(), EVENT_RADIO_RESET, null);
             mPhone.getContext().getSystemService(SubscriptionManager.class)
                     .addOnSubscriptionsChangedListener(new HandlerExecutor(getHandler()),
                             mSubChangedListener);
@@ -130,6 +133,7 @@ public final class CellBroadcastConfigTracker extends StateMachine {
         @Override
         public void exit() {
             mPhone.unregisterForRadioOffOrNotAvailable(getHandler());
+            mPhone.mCi.unregisterForModemReset(getHandler());
             mPhone.getContext().getSystemService(SubscriptionManager.class)
                     .removeOnSubscriptionsChangedListener(mSubChangedListener);
         }
@@ -142,6 +146,7 @@ public final class CellBroadcastConfigTracker extends StateMachine {
             }
             switch (msg.what) {
                 case EVENT_RADIO_OFF:
+                case EVENT_RADIO_RESET:
                     resetConfig();
                     break;
                 case EVENT_SUBSCRIPTION_CHANGED:

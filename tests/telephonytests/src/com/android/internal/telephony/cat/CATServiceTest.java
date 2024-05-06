@@ -144,7 +144,7 @@ public class CATServiceTest extends TelephonyTest {
         mSimulatedCommands = mock(SimulatedCommands.class);
         mSimulatedCommands.setIccIoResultForApduLogicalChannel(mIccIoResult);
         mUiccProfile = new UiccProfile(mContext, mSimulatedCommands, mIccCardStatus,
-                0 /* phoneId */, mUiccCard, new Object());
+                0 /* phoneId */, mUiccCard, new Object(), mFeatureFlags);
         processAllMessages();
         logd("Created UiccProfile");
         processAllMessages();

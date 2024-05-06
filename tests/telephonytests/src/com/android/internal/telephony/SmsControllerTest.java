@@ -16,7 +16,10 @@
 
 package com.android.internal.telephony;
 
+import static junit.framework.Assert.assertEquals;
+
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.anyInt;
@@ -26,7 +29,9 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import android.compat.testing.PlatformCompatChangeRule;
 import android.content.pm.PackageManager;
+import android.telephony.TelephonyManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -34,17 +39,25 @@ import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.AdnRecordCache;
 import com.android.internal.telephony.uicc.IccConstants;
 
+import libcore.junit.util.compat.CoreCompatChangeRule.EnableCompatChanges;
+
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.NoSuchElementException;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class SmsControllerTest extends TelephonyTest {
+    @Rule
+    public TestRule compatChangeRule = new PlatformCompatChangeRule();
 
     // Mocked classes
     private AdnRecordCache mAdnRecordCache;
@@ -58,13 +71,17 @@ public class SmsControllerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mAdnRecordCache = Mockito.mock(AdnRecordCache.class);
-        mSmsControllerUT = new SmsController(mContext);
+        mSmsControllerUT = new SmsController(mContext, mFeatureFlags);
         mCallingPackage = mContext.getOpPackageName();
+
+        doReturn(true).when(mPackageManager).hasSystemFeature(
+                PackageManager.FEATURE_TELEPHONY_MESSAGING);
     }
 
     @After
     public void tearDown() throws Exception {
         mAdnRecordCache = null;
+        WapPushCache.clear();
         super.tearDown();
     }
 
@@ -237,6 +254,67 @@ public class SmsControllerTest extends TelephonyTest {
         mSmsControllerUT.sendTextForSubscriber(subId, mCallingPackage, null, "1234",
                 null, "text", null, null, false, 0L, true, true);
         verify(mIccSmsInterfaceManager, Mockito.times(0))
+                .sendText(mCallingPackage, "1234", null, "text", null, null, false, 0L, true);
+    }
+
+    @Test
+    public void testGetWapMessageSize() {
+        long expectedSize = 100L;
+        String location = "content://mms";
+        byte[] locationBytes = location.getBytes(StandardCharsets.ISO_8859_1);
+        byte[] transactionId = "123".getBytes(StandardCharsets.ISO_8859_1);
+
+        WapPushCache.putWapMessageSize(locationBytes, transactionId, expectedSize);
+        long size = mSmsControllerUT.getWapMessageSize(location);
+
+        assertEquals(expectedSize, size);
+    }
+
+    @Test
+    public void testGetWapMessageSize_withTransactionIdAppended() {
+        long expectedSize = 100L;
+        byte[] location = "content://mms".getBytes(StandardCharsets.ISO_8859_1);
+        byte[] transactionId = "123".getBytes(StandardCharsets.ISO_8859_1);
+        byte[] joinedKey = new byte[location.length + transactionId.length];
+        System.arraycopy(location, 0, joinedKey, 0, location.length);
+        System.arraycopy(transactionId, 0, joinedKey, location.length, transactionId.length);
+        String joinedKeyString = new String(joinedKey, StandardCharsets.ISO_8859_1);
+
+        WapPushCache.putWapMessageSize(location, transactionId, expectedSize);
+        long size = mSmsControllerUT.getWapMessageSize(joinedKeyString);
+
+        assertEquals(expectedSize, size);
+    }
+
+    @Test
+    public void testGetWapMessageSize_nonexistentThrows() {
+        assertThrows(NoSuchElementException.class, () ->
+                mSmsControllerUT.getWapMessageSize("content://mms")
+        );
+    }
+
+    @Test
+    @EnableCompatChanges({TelephonyManager.ENABLE_FEATURE_MAPPING})
+    public void sendTextForSubscriberTestEnabledTelephonyFeature() {
+        int subId = 1;
+        doReturn(true).when(mSubscriptionManager)
+                .isSubscriptionAssociatedWithUser(eq(subId), any());
+
+        // Feature enabled, device does not have required telephony feature.
+        doReturn(true).when(mFeatureFlags).enforceTelephonyFeatureMappingForPublicApis();
+        doReturn(false).when(mPackageManager).hasSystemFeature(
+                PackageManager.FEATURE_TELEPHONY_MESSAGING);
+
+        assertThrows(UnsupportedOperationException.class,
+                () -> mSmsControllerUT.sendTextForSubscriber(subId, mCallingPackage, null, "1234",
+                        null, "text", null, null, false, 0L, true, true));
+
+        // Device has required telephony feature.
+        doReturn(true).when(mPackageManager).hasSystemFeature(
+                PackageManager.FEATURE_TELEPHONY_MESSAGING);
+        mSmsControllerUT.sendTextForSubscriber(subId, mCallingPackage, null, "1234",
+                null, "text", null, null, false, 0L, true, true);
+        verify(mIccSmsInterfaceManager, Mockito.times(1))
                 .sendText(mCallingPackage, "1234", null, "text", null, null, false, 0L, true);
     }
 }

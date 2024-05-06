@@ -17,7 +17,7 @@ package com.android.internal.telephony;
 
 import static org.junit.Assert.assertEquals;
 
-import android.test.suitebuilder.annotation.SmallTest;
+import androidx.test.filters.SmallTest;
 
 import org.junit.After;
 import org.junit.Test;

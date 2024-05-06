@@ -38,9 +38,10 @@ import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SmsMessage;
 import android.telephony.ims.stub.ImsSmsImplBase;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.ims.FeatureConnector;
 import com.android.ims.ImsManager;

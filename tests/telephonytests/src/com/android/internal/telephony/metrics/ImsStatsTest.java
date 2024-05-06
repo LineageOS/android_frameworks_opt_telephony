@@ -45,7 +45,8 @@ import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.ProvisioningManager;
 import android.telephony.ims.feature.MmTelFeature.MmTelCapabilities;
 import android.telephony.ims.feature.MmTelFeature.MmTelCapabilities.MmTelCapability;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.TelephonyTest;
@@ -197,6 +198,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(2000L, stats.utAvailableMillis);
         assertEquals(2000L, stats.smsCapableMillis);
         assertEquals(2000L, stats.smsAvailableMillis);
+        assertEquals(1, stats.registeredTimes);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -291,6 +293,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(0L, stats.utAvailableMillis);
         assertEquals(0L, stats.smsCapableMillis);
         assertEquals(0L, stats.smsAvailableMillis);
+        assertEquals(1, stats.registeredTimes);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -320,6 +323,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(2000L, stats.registeredMillis);
         assertEquals(2000L, stats.voiceCapableMillis);
         assertEquals(2000L, stats.voiceAvailableMillis);
+        assertEquals(1, stats.registeredTimes);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -373,6 +377,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(0, stats.simSlotIndex);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, stats.rat);
         assertEquals(2000L, stats.unregisteredMillis);
+        assertEquals(0, stats.registeredTimes);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -413,6 +418,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(0, stats.simSlotIndex);
         assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, stats.rat);
         assertEquals(2000L, stats.registeringMillis);
+        assertEquals(0, stats.registeredTimes);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -563,6 +569,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(0L, stats.utAvailableMillis);
         assertEquals(0L, stats.smsCapableMillis);
         assertEquals(0L, stats.smsAvailableMillis);
+        assertEquals(1, stats.registeredTimes);
         verifyNoMoreInteractions(mPersistAtomsStorage);
         // ServiceStateStats should be notified
         verify(mServiceStateStats).onImsVoiceRegistrationChanged();
@@ -602,6 +609,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(0L, stats.utAvailableMillis);
         assertEquals(0L, stats.smsCapableMillis);
         assertEquals(0L, stats.smsAvailableMillis);
+        assertEquals(1, stats.registeredTimes);
         verifyNoMoreInteractions(mPersistAtomsStorage);
         // ServiceStateStats should be notified
         verify(mServiceStateStats, times(2)).onImsVoiceRegistrationChanged();
@@ -641,6 +649,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(0L, stats.utAvailableMillis);
         assertEquals(2000L, stats.smsCapableMillis);
         assertEquals(2000L, stats.smsAvailableMillis);
+        assertEquals(1, stats.registeredTimes);
         verifyNoMoreInteractions(mPersistAtomsStorage);
         // ServiceStateStats should not be notified
         verify(mServiceStateStats, never()).onImsVoiceRegistrationChanged();
@@ -678,6 +687,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(0L, stats.utAvailableMillis);
         assertEquals(0L, stats.smsCapableMillis);
         assertEquals(0L, stats.smsAvailableMillis);
+        assertEquals(1, stats.registeredTimes);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -708,6 +718,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(0L, statsLte.utAvailableMillis);
         assertEquals(0L, statsLte.smsCapableMillis);
         assertEquals(0L, statsLte.smsAvailableMillis);
+        assertEquals(1, statsLte.registeredTimes);
         ImsRegistrationStats statsWifi = captor.getAllValues().get(1);
         assertEquals(CARRIER1_ID, statsWifi.carrierId);
         assertEquals(0, statsWifi.simSlotIndex);
@@ -721,6 +732,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(0L, statsWifi.utAvailableMillis);
         assertEquals(0L, statsWifi.smsCapableMillis);
         assertEquals(0L, statsWifi.smsAvailableMillis);
+        assertEquals(0, statsWifi.registeredTimes);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -741,6 +753,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, stats.rat);
         assertEquals(0L, stats.registeredMillis);
         assertEquals(2000L, stats.registeringMillis);
+        assertEquals(1, stats.registeredTimes);
     }
 
     @Test
@@ -777,6 +790,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(0, stats.simSlotIndex);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, stats.rat);
         assertEquals(2000L, stats.unregisteredMillis);
+        assertEquals(0, stats.registeredTimes);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -859,6 +873,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(0L, stats.utAvailableMillis);
         assertEquals(0L, stats.smsCapableMillis);
         assertEquals(0L, stats.smsAvailableMillis);
+        assertEquals(1, stats.registeredTimes);
         ArgumentCaptor<ImsRegistrationTermination> terminationCaptor =
                 ArgumentCaptor.forClass(ImsRegistrationTermination.class);
         verify(mPersistAtomsStorage).addImsRegistrationTermination(terminationCaptor.capture());
@@ -1085,6 +1100,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(0L, stats.utAvailableMillis);
         assertEquals(0L, stats.smsCapableMillis);
         assertEquals(0L, stats.smsAvailableMillis);
+        assertEquals(1, stats.registeredTimes);
         ArgumentCaptor<ImsRegistrationTermination> terminationCaptor =
                 ArgumentCaptor.forClass(ImsRegistrationTermination.class);
         verify(mPersistAtomsStorage).addImsRegistrationTermination(terminationCaptor.capture());
@@ -1119,6 +1135,7 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, stats.rat);
         assertEquals(true, stats.isIwlanCrossSim);
         assertEquals(2000L, stats.registeredMillis);
+        assertEquals(1, stats.registeredTimes);
 
         ArgumentCaptor<ImsRegistrationTermination> terminationCaptor =
                 ArgumentCaptor.forClass(ImsRegistrationTermination.class);

@@ -279,9 +279,9 @@ public class AccessNetworksManagerTest extends TelephonyTest {
         processAllMessages();
 
         verify(mMockedCallback).onPreferredTransportChanged(
-                eq(NetworkCapabilities.NET_CAPABILITY_MMS));
+                eq(NetworkCapabilities.NET_CAPABILITY_MMS), eq(false));
         verify(mMockedCallback).onPreferredTransportChanged(
-                eq(NetworkCapabilities.NET_CAPABILITY_IMS));
+                eq(NetworkCapabilities.NET_CAPABILITY_IMS), eq(false));
         Mockito.clearInvocations(mMockedCallback);
         assertThat(mAccessNetworksManager.getPreferredTransportByNetworkCapability(
                 NetworkCapabilities.NET_CAPABILITY_MMS)).isEqualTo(
@@ -295,7 +295,7 @@ public class AccessNetworksManagerTest extends TelephonyTest {
         processAllMessages();
 
         verify(mMockedCallback).onPreferredTransportChanged(
-                eq(NetworkCapabilities.NET_CAPABILITY_XCAP));
+                eq(NetworkCapabilities.NET_CAPABILITY_XCAP), eq(false));
         Mockito.clearInvocations(mMockedCallback);
         assertThat(mAccessNetworksManager.getPreferredTransportByNetworkCapability(
                 NetworkCapabilities.NET_CAPABILITY_XCAP)).isEqualTo(
@@ -305,11 +305,12 @@ public class AccessNetworksManagerTest extends TelephonyTest {
                 ApnSetting.TYPE_XCAP | ApnSetting.TYPE_IMS | ApnSetting.TYPE_MMS,
                 new int[]{});
         verify(mMockedCallback).onPreferredTransportChanged(
-                eq(NetworkCapabilities.NET_CAPABILITY_IMS));
+                eq(NetworkCapabilities.NET_CAPABILITY_IMS), eq(false));
         verify(mMockedCallback).onPreferredTransportChanged(
-                eq(NetworkCapabilities.NET_CAPABILITY_MMS));
+                eq(NetworkCapabilities.NET_CAPABILITY_MMS), eq(false));
         verify(mMockedCallback).onPreferredTransportChanged(
-                eq(NetworkCapabilities.NET_CAPABILITY_XCAP));
+                eq(NetworkCapabilities.NET_CAPABILITY_XCAP), eq(false));
+        Mockito.clearInvocations(mMockedCallback);
         assertThat(mAccessNetworksManager.getPreferredTransportByNetworkCapability(
                 NetworkCapabilities.NET_CAPABILITY_IMS)).isEqualTo(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
@@ -348,4 +349,57 @@ public class AccessNetworksManagerTest extends TelephonyTest {
                 mIntegerConsumer);
     }
 
+    @Test
+    public void testCallbackForReconnectQualifiedNetworkTypeWithFlagEnabled()  throws Exception {
+        when(mFeatureFlags.reconnectQualifiedNetwork()).thenReturn(true);
+
+
+        mAccessNetworksManager.registerCallback(mMockedCallback);
+
+        mQnsCallback.onReconnectQualifedNetworkType(ApnSetting.TYPE_IMS | ApnSetting.TYPE_MMS,
+                AccessNetworkType.IWLAN);
+        processAllMessages();
+
+        verify(mMockedCallback).onPreferredTransportChanged(
+                eq(NetworkCapabilities.NET_CAPABILITY_MMS), eq(true));
+        verify(mMockedCallback).onPreferredTransportChanged(
+                eq(NetworkCapabilities.NET_CAPABILITY_IMS), eq(true));
+        verify(mMockedCallback, never()).onPreferredTransportChanged(
+                eq(NetworkCapabilities.NET_CAPABILITY_XCAP), eq(true));
+        Mockito.clearInvocations(mMockedCallback);
+        assertThat(mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                NetworkCapabilities.NET_CAPABILITY_MMS)).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+        assertThat(mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                NetworkCapabilities.NET_CAPABILITY_IMS)).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+        assertThat(mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                NetworkCapabilities.NET_CAPABILITY_XCAP)).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+    }
+
+    @Test
+    public void testCallbackForReconnectQualifiedNetworkTypeWithFlagDisabled() throws Exception {
+        when(mFeatureFlags.reconnectQualifiedNetwork()).thenReturn(false);
+        mQnsCallback.onReconnectQualifedNetworkType(ApnSetting.TYPE_IMS | ApnSetting.TYPE_MMS,
+                AccessNetworkType.IWLAN);
+        processAllMessages();
+
+        verify(mMockedCallback, never()).onPreferredTransportChanged(
+                eq(NetworkCapabilities.NET_CAPABILITY_MMS), eq(true));
+        verify(mMockedCallback, never()).onPreferredTransportChanged(
+                eq(NetworkCapabilities.NET_CAPABILITY_IMS), eq(true));
+        verify(mMockedCallback, never()).onPreferredTransportChanged(
+                eq(NetworkCapabilities.NET_CAPABILITY_XCAP), eq(true));
+        Mockito.clearInvocations(mMockedCallback);
+        assertThat(mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                NetworkCapabilities.NET_CAPABILITY_MMS)).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertThat(mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                NetworkCapabilities.NET_CAPABILITY_IMS)).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertThat(mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                NetworkCapabilities.NET_CAPABILITY_XCAP)).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+    }
 }

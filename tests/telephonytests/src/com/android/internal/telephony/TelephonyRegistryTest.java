@@ -66,13 +66,14 @@ import android.telephony.TelephonyCallback;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.text.TextUtils;
+import android.util.ArraySet;
 import android.util.SparseArray;
 
 import androidx.annotation.NonNull;
+import androidx.test.filters.SmallTest;
 
 import com.android.server.TelephonyRegistry;
 
@@ -115,6 +116,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
     private BarringInfo mBarringInfo = null;
     private CellIdentity mCellIdentityForRegiFail;
     private int mRegistrationFailReason;
+    private Set<Integer> mSimultaneousCallingSubscriptions;
 
     // All events contribute to TelephonyRegistry#isPhoneStatePermissionRequired
     private static final Set<Integer> READ_PHONE_STATE_EVENTS;
@@ -160,6 +162,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
                 TelephonyCallback.EVENT_ALLOWED_NETWORK_TYPE_LIST_CHANGED);
         READ_PRIVILEGED_PHONE_STATE_EVENTS.add(
                 TelephonyCallback.EVENT_EMERGENCY_CALLBACK_MODE_CHANGED);
+        READ_PRIVILEGED_PHONE_STATE_EVENTS.add(
+                TelephonyCallback.EVENT_SIMULTANEOUS_CELLULAR_CALLING_SUBSCRIPTIONS_CHANGED);
     }
 
     // All events contribute to TelephonyRegistry#isActiveEmergencySessionPermissionRequired
@@ -187,7 +191,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
             TelephonyCallback.CellInfoListener,
             TelephonyCallback.BarringInfoListener,
             TelephonyCallback.RegistrationFailedListener,
-            TelephonyCallback.DataActivityListener {
+            TelephonyCallback.DataActivityListener,
+            TelephonyCallback.SimultaneousCellularCallingSupportListener {
         // This class isn't mockable to get invocation counts because the IBinder is null and
         // crashes the TelephonyRegistry. Make a cheesy verify(times()) alternative.
         public AtomicInteger invocationCount = new AtomicInteger(0);
@@ -274,6 +279,13 @@ public class TelephonyRegistryTest extends TelephonyTest {
         public void onDataActivity(@Annotation.DataActivityType int direction) {
             invocationCount.incrementAndGet();
             mDataActivity = direction;
+        }
+
+        @Override
+        public void onSimultaneousCellularCallingSubscriptionsChanged(
+                @NonNull Set<Integer> simultaneousCallingSubscriptionIds) {
+            invocationCount.incrementAndGet();
+            mSimultaneousCallingSubscriptions = simultaneousCallingSubscriptionIds;
         }
     }
 
@@ -1530,5 +1542,24 @@ public class TelephonyRegistryTest extends TelephonyTest {
                 TelephonyManager.DATA_ACTIVITY_OUT);
         processAllMessages();
         assertEquals(TelephonyManager.DATA_ACTIVITY_OUT, mDataActivity);
+    }
+
+    @Test
+    public void testSimultaneousCellularCallingSubscriptionsChanged() {
+        final int subId = INVALID_SUBSCRIPTION_ID;
+        int[] events = {TelephonyCallback
+                .EVENT_SIMULTANEOUS_CELLULAR_CALLING_SUBSCRIPTIONS_CHANGED};
+
+        int[] subIds = {0, 1, 2};
+        Set<Integer> subIdSet = new ArraySet<>(3);
+        for (Integer s : subIds) {
+            subIdSet.add(s);
+        }
+        mTelephonyRegistry.listenWithEventList(false, false, subId, mContext.getOpPackageName(),
+                mContext.getAttributionTag(), mTelephonyCallback.callback, events, true);
+
+        mTelephonyRegistry.notifySimultaneousCellularCallingSubscriptionsChanged(subIds);
+        processAllMessages();
+        assertEquals(subIdSet, mSimultaneousCallingSubscriptions);
     }
 }

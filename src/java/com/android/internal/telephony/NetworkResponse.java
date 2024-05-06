@@ -24,7 +24,7 @@ import android.hardware.radio.network.IRadioNetworkResponse;
 import android.os.AsyncResult;
 import android.telephony.BarringInfo;
 import android.telephony.CellInfo;
-import android.telephony.EmergencyRegResult;
+import android.telephony.EmergencyRegistrationResult;
 import android.telephony.RadioAccessSpecifier;
 import android.telephony.SignalStrength;
 
@@ -429,7 +429,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
         RILRequest rr = mRil.processResponse(HAL_SERVICE_NETWORK, responseInfo);
 
         if (rr != null) {
-            EmergencyRegResult response = RILUtils.convertHalEmergencyRegResult(regState);
+            EmergencyRegistrationResult response = RILUtils.convertHalEmergencyRegResult(regState);
             if (responseInfo.error == RadioError.NONE) {
                 RadioResponse.sendMessageResponse(rr.mResult, response);
             }

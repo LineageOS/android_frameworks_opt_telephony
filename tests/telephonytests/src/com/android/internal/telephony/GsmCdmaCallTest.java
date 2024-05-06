@@ -16,10 +16,10 @@
 
 package com.android.internal.telephony;
 
-import android.test.suitebuilder.annotation.SmallTest;
-
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
+
+import androidx.test.filters.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;

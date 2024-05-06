@@ -25,9 +25,9 @@ import android.telephony.ims.aidl.IImsRcsFeature;
 import android.telephony.ims.feature.RcsFeature;
 import android.telephony.ims.stub.CapabilityExchangeEventListener;
 import android.telephony.ims.stub.RcsCapabilityExchangeImplBase;
-import android.test.suitebuilder.annotation.SmallTest;
 
 import androidx.annotation.NonNull;
+import androidx.test.filters.SmallTest;
 import androidx.test.runner.AndroidJUnit4;
 
 import com.android.internal.telephony.ims.ImsTestBase;

@@ -40,7 +40,7 @@ public class NtnCapabilityResolver {
     public static void resolveNtnCapability(
             @NonNull NetworkRegistrationInfo networkRegistrationInfo, int subId) {
         SatelliteController satelliteController = SatelliteController.getInstance();
-        List<String> satellitePlmnList = satelliteController.getSatellitePlmnList(subId);
+        List<String> satellitePlmnList = satelliteController.getSatellitePlmnsForCarrier(subId);
         String registeredPlmn = networkRegistrationInfo.getRegisteredPlmn();
         for (String satellitePlmn : satellitePlmnList) {
             if (TextUtils.equals(satellitePlmn, registeredPlmn)) {

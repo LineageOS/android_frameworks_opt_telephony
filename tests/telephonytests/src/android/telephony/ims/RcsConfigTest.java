@@ -30,9 +30,9 @@ import android.telephony.SubscriptionManager;
 import android.telephony.ims.RcsConfig;
 import android.telephony.ims.RcsConfig.Characteristic;
 import android.test.mock.MockContentResolver;
-import android.test.suitebuilder.annotation.SmallTest;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.FakeTelephonyProvider;
 

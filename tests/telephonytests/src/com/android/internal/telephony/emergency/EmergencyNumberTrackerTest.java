@@ -51,7 +51,6 @@ import androidx.test.InstrumentationRegistry;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
-import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyTest;
 
 import com.google.i18n.phonenumbers.ShortNumberInfo;
@@ -61,6 +60,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 
 import java.io.BufferedInputStream;
@@ -139,7 +139,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         mShortNumberInfo = mock(ShortNumberInfo.class);
         mCarrierConfigManagerMock = mock(CarrierConfigManager.class);
 
-        mContext = new ContextWrapper(InstrumentationRegistry.getTargetContext());
+        mContext = spy(new ContextWrapper(InstrumentationRegistry.getTargetContext()));
         mMockContext = mock(Context.class);
         mResources = mock(Resources.class);
 
@@ -151,9 +151,14 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         doReturn(1).when(mPhone2).getPhoneId();
         doReturn(SUB_ID_PHONE_2).when(mPhone2).getSubId();
 
+        doReturn(mPackageManager).when(mContext).getPackageManager();
+        doReturn(mPackageManager).when(mMockContext).getPackageManager();
+
         initializeEmergencyNumberListTestSamples();
-        mEmergencyNumberTrackerMock = new EmergencyNumberTracker(mPhone, mSimulatedCommands);
-        mEmergencyNumberTrackerMock2 = new EmergencyNumberTracker(mPhone2, mSimulatedCommands);
+        mEmergencyNumberTrackerMock = new EmergencyNumberTracker(mPhone, mSimulatedCommands,
+                mFeatureFlags);
+        mEmergencyNumberTrackerMock2 = new EmergencyNumberTracker(mPhone2, mSimulatedCommands,
+                mFeatureFlags);
         doReturn(mEmergencyNumberTrackerMock2).when(mPhone2).getEmergencyNumberTracker();
         mEmergencyNumberTrackerMock.DBG = true;
 
@@ -171,10 +176,13 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         // Set back to single sim mode
         setSinglePhone();
-        Path target = Paths.get(mLocalDownloadDirectory.getPath(), EMERGENCY_NUMBER_DB_OTA_FILE);
-        Files.deleteIfExists(target);
-        mLocalDownloadDirectory.delete();
-        mLocalDownloadDirectory = null;
+        if (mLocalDownloadDirectory != null) {
+            Path target = Paths.get(mLocalDownloadDirectory.getPath(),
+                    EMERGENCY_NUMBER_DB_OTA_FILE);
+            Files.deleteIfExists(target);
+            mLocalDownloadDirectory.delete();
+            mLocalDownloadDirectory = null;
+        }
         mEmergencyNumberTrackerMock = null;
         mEmergencyNumberTrackerMock2 = null;
         mEmergencyNumberListTestSample.clear();
@@ -361,12 +369,12 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     @Test
     public void testRegistrationForCountryChangeIntent() throws Exception {
         EmergencyNumberTracker localEmergencyNumberTracker;
-        Context spyContext = spy(mContext);
-        doReturn(spyContext).when(mPhone).getContext();
+        Mockito.clearInvocations(mContext);
         ArgumentCaptor<IntentFilter> intentCaptor = ArgumentCaptor.forClass(IntentFilter.class);
 
-        localEmergencyNumberTracker = new EmergencyNumberTracker(mPhone, mSimulatedCommands);
-        verify(spyContext, times(1)).registerReceiver(any(), intentCaptor.capture());
+        localEmergencyNumberTracker = new EmergencyNumberTracker(mPhone, mSimulatedCommands,
+                mFeatureFlags);
+        verify(mContext, times(1)).registerReceiver(any(), intentCaptor.capture());
         IntentFilter ifilter = intentCaptor.getValue();
         assertTrue(ifilter.hasAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED));
     }
@@ -543,7 +551,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
                 com.android.internal.R.bool.ignore_emergency_number_routing_from_db);
 
         EmergencyNumberTracker emergencyNumberTrackerMock = new EmergencyNumberTracker(
-                mPhone, mSimulatedCommands);
+                mPhone, mSimulatedCommands, mFeatureFlags);
         emergencyNumberTrackerMock.sendMessage(
                 emergencyNumberTrackerMock.obtainMessage(
                         1 /* EVENT_UNSOL_EMERGENCY_NUMBER_LIST */,
@@ -616,7 +624,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
                 com.android.internal.R.bool.ignore_emergency_number_routing_from_db);
 
         EmergencyNumberTracker emergencyNumberTrackerMock = new EmergencyNumberTracker(
-                mPhone, mSimulatedCommands);
+                mPhone, mSimulatedCommands, mFeatureFlags);
         emergencyNumberTrackerMock.sendMessage(
                 emergencyNumberTrackerMock.obtainMessage(
                         1 /* EVENT_UNSOL_EMERGENCY_NUMBER_LIST */,
@@ -720,7 +728,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
                 com.android.internal.R.bool.ignore_emergency_number_routing_from_db);
 
         EmergencyNumberTracker emergencyNumberTrackerMock = new EmergencyNumberTracker(
-                mPhone, mSimulatedCommands);
+                mPhone, mSimulatedCommands, mFeatureFlags);
         emergencyNumberTrackerMock.sendMessage(
                 emergencyNumberTrackerMock.obtainMessage(
                         1 /* EVENT_UNSOL_EMERGENCY_NUMBER_LIST */,
@@ -843,7 +851,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
                 ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
         EmergencyNumberTracker localEmergencyNumberTracker =
-                new EmergencyNumberTracker(mPhone, mSimulatedCommands);
+                new EmergencyNumberTracker(mPhone, mSimulatedCommands, mFeatureFlags);
         verify(mCarrierConfigManagerMock)
                 .registerCarrierConfigChangeListener(any(), listenerArgumentCaptor.capture());
         CarrierConfigManager.CarrierConfigChangeListener carrierConfigChangeListener =
