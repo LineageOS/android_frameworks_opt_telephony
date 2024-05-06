@@ -330,7 +330,7 @@ public class RILTest extends TelephonyTest {
         proxies.put(HAL_SERVICE_MODEM, mRadioModemProxy);
         mRILInstance = new RIL(context,
                 RadioAccessFamily.getRafFromNetworkType(RILConstants.PREFERRED_NETWORK_MODE),
-                Phone.PREFERRED_CDMA_SUBSCRIPTION, 0, proxies);
+                Phone.PREFERRED_CDMA_SUBSCRIPTION, 0, proxies, mFeatureFlags);
         mRILUnderTest = spy(mRILInstance);
         doReturn(mRadioProxy).when(mRILUnderTest).getRadioProxy();
         doReturn(mDataProxy).when(mRILUnderTest).getRadioServiceProxy(eq(RadioDataProxy.class));
@@ -354,6 +354,8 @@ public class RILTest extends TelephonyTest {
             replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV14);
         } catch (Exception e) {
         }
+
+        doReturn(true).when(mFeatureFlags).combineRilDeathHandle();
     }
 
     @After
