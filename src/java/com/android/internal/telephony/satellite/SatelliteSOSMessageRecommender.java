@@ -190,6 +190,11 @@ public class SatelliteSOSMessageRecommender extends Handler {
             return;
         }
 
+        if (hasMessages(EVENT_EMERGENCY_CALL_STARTED)) {
+            logd("onEmergencyCallStarted: Ignoring due to ongoing event:");
+            return;
+        }
+
         /*
          * Right now, assume that the device is connected to satellite via carrier within hysteresis
          * time. However, this might not be correct when the monitoring timer expires. Thus, we
