@@ -20,6 +20,7 @@ import static android.telephony.AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
 import static android.telephony.CarrierConfigManager.KEY_DATA_SWITCH_VALIDATION_MIN_INTERVAL_MILLIS_LONG;
 import static android.telephony.NetworkRegistrationInfo.DOMAIN_PS;
 
+import android.annotation.NonNull;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.Network;
@@ -358,7 +359,7 @@ public class CellularNetworkValidator {
          * ConnectivityManager.NetworkCallback implementation
          */
         @Override
-        public void onAvailable(Network network) {
+        public void onAvailable(@NonNull Network network) {
             logd("network onAvailable " + network);
             TelephonyMetrics.getInstance().writeNetworkValidate(
                     TelephonyEvent.NetworkValidationState.NETWORK_VALIDATION_STATE_AVAILABLE);
@@ -372,7 +373,7 @@ public class CellularNetworkValidator {
         }
 
         @Override
-        public void onLosing(Network network, int maxMsToLive) {
+        public void onLosing(@NonNull Network network, int maxMsToLive) {
             logd("network onLosing " + network + " maxMsToLive " + maxMsToLive);
             mValidatedNetworkCache.storeLastValidationResult(
                     ConnectivityNetworkCallback.this.mSubId, false);
@@ -380,7 +381,7 @@ public class CellularNetworkValidator {
         }
 
         @Override
-        public void onLost(Network network) {
+        public void onLost(@NonNull Network network) {
             logd("network onLost " + network);
             mValidatedNetworkCache.storeLastValidationResult(
                     ConnectivityNetworkCallback.this.mSubId, false);
@@ -396,7 +397,7 @@ public class CellularNetworkValidator {
         }
 
         @Override
-        public void onCapabilitiesChanged(Network network,
+        public void onCapabilitiesChanged(@NonNull Network network,
                 NetworkCapabilities networkCapabilities) {
             if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
                 logd("onValidated");

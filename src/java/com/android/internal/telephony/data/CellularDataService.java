@@ -18,6 +18,7 @@ package com.android.internal.telephony.data;
 
 import static android.telephony.data.DataServiceCallback.RESULT_SUCCESS;
 
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.LinkProperties;
 import android.os.AsyncResult;
@@ -41,6 +42,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * This class represents cellular data service which handles telephony data requests and response
@@ -61,6 +63,7 @@ public class CellularDataService extends DataService {
     private static final int CANCEL_HANDOVER                        = 8;
     private static final int APN_UNTHROTTLED                        = 9;
 
+    @SuppressWarnings("unchecked")
     private class CellularDataServiceProvider extends DataService.DataServiceProvider {
 
         private final Map<Message, DataServiceCallback> mCallbackMap = new HashMap<>();
@@ -69,14 +72,15 @@ public class CellularDataService extends DataService {
 
         private final Phone mPhone;
 
+        @SuppressWarnings("unchecked")
         private CellularDataServiceProvider(int slotId) {
             super(slotId);
 
             mPhone = PhoneFactory.getPhone(getSlotIndex());
 
-            mHandler = new Handler(Looper.myLooper()) {
+            mHandler = new Handler(Objects.requireNonNull(Looper.myLooper())) {
                 @Override
-                public void handleMessage(Message message) {
+                public void handleMessage(@NonNull Message message) {
                     DataServiceCallback callback = mCallbackMap.remove(message);
 
                     AsyncResult ar = (AsyncResult) message.obj;
@@ -162,10 +166,10 @@ public class CellularDataService extends DataService {
         }
 
         @Override
-        public void setupDataCall(int accessNetworkType, DataProfile dataProfile,
+        public void setupDataCall(int accessNetworkType, @NonNull DataProfile dataProfile,
                 boolean isRoaming, boolean allowRoaming, int reason, LinkProperties linkProperties,
                 int pduSessionId, NetworkSliceInfo sliceInfo, TrafficDescriptor trafficDescriptor,
-                boolean matchAllRuleAllowed, DataServiceCallback callback) {
+                boolean matchAllRuleAllowed, @Nullable DataServiceCallback callback) {
             // TODO: remove isRoaming parameter
             if (DBG) log("setupDataCall " + getSlotIndex());
 
@@ -198,8 +202,8 @@ public class CellularDataService extends DataService {
         }
 
         @Override
-        public void setInitialAttachApn(DataProfile dataProfile, boolean isRoaming,
-                DataServiceCallback callback) {
+        public void setInitialAttachApn(@NonNull DataProfile dataProfile, boolean isRoaming,
+                @Nullable DataServiceCallback callback) {
             // TODO: remove isRoaming parameter
             if (DBG) log("setInitialAttachApn " + getSlotIndex());
 
@@ -215,8 +219,8 @@ public class CellularDataService extends DataService {
         }
 
         @Override
-        public void setDataProfile(List<DataProfile> dps, boolean isRoaming,
-                DataServiceCallback callback) {
+        public void setDataProfile(@NonNull List<DataProfile> dps, boolean isRoaming,
+                @Nullable DataServiceCallback callback) {
             // TODO: remove isRoaming parameter
             if (DBG) log("setDataProfile " + getSlotIndex());
 
@@ -232,7 +236,7 @@ public class CellularDataService extends DataService {
         }
 
         @Override
-        public void requestDataCallList(DataServiceCallback callback) {
+        public void requestDataCallList(@Nullable DataServiceCallback callback) {
             if (DBG) log("requestDataCallList " + getSlotIndex());
 
             Message message = null;
@@ -246,7 +250,7 @@ public class CellularDataService extends DataService {
         }
 
         @Override
-        public void startHandover(int cid, DataServiceCallback callback) {
+        public void startHandover(int cid, @Nullable DataServiceCallback callback) {
             if (DBG) log("startHandover " + getSlotIndex());
             Message message = null;
             // Only obtain the message when the caller wants a callback. If the caller doesn't care
@@ -259,7 +263,7 @@ public class CellularDataService extends DataService {
         }
 
         @Override
-        public void cancelHandover(int cid, DataServiceCallback callback) {
+        public void cancelHandover(int cid, @Nullable DataServiceCallback callback) {
             Message message = null;
             // Only obtain the message when the caller wants a callback. If the caller doesn't care
             // the request completed or results, then no need to pass the message down.

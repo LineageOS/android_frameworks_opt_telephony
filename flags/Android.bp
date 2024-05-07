@@ -33,7 +33,6 @@ aconfig_declarations {
         "subscription.aconfig",
         "uicc.aconfig",
         "satellite.aconfig",
-        "iwlan.aconfig",
-        "telephony.aconfig",
+        "iwlan.aconfig"
     ],
 }

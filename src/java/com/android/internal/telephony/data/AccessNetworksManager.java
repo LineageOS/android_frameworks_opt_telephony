@@ -69,7 +69,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -86,7 +85,8 @@ public class AccessNetworksManager extends Handler {
     /**
      * The counters to detect frequent QNS attempt to change preferred network transport by ApnType.
      */
-    private final @NonNull SparseArray<SlidingWindowEventCounter> mApnTypeToQnsChangeNetworkCounter;
+    @NonNull
+    private final SparseArray<SlidingWindowEventCounter> mApnTypeToQnsChangeNetworkCounter;
 
     private final String mLogTag;
     private final LocalLog mLocalLog = new LocalLog(64);
@@ -109,11 +109,10 @@ public class AccessNetworksManager extends Handler {
 
     private final CarrierConfigManager mCarrierConfigManager;
 
-    private @Nullable DataConfigManager mDataConfigManager;
+    @Nullable
+    private DataConfigManager mDataConfigManager;
 
     private IQualifiedNetworksService mIQualifiedNetworksService;
-
-    private AccessNetworksManagerDeathRecipient mDeathRecipient;
 
     private String mTargetBindingPackageName;
 
@@ -122,7 +121,8 @@ public class AccessNetworksManager extends Handler {
     // Available networks. Key is the APN type.
     private final SparseArray<int[]> mAvailableNetworks = new SparseArray<>();
 
-    private final @TransportType int[] mAvailableTransports;
+    @TransportType
+    private final int[] mAvailableTransports;
 
     private final RegistrantList mQualifiedNetworksChangedRegistrants = new RegistrantList();
 
@@ -135,7 +135,8 @@ public class AccessNetworksManager extends Handler {
     /**
      * Callbacks for passing information to interested clients.
      */
-    private final @NonNull Set<AccessNetworksManagerCallback> mAccessNetworksManagerCallbacks =
+    @NonNull
+    private final Set<AccessNetworksManagerCallback> mAccessNetworksManagerCallbacks =
             new ArraySet<>();
 
     private final FeatureFlags mFeatureFlags;
@@ -144,7 +145,8 @@ public class AccessNetworksManager extends Handler {
      * Represents qualified network types list on a specific APN type.
      */
     public static class QualifiedNetworks {
-        public final @ApnType int apnType;
+        @ApnType
+        public final int apnType;
         // The qualified networks in preferred order. Each network is a AccessNetworkType.
         public final @NonNull @RadioAccessNetworkType int[] qualifiedNetworks;
         public QualifiedNetworks(@ApnType int apnType, @NonNull int[] qualifiedNetworks) {
@@ -198,11 +200,12 @@ public class AccessNetworksManager extends Handler {
         public void onServiceConnected(ComponentName name, IBinder service) {
             if (DBG) log("onServiceConnected " + name);
             mIQualifiedNetworksService = IQualifiedNetworksService.Stub.asInterface(service);
-            mDeathRecipient = new AccessNetworksManagerDeathRecipient();
+            AccessNetworksManagerDeathRecipient deathRecipient =
+                    new AccessNetworksManagerDeathRecipient();
             mLastBoundPackageName = getQualifiedNetworksServicePackageName();
 
             try {
-                service.linkToDeath(mDeathRecipient, 0 /* flags */);
+                service.linkToDeath(deathRecipient, 0 /* flags */);
                 mIQualifiedNetworksService.createNetworkAvailabilityProvider(mPhone.getPhoneId(),
                         new QualifiedNetworksServiceCallback());
             } catch (RemoteException e) {
@@ -328,21 +331,16 @@ public class AccessNetworksManager extends Handler {
             log("onNetworkValidationRequested: networkCapability = ["
                     + DataUtils.networkCapabilityToString(networkCapability) + "]");
 
-            dnc.requestNetworkValidation(networkCapability, new Consumer<>() {
-                @Override
-                public void accept(Integer result) {
-                    post(() -> {
-                        try {
-                            log("onNetworkValidationRequestDone:"
-                                    + DataServiceCallback.resultCodeToString(result));
-                            resultCodeCallback.accept(result);
-                        } catch (RemoteException e) {
-                            // Ignore if the remote process is no longer available to call back.
-                            loge("onNetworkValidationRequestDone RemoteException" + e);
-                        }
-                    });
+            dnc.requestNetworkValidation(networkCapability, result -> post(() -> {
+                try {
+                    log("onNetworkValidationRequestDone:"
+                            + DataServiceCallback.resultCodeToString(result));
+                    resultCodeCallback.accept(result);
+                } catch (RemoteException e) {
+                    // Ignore if the remote process is no longer available to call back.
+                    loge("onNetworkValidationRequestDone RemoteException" + e);
                 }
-            });
+            }));
         }
 
         @Override

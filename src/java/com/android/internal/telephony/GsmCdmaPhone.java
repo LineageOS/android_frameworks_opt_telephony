@@ -411,7 +411,7 @@ public class GsmCdmaPhone extends Phone {
 
         mLinkBandwidthEstimator = mTelephonyComponentFactory
                 .inject(LinkBandwidthEstimator.class.getName())
-                .makeLinkBandwidthEstimator(this);
+                .makeLinkBandwidthEstimator(this, getLooper());
 
         mCallWaitingController = new CallWaitingController(this);
 

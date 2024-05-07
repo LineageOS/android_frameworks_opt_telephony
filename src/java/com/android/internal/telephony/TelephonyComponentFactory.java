@@ -523,8 +523,8 @@ public class TelephonyComponentFactory {
     /**
      * Create a new LinkBandwidthEstimator.
      */
-    public LinkBandwidthEstimator makeLinkBandwidthEstimator(Phone phone) {
-        return new LinkBandwidthEstimator(phone, mTelephonyFacade);
+    public LinkBandwidthEstimator makeLinkBandwidthEstimator(Phone phone, Looper looper) {
+        return new LinkBandwidthEstimator(phone, looper, mTelephonyFacade);
     }
 
     /**

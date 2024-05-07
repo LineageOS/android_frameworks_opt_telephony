@@ -362,6 +362,8 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.ALARM_SERVICE;
             } else if (serviceClass == DevicePolicyManager.class) {
                 return Context.DEVICE_POLICY_SERVICE;
+            } else if (serviceClass == NotificationManager.class) {
+                return Context.NOTIFICATION_SERVICE;
             }
             return super.getSystemServiceName(serviceClass);
         }
