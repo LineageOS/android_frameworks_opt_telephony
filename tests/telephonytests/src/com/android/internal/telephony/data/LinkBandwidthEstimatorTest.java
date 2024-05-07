@@ -43,6 +43,7 @@ import static org.mockito.Mockito.when;
 
 import android.net.NetworkCapabilities;
 import android.os.Handler;
+import android.os.Looper;
 import android.telephony.CellIdentityLte;
 import android.telephony.ModemActivityInfo;
 import android.telephony.NetworkRegistrationInfo;
@@ -116,7 +117,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         when(mPhone.getSubId()).thenReturn(1);
         when(mSignalStrength.getDbm()).thenReturn(-100);
         when(mSignalStrength.getLevel()).thenReturn(1);
-        mLBE = new LinkBandwidthEstimator(mPhone, mTelephonyFacade);
+        mLBE = new LinkBandwidthEstimator(mPhone, Looper.myLooper(), mTelephonyFacade);
         mLBE.obtainMessage(MSG_DEFAULT_NETWORK_CHANGED, mNetworkCapabilities).sendToTarget();
         mLBE.obtainMessage(MSG_SCREEN_STATE_CHANGED, false).sendToTarget();
         mLBE.obtainMessage(MSG_ACTIVE_PHONE_CHANGED, 1).sendToTarget();

@@ -213,12 +213,13 @@ public class DataStallRecoveryManager extends Handler {
             Settings.Global.DSRM_DURATION_MILLIS);
 
 
-    private DataStallRecoveryManagerCallback mDataStallRecoveryManagerCallback;
+    private final DataStallRecoveryManagerCallback mDataStallRecoveryManagerCallback;
 
     private final DataStallRecoveryStats mStats;
 
     /** The number of milliseconds to wait for the DSRM prediction to complete. */
-    private @ElapsedRealtimeLong long mPredictWaitingMillis = 0L;
+    @ElapsedRealtimeLong
+    private long mPredictWaitingMillis = 0L;
 
     /**
      * The data stall recovery manager callback. Note this is only used for passing information

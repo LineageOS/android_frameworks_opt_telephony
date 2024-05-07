@@ -137,17 +137,26 @@ public class AutoDataSwitchController extends Handler {
     private static final long RETRY_LONG_DELAY_TIMER_THRESHOLD_MILLIS = TimeUnit
             .MINUTES.toMillis(1);
 
-    private final @NonNull LocalLog mLocalLog = new LocalLog(128);
-    private final @NonNull Context mContext;
-    private static @NonNull FeatureFlags sFeatureFlags = new FeatureFlagsImpl();
-    private final @NonNull SubscriptionManagerService mSubscriptionManagerService;
-    private final @NonNull PhoneSwitcher mPhoneSwitcher;
-    private final @NonNull AutoDataSwitchControllerCallback mPhoneSwitcherCallback;
-    private final @NonNull AlarmManager mAlarmManager;
+    @NonNull
+    private final LocalLog mLocalLog = new LocalLog(128);
+    @NonNull
+    private final Context mContext;
+    @NonNull
+    private static FeatureFlags sFeatureFlags = new FeatureFlagsImpl();
+    @NonNull
+    private final SubscriptionManagerService mSubscriptionManagerService;
+    @NonNull
+    private final PhoneSwitcher mPhoneSwitcher;
+    @NonNull
+    private final AutoDataSwitchControllerCallback mPhoneSwitcherCallback;
+    @NonNull
+    private final AlarmManager mAlarmManager;
     /** A map of a scheduled event to its associated extra for action when the event fires off. */
-    private final @NonNull Map<Integer, Object> mScheduledEventsToExtras;
+    @NonNull
+    private final Map<Integer, Object> mScheduledEventsToExtras;
     /** A map of an event to its associated alarm listener callback for when the event fires off. */
-    private final @NonNull Map<Integer, AlarmManager.OnAlarmListener> mEventsToAlarmListener;
+    @NonNull
+    private final Map<Integer, AlarmManager.OnAlarmListener> mEventsToAlarmListener;
     /**
      * Event extras for checking environment stability.
      * @param targetPhoneId The target phone Id to switch to when the stability check pass.
@@ -193,7 +202,7 @@ public class AutoDataSwitchController extends Handler {
      * To indicate whether allow using roaming nDDS if user enabled its roaming when the DDS is not
      * usable(OOS or disabled roaming)
      */
-    private boolean mAllowNddsRoamning = true;
+    private boolean mAllowNddsRoaming = true;
     /** The count of consecutive auto switch validation failure **/
     private int mAutoSwitchValidationFailedCount = 0;
     /**
@@ -202,7 +211,8 @@ public class AutoDataSwitchController extends Handler {
     private int mAutoDataSwitchValidationMaxRetry;
 
     /** The signal status of phones, where index corresponds to phone Id. */
-    private @NonNull PhoneSignalStatus[] mPhonesSignalStatus;
+    @NonNull
+    private PhoneSignalStatus[] mPhonesSignalStatus;
     /**
      * The phone Id of the pending switching phone. Used for pruning frequent switch evaluation.
      */
@@ -268,23 +278,24 @@ public class AutoDataSwitchController extends Handler {
             boolean isUsingNonTerrestrialNetwork = sFeatureFlags.carrierEnabledSatelliteFlag()
                     && (serviceState != null) && serviceState.isUsingNonTerrestrialNetwork();
 
-            switch (mDataRegState) {
-                case NetworkRegistrationInfo.REGISTRATION_STATE_HOME:
+            return switch (mDataRegState) {
+                case NetworkRegistrationInfo.REGISTRATION_STATE_HOME -> {
                     if (isUsingNonTerrestrialNetwork) {
-                        return UsableState.NON_TERRESTRIAL;
+                        yield UsableState.NON_TERRESTRIAL;
                     }
-                    return UsableState.HOME;
-                case NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING:
+                    yield UsableState.HOME;
+                }
+                case NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING -> {
                     if (mPhone.getDataRoamingEnabled()) {
                         if (isUsingNonTerrestrialNetwork) {
-                            return UsableState.NON_TERRESTRIAL;
+                            yield UsableState.NON_TERRESTRIAL;
                         }
-                        return UsableState.ROAMING_ENABLED;
+                        yield UsableState.ROAMING_ENABLED;
                     }
-                    return UsableState.NOT_USABLE;
-                default:
-                    return UsableState.NOT_USABLE;
-            }
+                    yield UsableState.NOT_USABLE;
+                }
+                default -> UsableState.NOT_USABLE;
+            };
         }
 
         @Override
@@ -450,7 +461,7 @@ public class AutoDataSwitchController extends Handler {
         DataConfigManager dataConfig = phone.getDataNetworkController().getDataConfigManager();
         mScoreTolerance =  dataConfig.getAutoDataSwitchScoreTolerance();
         mRequirePingTestBeforeSwitch = dataConfig.isPingTestBeforeAutoDataSwitchRequired();
-        mAllowNddsRoamning = dataConfig.doesAutoDataSwitchAllowRoaming();
+        mAllowNddsRoaming = dataConfig.doesAutoDataSwitchAllowRoaming();
         mAutoDataSwitchAvailabilityStabilityTimeThreshold =
                 dataConfig.getAutoDataSwitchAvailabilityStabilityTimeThreshold();
         mAutoDataSwitchPerformanceStabilityTimeThreshold =
@@ -929,7 +940,7 @@ public class AutoDataSwitchController extends Handler {
      * @return {@code true} If the feature of switching to roaming non DDS is enabled.
      */
     private boolean isNddsRoamingEnabled() {
-        return sFeatureFlags.autoDataSwitchAllowRoaming() && mAllowNddsRoamning;
+        return sFeatureFlags.autoDataSwitchAllowRoaming() && mAllowNddsRoaming;
     }
 
     /**
@@ -1012,19 +1023,20 @@ public class AutoDataSwitchController extends Handler {
     }
 
     /** Auto data switch evaluation reason to string. */
-    public static @NonNull String evaluationReasonToString(
+    @NonNull
+    public static String evaluationReasonToString(
             @AutoDataSwitchEvaluationReason int reason) {
-        switch (reason) {
-            case EVALUATION_REASON_REGISTRATION_STATE_CHANGED: return "REGISTRATION_STATE_CHANGED";
-            case EVALUATION_REASON_DISPLAY_INFO_CHANGED: return "DISPLAY_INFO_CHANGED";
-            case EVALUATION_REASON_SIGNAL_STRENGTH_CHANGED: return "SIGNAL_STRENGTH_CHANGED";
-            case EVALUATION_REASON_DEFAULT_NETWORK_CHANGED: return "DEFAULT_NETWORK_CHANGED";
-            case EVALUATION_REASON_DATA_SETTINGS_CHANGED: return "DATA_SETTINGS_CHANGED";
-            case EVALUATION_REASON_RETRY_VALIDATION: return "RETRY_VALIDATION";
-            case EVALUATION_REASON_SIM_LOADED: return "SIM_LOADED";
-            case EVALUATION_REASON_VOICE_CALL_END: return "VOICE_CALL_END";
-        }
-        return "Unknown(" + reason + ")";
+        return switch (reason) {
+            case EVALUATION_REASON_REGISTRATION_STATE_CHANGED -> "REGISTRATION_STATE_CHANGED";
+            case EVALUATION_REASON_DISPLAY_INFO_CHANGED -> "DISPLAY_INFO_CHANGED";
+            case EVALUATION_REASON_SIGNAL_STRENGTH_CHANGED -> "SIGNAL_STRENGTH_CHANGED";
+            case EVALUATION_REASON_DEFAULT_NETWORK_CHANGED -> "DEFAULT_NETWORK_CHANGED";
+            case EVALUATION_REASON_DATA_SETTINGS_CHANGED -> "DATA_SETTINGS_CHANGED";
+            case EVALUATION_REASON_RETRY_VALIDATION -> "RETRY_VALIDATION";
+            case EVALUATION_REASON_SIM_LOADED -> "SIM_LOADED";
+            case EVALUATION_REASON_VOICE_CALL_END -> "VOICE_CALL_END";
+            default -> "Unknown(" + reason + ")";
+        };
     }
 
     /** @return {@code true} if the sub is active. */
@@ -1085,8 +1097,9 @@ public class AutoDataSwitchController extends Handler {
      * @param isDueToAutoSwitch {@code true} if the switch was due to auto data switch feature.
      */
     public void displayAutoDataSwitchNotification(int phoneId, boolean isDueToAutoSwitch) {
-        NotificationManager notificationManager = (NotificationManager)
-                mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager notificationManager = mContext.getSystemService(
+                NotificationManager.class);
+        if (notificationManager == null) return;
         if (mDisplayedNotification) {
             // cancel posted notification if any exist
             notificationManager.cancel(AUTO_DATA_SWITCH_NOTIFICATION_TAG,

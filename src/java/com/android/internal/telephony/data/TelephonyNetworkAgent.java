@@ -54,7 +54,8 @@ public class TelephonyNetworkAgent extends NetworkAgent {
     private static final int NETWORK_AGENT_TEARDOWN_DELAY_MS = 5_000;
 
     /** The parent data network. */
-    private final @NonNull DataNetwork mDataNetwork;
+    @NonNull
+    private final DataNetwork mDataNetwork;
 
     /** This is the id from {@link NetworkAgent#register()}. */
     private final int mId;

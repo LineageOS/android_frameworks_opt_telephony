@@ -60,6 +60,7 @@ import com.android.internal.telephony.PhoneConfigurationManager;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -87,7 +88,6 @@ public class DataServiceManager extends Handler {
 
     private final String mTag;
 
-    private final CarrierConfigManager mCarrierConfigManager;
     private final AppOpsManager mAppOps;
     private final LegacyPermissionManager mPermissionManager;
 
@@ -96,8 +96,6 @@ public class DataServiceManager extends Handler {
     private boolean mBound;
 
     private IDataService mIDataService;
-
-    private DataServiceManagerDeathRecipient mDeathRecipient;
 
     private final RegistrantList mServiceBindingChangedRegistrants = new RegistrantList();
 
@@ -113,7 +111,7 @@ public class DataServiceManager extends Handler {
 
     private String mLastBoundPackageName;
 
-    private List<DataCallResponse> mLastDataCallResponseList = Collections.EMPTY_LIST;
+    private List<DataCallResponse> mLastDataCallResponseList = new ArrayList<>();
 
     private class DataServiceManagerDeathRecipient implements IBinder.DeathRecipient {
         @Override
@@ -132,7 +130,7 @@ public class DataServiceManager extends Handler {
             mMessageMap.clear();
 
             // Tear down all connections
-            mLastDataCallResponseList = Collections.EMPTY_LIST;
+            mLastDataCallResponseList = new ArrayList<>();
             mDataCallListChangedRegistrants.notifyRegistrants(
                     new AsyncResult(null, Collections.EMPTY_LIST, null));
         }
@@ -204,12 +202,11 @@ public class DataServiceManager extends Handler {
         public void onServiceConnected(ComponentName name, IBinder service) {
             if (DBG) log("onServiceConnected: " + name);
             mIDataService = IDataService.Stub.asInterface(service);
-            mDeathRecipient = new DataServiceManagerDeathRecipient();
             mBound = true;
             mLastBoundPackageName = getDataServicePackageName();
 
             try {
-                service.linkToDeath(mDeathRecipient, 0);
+                service.linkToDeath(new DataServiceManagerDeathRecipient(), 0);
                 mIDataService.createDataServiceProvider(mPhone.getPhoneId());
                 mIDataService.registerForDataCallListChanged(mPhone.getPhoneId(),
                         new DataServiceCallbackWrapper("dataCallListChanged"));
@@ -317,7 +314,7 @@ public class DataServiceManager extends Handler {
         @Override
         public void onDataCallListChanged(List<DataCallResponse> dataCallList) {
             mLastDataCallResponseList =
-                    dataCallList != null ? dataCallList : Collections.EMPTY_LIST;
+                    dataCallList != null ? dataCallList : new ArrayList<>();
             mDataCallListChangedRegistrants.notifyRegistrants(
                     new AsyncResult(null, dataCallList, null));
         }
@@ -372,8 +369,8 @@ public class DataServiceManager extends Handler {
         mTag = "DSM-" + (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN ? "C-"
                 : "I-") + mPhone.getPhoneId();
         mBound = false;
-        mCarrierConfigManager = (CarrierConfigManager) phone.getContext().getSystemService(
-                Context.CARRIER_CONFIG_SERVICE);
+        CarrierConfigManager carrierConfigManager = phone.getContext().getSystemService(
+                CarrierConfigManager.class);
         // NOTE: Do NOT use AppGlobals to retrieve the permission manager; AppGlobals
         // caches the service instance, but we need to explicitly request a new service
         // so it can be mocked out for tests
@@ -382,17 +379,18 @@ public class DataServiceManager extends Handler {
         mAppOps = (AppOpsManager) phone.getContext().getSystemService(Context.APP_OPS_SERVICE);
 
         // Callback is executed in handler thread to directly handle config change.
-        mCarrierConfigManager.registerCarrierConfigChangeListener(this::post,
-                (slotIndex, subId, carrierId, specificCarrierId) -> {
-                    if (slotIndex == mPhone.getPhoneId()) {
-                        // We should wait for carrier config changed event because the
-                        // target binding package name can come from the carrier config.
-                        // Note that we still get this event even when SIM is absent.
-                        if (DBG) log("Carrier config changed. Try to bind data service.");
-                        rebindDataService();
-                    }
-                });
-
+        if (carrierConfigManager != null) {
+            carrierConfigManager.registerCarrierConfigChangeListener(this::post,
+                    (slotIndex, subId, carrierId, specificCarrierId) -> {
+                        if (slotIndex == mPhone.getPhoneId()) {
+                            // We should wait for carrier config changed event because the
+                            // target binding package name can come from the carrier config.
+                            // Note that we still get this event even when SIM is absent.
+                            if (DBG) log("Carrier config changed. Try to bind data service.");
+                            rebindDataService();
+                        }
+                    });
+        }
         PhoneConfigurationManager.registerForMultiSimConfigChange(
                 this, EVENT_BIND_DATA_SERVICE, null);
 
@@ -406,12 +404,10 @@ public class DataServiceManager extends Handler {
      */
     @Override
     public void handleMessage(Message msg) {
-        switch (msg.what) {
-            case EVENT_BIND_DATA_SERVICE:
-                rebindDataService();
-                break;
-            default:
-                loge("Unhandled event " + msg.what);
+        if (msg.what == EVENT_BIND_DATA_SERVICE) {
+            rebindDataService();
+        } else {
+            loge("Unhandled event " + msg.what);
         }
     }
 
@@ -487,7 +483,8 @@ public class DataServiceManager extends Handler {
         bindDataService(packageName);
     }
 
-    private @NonNull Set<String> getAllDataServicePackageNames() {
+    @NonNull
+    private Set<String> getAllDataServicePackageNames() {
         // Cowardly using the public PackageManager interface here.
         // Note: This matches only packages that were installed on the system image. If we ever
         // expand the permissions model to allow CarrierPrivileged packages, then this will need
@@ -515,7 +512,7 @@ public class DataServiceManager extends Handler {
 
     /**
      * Get the data service package by transport type.
-     *
+     * <p>
      * When we bind to a DataService package, we need to revoke permissions from stale
      * packages; we need to exclude data packages for all transport types, so we need to
      * to be able to query by transport type.
@@ -700,13 +697,13 @@ public class DataServiceManager extends Handler {
 
     /**
      * Indicates that a handover has begun.  This is called on the source transport.
-     *
+     * <p>
      * Any resources being transferred cannot be released while a
      * handover is underway.
-     *
+     * <p>
      * If a handover was unsuccessful, then the framework calls DataServiceManager#cancelHandover.
      * The target transport retains ownership over any of the resources being transferred.
-     *
+     * <p>
      * If a handover was successful, the framework calls DataServiceManager#deactivateDataCall with
      * reason HANDOVER. The target transport now owns the transferred resources and is
      * responsible for releasing them.
@@ -738,7 +735,7 @@ public class DataServiceManager extends Handler {
     /**
      * Indicates that a handover was cancelled after a call to DataServiceManager#startHandover.
      * This is called on the source transport.
-     *
+     * <p>
      * Since the handover was unsuccessful, the source transport retains ownership over any of
      * the resources being transferred and is still responsible for releasing them.
      *
@@ -755,9 +752,7 @@ public class DataServiceManager extends Handler {
 
         DataServiceCallbackWrapper callback =
                 new DataServiceCallbackWrapper("cancelHandover");
-        if (onCompleteMessage != null) {
-            mMessageMap.put(callback.asBinder(), onCompleteMessage);
-        }
+        mMessageMap.put(callback.asBinder(), onCompleteMessage);
 
         try {
             mIDataService.cancelHandover(mPhone.getPhoneId(), cid, callback);
@@ -856,9 +851,7 @@ public class DataServiceManager extends Handler {
             mIDataService.requestDataCallList(mPhone.getPhoneId(), callback);
         } catch (RemoteException e) {
             loge("Cannot invoke requestDataCallList on data service.");
-            if (callback != null) {
-                mMessageMap.remove(callback.asBinder());
-            }
+            mMessageMap.remove(callback.asBinder());
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
         }
     }
