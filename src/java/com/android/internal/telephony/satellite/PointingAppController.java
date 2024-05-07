@@ -62,6 +62,8 @@ public class PointingAppController {
     @NonNull private final Context mContext;
     private boolean mStartedSatelliteTransmissionUpdates;
     private boolean mLastNeedFullScreenPointingUI;
+    private boolean mLastIsDemoMode;
+    private boolean mLastIsEmergency;
     private boolean mListenerForPointingUIRegistered;
     @NonNull private String mPointingUiPackageName = "";
     @NonNull private String mPointingUiClassName = "";
@@ -105,6 +107,8 @@ public class PointingAppController {
         mContext = context;
         mStartedSatelliteTransmissionUpdates = false;
         mLastNeedFullScreenPointingUI = false;
+        mLastIsDemoMode = false;
+        mLastIsEmergency = false;
         mListenerForPointingUIRegistered = false;
         mActivityManager = mContext.getSystemService(ActivityManager.class);
     }
@@ -130,15 +134,6 @@ public class PointingAppController {
     }
 
     /**
-     * Get the flag mStartedSatelliteTransmissionUpdates
-     * @return returns mStartedSatelliteTransmissionUpdates
-     */
-    @VisibleForTesting
-    public boolean getLastNeedFullScreenPointingUI() {
-        return mLastNeedFullScreenPointingUI;
-    }
-
-    /**
      * Listener for handling pointing UI App in the event of crash
      */
     @VisibleForTesting
@@ -153,7 +148,8 @@ public class PointingAppController {
             if (callerPackages != null) {
                 if (Arrays.stream(callerPackages).anyMatch(pointingUiPackage::contains)) {
                     logd("Restarting pointingUI");
-                    startPointingUI(mLastNeedFullScreenPointingUI);
+                    startPointingUI(mLastNeedFullScreenPointingUI, mLastIsDemoMode,
+                            mLastIsEmergency);
                 }
             }
         }
@@ -359,7 +355,8 @@ public class PointingAppController {
      * Check if Pointing is needed and Launch Pointing UI
      * @param needFullScreenPointingUI if pointing UI has to be launchd with Full screen
      */
-    public void startPointingUI(boolean needFullScreenPointingUI) {
+    public void startPointingUI(boolean needFullScreenPointingUI, boolean isDemoMode,
+            boolean isEmergency) {
         String packageName = getPointingUiPackageName();
         if (TextUtils.isEmpty(packageName)) {
             logd("startPointingUI: config_pointing_ui_package is not set. Ignore the request");
@@ -379,8 +376,11 @@ public class PointingAppController {
             loge("startPointingUI: launchIntent is null");
             return;
         }
-        logd("startPointingUI: needFullScreenPointingUI: " + needFullScreenPointingUI);
+        logd("startPointingUI: needFullScreenPointingUI: " + needFullScreenPointingUI
+                + ", isDemoMode: " + isDemoMode + ", isEmergency: " + isEmergency);
         launchIntent.putExtra("needFullScreen", needFullScreenPointingUI);
+        launchIntent.putExtra("isDemoMode", isDemoMode);
+        launchIntent.putExtra("isEmergency", isEmergency);
 
         try {
             if (!mListenerForPointingUIRegistered) {
@@ -389,6 +389,8 @@ public class PointingAppController {
                 mListenerForPointingUIRegistered = true;
             }
             mLastNeedFullScreenPointingUI = needFullScreenPointingUI;
+            mLastIsDemoMode = isDemoMode;
+            mLastIsEmergency = isEmergency;
             mContext.startActivity(launchIntent);
         } catch (ActivityNotFoundException ex) {
             loge("startPointingUI: Pointing UI app activity is not found, ex=" + ex);

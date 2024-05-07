@@ -76,6 +76,8 @@ public class PointingAppControllerTest extends TelephonyTest {
     private static final String KEY_POINTING_UI_PACKAGE_NAME = "default_pointing_ui_package";
     private static final String KEY_POINTING_UI_CLASS_NAME = "default_pointing_ui_class";
     private static final String KEY_NEED_FULL_SCREEN = "needFullScreen";
+    private static final String KEY_IS_DEMO_MODE = "isDemoMode";
+    private static final String KEY_IS_EMERGENCY = "isEmergency";
 
     private PointingAppController mPointingAppController;
     InOrder mInOrder;
@@ -312,7 +314,7 @@ public class PointingAppControllerTest extends TelephonyTest {
     @Test
     public void testStartPointingUI() throws Exception {
         ArgumentCaptor<Intent> startedIntentCaptor = ArgumentCaptor.forClass(Intent.class);
-        mPointingAppController.startPointingUI(true);
+        mPointingAppController.startPointingUI(true, true, true);
         verify(mContext).startActivity(startedIntentCaptor.capture());
         Intent intent = startedIntentCaptor.getValue();
         assertEquals(KEY_POINTING_UI_PACKAGE_NAME, intent.getComponent().getPackageName());
@@ -320,19 +322,24 @@ public class PointingAppControllerTest extends TelephonyTest {
         Bundle b = intent.getExtras();
         assertTrue(b.containsKey(KEY_NEED_FULL_SCREEN));
         assertTrue(b.getBoolean(KEY_NEED_FULL_SCREEN));
+        assertTrue(b.containsKey(KEY_IS_DEMO_MODE));
+        assertTrue(b.getBoolean(KEY_IS_DEMO_MODE));
+        assertTrue(b.containsKey(KEY_IS_EMERGENCY));
+        assertTrue(b.getBoolean(KEY_IS_EMERGENCY));
     }
 
     @Test
     public void testRestartPointingUi() throws Exception {
-        mPointingAppController.startPointingUI(true);
+        mPointingAppController.startPointingUI(true, false, true);
         mInOrderForPointingUi.verify(mContext).startActivity(any(Intent.class));
-        testRestartPointingUi(true);
-        mPointingAppController.startPointingUI(false);
+        testRestartPointingUi(true, false, true);
+        mPointingAppController.startPointingUI(false, true, false);
         mInOrderForPointingUi.verify(mContext).startActivity(any(Intent.class));
-        testRestartPointingUi(false);
+        testRestartPointingUi(false, true, false);
     }
 
-    private void testRestartPointingUi(boolean expectedFullScreen) {
+    private void testRestartPointingUi(boolean expectedFullScreen, boolean expectedDemoMode,
+            boolean expectedEmergency) {
         when(mContext.getPackageManager()).thenReturn(mPackageManager);
         doReturn(new String[]{KEY_POINTING_UI_PACKAGE_NAME}).when(mPackageManager)
             .getPackagesForUid(anyInt());
@@ -346,6 +353,12 @@ public class PointingAppControllerTest extends TelephonyTest {
         assertTrue(b.containsKey(KEY_NEED_FULL_SCREEN));
         // Checking if last value of KEY_NEED_FULL_SCREEN is taken or not
         assertEquals(expectedFullScreen, b.getBoolean(KEY_NEED_FULL_SCREEN));
+        assertTrue(b.containsKey(KEY_IS_DEMO_MODE));
+        // Checking if last value of KEY_IS_DEMO_MODE is taken or not
+        assertEquals(expectedDemoMode, b.getBoolean(KEY_IS_DEMO_MODE));
+        assertTrue(b.containsKey(KEY_IS_EMERGENCY));
+        // Checking if last value of KEY_IS_EMERGENCY is taken or not
+        assertEquals(expectedEmergency, b.getBoolean(KEY_IS_EMERGENCY));
     }
 
     @Test
