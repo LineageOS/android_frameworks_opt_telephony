@@ -157,6 +157,11 @@ public class ImsPhoneConnection extends Connection implements
      */
     private boolean mIsHeldByRemote = false;
 
+    /**
+     * Used to indicate if both the user and carrier config have enabled the business composer.
+     */
+    private boolean mIsBusinessComposerFeatureEnabled = false;
+
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
     private static final int EVENT_PAUSE_DONE = 2;
@@ -229,6 +234,10 @@ public class ImsPhoneConnection extends Connection implements
         mIsIncoming = !isUnknown;
         mCreateTime = System.currentTimeMillis();
         mUusInfo = null;
+
+        if (com.android.server.telecom.flags.Flags.businessCallComposer()) {
+            setIsBusinessComposerFeatureEnabled(phone);
+        }
 
         // Ensure any extras set on the ImsCallProfile at the start of the call are cached locally
         // in the ImsPhoneConnection.  This isn't going to inform any listeners (since the original
@@ -1389,8 +1398,16 @@ public class ImsPhoneConnection extends Connection implements
      * ImsCallProfile.EXTRA_ASSERTED_DISPLAY_NAME). This helper notifies Telecom of the business
      * composer values which will then be injected into the android.telecom.Call object.
      */
-    private void maybeInjectBusinessComposerExtras(Bundle extras) {
+    @VisibleForTesting
+    public void maybeInjectBusinessComposerExtras(Bundle extras) {
         if (extras == null) {
+            return;
+        }
+        // Telephony should check that the business composer features is on BEFORE
+        // propagating the business call extras.  This prevents the user from getting
+        // business call info when they turned the feature off.
+        if (!mIsBusinessComposerFeatureEnabled) {
+            Rlog.i(LOG_TAG, "mIBCE: business composer feature is NOT enabled");
             return;
         }
         try {
@@ -1411,6 +1428,60 @@ public class ImsPhoneConnection extends Connection implements
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @VisibleForTesting
+    public boolean getIsBusinessComposerFeatureEnabled() {
+        return mIsBusinessComposerFeatureEnabled;
+    }
+
+    @VisibleForTesting
+    public void setIsBusinessComposerFeatureEnabled(Phone phone) {
+        mIsBusinessComposerFeatureEnabled = isBusinessComposerEnabledByConfig(phone)
+                && isBusinessOnlyCallComposerEnabledByUser(phone);
+        Rlog.i(LOG_TAG, String.format(
+                "setIsBusinessComposerFeatureEnabled:  mIsBusinessComposerFeatureEnabled=[%b], "
+                        + "phone=[%s]", mIsBusinessComposerFeatureEnabled, phone));
+    }
+
+    /**
+     * Returns whether the carrier supports and has enabled the business composer
+     */
+    @VisibleForTesting
+    public boolean isBusinessComposerEnabledByConfig(Phone phone) {
+        PersistableBundle b = null;
+        CarrierConfigManager configMgr = phone.getContext().getSystemService(
+                CarrierConfigManager.class);
+
+        if (configMgr != null) {
+            // If an invalid subId is used, this bundle will contain default values.
+            b = configMgr.getConfigForSubId(phone.getSubId());
+        }
+        if (b != null) {
+            return b.getBoolean(CarrierConfigManager.KEY_SUPPORTS_BUSINESS_CALL_COMPOSER_BOOL);
+        } else {
+            // Return static default defined in CarrierConfigManager.
+            return CarrierConfigManager.getDefaultConfig()
+                    .getBoolean(CarrierConfigManager.KEY_SUPPORTS_BUSINESS_CALL_COMPOSER_BOOL);
+        }
+    }
+
+    /**
+     * Returns whether the user has enabled the business composer
+     */
+    @VisibleForTesting
+    public boolean isBusinessOnlyCallComposerEnabledByUser(Phone phone) {
+        if (phone == null || phone.getContext() == null) {
+            return false;
+        }
+        TelephonyManager tm = (TelephonyManager)
+                phone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
+        if (tm == null) {
+            Rlog.e(LOG_TAG, "isBusinessOnlyCallComposerEnabledByUser: TelephonyManager is null");
+            return false;
+        }
+        return tm.getCallComposerStatus() == TelephonyManager.CALL_COMPOSER_STATUS_BUSINESS_ONLY
+                || tm.getCallComposerStatus() == TelephonyManager.CALL_COMPOSER_STATUS_ON;
     }
 
     private static boolean areBundlesEqual(Bundle extras, Bundle newExtras) {
