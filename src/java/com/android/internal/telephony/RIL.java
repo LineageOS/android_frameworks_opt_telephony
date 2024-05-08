@@ -1295,23 +1295,22 @@ public class RIL extends BaseCommands implements CommandsInterface {
         } else if (proxy instanceof RadioImsProxy) {
             service = HAL_SERVICE_IMS;
         }
-
-        if (mHalVersion.get(service).less(version)) {
-            riljLoge(String.format("%s not supported on service %s < %s.",
-                    request, serviceToString(service), version));
-            if (result != null) {
-                AsyncResult.forMessage(result, null,
-                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
-                result.sendToTarget();
-            }
-            return false;
-        }
         if (proxy == null || proxy.isEmpty()) {
             riljLoge(String.format("Unable to complete %s because service %s is not available.",
                     request, serviceToString(service)));
             if (result != null) {
                 AsyncResult.forMessage(result, null,
                         CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
+                result.sendToTarget();
+            }
+            return false;
+        }
+        if (mHalVersion.get(service).less(version)) {
+            riljLoge(String.format("%s not supported on service %s < %s.",
+                    request, serviceToString(service), version));
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
                 result.sendToTarget();
             }
             return false;
