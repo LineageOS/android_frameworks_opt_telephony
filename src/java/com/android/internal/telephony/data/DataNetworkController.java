@@ -1947,22 +1947,12 @@ public class DataNetworkController extends Handler {
         // If the network is satellite, then the network must be restricted.
         if (mFeatureFlags.satelliteInternet()) {
             // The IWLAN data network should remain intact even when satellite is connected.
-            if (dataNetwork.getTransport() != AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
-                // On satellite, every data network needs to be restricted.
-                if (mServiceState.isUsingNonTerrestrialNetwork()
-                        && dataNetwork.getNetworkCapabilities()
-                        .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
-                    evaluation.addDataDisallowedReason(
-                            DataDisallowedReason.DATA_NETWORK_TRANSPORT_NOT_ALLOWED);
-                }
-
-                // Check if the transport is compatible with the network
-                if (mServiceState.isUsingNonTerrestrialNetwork() != dataNetwork.isSatellite()) {
-                    // Since we don't support satellite/cellular network handover, we should always
-                    // tear down the network when transport changes.
-                    evaluation.addDataDisallowedReason(
-                            DataDisallowedReason.DATA_NETWORK_TRANSPORT_NOT_ALLOWED);
-                }
+            if (dataNetwork.getTransport() != AccessNetworkConstants.TRANSPORT_TYPE_WLAN
+                    && mServiceState.isUsingNonTerrestrialNetwork() != dataNetwork.isSatellite()) {
+                // Since we don't support satellite/cellular network handover, we should always
+                // tear down the network when transport changes.
+                evaluation.addDataDisallowedReason(
+                        DataDisallowedReason.DATA_NETWORK_TRANSPORT_NOT_ALLOWED);
             }
         }
 
@@ -2171,11 +2161,24 @@ public class DataNetworkController extends Handler {
             return true;
         }
 
-        // When the device is on satellite, only restricted network request can request network.
-        if (mServiceState.isUsingNonTerrestrialNetwork()
-                && networkRequest.hasCapability(
-                        NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
-            return false;
+        // When the device is on satellite, only restricted/constrained network request can request
+        // network.
+        if (mServiceState.isUsingNonTerrestrialNetwork() && networkRequest.hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
+            switch (mDataConfigManager.getSatelliteDataSupportMode()) {
+                case CarrierConfigManager.SATELLITE_DATA_SUPPORT_ONLY_RESTRICTED -> {
+                    return false;
+                }
+                case CarrierConfigManager.SATELLITE_DATA_SUPPORT_BANDWIDTH_CONSTRAINED -> {
+                    try {
+                        if (networkRequest.hasCapability(DataUtils
+                                .NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED)) {
+                            return false;
+                        }
+                    } catch (Exception ignored) { }
+                }
+                // default case CarrierConfigManager.SATELLITE_DATA_SUPPORT_ALL
+            }
         }
 
         // If the network request does not specify cellular or satellite, then it can be
