@@ -17,10 +17,15 @@
 package com.android.internal.telephony.satellite.metrics;
 
 import android.annotation.NonNull;
-import android.content.Context;
+import android.telephony.CellInfo;
+import android.telephony.CellSignalStrength;
+import android.telephony.CellSignalStrengthLte;
+import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import android.util.SparseArray;
 
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.metrics.SatelliteStats;
 
 import java.util.ArrayList;
@@ -29,14 +34,10 @@ import java.util.List;
 
 public class CarrierRoamingSatelliteSessionStats {
     private static final String TAG = CarrierRoamingSatelliteSessionStats.class.getSimpleName();
-    private final Context mContext;
-
+    private static final SparseArray<CarrierRoamingSatelliteSessionStats>
+            sCarrierRoamingSatelliteSessionStats = new SparseArray<>();
     private int mCarrierId;
     private boolean mIsNtnRoamingInHomeCountry;
-    private int mRsrpAvg;
-    private int mRsrpMedian;
-    private int mRssnrAvg;
-    private int mRssnrMedian;
     private int mCountOfIncomingSms;
     private int mCountOfOutgoingSms;
     private int mCountOfIncomingMms;
@@ -45,17 +46,28 @@ public class CarrierRoamingSatelliteSessionStats {
     private int mSessionStartTimeSec;
     private List<Long> mConnectionStartTimeList;
     private List<Long> mConnectionEndTimeList;
+    private List<Integer> mRsrpList;
+    private List<Integer> mRssnrList;
 
-    public CarrierRoamingSatelliteSessionStats(@NonNull Context context, int carrierId) {
+    public CarrierRoamingSatelliteSessionStats() {
         logd("Create new CarrierRoamingSatelliteSessionStats.");
         initializeParams();
+    }
 
-        mContext = context;
-        mCarrierId = carrierId;
+    /** Gets a CarrierRoamingSatelliteSessionStats instance. */
+    public static CarrierRoamingSatelliteSessionStats getInstance(int subId) {
+        synchronized (sCarrierRoamingSatelliteSessionStats) {
+            if (sCarrierRoamingSatelliteSessionStats.get(subId) == null) {
+                sCarrierRoamingSatelliteSessionStats.put(subId,
+                        new CarrierRoamingSatelliteSessionStats());
+            }
+            return sCarrierRoamingSatelliteSessionStats.get(subId);
+        }
     }
 
     /** Log carrier roaming satellite session start */
-    public void onSessionStart() {
+    public void onSessionStart(int carrierId) {
+        mCarrierId = carrierId;
         mSessionStartTimeSec = getCurrentTimeInSec();
         onConnectionStart();
     }
@@ -74,6 +86,36 @@ public class CarrierRoamingSatelliteSessionStats {
     /** Log carrier roaming satellite connection end */
     public void onConnectionEnd() {
         mConnectionEndTimeList.add(getCurrentTime());
+    }
+
+    /** Log rsrp and rssnr when occurred the service state change with NTN is connected. */
+    public void onSignalStrength(Phone phone) {
+        CellSignalStrengthLte cellSignalStrengthLte = getCellSignalStrengthLte(phone);
+        int rsrp = cellSignalStrengthLte.getRsrp();
+        int rssnr = cellSignalStrengthLte.getRssnr();
+        if (rsrp == CellInfo.UNAVAILABLE) {
+            logd("onSignalStrength: rsrp unavailable");
+            return;
+        }
+        if (rssnr == CellInfo.UNAVAILABLE) {
+            logd("onSignalStrength: rssnr unavailable");
+            return;
+        }
+        mRsrpList.add(rsrp);
+        mRssnrList.add(rssnr);
+        logd("onSignalStrength : rsrp=" + rsrp + ", rssnr=" + rssnr);
+    }
+
+    /** Log incoming sms success case */
+    public void onIncomingSms() {
+        mCountOfIncomingSms += 1;
+        logd("onIncomingSms: mCountOfIncomingSms=" + mCountOfIncomingSms);
+    }
+
+    /** Log outgoing sms success case */
+    public void onOutgoingSms() {
+        mCountOfOutgoingSms += 1;
+        logd("onOutgoingSms: mCountOfOutgoingSms=" + mCountOfOutgoingSms);
     }
 
     private void reportMetrics() {
@@ -100,12 +142,12 @@ public class CarrierRoamingSatelliteSessionStats {
                         .setNumberOfSatelliteConnections(numberOfSatelliteConnections)
                         .setAvgDurationOfSatelliteConnectionSec(avgDurationOfSatelliteConnectionSec)
                         .setSatelliteConnectionGapMinSec(satelliteConnectionGapMinSec)
-                        .setSatelliteConnectionGapAvgSec(getAvgConnectionGapSec(connectionGapList))
+                        .setSatelliteConnectionGapAvgSec(getAvg(connectionGapList))
                         .setSatelliteConnectionGapMaxSec(satelliteConnectionGapMaxSec)
-                        .setRsrpAvg(mRsrpAvg)
-                        .setRsrpMedian(mRsrpMedian)
-                        .setRssnrAvg(mRssnrAvg)
-                        .setRssnrMedian(mRssnrMedian)
+                        .setRsrpAvg(getAvg(mRsrpList))
+                        .setRsrpMedian(getMedian(mRsrpList))
+                        .setRssnrAvg(getAvg(mRssnrList))
+                        .setRssnrMedian(getMedian(mRssnrList))
                         .setCountOfIncomingSms(mCountOfIncomingSms)
                         .setCountOfOutgoingSms(mCountOfOutgoingSms)
                         .setCountOfIncomingMms(mCountOfIncomingMms)
@@ -119,10 +161,6 @@ public class CarrierRoamingSatelliteSessionStats {
     private void initializeParams() {
         mCarrierId = TelephonyManager.UNKNOWN_CARRIER_ID;
         mIsNtnRoamingInHomeCountry = false;
-        mRsrpAvg = 0;
-        mRsrpMedian = 0;
-        mRssnrAvg = 0;
-        mRssnrMedian = 0;
         mCountOfIncomingSms = 0;
         mCountOfOutgoingSms = 0;
         mCountOfIncomingMms = 0;
@@ -131,6 +169,20 @@ public class CarrierRoamingSatelliteSessionStats {
         mSessionStartTimeSec = 0;
         mConnectionStartTimeList = new ArrayList<>();
         mConnectionEndTimeList = new ArrayList<>();
+        mRsrpList = new ArrayList<>();
+        mRssnrList = new ArrayList<>();
+    }
+
+    private CellSignalStrengthLte getCellSignalStrengthLte(Phone phone) {
+        SignalStrength signalStrength = phone.getSignalStrength();
+        List<CellSignalStrength> cellSignalStrengths = signalStrength.getCellSignalStrengths();
+        for (CellSignalStrength cellSignalStrength : cellSignalStrengths) {
+            if (cellSignalStrength instanceof CellSignalStrengthLte) {
+                return (CellSignalStrengthLte) cellSignalStrength;
+            }
+        }
+
+        return new CellSignalStrengthLte();
     }
 
     private int getNumberOfSatelliteConnections() {
@@ -172,17 +224,31 @@ public class CarrierRoamingSatelliteSessionStats {
         return connectionGapList;
     }
 
-    private int getAvgConnectionGapSec(@NonNull List<Integer> connectionGapList) {
-        if (connectionGapList.isEmpty()) {
+    private int getAvg(@NonNull List<Integer> list) {
+        if (list.isEmpty()) {
             return 0;
         }
 
-        int totalConnectionGap = 0;
-        for (int gap : connectionGapList) {
-            totalConnectionGap += gap;
+        int total = 0;
+        for (int num : list) {
+            total += num;
         }
 
-        return (totalConnectionGap / connectionGapList.size());
+        return total / list.size();
+    }
+
+    private int getMedian(@NonNull List<Integer> list) {
+        if (list.isEmpty()) {
+            return 0;
+        }
+        int size = list.size();
+        if (size == 1) {
+            return list.get(0);
+        }
+
+        Collections.sort(list);
+        return size % 2 == 0 ? (list.get(size / 2 - 1) + list.get(size / 2)) / 2
+                : list.get(size / 2);
     }
 
     private int getCurrentTimeInSec() {
