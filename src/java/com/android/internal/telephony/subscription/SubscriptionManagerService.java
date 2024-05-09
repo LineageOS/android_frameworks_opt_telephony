@@ -4724,6 +4724,11 @@ public class SubscriptionManagerService extends ISub.Stub {
                     "config_satellite_sim_spn_identifier", "");
         }
         log("isSatelliteSpn: overlaySpn=" + overlaySpn + ", spn=" + spn);
+
+        if (TextUtils.isEmpty(spn) || TextUtils.isEmpty(overlaySpn)) {
+            return false;
+        }
+
         return TextUtils.equals(spn, overlaySpn);
     }
 
