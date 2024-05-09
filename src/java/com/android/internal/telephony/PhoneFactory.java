@@ -187,7 +187,7 @@ public class PhoneFactory {
                     Rlog.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkModes[i]));
                     sCommandsInterfaces[i] = new RIL(context,
                             RadioAccessFamily.getRafFromNetworkType(networkModes[i]),
-                            cdmaSubscription, i);
+                            cdmaSubscription, i, featureFlags);
                 }
 
                 if (numPhones > 0) {
@@ -312,7 +312,7 @@ public class PhoneFactory {
             for (int i = prevActiveModemCount; i < activeModemCount; i++) {
                 sCommandsInterfaces[i] = new RIL(context, RadioAccessFamily.getRafFromNetworkType(
                         RILConstants.PREFERRED_NETWORK_MODE),
-                        cdmaSubscription, i);
+                        cdmaSubscription, i, sFeatureFlags);
                 sPhones[i] = createPhone(context, i);
                 if (context.getPackageManager().hasSystemFeature(
                         PackageManager.FEATURE_TELEPHONY_IMS)) {
