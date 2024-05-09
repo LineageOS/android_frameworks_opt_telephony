@@ -148,7 +148,9 @@ public class AccessNetworksManager extends Handler {
         @ApnType
         public final int apnType;
         // The qualified networks in preferred order. Each network is a AccessNetworkType.
-        public final @NonNull @RadioAccessNetworkType int[] qualifiedNetworks;
+        @NonNull
+        @RadioAccessNetworkType
+        public final int[] qualifiedNetworks;
         public QualifiedNetworks(@ApnType int apnType, @NonNull int[] qualifiedNetworks) {
             this.apnType = apnType;
             this.qualifiedNetworks = Arrays.stream(qualifiedNetworks)
@@ -313,7 +315,7 @@ public class AccessNetworksManager extends Handler {
 
         /**
          * Called when QualifiedNetworksService requests network validation.
-         *
+         * <p>
          * Since the data network in the connected state corresponding to the given network
          * capability must be validated, a request is tossed to the data network controller.
          * @param networkCapability network capability
@@ -429,7 +431,8 @@ public class AccessNetworksManager extends Handler {
             mPhone.getDataNetworkController().getDataRetryManager().registerCallback(
                     new DataRetryManager.DataRetryManagerCallback(this::post) {
                         @Override
-                        public void onThrottleStatusChanged(List<ThrottleStatus> throttleStatuses) {
+                        public void onThrottleStatusChanged(
+                                @NonNull List<ThrottleStatus> throttleStatuses) {
                             try {
                                 logl("onThrottleStatusChanged: " + throttleStatuses);
                                 if (mIQualifiedNetworksService != null) {
@@ -471,7 +474,7 @@ public class AccessNetworksManager extends Handler {
      */
     private void bindQualifiedNetworksService() {
         post(() -> {
-            Intent intent = null;
+            Intent intent;
             String packageName = getQualifiedNetworksServicePackageName();
             String className = getQualifiedNetworksServiceClassName();
 
@@ -538,7 +541,7 @@ public class AccessNetworksManager extends Handler {
             b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId(),
                     CarrierConfigManager
                             .KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_PACKAGE_OVERRIDE_STRING);
-            if (b != null && !b.isEmpty()) {
+            if (!b.isEmpty()) {
                 // If carrier config overrides it, use the one from carrier config
                 String carrierConfigPackageName = b.getString(CarrierConfigManager
                         .KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_PACKAGE_OVERRIDE_STRING);
@@ -569,7 +572,7 @@ public class AccessNetworksManager extends Handler {
             b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId(),
                     CarrierConfigManager
                             .KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_CLASS_OVERRIDE_STRING);
-            if (b != null && !b.isEmpty()) {
+            if (!b.isEmpty()) {
                 // If carrier config overrides it, use the one from carrier config
                 String carrierConfigClassName = b.getString(CarrierConfigManager
                         .KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_CLASS_OVERRIDE_STRING);
@@ -585,7 +588,8 @@ public class AccessNetworksManager extends Handler {
         return className;
     }
 
-    private @NonNull List<QualifiedNetworks> getQualifiedNetworksList() {
+    @NonNull
+    private List<QualifiedNetworks> getQualifiedNetworksList() {
         List<QualifiedNetworks> qualifiedNetworksList = new ArrayList<>();
         for (int i = 0; i < mAvailableNetworks.size(); i++) {
             qualifiedNetworksList.add(new QualifiedNetworks(mAvailableNetworks.keyAt(i),
@@ -617,11 +621,13 @@ public class AccessNetworksManager extends Handler {
     /**
      * @return The available transports.
      */
-    public @NonNull int[] getAvailableTransports() {
+    @NonNull
+    public int[] getAvailableTransports() {
         return mAvailableTransports;
     }
 
-    private static @TransportType int getTransportFromAccessNetwork(int accessNetwork) {
+    @TransportType
+    private static int getTransportFromAccessNetwork(int accessNetwork) {
         return accessNetwork == AccessNetworkType.IWLAN
                 ? AccessNetworkConstants.TRANSPORT_TYPE_WLAN
                 : AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
@@ -654,7 +660,8 @@ public class AccessNetworksManager extends Handler {
      * @param apnType APN type
      * @return The preferred transport.
      */
-    public @TransportType int getPreferredTransport(@ApnType int apnType) {
+    @TransportType
+    public int getPreferredTransport(@ApnType int apnType) {
         return mPreferredTransports.get(apnType) == null
                 ? AccessNetworkConstants.TRANSPORT_TYPE_WWAN : mPreferredTransports.get(apnType);
     }
@@ -666,8 +673,8 @@ public class AccessNetworksManager extends Handler {
      * supported.)
      * @return The preferred transport.
      */
-    public @TransportType int getPreferredTransportByNetworkCapability(
-            @NetCapability int networkCapability) {
+    @TransportType
+    public int getPreferredTransportByNetworkCapability(@NetCapability int networkCapability) {
         int apnType = DataUtils.networkCapabilityToApnType(networkCapability);
         // For non-APN type capabilities, always route to WWAN.
         if (apnType == ApnSetting.TYPE_NONE) {

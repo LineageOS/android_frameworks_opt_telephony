@@ -82,43 +82,51 @@ public class DataProfileManager extends Handler {
     private final LocalLog mLocalLog = new LocalLog(128);
 
     /** Data network controller. */
-    private final @NonNull DataNetworkController mDataNetworkController;
+    @NonNull
+    private final DataNetworkController mDataNetworkController;
 
     /** Data config manager. */
-    private final @NonNull DataConfigManager mDataConfigManager;
+    @NonNull
+    private final DataConfigManager mDataConfigManager;
 
     /** Cellular data service. */
-    private final @NonNull DataServiceManager mWwanDataServiceManager;
+    @NonNull
+    private final DataServiceManager mWwanDataServiceManager;
 
     /**
      * All data profiles for the current carrier. Note only data profiles loaded from the APN
      * database will be stored here. The on-demand data profiles (generated dynamically, for
      * example, enterprise data profiles with differentiator) are not stored here.
      */
-    private final @NonNull List<DataProfile> mAllDataProfiles = new ArrayList<>();
+    @NonNull
+    private final List<DataProfile> mAllDataProfiles = new ArrayList<>();
 
     /** The data profile used for initial attach. */
-    private @Nullable DataProfile mInitialAttachDataProfile = null;
+    @Nullable
+    private DataProfile mInitialAttachDataProfile = null;
 
     /** The preferred data profile used for internet. */
-    private @Nullable DataProfile mPreferredDataProfile = null;
+    @Nullable
+    private DataProfile mPreferredDataProfile = null;
 
     /** The last data profile that's successful for internet connection by subscription id. */
-    private final @NonNull LruCache<Integer, DataProfile> mLastInternetDataProfiles =
-            new LruCache<>(256);
+    @NonNull
+    private final LruCache<Integer, DataProfile> mLastInternetDataProfiles = new LruCache<>(256);
 
     /** Preferred data profile set id. */
     private int mPreferredDataProfileSetId = Telephony.Carriers.NO_APN_SET_ID;
 
     /** Data profile manager callbacks. */
-    private final @NonNull Set<DataProfileManagerCallback> mDataProfileManagerCallbacks =
-            new ArraySet<>();
+    @NonNull
+    private final Set<DataProfileManagerCallback> mDataProfileManagerCallbacks = new ArraySet<>();
 
     /** SIM state. */
-    private @SimState int mSimState = TelephonyManager.SIM_STATE_UNKNOWN;
+    @SimState
+    private int mSimState = TelephonyManager.SIM_STATE_UNKNOWN;
 
     /** Feature flags controlling which feature is enabled. */
-    private final @NonNull FeatureFlags mFeatureFlags;
+    @NonNull
+    private final FeatureFlags mFeatureFlags;
 
     /**
      * Data profile manager callback. This should be only used by {@link DataNetworkController}.
@@ -477,7 +485,8 @@ public class DataProfileManager extends Handler {
      *
      * @return The preferred data profile.
      */
-    private @Nullable DataProfile getPreferredDataProfileFromDb() {
+    @Nullable
+    private DataProfile getPreferredDataProfileFromDb() {
         Cursor cursor = mPhone.getContext().getContentResolver().query(
                 Uri.withAppendedPath(Telephony.Carriers.PREFERRED_APN_URI,
                         String.valueOf(mPhone.getSubId())), null, null, null,
@@ -502,7 +511,8 @@ public class DataProfileManager extends Handler {
     /**
      * @return The preferred data profile from carrier config.
      */
-    private @Nullable DataProfile getPreferredDataProfileFromConfig() {
+    @Nullable
+    private DataProfile getPreferredDataProfileFromConfig() {
         // Check if there is configured default preferred data profile.
         String defaultPreferredApn = mDataConfigManager.getDefaultPreferredApn();
         if (!TextUtils.isEmpty(defaultPreferredApn)) {
@@ -586,10 +596,10 @@ public class DataProfileManager extends Handler {
 
     /**
      * Update the data profile used for initial attach.
-     *
+     * <p>
      * Note that starting from Android 13 only APNs that supports "IA" type will be used for
      * initial attach. Please update APN configuration file if needed.
-     *
+     * <p>
      * Some carriers might explicitly require that using "user-added" APN for initial
      * attach. In this case, exception can be configured through
      * {@link CarrierConfigManager#KEY_ALLOWED_INITIAL_ATTACH_APN_TYPES_STRING_ARRAY}.
@@ -642,7 +652,8 @@ public class DataProfileManager extends Handler {
      * @param apnTypeBitmask APN type
      * @return The APN setting
      */
-    private @NonNull ApnSetting buildDefaultApnSetting(@NonNull String entry,
+    @NonNull
+    private ApnSetting buildDefaultApnSetting(@NonNull String entry,
             @NonNull String apn, @Annotation.ApnType int apnTypeBitmask) {
         return new ApnSetting.Builder()
                 .setEntryName(entry)
@@ -665,7 +676,8 @@ public class DataProfileManager extends Handler {
      * This should be set to true for condition-based retry/setup.
      * @return The data profile. {@code null} if can't find any satisfiable data profile.
      */
-    public @Nullable DataProfile getDataProfileForNetworkRequest(
+    @Nullable
+    public DataProfile getDataProfileForNetworkRequest(
             @NonNull TelephonyNetworkRequest networkRequest, @NetworkType int networkType,
             boolean isNtn, boolean isEsimBootstrapProvisioning, boolean ignorePermanentFailure) {
         ApnSetting apnSetting = null;
@@ -736,7 +748,8 @@ public class DataProfileManager extends Handler {
      * This should be set to true for condition-based retry/setup.
      * @return The APN setting. {@code null} if can't find any satisfiable data profile.
      */
-    private @Nullable ApnSetting getApnSettingForNetworkRequest(
+    @Nullable
+    private ApnSetting getApnSettingForNetworkRequest(
             @NonNull TelephonyNetworkRequest networkRequest, @NetworkType int networkType,
             boolean isNtn, boolean isEsimBootStrapProvisioning, boolean ignorePermanentFailure) {
         if (!networkRequest.hasAttribute(
@@ -996,7 +1009,8 @@ public class DataProfileManager extends Handler {
      *
      * @return The merged data profile. {@code null} if merging is not possible.
      */
-    private static @Nullable DataProfile mergeDataProfiles(
+    @Nullable
+    private static DataProfile mergeDataProfiles(
             @NonNull DataProfile dp1, @NonNull DataProfile dp2) {
         Objects.requireNonNull(dp1);
         Objects.requireNonNull(dp2);

@@ -53,7 +53,6 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.telephony.CarrierConfigManager;
-import android.telephony.PhoneCapability;
 import android.telephony.PhoneStateListener;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -183,10 +182,12 @@ public class PhoneSwitcher extends Handler {
         }
     }
 
-    private final @NonNull NetworkRequestList mNetworkRequestList = new NetworkRequestList();
+    @NonNull
+    private final NetworkRequestList mNetworkRequestList = new NetworkRequestList();
     protected final RegistrantList mActivePhoneRegistrants;
     private final SubscriptionManagerService mSubscriptionManagerService;
-    private final @NonNull FeatureFlags mFlags;
+    @NonNull
+    private final FeatureFlags mFlags;
     protected final Context mContext;
     private final LocalLog mLocalLog;
     protected PhoneState[] mPhoneStates;
@@ -310,7 +311,7 @@ public class PhoneSwitcher extends Handler {
     private static final int MAX_LOCAL_LOG_LINES = 256;
 
     // Default timeout value of network validation in millisecond.
-    private final static int DEFAULT_VALIDATION_EXPIRATION_TIME = 2000;
+    private static final int DEFAULT_VALIDATION_EXPIRATION_TIME = 2000;
 
     /** Controller that tracks {@link TelephonyManager#MOBILE_DATA_POLICY_AUTO_DATA_SWITCH} */
     @NonNull private final AutoDataSwitchController mAutoDataSwitchController;
@@ -318,21 +319,23 @@ public class PhoneSwitcher extends Handler {
     @NonNull private final AutoDataSwitchController.AutoDataSwitchControllerCallback
             mAutoDataSwitchCallback;
 
-    private ConnectivityManager mConnectivityManager;
+    private final ConnectivityManager mConnectivityManager;
     private int mImsRegistrationTech = REGISTRATION_TECH_NONE;
     @VisibleForTesting
     public final SparseIntArray mImsRegistrationRadioTechMap = new SparseIntArray();
-    private List<Set<CommandException.Error>> mCurrentDdsSwitchFailure;
+    @NonNull
+    private final List<Set<CommandException.Error>> mCurrentDdsSwitchFailure;
 
     /** Data settings manager callback. Key is the phone id. */
-    private final @NonNull Map<Integer, DataSettingsManagerCallback> mDataSettingsManagerCallbacks =
+    @NonNull
+    private final Map<Integer, DataSettingsManagerCallback> mDataSettingsManagerCallbacks =
             new ArrayMap<>();
 
     private class DefaultNetworkCallback extends ConnectivityManager.NetworkCallback {
         public int mExpectedSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         public int mSwitchReason = TelephonyEvent.DataSwitch.Reason.DATA_SWITCH_REASON_UNKNOWN;
         @Override
-        public void onCapabilitiesChanged(Network network,
+        public void onCapabilitiesChanged(@NonNull Network network,
                 NetworkCapabilities networkCapabilities) {
             if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
                 if (SubscriptionManager.isValidSubscriptionId(mExpectedSubId)
@@ -350,15 +353,15 @@ public class PhoneSwitcher extends Handler {
         }
 
         @Override
-        public void onLost(Network network) {
+        public void onLost(@NonNull Network network) {
             mAutoDataSwitchController.updateDefaultNetworkCapabilities(null);
         }
     }
 
-    private RegistrationManager.RegistrationCallback mRegistrationCallback =
+    private final RegistrationManager.RegistrationCallback mRegistrationCallback =
             new RegistrationManager.RegistrationCallback() {
         @Override
-        public void onRegistered(ImsRegistrationAttributes attributes) {
+        public void onRegistered(@NonNull ImsRegistrationAttributes attributes) {
             int imsRegistrationTech = attributes.getRegistrationTechnology();
             if (imsRegistrationTech != mImsRegistrationTech) {
                 mImsRegistrationTech = imsRegistrationTech;
@@ -367,7 +370,7 @@ public class PhoneSwitcher extends Handler {
         }
 
         @Override
-        public void onUnregistered(ImsReasonInfo info) {
+        public void onUnregistered(@NonNull ImsReasonInfo info) {
             if (mImsRegistrationTech != REGISTRATION_TECH_NONE) {
                 mImsRegistrationTech = REGISTRATION_TECH_NONE;
                 sendMessage(obtainMessage(EVENT_IMS_RADIO_TECH_CHANGED));
@@ -402,14 +405,8 @@ public class PhoneSwitcher extends Handler {
 
     @VisibleForTesting
     public ImsRegisterCallback mImsRegisterCallback =
-            (context, phoneId, cb, executor)-> {
-                try {
-                    ImsManager.getInstance(context, phoneId)
-                            .addRegistrationCallback(cb, executor);
-                } catch (ImsException e) {
-                    throw e;
-                }
-            };
+            (context, phoneId, cb, executor)-> ImsManager.getInstance(context, phoneId)
+                    .addRegistrationCallback(cb, executor);
 
     /**
      * Method to get singleton instance.
@@ -497,7 +494,7 @@ public class PhoneSwitcher extends Handler {
         mRadioConfig = RadioConfig.getInstance();
         mValidator = CellularNetworkValidator.getInstance();
 
-        mCurrentDdsSwitchFailure = new ArrayList<Set<CommandException.Error>>();
+        mCurrentDdsSwitchFailure = new ArrayList<>();
         IntentFilter filter = new IntentFilter();
         filter.addAction(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
         mContext.registerReceiver(mSimStateIntentReceiver, filter);
@@ -545,7 +542,7 @@ public class PhoneSwitcher extends Handler {
                     registerForImsRadioTechChange(context, phoneId);
                 }
             }
-            Set<CommandException.Error> ddsFailure = new HashSet<CommandException.Error>();
+            Set<CommandException.Error> ddsFailure = new HashSet<>();
             mCurrentDdsSwitchFailure.add(ddsFailure);
         }
 
@@ -652,7 +649,7 @@ public class PhoneSwitcher extends Handler {
         }
     };
 
-    private BroadcastReceiver mSimStateIntentReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver mSimStateIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
@@ -874,10 +871,8 @@ public class PhoneSwitcher extends Handler {
                             mEmergencyOverride.mOverrideCompleteFuture.complete(false);
                         }
                     }
-                    mEmergencyOverride = req;
-                } else {
-                    mEmergencyOverride = req;
                 }
+                mEmergencyOverride = req;
 
                 logl("new emergency override - " + mEmergencyOverride);
                 // a new request has been created, remove any previous override complete scheduled.
@@ -960,13 +955,9 @@ public class PhoneSwitcher extends Handler {
 
         mImsRegistrationRadioTechMap.put(phoneId, tech);
 
-        if (subId == INVALID_SUBSCRIPTION_ID) {
-            // Need to update the cached IMS registration tech but no need to do any of the
-            // following. When the SIM removed, REGISTRATION_STATE_NOT_REGISTERED is notified.
-            return false;
-        }
-
-        return true;
+        // Need to update the cached IMS registration tech but no need to do any of the
+        // following. When the SIM removed, REGISTRATION_STATE_NOT_REGISTERED is notified.
+        return subId != INVALID_SUBSCRIPTION_ID;
     }
 
     private synchronized void onMultiSimConfigChanged(int activeModemCount) {
@@ -1023,7 +1014,7 @@ public class PhoneSwitcher extends Handler {
             phone.getDataSettingsManager().registerCallback(
                     mDataSettingsManagerCallbacks.get(phone.getPhoneId()));
 
-            Set<CommandException.Error> ddsFailure = new HashSet<CommandException.Error>();
+            Set<CommandException.Error> ddsFailure = new HashSet<>();
             mCurrentDdsSwitchFailure.add(ddsFailure);
 
             if (!mFlags.changeMethodOfObtainingImsRegistrationRadioTech()) {
@@ -1072,7 +1063,7 @@ public class PhoneSwitcher extends Handler {
         }
 
         @Override
-        protected void needNetworkFor(NetworkRequest networkRequest) {
+        protected void needNetworkFor(@NonNull NetworkRequest networkRequest) {
             if (VDBG) log("needNetworkFor " + networkRequest);
             Message msg = mPhoneSwitcher.obtainMessage(EVENT_REQUEST_NETWORK);
             msg.obj = networkRequest;
@@ -1080,7 +1071,7 @@ public class PhoneSwitcher extends Handler {
         }
 
         @Override
-        protected void releaseNetworkFor(NetworkRequest networkRequest) {
+        protected void releaseNetworkFor(@NonNull NetworkRequest networkRequest) {
             if (VDBG) log("releaseNetworkFor " + networkRequest);
             Message msg = mPhoneSwitcher.obtainMessage(EVENT_RELEASE_NETWORK);
             msg.obj = networkRequest;
@@ -1157,7 +1148,7 @@ public class PhoneSwitcher extends Handler {
     protected static final boolean REQUESTS_UNCHANGED = false;
     /**
      * Re-evaluate things. Do nothing if nothing's changed.
-     *
+     * <p>
      * Otherwise, go through the requests in priority order adding their phone until we've added up
      * to the max allowed.  Then go through shutting down phones that aren't in the active phone
      * list. Finally, activate all phones in the active phone list.
@@ -1251,13 +1242,11 @@ public class PhoneSwitcher extends Handler {
                 }
                 sendRilCommands(mPreferredDataPhoneId);
             } else {
-                List<Integer> newActivePhones = new ArrayList<Integer>();
+                List<Integer> newActivePhones = new ArrayList<>();
 
-                /**
-                 * If all phones can have PS attached, activate all.
-                 * Otherwise, choose to activate phones according to requests. And
-                 * if list is not full, add mPreferredDataPhoneId.
-                 */
+                // If all phones can have PS attached, activate all.
+                // Otherwise, choose to activate phones according to requests. And
+                // if list is not full, add mPreferredDataPhoneId.
                 if (mMaxDataAttachModemCount == mActiveModemCount) {
                     for (int i = 0; i < mMaxDataAttachModemCount; i++) {
                         newActivePhones.add(i);
@@ -1345,7 +1334,7 @@ public class PhoneSwitcher extends Handler {
 
     /**
      * Switch the Default data for the context of an outgoing emergency call.
-     *
+     * <p>
      * In some cases, we need to try to switch the Default Data subscription before placing the
      * emergency call on DSDS devices. This includes the following situation:
      * - The modem does not support processing GNSS SUPL requests on the non-default data
@@ -1388,16 +1377,6 @@ public class PhoneSwitcher extends Handler {
             // Only setPreferredDataModem if the phoneId equals to current mPreferredDataPhoneId
             logl("sendRilCommands: setPreferredDataModem - phoneId: " + phoneId);
             mRadioConfig.setPreferredDataModem(mPreferredDataPhoneId, message);
-        }
-    }
-
-    private void onPhoneCapabilityChangedInternal(PhoneCapability capability) {
-        int newMaxDataAttachModemCount = TelephonyManager.getDefault()
-                .getNumberOfModemsWithSimultaneousDataConnections();
-        if (mMaxDataAttachModemCount != newMaxDataAttachModemCount) {
-            mMaxDataAttachModemCount = newMaxDataAttachModemCount;
-            logl("Max active phones changed to " + mMaxDataAttachModemCount);
-            onEvaluate(REQUESTS_UNCHANGED, "phoneCfgChanged");
         }
     }
 
@@ -1777,7 +1756,7 @@ public class PhoneSwitcher extends Handler {
 
     /**
      * Notify PhoneSwitcher to try to switch data to an opportunistic subscription.
-     *
+     * <p>
      * Set opportunistic data subscription. It's an indication to switch Internet data to this
      * subscription. It has to be an active subscription, and PhoneSwitcher will try to validate
      * it first if needed. If subId is DEFAULT_SUBSCRIPTION_ID, it means we are un-setting
@@ -1856,20 +1835,16 @@ public class PhoneSwitcher extends Handler {
      * @param reason The switch reason.
      * @return The switch reason in string format.
      */
-    private static @NonNull String switchReasonToString(int reason) {
-        switch(reason) {
-            case TelephonyEvent.DataSwitch.Reason.DATA_SWITCH_REASON_UNKNOWN:
-                return "UNKNOWN";
-            case TelephonyEvent.DataSwitch.Reason.DATA_SWITCH_REASON_MANUAL:
-                return "MANUAL";
-            case TelephonyEvent.DataSwitch.Reason.DATA_SWITCH_REASON_IN_CALL:
-                return "IN_CALL";
-            case TelephonyEvent.DataSwitch.Reason.DATA_SWITCH_REASON_CBRS:
-                return "CBRS";
-            case TelephonyEvent.DataSwitch.Reason.DATA_SWITCH_REASON_AUTO:
-                return "AUTO";
-            default: return "UNKNOWN(" + reason + ")";
-        }
+    @NonNull
+    private static String switchReasonToString(int reason) {
+        return switch (reason) {
+            case DataSwitch.Reason.DATA_SWITCH_REASON_UNKNOWN -> "UNKNOWN";
+            case DataSwitch.Reason.DATA_SWITCH_REASON_MANUAL -> "MANUAL";
+            case DataSwitch.Reason.DATA_SWITCH_REASON_IN_CALL -> "IN_CALL";
+            case DataSwitch.Reason.DATA_SWITCH_REASON_CBRS -> "CBRS";
+            case DataSwitch.Reason.DATA_SWITCH_REASON_AUTO -> "AUTO";
+            default -> "UNKNOWN(" + reason + ")";
+        };
     }
 
     /**
@@ -1878,16 +1853,14 @@ public class PhoneSwitcher extends Handler {
      * @param state The switching state.
      * @return The switching state in string format.
      */
-    private static @NonNull String switchStateToString(int state) {
-        switch(state) {
-            case TelephonyEvent.EventState.EVENT_STATE_UNKNOWN:
-                return "UNKNOWN";
-            case TelephonyEvent.EventState.EVENT_STATE_START:
-                return "START";
-            case TelephonyEvent.EventState.EVENT_STATE_END:
-                return "END";
-            default: return "UNKNOWN(" + state + ")";
-        }
+    @NonNull
+    private static String switchStateToString(int state) {
+        return switch (state) {
+            case TelephonyEvent.EventState.EVENT_STATE_UNKNOWN -> "UNKNOWN";
+            case TelephonyEvent.EventState.EVENT_STATE_START -> "START";
+            case TelephonyEvent.EventState.EVENT_STATE_END -> "END";
+            default -> "UNKNOWN(" + state + ")";
+        };
     }
 
     /**

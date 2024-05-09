@@ -4915,7 +4915,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * @return The data network controller
      */
-    public @Nullable DataNetworkController getDataNetworkController() {
+    public @NonNull DataNetworkController getDataNetworkController() {
         return mDataNetworkController;
     }
 
