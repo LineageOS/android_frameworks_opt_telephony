@@ -494,7 +494,7 @@ public class SimultaneousCallingTracker {
                 l.onSimultaneousCallingSupportChanged(simultaneousCallSubscriptionIdMap);
             }
         } catch (Exception e) {
-            Log.w(LOG_TAG, "handleVideoCapabilitiesChanged: Exception = " + e);
+            Log.w(LOG_TAG, "handleSimultaneousCallingSupportChanged: Exception = " + e);
         }
     }
 
