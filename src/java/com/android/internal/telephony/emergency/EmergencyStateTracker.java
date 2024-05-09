@@ -163,6 +163,7 @@ public class EmergencyStateTracker {
     private Runnable mOnEcmExitCompleteRunnable;
     private int mOngoingCallProperties;
     private boolean mSentEmergencyCallState;
+    private android.telecom.Connection mNormalRoutingEmergencyConnection;
 
     /** For emergency SMS */
     private final Set<String> mOngoingEmergencySmsIds = new ArraySet<>();
@@ -633,8 +634,14 @@ public class EmergencyStateTracker {
         mOngoingConnection = c;
         mIsTestEmergencyNumber = isTestEmergencyNumber;
         sendEmergencyCallStateChange(mPhone, true);
+        final android.telecom.Connection expectedConnection = mOngoingConnection;
         maybeRejectIncomingCall(result -> {
             Rlog.i(TAG, "maybeRejectIncomingCall : result = " + result);
+            if (!Objects.equals(mOngoingConnection, expectedConnection)) {
+                Rlog.i(TAG, "maybeRejectIncomingCall "
+                        + expectedConnection.getTelecomCallId() + " canceled.");
+                return;
+            }
             turnOnRadioAndSwitchDds(mPhone, EMERGENCY_TYPE_CALL, mIsTestEmergencyNumber);
         });
         return mCallEmergencyModeFuture;
@@ -1933,6 +1940,27 @@ public class EmergencyStateTracker {
         }
     }
 
+    private Call getRingingCall(Phone phone) {
+        if (phone == null) return null;
+        Call ringingCall = phone.getRingingCall();
+        if (ringingCall != null
+                && ringingCall.getState() != Call.State.IDLE
+                && ringingCall.getState() != Call.State.DISCONNECTED) {
+            return ringingCall;
+        }
+        // Check the ImsPhoneCall in DISCONNECTING state.
+        Phone imsPhone = phone.getImsPhone();
+        if (imsPhone != null) {
+            ringingCall = imsPhone.getRingingCall();
+        }
+        if (imsPhone != null && ringingCall != null
+                && ringingCall.getState() != Call.State.IDLE
+                && ringingCall.getState() != Call.State.DISCONNECTED) {
+            return ringingCall;
+        }
+        return null;
+    }
+
     /**
      * Ensures that there is no incoming call.
      *
@@ -1951,14 +1979,14 @@ public class EmergencyStateTracker {
 
         Call ringingCall = null;
         for (Phone phone : phones) {
-            ringingCall = phone.getRingingCall();
-            if (ringingCall != null && ringingCall.isRinging()) {
+            ringingCall = getRingingCall(phone);
+            if (ringingCall != null) {
                 Rlog.i(TAG, "maybeRejectIncomingCall found a ringing call");
                 break;
             }
         }
 
-        if (ringingCall == null || !ringingCall.isRinging()) {
+        if (ringingCall == null) {
             if (completeConsumer != null) {
                 completeConsumer.accept(true);
             }
@@ -2007,9 +2035,13 @@ public class EmergencyStateTracker {
      */
     private void handleNewRingingConnection(Message msg) {
         Connection c = (Connection) ((AsyncResult) msg.obj).result;
-        if (c == null || mOngoingConnection == null
+        if (c == null) return;
+        if ((mNormalRoutingEmergencyConnection == null
+                || mNormalRoutingEmergencyConnection.getState() == STATE_ACTIVE
+                || mNormalRoutingEmergencyConnection.getState() == STATE_DISCONNECTED)
+                && (mOngoingConnection == null
                 || mOngoingConnection.getState() == STATE_ACTIVE
-                || mOngoingConnection.getState() == STATE_DISCONNECTED) {
+                || mOngoingConnection.getState() == STATE_DISCONNECTED)) {
             return;
         }
         if ((c.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS)
@@ -2022,6 +2054,55 @@ public class EmergencyStateTracker {
             } catch (CallStateException e) {
                 Rlog.w(TAG, "handleNewRingingConnection", e);
             }
+        }
+    }
+
+    /**
+     * Indicates the start of a normal routing emergency call.
+     *
+     * <p>
+     * Handles turning on radio and switching DDS.
+     *
+     * @param phone the {@code Phone} on which to process the emergency call.
+     * @param c the {@code Connection} on which to process the emergency call.
+     * @param completeConsumer The consumer to call once rejecting incoming call completes,
+     *        provides {@code true} result if operation completes successfully
+     *        or {@code false} if the operation timed out/failed.
+     */
+    public void startNormalRoutingEmergencyCall(@NonNull Phone phone,
+            @NonNull android.telecom.Connection c, @NonNull Consumer<Boolean> completeConsumer) {
+        Rlog.i(TAG, "startNormalRoutingEmergencyCall: phoneId=" + phone.getPhoneId()
+                + ", callId=" + c.getTelecomCallId());
+
+        mNormalRoutingEmergencyConnection = c;
+        maybeRejectIncomingCall(completeConsumer);
+    }
+
+    /**
+     * Indicates the termination of a normal routing emergency call.
+     *
+     * @param c the normal routing emergency call disconnected.
+     */
+    public void endNormalRoutingEmergencyCall(@NonNull android.telecom.Connection c) {
+        if (c != mNormalRoutingEmergencyConnection) return;
+        Rlog.i(TAG, "endNormalRoutingEmergencyCall: callId=" + c.getTelecomCallId());
+        mNormalRoutingEmergencyConnection = null;
+    }
+
+    /**
+     * Handles the normal routing emergency call state change.
+     *
+     * @param c the call whose state has changed
+     * @param state the new call state
+     */
+    public void onNormalRoutingEmergencyCallStateChanged(android.telecom.Connection c,
+            @android.telecom.Connection.ConnectionState int state) {
+        if (c != mNormalRoutingEmergencyConnection) return;
+
+        // If the call is connected, we don't need to monitor incoming call any more.
+        if (state == android.telecom.Connection.STATE_ACTIVE
+                || state == android.telecom.Connection.STATE_DISCONNECTED) {
+            endNormalRoutingEmergencyCall(c);
         }
     }
 }

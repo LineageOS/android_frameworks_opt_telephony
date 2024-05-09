@@ -2687,7 +2687,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         Connection c = mock(Connection.class);
         Call call = mock(Call.class);
         doReturn(c).when(call).getLatestConnection();
-        doReturn(true).when(call).isRinging();
+        doReturn(Call.State.INCOMING).when(call).getState();
         doReturn(call).when(phone).getRingingCall();
         setEcmSupportedConfig(phone, true);
 
@@ -2772,6 +2772,120 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertNotNull(intCaptor.getValue());
 
         // There is no ongoing emergency call.
+
+        Connection c = mock(Connection.class);
+        Call call = mock(Call.class);
+        doReturn(call).when(c).getCall();
+
+        Message msg = Message.obtain(handlerCaptor.getValue(), intCaptor.getValue());
+        AsyncResult.forMessage(msg, c, null);
+        msg.sendToTarget();
+        processAllMessages();
+
+        // Verify not rejecting incoming call.
+        try {
+            verify(call, never()).hangup();
+        } catch (CallStateException e) {
+        }
+    }
+
+    /**
+     * Test that the EmergencyStateTracker rejects incoming call when starting
+     * a normal routing emergency call.
+     */
+    @Test
+    @SmallTest
+    public void testNormalRoutingEmergencyCallRejectRingingCall() {
+        Phone phone = setupTestPhoneForEmergencyCall(false /* isRoaming */,
+                false /* isRadioOn */);
+        when(phone.getSubId()).thenReturn(1);
+        Connection c = mock(Connection.class);
+        Call call = mock(Call.class);
+        doReturn(c).when(call).getLatestConnection();
+        doReturn(Call.State.DISCONNECTING).when(call).getState();
+        doReturn(call).when(phone).getRingingCall();
+        setEcmSupportedConfig(phone, true);
+
+        EmergencyStateTracker testEst = setupEmergencyStateTracker(
+                false /* isSuplDdsSwitchRequiredForEmergencyCall */);
+
+        // There is an ongoing normal routing emergency call.
+        testEst.startNormalRoutingEmergencyCall(phone, mTestConnection1, result -> {});
+
+        // Verify rejecting ringing call.
+        try {
+            verify(call).hangup();
+        } catch (CallStateException e) {
+        }
+    }
+
+
+    /**
+     * Test that the EmergencyStateTracker rejects incoming call if there is
+     * a normal routing emergency call in dialing state.
+     */
+    @Test
+    @SmallTest
+    public void testNormalRoutingRejectNewIncomingCall() {
+        Phone phone = setupTestPhoneForEmergencyCall(false /* isRoaming */,
+                false /* isRadioOn */);
+        when(phone.getSubId()).thenReturn(1);
+        setEcmSupportedConfig(phone, true);
+
+        EmergencyStateTracker testEst = setupEmergencyStateTracker(
+                false /* isSuplDdsSwitchRequiredForEmergencyCall */);
+
+        ArgumentCaptor<Handler> handlerCaptor = ArgumentCaptor.forClass(Handler.class);
+        ArgumentCaptor<Integer> intCaptor = ArgumentCaptor.forClass(Integer.class);
+
+        verify(phone).registerForNewRingingConnection(handlerCaptor.capture(),
+                intCaptor.capture(), any());
+        assertNotNull(handlerCaptor.getValue());
+        assertNotNull(intCaptor.getValue());
+
+        // There is an ongoing normal routing emergency call.
+        testEst.startNormalRoutingEmergencyCall(phone, mTestConnection1, result -> {});
+
+        Connection c = mock(Connection.class);
+        Call call = mock(Call.class);
+        doReturn(call).when(c).getCall();
+
+        Message msg = Message.obtain(handlerCaptor.getValue(), intCaptor.getValue());
+        AsyncResult.forMessage(msg, c, null);
+        msg.sendToTarget();
+        processAllMessages();
+
+        // Verify rejecting incoming call.
+        try {
+            verify(call).hangup();
+        } catch (CallStateException e) {
+        }
+    }
+
+    @Test
+    @SmallTest
+    public void testNormalRoutingDiscardedNotRejectNewIncomingCall() {
+        Phone phone = setupTestPhoneForEmergencyCall(false /* isRoaming */,
+                false /* isRadioOn */);
+        when(phone.getSubId()).thenReturn(1);
+        setEcmSupportedConfig(phone, true);
+
+        EmergencyStateTracker testEst = setupEmergencyStateTracker(
+                false /* isSuplDdsSwitchRequiredForEmergencyCall */);
+
+        ArgumentCaptor<Handler> handlerCaptor = ArgumentCaptor.forClass(Handler.class);
+        ArgumentCaptor<Integer> intCaptor = ArgumentCaptor.forClass(Integer.class);
+
+        verify(phone).registerForNewRingingConnection(handlerCaptor.capture(),
+                intCaptor.capture(), any());
+        assertNotNull(handlerCaptor.getValue());
+        assertNotNull(intCaptor.getValue());
+
+        // Start normal routing emergency call.
+        testEst.startNormalRoutingEmergencyCall(phone, mTestConnection1, result -> {});
+
+        // Discard normal routing emergency call.
+        testEst.endNormalRoutingEmergencyCall(mTestConnection1);
 
         Connection c = mock(Connection.class);
         Call call = mock(Call.class);
