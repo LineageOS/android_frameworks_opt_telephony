@@ -511,6 +511,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private synchronized void resetProxyAndRequestList(@HalService int service) {
         if (service == HAL_SERVICE_RADIO) {
             mRadioProxy = null;
+            // Increment the cookie so that death notification can be ignored
+            mServiceCookies.get(service).incrementAndGet();
         } else {
             if (mFeatureFlags.combineRilDeathHandle()) {
                 // Reset all aidl services.
