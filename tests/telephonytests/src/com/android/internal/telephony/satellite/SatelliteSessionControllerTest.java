@@ -45,6 +45,7 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.flags.FeatureFlags;
 
 import org.junit.After;
 import org.junit.Before;
@@ -105,11 +106,12 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         Resources resources = mContext.getResources();
         when(resources.getInteger(anyInt())).thenReturn(TEST_SATELLITE_TIMEOUT_MILLIS);
 
+        when(mFeatureFlags.satellitePersistentLogging()).thenReturn(true);
         when(mMockSatelliteController.isSatelliteAttachRequired()).thenReturn(false);
         mSatelliteModemInterface = new TestSatelliteModemInterface(
-                mContext, mMockSatelliteController, Looper.myLooper());
+                mContext, mMockSatelliteController, Looper.myLooper(), mFeatureFlags);
         mTestSatelliteSessionController = new TestSatelliteSessionController(mContext,
-                Looper.myLooper(), true, mSatelliteModemInterface);
+                Looper.myLooper(), mFeatureFlags, true, mSatelliteModemInterface);
         processAllMessages();
 
         mTestSatelliteModemStateCallback = new TestSatelliteModemStateCallback();
@@ -131,7 +133,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
          * state.
          */
         TestSatelliteSessionController sessionController1 = new TestSatelliteSessionController(
-                mContext, Looper.myLooper(), false, mSatelliteModemInterface);
+                mContext, Looper.myLooper(), mFeatureFlags, false, mSatelliteModemInterface);
         assertNotNull(sessionController1);
         processAllMessages();
         assertEquals(STATE_UNAVAILABLE, sessionController1.getCurrentStateName());
@@ -140,7 +142,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
          * Since satellite is supported, SatelliteSessionController should move to POWER_OFF state.
          */
         TestSatelliteSessionController sessionController2 = new TestSatelliteSessionController(
-                mContext, Looper.myLooper(), true, mSatelliteModemInterface);
+                mContext, Looper.myLooper(), mFeatureFlags, true, mSatelliteModemInterface);
         assertNotNull(sessionController2);
         processAllMessages();
         assertEquals(STATE_POWER_OFF, sessionController2.getCurrentStateName());
@@ -153,7 +155,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
          * state.
          */
         TestSatelliteSessionController sessionController = new TestSatelliteSessionController(
-                mContext, Looper.myLooper(), false, mSatelliteModemInterface);
+                mContext, Looper.myLooper(), mFeatureFlags, false, mSatelliteModemInterface);
         assertNotNull(sessionController);
         processAllMessages();
         assertEquals(STATE_UNAVAILABLE, sessionController.getCurrentStateName());
@@ -1117,8 +1119,9 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         private int mErrorCode = SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
         TestSatelliteModemInterface(@NonNull Context context,
-                SatelliteController satelliteController, @NonNull Looper looper) {
-            super(context, satelliteController, looper);
+                SatelliteController satelliteController, @NonNull Looper looper,
+                @NonNull FeatureFlags featureFlags) {
+            super(context, satelliteController, looper, featureFlags);
             mExponentialBackoff.stop();
         }
 
@@ -1161,9 +1164,10 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
     }
 
     private static class TestSatelliteSessionController extends SatelliteSessionController {
-        TestSatelliteSessionController(Context context, Looper looper, boolean isSatelliteSupported,
+        TestSatelliteSessionController(Context context, Looper looper, FeatureFlags featureFlags,
+                boolean isSatelliteSupported,
                 SatelliteModemInterface satelliteModemInterface) {
-            super(context, looper, isSatelliteSupported, satelliteModemInterface);
+            super(context, looper, featureFlags, isSatelliteSupported, satelliteModemInterface);
         }
 
         String getCurrentStateName() {

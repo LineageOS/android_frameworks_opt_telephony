@@ -58,6 +58,7 @@ import android.util.Pair;
 
 import com.android.internal.telephony.IVoidConsumer;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 import com.android.internal.telephony.satellite.metrics.SessionMetricsStats;
 
@@ -126,9 +127,11 @@ public class DatagramReceiverTest extends TelephonyTest {
         replaceInstance(SessionMetricsStats.class, "sInstance", null,
                 mMockSessionMetricsStats);
 
-        mDatagramReceiverUT = DatagramReceiver.make(mContext, Looper.myLooper(),
+        when(mFeatureFlags.satellitePersistentLogging()).thenReturn(true);
+        mDatagramReceiverUT = DatagramReceiver.make(mContext, Looper.myLooper(), mFeatureFlags,
                 mMockDatagramController);
         mTestDemoModeDatagramReceiver = new TestDatagramReceiver(mContext, Looper.myLooper(),
+                mFeatureFlags,
                 mMockDatagramController);
         mSatelliteDatagramListenerHandler = new DatagramReceiver.SatelliteDatagramListenerHandler(
                 Looper.myLooper(), SUB_ID);
@@ -490,8 +493,9 @@ public class DatagramReceiverTest extends TelephonyTest {
         private long mLong =  SATELLITE_ALIGN_TIMEOUT;
 
         TestDatagramReceiver(@NonNull Context context, @NonNull Looper looper,
+                @NonNull FeatureFlags featureFlags,
                 @NonNull DatagramController datagramController) {
-            super(context, looper, datagramController);
+            super(context, looper, featureFlags, datagramController);
         }
 
         @Override

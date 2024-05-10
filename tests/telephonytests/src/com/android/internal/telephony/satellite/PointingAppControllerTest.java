@@ -100,12 +100,13 @@ public class PointingAppControllerTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         MockitoAnnotations.initMocks(this);
         logd(TAG + " Setup!");
+        when(mFeatureFlags.satellitePersistentLogging()).thenReturn(true);
         mInOrderForPointingUi = inOrder(mContext);
         replaceInstance(SatelliteModemInterface.class, "sInstance", null,
                 mMockSatelliteModemInterface);
         replaceInstance(SatelliteController.class, "sInstance", null,
                 mMockSatelliteController);
-        mPointingAppController = new PointingAppController(mContext);
+        mPointingAppController = new PointingAppController(mContext, mFeatureFlags);
         mContextFixture.putResource(R.string.config_pointing_ui_package,
                 KEY_POINTING_UI_PACKAGE_NAME);
         mContextFixture.putResource(R.string.config_pointing_ui_class,

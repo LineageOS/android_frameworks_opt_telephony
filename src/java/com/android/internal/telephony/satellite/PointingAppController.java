@@ -34,6 +34,8 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.RemoteException;
 import android.os.SystemProperties;
+import android.telephony.DropBoxManagerLoggerBackend;
+import android.telephony.PersistentLogger;
 import android.telephony.Rlog;
 import android.telephony.satellite.ISatelliteTransmissionUpdateCallback;
 import android.telephony.satellite.PointingInfo;
@@ -42,6 +44,7 @@ import android.text.TextUtils;
 
 import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.flags.FeatureFlags;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,6 +63,7 @@ public class PointingAppController {
     @NonNull
     private static PointingAppController sInstance;
     @NonNull private final Context mContext;
+    @NonNull private final FeatureFlags mFeatureFlags;
     private boolean mStartedSatelliteTransmissionUpdates;
     private boolean mLastNeedFullScreenPointingUI;
     private boolean mLastIsDemoMode;
@@ -74,6 +78,7 @@ public class PointingAppController {
      */
     private final ConcurrentHashMap<Integer, SatelliteTransmissionUpdateHandler>
             mSatelliteTransmissionUpdateHandlers = new ConcurrentHashMap<>();
+    @Nullable private PersistentLogger mPersistentLogger = null;
 
     /**
      * @return The singleton instance of PointingAppController.
@@ -88,11 +93,13 @@ public class PointingAppController {
     /**
      * Create the PointingAppController singleton instance.
      * @param context The Context to use to create the PointingAppController.
+     * @param featureFlags The telephony feature flags.
      * @return The singleton instance of PointingAppController.
      */
-    public static PointingAppController make(@NonNull Context context) {
+    public static PointingAppController make(@NonNull Context context,
+            @NonNull FeatureFlags featureFlags) {
         if (sInstance == null) {
-            sInstance = new PointingAppController(context);
+            sInstance = new PointingAppController(context, featureFlags);
         }
         return sInstance;
     }
@@ -103,14 +110,20 @@ public class PointingAppController {
      * @param context The Context for the PointingUIController.
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
-    public PointingAppController(@NonNull Context context) {
+    public PointingAppController(@NonNull Context context,
+            @NonNull FeatureFlags featureFlags) {
         mContext = context;
+        mFeatureFlags = featureFlags;
         mStartedSatelliteTransmissionUpdates = false;
         mLastNeedFullScreenPointingUI = false;
         mLastIsDemoMode = false;
         mLastIsEmergency = false;
         mListenerForPointingUIRegistered = false;
         mActivityManager = mContext.getSystemService(ActivityManager.class);
+        if (isSatellitePersistentLoggingEnabled(context, featureFlags)) {
+            mPersistentLogger = new PersistentLogger(
+                    DropBoxManagerLoggerBackend.getInstance(context));
+        }
     }
 
     /**
@@ -147,7 +160,7 @@ public class PointingAppController {
 
             if (callerPackages != null) {
                 if (Arrays.stream(callerPackages).anyMatch(pointingUiPackage::contains)) {
-                    logd("Restarting pointingUI");
+                    plogd("Restarting pointingUI");
                     startPointingUI(mLastNeedFullScreenPointingUI, mLastIsDemoMode,
                             mLastIsEmergency);
                 }
@@ -331,7 +344,7 @@ public class PointingAppController {
      */
     public void startSatelliteTransmissionUpdates(@NonNull Message message) {
         if (mStartedSatelliteTransmissionUpdates) {
-            logd("startSatelliteTransmissionUpdates: already started");
+            plogd("startSatelliteTransmissionUpdates: already started");
             AsyncResult.forMessage(message, null, new SatelliteManager.SatelliteException(
                     SatelliteManager.SATELLITE_RESULT_SUCCESS));
             message.sendToTarget();
@@ -359,7 +372,7 @@ public class PointingAppController {
             boolean isEmergency) {
         String packageName = getPointingUiPackageName();
         if (TextUtils.isEmpty(packageName)) {
-            logd("startPointingUI: config_pointing_ui_package is not set. Ignore the request");
+            plogd("startPointingUI: config_pointing_ui_package is not set. Ignore the request");
             return;
         }
 
@@ -373,10 +386,10 @@ public class PointingAppController {
             launchIntent = mContext.getPackageManager().getLaunchIntentForPackage(packageName);
         }
         if (launchIntent == null) {
-            loge("startPointingUI: launchIntent is null");
+            ploge("startPointingUI: launchIntent is null");
             return;
         }
-        logd("startPointingUI: needFullScreenPointingUI: " + needFullScreenPointingUI
+        plogd("startPointingUI: needFullScreenPointingUI: " + needFullScreenPointingUI
                 + ", isDemoMode: " + isDemoMode + ", isEmergency: " + isEmergency);
         launchIntent.putExtra("needFullScreen", needFullScreenPointingUI);
         launchIntent.putExtra("isDemoMode", isDemoMode);
@@ -393,7 +406,7 @@ public class PointingAppController {
             mLastIsEmergency = isEmergency;
             mContext.startActivity(launchIntent);
         } catch (ActivityNotFoundException ex) {
-            loge("startPointingUI: Pointing UI app activity is not found, ex=" + ex);
+            ploge("startPointingUI: Pointing UI app activity is not found, ex=" + ex);
         }
     }
 
@@ -422,7 +435,7 @@ public class PointingAppController {
                     request);
             msg.sendToTarget();
         } else {
-            loge("SatelliteTransmissionUpdateHandler not found for subId: " + subId);
+            ploge("SatelliteTransmissionUpdateHandler not found for subId: " + subId);
         }
     }
 
@@ -441,7 +454,7 @@ public class PointingAppController {
                     request);
             msg.sendToTarget();
         } else {
-            loge(" SatelliteTransmissionUpdateHandler not found for subId: " + subId);
+            ploge(" SatelliteTransmissionUpdateHandler not found for subId: " + subId);
         }
     }
 
@@ -456,12 +469,12 @@ public class PointingAppController {
     boolean setSatellitePointingUiClassName(
             @Nullable String packageName, @Nullable String className) {
         if (!isMockModemAllowed()) {
-            loge("setSatellitePointingUiClassName: modifying satellite pointing UI package and "
+            ploge("setSatellitePointingUiClassName: modifying satellite pointing UI package and "
                     + "class name is not allowed");
             return false;
         }
 
-        logd("setSatellitePointingUiClassName: config_pointing_ui_package is updated, new "
+        plogd("setSatellitePointingUiClassName: config_pointing_ui_package is updated, new "
                 + "packageName=" + packageName
                 + ", config_pointing_ui_class new className=" + className);
 
@@ -506,6 +519,33 @@ public class PointingAppController {
 
     private static void loge(@NonNull String log) {
         Rlog.e(TAG, log);
+    }
+
+    private boolean isSatellitePersistentLoggingEnabled(
+            @NonNull Context context, @NonNull FeatureFlags featureFlags) {
+        if (featureFlags.satellitePersistentLogging()) {
+            return true;
+        }
+        try {
+            return context.getResources().getBoolean(
+                    R.bool.config_dropboxmanager_persistent_logging_enabled);
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private void plogd(@NonNull String log) {
+        Rlog.d(TAG, log);
+        if (mPersistentLogger != null) {
+            mPersistentLogger.debug(TAG, log);
+        }
+    }
+
+    private void ploge(@NonNull String log) {
+        Rlog.e(TAG, log);
+        if (mPersistentLogger != null) {
+            mPersistentLogger.error(TAG, log);
+        }
     }
     /**
      * TODO: The following needs to be added in this class:
