@@ -87,7 +87,7 @@ public class DatagramControllerTest extends TelephonyTest {
         when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
         when(mMockSatelliteController.isSatelliteAttachRequired()).thenReturn(true);
         mDatagramControllerUT = new DatagramController(
-                mContext, Looper.myLooper(), mMockPointingAppController);
+                mContext, Looper.myLooper(), mFeatureFlags, mMockPointingAppController);
 
         // Move both send and receive to IDLE state
         mDatagramControllerUT.updateSendStatus(SUB_ID, DATAGRAM_TYPE_UNKNOWN,

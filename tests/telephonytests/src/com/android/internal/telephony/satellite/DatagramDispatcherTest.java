@@ -60,6 +60,7 @@ import com.android.internal.R;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 import com.android.internal.telephony.satellite.metrics.SessionMetricsStats;
 
@@ -155,7 +156,9 @@ public class DatagramDispatcherTest extends TelephonyTest {
                 mMockSessionMetricsStats);
 
         when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
+        when(mFeatureFlags.satellitePersistentLogging()).thenReturn(true);
         mDatagramDispatcherUT = new TestDatagramDispatcher(mContext, Looper.myLooper(),
+                mFeatureFlags,
                 mMockDatagramController);
 
         mResultListener = new LinkedBlockingQueue<>(1);
@@ -772,8 +775,9 @@ public class DatagramDispatcherTest extends TelephonyTest {
         private long mLong = SATELLITE_ALIGN_TIMEOUT;
 
         TestDatagramDispatcher(@NonNull Context context, @NonNull Looper looper,
+                @NonNull FeatureFlags featureFlags,
                 @NonNull DatagramController datagramController) {
-            super(context, looper, datagramController);
+            super(context, looper, featureFlags, datagramController);
         }
 
         @Override

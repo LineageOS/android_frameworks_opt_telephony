@@ -28,11 +28,14 @@ import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.Build;
 import android.os.Looper;
 import android.os.SystemProperties;
+import android.telephony.DropBoxManagerLoggerBackend;
+import android.telephony.PersistentLogger;
 import android.telephony.Rlog;
 import android.telephony.satellite.ISatelliteDatagramCallback;
 import android.telephony.satellite.SatelliteDatagram;
@@ -41,6 +44,7 @@ import android.telephony.satellite.SatelliteManager;
 import com.android.internal.R;
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.flags.FeatureFlags;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +59,7 @@ public class DatagramController {
 
     @NonNull private static DatagramController sInstance;
     @NonNull private final Context mContext;
+    @NonNull private final FeatureFlags mFeatureFlags;
     @NonNull private final PointingAppController mPointingAppController;
     @NonNull private final DatagramDispatcher mDatagramDispatcher;
     @NonNull private final DatagramReceiver mDatagramReceiver;
@@ -109,6 +114,8 @@ public class DatagramController {
     @GuardedBy("mLock")
     @SatelliteManager.SatelliteModemState
     private int mSatelltieModemState = SatelliteManager.SATELLITE_MODEM_STATE_UNKNOWN;
+    @Nullable
+    private PersistentLogger mPersistentLogger = null;
 
     /**
      * @return The singleton instance of DatagramController.
@@ -124,14 +131,17 @@ public class DatagramController {
      * Create the DatagramController singleton instance.
      * @param context The Context to use to create the DatagramController.
      * @param looper The looper for the handler.
+     * @param featureFlags The telephony feature flags.
      * @param pointingAppController PointingAppController is used to update
      *                              PointingApp about datagram transfer state changes.
      * @return The singleton instance of DatagramController.
      */
     public static DatagramController make(@NonNull Context context, @NonNull Looper looper,
+            @NonNull FeatureFlags featureFlags,
             @NonNull PointingAppController pointingAppController) {
         if (sInstance == null) {
-            sInstance = new DatagramController(context, looper, pointingAppController);
+            sInstance = new DatagramController(
+                    context, looper, featureFlags, pointingAppController);
         }
         return sInstance;
     }
@@ -141,22 +151,27 @@ public class DatagramController {
      *
      * @param context The Context for the DatagramController.
      * @param looper The looper for the handler
+     * @param featureFlags The telephony feature flags.
      * @param pointingAppController PointingAppController is used to update PointingApp
      *                              about datagram transfer state changes.
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public DatagramController(@NonNull Context context, @NonNull Looper  looper,
+            @NonNull FeatureFlags featureFlags,
             @NonNull PointingAppController pointingAppController) {
         mContext = context;
+        mFeatureFlags = featureFlags;
         mPointingAppController = pointingAppController;
 
         // Create the DatagramDispatcher singleton,
         // which is used to send satellite datagrams.
-        mDatagramDispatcher = DatagramDispatcher.make(mContext, looper, this);
+        mDatagramDispatcher = DatagramDispatcher.make(
+                mContext, looper, mFeatureFlags, this);
 
         // Create the DatagramReceiver singleton,
         // which is used to receive satellite datagrams.
-        mDatagramReceiver = DatagramReceiver.make(mContext, looper, this);
+        mDatagramReceiver = DatagramReceiver.make(
+                mContext, looper, mFeatureFlags, this);
 
         mDatagramWaitTimeForConnectedState = getDatagramWaitForConnectedStateTimeoutMillis();
         mModemImageSwitchingDuration = getSatelliteModemImageSwitchingDurationMillis();
@@ -165,6 +180,11 @@ public class DatagramController {
         mDatagramWaitTimeForConnectedStateForLastMessage =
                 getDatagramWaitForConnectedStateForLastMessageTimeoutMillis();
         mDemoModeDatagramList = new ArrayList<>();
+
+        if (isSatellitePersistentLoggingEnabled(context, featureFlags)) {
+            mPersistentLogger = new PersistentLogger(
+                    DropBoxManagerLoggerBackend.getInstance(context));
+        }
     }
 
     /**
@@ -205,7 +225,7 @@ public class DatagramController {
      * @param callback The callback to get {@link SatelliteManager.SatelliteResult} of the request.
      */
     public void pollPendingSatelliteDatagrams(int subId, @NonNull Consumer<Integer> callback) {
-        logd("pollPendingSatelliteDatagrams");
+        plogd("pollPendingSatelliteDatagrams");
         mDatagramReceiver.pollPendingSatelliteDatagrams(subId, callback);
     }
 
@@ -247,13 +267,13 @@ public class DatagramController {
             @SatelliteManager.SatelliteDatagramTransferState int datagramTransferState,
             int sendPendingCount, int errorCode) {
         synchronized (mLock) {
-            logd("updateSendStatus"
+            plogd("updateSendStatus"
                     + " subId: " + subId
                     + " datagramType: " + datagramType
                     + " datagramTransferState: " + datagramTransferState
                     + " sendPendingCount: " + sendPendingCount + " errorCode: " + errorCode);
             if (shouldSuppressDatagramTransferStateUpdate(datagramType)) {
-                logd("Ignore the request to update send status");
+                plogd("Ignore the request to update send status");
                 return;
             }
 
@@ -295,7 +315,7 @@ public class DatagramController {
             @SatelliteManager.SatelliteDatagramTransferState int datagramTransferState,
             int receivePendingCount, int errorCode) {
         synchronized (mLock) {
-            logd("updateReceiveStatus"
+            plogd("updateReceiveStatus"
                     + " subId: " + subId
                     + " datagramTransferState: " + datagramTransferState
                     + " receivePendingCount: " + receivePendingCount + " errorCode: " + errorCode);
@@ -411,7 +431,7 @@ public class DatagramController {
             }
             setDeviceAlignedWithSatellite(false);
         }
-        logd("setDemoMode: mIsDemoMode=" + mIsDemoMode);
+        plogd("setDemoMode: mIsDemoMode=" + mIsDemoMode);
     }
 
     /** Get the last sent datagram for demo mode */
@@ -422,7 +442,7 @@ public class DatagramController {
         }
 
         synchronized (mLock) {
-            logd("popDemoModeDatagram");
+            plogd("popDemoModeDatagram");
             return mDemoModeDatagramList.size() > 0 ? mDemoModeDatagramList.remove(0) : null;
         }
     }
@@ -440,7 +460,7 @@ public class DatagramController {
         if (mIsDemoMode && SatelliteServiceUtils.isSosMessage(datagramType)) {
             synchronized (mLock) {
                 mDemoModeDatagramList.add(datagram);
-                logd("pushDemoModeDatagram size=" + mDemoModeDatagramList.size());
+                plogd("pushDemoModeDatagram size=" + mDemoModeDatagramList.size());
             }
         }
     }
@@ -473,11 +493,11 @@ public class DatagramController {
     boolean setDatagramControllerTimeoutDuration(
             boolean reset, int timeoutType, long timeoutMillis) {
         if (!isMockModemAllowed()) {
-            loge("Updating timeout duration is not allowed");
+            ploge("Updating timeout duration is not allowed");
             return false;
         }
 
-        logd("setDatagramControllerTimeoutDuration: timeoutMillis=" + timeoutMillis
+        plogd("setDatagramControllerTimeoutDuration: timeoutMillis=" + timeoutMillis
                 + ", reset=" + reset + ", timeoutType=" + timeoutType);
         if (timeoutType == TIMEOUT_TYPE_ALIGN) {
             if (reset) {
@@ -499,7 +519,7 @@ public class DatagramController {
         } else if (timeoutType == TIMEOUT_TYPE_DATAGRAM_DELAY_IN_DEMO_MODE) {
             mDatagramDispatcher.setTimeoutDatagramDelayInDemoMode(reset, timeoutMillis);
         } else {
-            loge("Invalid timeout type " + timeoutType);
+            ploge("Invalid timeout type " + timeoutType);
             return false;
         }
         return true;
@@ -542,7 +562,7 @@ public class DatagramController {
     private void notifyDatagramTransferStateChangedToSessionController() {
         SatelliteSessionController sessionController = SatelliteSessionController.getInstance();
         if (sessionController == null) {
-            loge("notifyDatagramTransferStateChangeToSessionController: SatelliteSessionController"
+            ploge("notifyDatagramTransferStateChangeToSessionController: SatelliteSessionController"
                     + " is not initialized yet");
         } else {
             sessionController.onDatagramTransferStateChanged(
@@ -585,7 +605,7 @@ public class DatagramController {
                     @Override
                     public void accept(Integer result) {
                         if (result != SATELLITE_RESULT_SUCCESS) {
-                            logd("retryPollPendingDatagramsInDemoMode result: " + result);
+                            plogd("retryPollPendingDatagramsInDemoMode result: " + result);
                         }
                     }
                 };
@@ -632,5 +652,32 @@ public class DatagramController {
 
     private static void loge(@NonNull String log) {
         Rlog.e(TAG, log);
+    }
+
+    private boolean isSatellitePersistentLoggingEnabled(
+            @NonNull Context context, @NonNull FeatureFlags featureFlags) {
+        if (featureFlags.satellitePersistentLogging()) {
+            return true;
+        }
+        try {
+            return context.getResources().getBoolean(
+                    R.bool.config_dropboxmanager_persistent_logging_enabled);
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private void plogd(@NonNull String log) {
+        Rlog.d(TAG, log);
+        if (mPersistentLogger != null) {
+            mPersistentLogger.debug(TAG, log);
+        }
+    }
+
+    private void ploge(@NonNull String log) {
+        Rlog.e(TAG, log);
+        if (mPersistentLogger != null) {
+            mPersistentLogger.error(TAG, log);
+        }
     }
 }

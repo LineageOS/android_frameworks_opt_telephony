@@ -20,3 +20,11 @@ flag {
     description: "This flag enables satellite internet support."
     bug:"326972202"
 }
+
+# OWNER=xalle TARGET=24Q3
+flag {
+    name: "satellite_persistent_logging"
+    namespace: "telephony"
+    description: "This flag enables satellite persistent logging"
+    bug:"339877723"
+}
