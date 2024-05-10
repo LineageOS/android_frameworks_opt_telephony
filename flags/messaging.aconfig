@@ -28,3 +28,14 @@ flag {
     purpose: PURPOSE_BUGFIX
   }
 }
+
+# OWNER=stevestatia TARGET=24Q3
+flag {
+    name: "unregister_sms_broadcast_receiver_from_cat_service"
+    namespace: "telephony"
+    description: "This flag will unregister the sms broadcast receiver in the CatService when the process is disposed."
+    bug: "338936403"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
+}
