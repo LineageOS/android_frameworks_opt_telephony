@@ -1,6 +1,17 @@
 package: "com.android.internal.telephony.flags"
 container: "system"
 
+# OWNER=linggm TARGET=24Q3
+flag {
+    name: "combine_ril_death_handle"
+    namespace: "telephony"
+    description: "Upon radio service death, combine its handling to prevent race condition"
+    bug:"319612362"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
+}
+
 # OWNER=tjstuart TARGET=24Q3
 flag {
   name: "do_not_override_precise_label"
