@@ -24,6 +24,7 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
 import android.os.SystemClock;
+import android.telephony.Annotation.ConnectivityTransport;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
@@ -235,6 +236,23 @@ public class TelephonyNetworkRequest {
      */
     public boolean hasCapability(@NetCapability int capability) {
         return mNativeNetworkRequest.hasCapability(capability);
+    }
+
+    /**
+     * @see NetworkRequest#getTransportTypes()
+     */
+    @NonNull
+    @ConnectivityTransport
+    public int[] getTransportTypes() {
+        return mNativeNetworkRequest.getTransportTypes();
+    }
+
+    /**
+     * @return {@code true} if the request can be served on the specified transport.
+     * @see NetworkRequest#hasTransport
+     */
+    public boolean hasTransport(@ConnectivityTransport int transport) {
+        return mNativeNetworkRequest.hasTransport(transport);
     }
 
     /**

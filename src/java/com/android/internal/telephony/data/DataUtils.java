@@ -27,6 +27,7 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.RadioAccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.Annotation.ConnectivityTransport;
 import android.telephony.Annotation.DataActivityType;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
@@ -173,6 +174,44 @@ public class DataUtils {
                 loge("Unknown network capability(" + netCap + ")");
                 return "Unknown(" + netCap + ")";
         }
+    }
+
+    /**
+     * Concat an array of {@link NetworkCapabilities.Transport} in string format.
+     *
+     * @param transports an array of connectivity transports
+     * @return a string of the array of transports.
+     */
+    @NonNull
+    public static String connectivityTransportsToString(
+            @NonNull @ConnectivityTransport int[] transports) {
+        return Arrays.stream(transports).mapToObj(DataUtils::connectivityTransportToString)
+                .collect(Collectors.joining("|"));
+    }
+
+    /**
+     * Convert a {@link NetworkCapabilities.Transport} to a string.
+     *
+     * @param transport the connectivity transport
+     * @return the transport in string
+     */
+    @NonNull
+    public static String connectivityTransportToString(
+            @ConnectivityTransport int transport) {
+        return switch (transport) {
+            case NetworkCapabilities.TRANSPORT_CELLULAR -> "CELLULAR";
+            case NetworkCapabilities.TRANSPORT_WIFI -> "WIFI";
+            case NetworkCapabilities.TRANSPORT_BLUETOOTH -> "BLUETOOTH";
+            case NetworkCapabilities.TRANSPORT_ETHERNET -> "ETHERNET";
+            case NetworkCapabilities.TRANSPORT_VPN -> "VPN";
+            case NetworkCapabilities.TRANSPORT_WIFI_AWARE -> "WIFI_AWARE";
+            case NetworkCapabilities.TRANSPORT_LOWPAN -> "LOWPAN";
+            case NetworkCapabilities.TRANSPORT_TEST -> "TEST";
+            case NetworkCapabilities.TRANSPORT_USB -> "USB";
+            case NetworkCapabilities.TRANSPORT_THREAD -> "THREAD";
+            case NetworkCapabilities.TRANSPORT_SATELLITE -> "SATELLITE";
+            default -> "Unknown(" + transport + ")";
+        };
     }
 
     /**
@@ -427,8 +466,7 @@ public class DataUtils {
                                 Arrays.stream(networkRequest.getNativeNetworkRequest()
                                                 .getEnterpriseIds())
                                         .boxed().collect(Collectors.toSet()),
-                                Arrays.stream(networkRequest.getNativeNetworkRequest()
-                                                .getTransportTypes())
+                                Arrays.stream(networkRequest.getTransportTypes())
                                         .boxed().collect(Collectors.toSet())
                                 ),
                         v -> new NetworkRequestList()).add(networkRequest);
