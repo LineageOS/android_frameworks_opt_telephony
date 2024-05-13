@@ -1414,46 +1414,54 @@ public class SatelliteControllerTest extends TelephonyTest {
         String mText = "This is a test datagram message from user";
         SatelliteDatagram datagram = new SatelliteDatagram(mText.getBytes());
 
-        mIIntegerConsumerResults.clear();
-        mSatelliteControllerUT.sendDatagram(SUB_ID,
-                SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE, datagram, true, mIIntegerConsumer);
-        processAllMessages();
-        assertTrue(waitForIIntegerConsumerResult(1));
-        assertEquals(SATELLITE_RESULT_INVALID_TELEPHONY_STATE,
-                (long) mIIntegerConsumerResults.get(0));
-        verify(mMockDatagramController, never()).sendSatelliteDatagram(anyInt(),
-                eq(SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE), eq(datagram), eq(true),
-                any());
+        int[] sosDatagramTypes = {SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE,
+                SatelliteManager.DATAGRAM_TYPE_LAST_SOS_MESSAGE_STILL_NEED_HELP,
+                SatelliteManager.DATAGRAM_TYPE_LAST_SOS_MESSAGE_NO_HELP_NEEDED};
+        for (int datagramType : sosDatagramTypes) {
+            mSatelliteControllerUT =
+                    new TestSatelliteController(mContext, Looper.myLooper(), mFeatureFlags);
+            mIIntegerConsumerSemaphore.drainPermits();
+            mIIntegerConsumerResults.clear();
+            clearInvocations(mMockDatagramController);
+            clearInvocations(mMockPointingAppController);
 
-        mIIntegerConsumerResults.clear();
-        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
-        verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
-        sendProvisionedStateChangedEvent(false, null);
-        processAllMessages();
-        verifySatelliteProvisioned(false, SATELLITE_RESULT_SUCCESS);
-        mSatelliteControllerUT.sendDatagram(SUB_ID,
-                SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE, datagram, true, mIIntegerConsumer);
-        processAllMessages();
-        assertTrue(waitForIIntegerConsumerResult(1));
-        assertEquals(SATELLITE_RESULT_SERVICE_NOT_PROVISIONED,
-                (long) mIIntegerConsumerResults.get(0));
-        verify(mMockDatagramController, never()).sendSatelliteDatagram(anyInt(),
-                eq(SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE), eq(datagram), eq(true),
-                any());
+            mSatelliteControllerUT.sendDatagram(SUB_ID, datagramType, datagram, true,
+                    mIIntegerConsumer);
+            processAllMessages();
+            assertTrue(waitForIIntegerConsumerResult(1));
+            assertEquals(SATELLITE_RESULT_INVALID_TELEPHONY_STATE,
+                    (long) mIIntegerConsumerResults.get(0));
+            verify(mMockDatagramController, never()).sendSatelliteDatagram(anyInt(),
+                    eq(datagramType), eq(datagram), eq(true), any());
 
-        mIIntegerConsumerResults.clear();
-        sendProvisionedStateChangedEvent(true, null);
-        processAllMessages();
-        verifySatelliteProvisioned(true, SATELLITE_RESULT_SUCCESS);
-        mSatelliteControllerUT.sendDatagram(SUB_ID,
-                SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE, datagram, true, mIIntegerConsumer);
-        processAllMessages();
-        assertFalse(waitForIIntegerConsumerResult(1));
-        verify(mMockDatagramController, times(1)).sendSatelliteDatagram(anyInt(),
-                eq(SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE), eq(datagram), eq(true),
-                any());
-        verify(mMockPointingAppController, times(1)).startPointingUI(eq(true), anyBoolean(),
-                anyBoolean());
+            mIIntegerConsumerResults.clear();
+            setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+            verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
+            sendProvisionedStateChangedEvent(false, null);
+            processAllMessages();
+            verifySatelliteProvisioned(false, SATELLITE_RESULT_SUCCESS);
+            mSatelliteControllerUT.sendDatagram(SUB_ID, datagramType, datagram, true,
+                    mIIntegerConsumer);
+            processAllMessages();
+            assertTrue(waitForIIntegerConsumerResult(1));
+            assertEquals(SATELLITE_RESULT_SERVICE_NOT_PROVISIONED,
+                    (long) mIIntegerConsumerResults.get(0));
+            verify(mMockDatagramController, never()).sendSatelliteDatagram(anyInt(),
+                    eq(datagramType), eq(datagram), eq(true), any());
+
+            mIIntegerConsumerResults.clear();
+            sendProvisionedStateChangedEvent(true, null);
+            processAllMessages();
+            verifySatelliteProvisioned(true, SATELLITE_RESULT_SUCCESS);
+            mSatelliteControllerUT.sendDatagram(SUB_ID, datagramType, datagram, true,
+                    mIIntegerConsumer);
+            processAllMessages();
+            assertFalse(waitForIIntegerConsumerResult(1));
+            verify(mMockDatagramController, times(1)).sendSatelliteDatagram(anyInt(),
+                    eq(datagramType), eq(datagram), eq(true), any());
+            verify(mMockPointingAppController, times(1)).startPointingUI(eq(true), anyBoolean(),
+                    anyBoolean());
+        }
     }
 
     @Test

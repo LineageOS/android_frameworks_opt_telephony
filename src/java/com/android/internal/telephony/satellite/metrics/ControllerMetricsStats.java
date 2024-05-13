@@ -27,6 +27,7 @@ import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.metrics.SatelliteStats;
+import com.android.internal.telephony.satellite.SatelliteServiceUtils;
 
 /**
  * Stats to log to satellite metrics
@@ -142,7 +143,7 @@ public class ControllerMetricsStats {
             builder.setCountOfOutgoingDatagramSuccess(ADD_COUNT);
         }
 
-        if (datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {
+        if (SatelliteServiceUtils.isSosMessage(datagramType)) {
             builder.setCountOfDatagramTypeSosSmsSuccess(ADD_COUNT);
         } else if (datagramType == SatelliteManager.DATAGRAM_TYPE_LOCATION_SHARING) {
             builder.setCountOfDatagramTypeLocationSharingSuccess(ADD_COUNT);
@@ -167,7 +168,7 @@ public class ControllerMetricsStats {
             builder.setCountOfOutgoingDatagramFail(ADD_COUNT);
         }
 
-        if (datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {
+        if (SatelliteServiceUtils.isSosMessage(datagramType)) {
             builder.setCountOfDatagramTypeSosSmsFail(ADD_COUNT);
         } else if (datagramType == SatelliteManager.DATAGRAM_TYPE_LOCATION_SHARING) {
             builder.setCountOfDatagramTypeLocationSharingFail(ADD_COUNT);

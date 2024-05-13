@@ -221,7 +221,7 @@ public class DatagramDispatcher extends Handler {
                     } else {
                         SatelliteModemInterface.getInstance().sendSatelliteDatagram(
                                 argument.datagram,
-                                argument.datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE,
+                                SatelliteServiceUtils.isSosMessage(argument.datagramType),
                                 argument.needFullScreenPointingUI, onCompleted);
                         startWaitForDatagramSendingResponseTimer(argument);
                     }
@@ -266,7 +266,7 @@ public class DatagramDispatcher extends Handler {
                     // Log metrics about the outgoing datagram
                     reportSendDatagramCompleted(argument, error);
                     // Remove current datagram from pending map.
-                    if (argument.datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {
+                    if (SatelliteServiceUtils.isSosMessage(argument.datagramType)) {
                         mPendingEmergencyDatagramsMap.remove(argument.datagramId);
                     } else {
                         mPendingNonEmergencyDatagramsMap.remove(argument.datagramId);
@@ -373,7 +373,7 @@ public class DatagramDispatcher extends Handler {
 
         synchronized (mLock) {
             // Add datagram to pending datagram map
-            if (datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {
+            if (SatelliteServiceUtils.isSosMessage(datagramType)) {
                 mPendingEmergencyDatagramsMap.put(datagramId, datagramArgs);
             } else {
                 mPendingNonEmergencyDatagramsMap.put(datagramId, datagramArgs);
@@ -765,7 +765,7 @@ public class DatagramDispatcher extends Handler {
     private boolean shouldProcessEventSendSatelliteDatagramDone(
             @NonNull SendSatelliteDatagramArgument argument) {
         synchronized (mLock) {
-            if (argument.datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {
+            if (SatelliteServiceUtils.isSosMessage(argument.datagramType)) {
                 return mPendingEmergencyDatagramsMap.containsKey(argument.datagramId);
             } else {
                 return mPendingNonEmergencyDatagramsMap.containsKey(argument.datagramId);
@@ -801,7 +801,7 @@ public class DatagramDispatcher extends Handler {
             mControllerMetricsStats.reportOutgoingDatagramFailCount(argument.datagramType,
                     mIsDemoMode);
             // Remove current datagram from pending map.
-            if (argument.datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {
+            if (SatelliteServiceUtils.isSosMessage(argument.datagramType)) {
                 mPendingEmergencyDatagramsMap.remove(argument.datagramId);
             } else {
                 mPendingNonEmergencyDatagramsMap.remove(argument.datagramId);
