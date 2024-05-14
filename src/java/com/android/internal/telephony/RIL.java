@@ -728,9 +728,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public synchronized RadioServiceProxy getRadioServiceProxy(int service) {
         if (!SubscriptionManager.isValidPhoneId(mPhoneId)) return mServiceProxies.get(service);
         if ((service >= HAL_SERVICE_IMS) && !isRadioServiceSupported(service)) {
-            riljLogw("getRadioServiceProxy: " + serviceToString(service) + " for "
-                    + HIDL_SERVICE_NAME[mPhoneId] + " is not supported\n"
-                    + android.util.Log.getStackTraceString(new RuntimeException()));
+            // Suppress the excessive logging for HAL_SERVICE_IMS when not supported.
+            if (service != HAL_SERVICE_IMS) {
+                riljLogw("getRadioServiceProxy: " + serviceToString(service) + " for "
+                        + HIDL_SERVICE_NAME[mPhoneId] + " is not supported\n"
+                        + android.util.Log.getStackTraceString(new RuntimeException()));
+            }
             return mServiceProxies.get(service);
         }
         if (!mIsCellularSupported) {
