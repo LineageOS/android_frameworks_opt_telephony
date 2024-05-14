@@ -466,16 +466,19 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private final class BinderServiceDeathRecipient implements IBinder.DeathRecipient {
         private IBinder mBinder;
         private final int mService;
+        private long mLinkedFlags;
 
         BinderServiceDeathRecipient(int service) {
             mService = service;
+            mLinkedFlags = 0;
         }
 
         public void linkToDeath(IBinder service) throws RemoteException {
             if (service != null) {
                 riljLog("Linked to death for service " + serviceToString(mService));
                 mBinder = service;
-                mBinder.linkToDeath(this, (int) mServiceCookies.get(mService).incrementAndGet());
+                mLinkedFlags = mServiceCookies.get(mService).incrementAndGet();
+                mBinder.linkToDeath(this, (int) mLinkedFlags);
             } else {
                 riljLoge("Unable to link to death for service " + serviceToString(mService));
             }
@@ -483,8 +486,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         public synchronized void unlinkToDeath() {
             if (mBinder != null) {
-                mBinder.unlinkToDeath(this, 0);
+                mBinder.unlinkToDeath(this, (int) mLinkedFlags);
                 mBinder = null;
+                mLinkedFlags = 0;
             }
         }
 
@@ -494,10 +498,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
             if (mFeatureFlags.combineRilDeathHandle()) {
                 mRilHandler.sendMessageAtFrontOfQueue(mRilHandler.obtainMessage(
                         EVENT_AIDL_PROXY_DEAD, mService, 0 /* ignored arg2 */,
-                        mServiceCookies.get(mService).get()));
+                        mLinkedFlags));
             } else {
                 mRilHandler.sendMessage(mRilHandler.obtainMessage(EVENT_AIDL_PROXY_DEAD, mService,
-                        0 /* ignored arg2 */, mServiceCookies.get(mService).get()));
+                        0 /* ignored arg2 */, mLinkedFlags));
             }
             unlinkToDeath();
         }
