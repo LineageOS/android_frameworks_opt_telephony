@@ -420,13 +420,15 @@ public class DatagramController {
 
     /**
      * Set last sent datagram for demo mode
-     * @param datagramType datagram type, only DATAGRAM_TYPE_SOS_MESSAGE will be saved
+     * @param datagramType datagram type, DATAGRAM_TYPE_SOS_MESSAGE,
+     *                     DATAGRAM_TYPE_LAST_SOS_MESSAGE_STILL_NEED_HELP,
+     *                     DATAGRAM_TYPE_LAST_SOS_MESSAGE_NO_HELP_NEEDED will be saved
      * @param datagram datagram The last datagram saved when sendSatelliteDatagramForDemo is called
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
     public void pushDemoModeDatagram(@SatelliteManager.DatagramType int datagramType,
             SatelliteDatagram datagram) {
-        if (mIsDemoMode && datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {
+        if (mIsDemoMode && SatelliteServiceUtils.isSosMessage(datagramType)) {
             synchronized (mLock) {
                 mDemoModeDatagramList.add(datagram);
                 logd("pushDemoModeDatagram size=" + mDemoModeDatagramList.size());

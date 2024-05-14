@@ -17,6 +17,8 @@
 package com.android.internal.telephony.satellite;
 
 import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_KEEP_ALIVE;
+import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_LAST_SOS_MESSAGE_NO_HELP_NEEDED;
+import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_LAST_SOS_MESSAGE_STILL_NEED_HELP;
 import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_LOCATION_SHARING;
 import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE;
 import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_UNKNOWN;
@@ -92,7 +94,7 @@ public class DatagramControllerTest extends TelephonyTest {
                 SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE, 0, SATELLITE_RESULT_SUCCESS);
         mDatagramControllerUT.updateReceiveStatus(SUB_ID, SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE, 0,
                 SATELLITE_RESULT_SUCCESS);
-        pushDemoModeSosDatagram();
+        pushDemoModeSosDatagram(DATAGRAM_TYPE_SOS_MESSAGE);
     }
 
     @After
@@ -108,6 +110,12 @@ public class DatagramControllerTest extends TelephonyTest {
         testUpdateSendStatus(true, DATAGRAM_TYPE_LOCATION_SHARING,
                 SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE);
         testUpdateSendStatus(false, DATAGRAM_TYPE_KEEP_ALIVE,
+                SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING);
+        pushDemoModeSosDatagram(DATAGRAM_TYPE_LAST_SOS_MESSAGE_STILL_NEED_HELP);
+        testUpdateSendStatus(true, DATAGRAM_TYPE_LAST_SOS_MESSAGE_STILL_NEED_HELP,
+                SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING);
+        pushDemoModeSosDatagram(DATAGRAM_TYPE_LAST_SOS_MESSAGE_NO_HELP_NEEDED);
+        testUpdateSendStatus(true, DATAGRAM_TYPE_LAST_SOS_MESSAGE_NO_HELP_NEEDED,
                 SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING);
     }
 
@@ -150,27 +158,33 @@ public class DatagramControllerTest extends TelephonyTest {
                 .needsWaitingForSatelliteConnected(DATAGRAM_TYPE_KEEP_ALIVE));
 
         when(mMockSatelliteController.isSatelliteAttachRequired()).thenReturn(true);
-        mDatagramControllerUT.onSatelliteModemStateChanged(
-                SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
-        assertFalse(mDatagramControllerUT
-                .needsWaitingForSatelliteConnected(DATAGRAM_TYPE_KEEP_ALIVE));
-        assertTrue(mDatagramControllerUT
-                .needsWaitingForSatelliteConnected(DATAGRAM_TYPE_SOS_MESSAGE));
 
-        mDatagramControllerUT.onSatelliteModemStateChanged(
-                SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
-        assertFalse(mDatagramControllerUT
-                .needsWaitingForSatelliteConnected(DATAGRAM_TYPE_SOS_MESSAGE));
+        int[] sosDatagramTypes = {DATAGRAM_TYPE_SOS_MESSAGE,
+                DATAGRAM_TYPE_LAST_SOS_MESSAGE_STILL_NEED_HELP,
+                DATAGRAM_TYPE_LAST_SOS_MESSAGE_NO_HELP_NEEDED};
+        for (int datagramType : sosDatagramTypes) {
+            mDatagramControllerUT.onSatelliteModemStateChanged(
+                    SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
+            assertFalse(mDatagramControllerUT
+                    .needsWaitingForSatelliteConnected(DATAGRAM_TYPE_KEEP_ALIVE));
+            assertTrue(mDatagramControllerUT
+                    .needsWaitingForSatelliteConnected(datagramType));
 
-        mDatagramControllerUT.onSatelliteModemStateChanged(
-                SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
-        assertFalse(mDatagramControllerUT
-                .needsWaitingForSatelliteConnected(DATAGRAM_TYPE_SOS_MESSAGE));
+            mDatagramControllerUT.onSatelliteModemStateChanged(
+                    SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
+            assertFalse(mDatagramControllerUT
+                    .needsWaitingForSatelliteConnected(datagramType));
 
-        mDatagramControllerUT.onSatelliteModemStateChanged(
-                SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
-        assertTrue(mDatagramControllerUT
-                .needsWaitingForSatelliteConnected(DATAGRAM_TYPE_SOS_MESSAGE));
+            mDatagramControllerUT.onSatelliteModemStateChanged(
+                    SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
+            assertFalse(mDatagramControllerUT
+                    .needsWaitingForSatelliteConnected(datagramType));
+
+            mDatagramControllerUT.onSatelliteModemStateChanged(
+                    SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
+            assertTrue(mDatagramControllerUT
+                    .needsWaitingForSatelliteConnected(datagramType));
+        }
     }
 
     private void testUpdateSendStatus(boolean isDemoMode, int datagramType, int sendState) {
@@ -244,10 +258,10 @@ public class DatagramControllerTest extends TelephonyTest {
         clearInvocations(mMockDatagramDispatcher);
     }
 
-    private void pushDemoModeSosDatagram() {
+    private void pushDemoModeSosDatagram(int datagramType) {
         String testMessage = "This is a test datagram message";
         SatelliteDatagram datagram = new SatelliteDatagram(testMessage.getBytes());
         mDatagramControllerUT.setDemoMode(true);
-        mDatagramControllerUT.pushDemoModeDatagram(DATAGRAM_TYPE_SOS_MESSAGE, datagram);
+        mDatagramControllerUT.pushDemoModeDatagram(datagramType, datagram);
     }
 }

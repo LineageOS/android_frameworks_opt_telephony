@@ -347,6 +347,15 @@ public class SatelliteServiceUtils {
     }
 
     /**
+     *
+     */
+    public static boolean isSosMessage(int datagramType) {
+        return datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE
+                || datagramType == SatelliteManager.DATAGRAM_TYPE_LAST_SOS_MESSAGE_STILL_NEED_HELP
+                || datagramType == SatelliteManager.DATAGRAM_TYPE_LAST_SOS_MESSAGE_NO_HELP_NEEDED;
+    }
+
+    /**
      * Return phone associated with phoneId 0.
      *
      * @return phone associated with phoneId 0 or {@code null} if it doesn't exist.

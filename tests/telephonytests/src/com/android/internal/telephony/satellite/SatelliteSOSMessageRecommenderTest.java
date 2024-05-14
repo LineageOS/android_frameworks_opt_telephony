@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.satellite;
 
+import static android.telephony.ServiceState.STATE_IN_SERVICE;
+import static android.telephony.ServiceState.STATE_OUT_OF_SERVICE;
 import static android.telephony.TelephonyManager.EXTRA_EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE;
 import static android.telephony.TelephonyManager.EXTRA_EMERGENCY_CALL_TO_SATELLITE_LAUNCH_INTENT;
 import static android.telephony.satellite.SatelliteManager.EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_SOS;
@@ -141,8 +143,8 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         when(mPhone2.getPhoneId()).thenReturn(PHONE_ID2);
         mTestSOSMessageRecommender = new TestSOSMessageRecommender(mContext, Looper.myLooper(),
                 mTestSatelliteController, mTestImsManager);
-        when(mServiceState.getState()).thenReturn(ServiceState.STATE_OUT_OF_SERVICE);
-        when(mServiceState2.getState()).thenReturn(ServiceState.STATE_OUT_OF_SERVICE);
+        when(mServiceState.getState()).thenReturn(STATE_OUT_OF_SERVICE);
+        when(mServiceState2.getState()).thenReturn(STATE_OUT_OF_SERVICE);
         when(mPhone.isImsRegistered()).thenReturn(false);
         when(mPhone2.isImsRegistered()).thenReturn(false);
     }
@@ -291,7 +293,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
     }
 
     @Test
-    public void testImsRegistrationStateChangedBeforeTimeout() {
+    public void testNetworkStateChangedBeforeTimeout() {
         mTestSOSMessageRecommender.isSatelliteAllowedCallback = null;
         mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection);
         processAllMessages();
@@ -302,6 +304,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         assertNull(mTestSOSMessageRecommender.isSatelliteAllowedCallback);
 
         when(mPhone.isImsRegistered()).thenReturn(true);
+        when(mServiceState.getState()).thenReturn(STATE_IN_SERVICE);
         mTestImsManager.sendImsRegistrationStateChangedEvent(0, true);
         processAllMessages();
 
@@ -311,18 +314,30 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         assertUnregisterForStateChangedEventsTriggered(mPhone, 0, 0, 0);
 
         when(mPhone.isImsRegistered()).thenReturn(false);
+        when(mServiceState.getState()).thenReturn(STATE_OUT_OF_SERVICE);
+        mTestImsManager.sendImsRegistrationStateChangedEvent(0, true);
+        processAllMessages();
+
+        assertFalse(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE));
+        assertTrue(mTestSOSMessageRecommender.isTimerStarted());
+        assertEquals(2, mTestSOSMessageRecommender.getCountOfTimerStarted());
+        assertUnregisterForStateChangedEventsTriggered(mPhone, 0, 0, 0);
+
+        when(mPhone.isImsRegistered()).thenReturn(false);
         when(mPhone2.isImsRegistered()).thenReturn(true);
+        when(mServiceState.getState()).thenReturn(STATE_IN_SERVICE);
         mTestImsManager.sendImsRegistrationStateChangedEvent(1, true);
         processAllMessages();
         assertFalse(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE));
         assertFalse(mTestSOSMessageRecommender.isTimerStarted());
-        assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
+        assertEquals(2, mTestSOSMessageRecommender.getCountOfTimerStarted());
         assertUnregisterForStateChangedEventsTriggered(mPhone, 0, 0, 0);
 
         when(mPhone2.isImsRegistered()).thenReturn(false);
+        when(mServiceState.getState()).thenReturn(STATE_OUT_OF_SERVICE);
         mTestImsManager.sendImsRegistrationStateChangedEvent(1, false);
         processAllMessages();
-        assertEquals(2, mTestSOSMessageRecommender.getCountOfTimerStarted());
+        assertEquals(3, mTestSOSMessageRecommender.getCountOfTimerStarted());
         assertNull(mTestSOSMessageRecommender.isSatelliteAllowedCallback);
 
         // Move Location service to emergency mode
@@ -436,7 +451,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
     @Test
     public void testCellularServiceStateChangedBeforeTimeout_InServiceToOutOfService() {
         testCellularServiceStateChangedBeforeTimeout(
-                ServiceState.STATE_IN_SERVICE, ServiceState.STATE_OUT_OF_SERVICE);
+                ServiceState.STATE_IN_SERVICE, STATE_OUT_OF_SERVICE);
     }
 
     @Test
@@ -448,7 +463,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
     @Test
     public void testCellularServiceStateChangedBeforeTimeout_EmergencyOnlyToOutOfService() {
         testCellularServiceStateChangedBeforeTimeout(
-                ServiceState.STATE_EMERGENCY_ONLY, ServiceState.STATE_OUT_OF_SERVICE);
+                ServiceState.STATE_EMERGENCY_ONLY, STATE_OUT_OF_SERVICE);
     }
 
     @Test
