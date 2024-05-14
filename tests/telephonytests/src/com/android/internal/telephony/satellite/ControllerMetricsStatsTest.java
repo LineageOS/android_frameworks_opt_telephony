@@ -133,38 +133,42 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
     @Test
     public void testReportOutgoingDatagramSuccessCount() {
         mTestStats.initializeParams();
-        int datagramType = SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE;
-        for (int i = 0; i < 10; i++) {
-            mControllerMetricsStatsUT.reportOutgoingDatagramSuccessCount(datagramType, false);
+        int[] sosDatagramTypes = {SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE,
+                SatelliteManager.DATAGRAM_TYPE_LAST_SOS_MESSAGE_STILL_NEED_HELP,
+                SatelliteManager.DATAGRAM_TYPE_LAST_SOS_MESSAGE_NO_HELP_NEEDED};
+        for (int datagramType : sosDatagramTypes) {
+            for (int i = 0; i < 10; i++) {
+                mControllerMetricsStatsUT.reportOutgoingDatagramSuccessCount(datagramType, false);
+            }
+            assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsSuccess);
+            assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsFail);
+            assertEquals(10, mTestStats.mCountOfOutgoingDatagramSuccess);
+            assertEquals(0, mTestStats.mCountOfOutgoingDatagramFail);
+            assertEquals(0, mTestStats.mCountOfIncomingDatagramSuccess);
+            assertEquals(0, mTestStats.mCountOfIncomingDatagramFail);
+            assertEquals(10, mTestStats.mCountOfDatagramTypeSosSmsSuccess);
+            assertEquals(0, mTestStats.mCountOfDatagramTypeSosSmsFail);
+            assertEquals(0, mTestStats.mCountOfDatagramTypeLocationSharingSuccess);
+            assertEquals(0, mTestStats.mCountOfDatagramTypeLocationSharingFail);
+            assertEquals(0, mTestStats.mCountOfProvisionSuccess);
+            assertEquals(0, mTestStats.mCountOfProvisionFail);
+            assertEquals(0, mTestStats.mCountOfDeprovisionSuccess);
+            assertEquals(0, mTestStats.mCountOfDeprovisionFail);
+            assertEquals(0, mTestStats.mTotalServiceUptimeSec);
+            assertEquals(0, mTestStats.mTotalBatteryConsumptionPercent);
+            assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
+            assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsSuccess);
+            assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsFail);
+            assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramSuccess);
+            assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramFail);
+            assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramSuccess);
+            assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramFail);
+            assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveSuccess);
+            assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveFail);
+            mTestStats.initializeParams();
         }
-        assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsSuccess);
-        assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsFail);
-        assertEquals(10, mTestStats.mCountOfOutgoingDatagramSuccess);
-        assertEquals(0, mTestStats.mCountOfOutgoingDatagramFail);
-        assertEquals(0, mTestStats.mCountOfIncomingDatagramSuccess);
-        assertEquals(0, mTestStats.mCountOfIncomingDatagramFail);
-        assertEquals(10, mTestStats.mCountOfDatagramTypeSosSmsSuccess);
-        assertEquals(0, mTestStats.mCountOfDatagramTypeSosSmsFail);
-        assertEquals(0, mTestStats.mCountOfDatagramTypeLocationSharingSuccess);
-        assertEquals(0, mTestStats.mCountOfDatagramTypeLocationSharingFail);
-        assertEquals(0, mTestStats.mCountOfProvisionSuccess);
-        assertEquals(0, mTestStats.mCountOfProvisionFail);
-        assertEquals(0, mTestStats.mCountOfDeprovisionSuccess);
-        assertEquals(0, mTestStats.mCountOfDeprovisionFail);
-        assertEquals(0, mTestStats.mTotalServiceUptimeSec);
-        assertEquals(0, mTestStats.mTotalBatteryConsumptionPercent);
-        assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
-        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsSuccess);
-        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsFail);
-        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramSuccess);
-        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramFail);
-        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramSuccess);
-        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramFail);
-        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveSuccess);
-        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveFail);
-        mTestStats.initializeParams();
 
-        datagramType = SatelliteManager.DATAGRAM_TYPE_LOCATION_SHARING;
+        int datagramType = SatelliteManager.DATAGRAM_TYPE_LOCATION_SHARING;
         for (int i = 0; i < 10; i++) {
             mControllerMetricsStatsUT.reportOutgoingDatagramSuccessCount(datagramType, true);
         }
@@ -230,38 +234,42 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
     @Test
     public void reportOutgoingDatagramFailCount() {
         mTestStats.initializeParams();
-        int datagramType = SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE;
-        for (int i = 0; i < 10; i++) {
-            mControllerMetricsStatsUT.reportOutgoingDatagramFailCount(datagramType, false);
+        int[] sosDatagramTypes = {SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE,
+                SatelliteManager.DATAGRAM_TYPE_LAST_SOS_MESSAGE_STILL_NEED_HELP,
+                SatelliteManager.DATAGRAM_TYPE_LAST_SOS_MESSAGE_NO_HELP_NEEDED};
+        for (int datagramType : sosDatagramTypes) {
+            for (int i = 0; i < 10; i++) {
+                mControllerMetricsStatsUT.reportOutgoingDatagramFailCount(datagramType, false);
+            }
+            assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsSuccess);
+            assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsFail);
+            assertEquals(0, mTestStats.mCountOfOutgoingDatagramSuccess);
+            assertEquals(10, mTestStats.mCountOfOutgoingDatagramFail);
+            assertEquals(0, mTestStats.mCountOfIncomingDatagramSuccess);
+            assertEquals(0, mTestStats.mCountOfIncomingDatagramFail);
+            assertEquals(0, mTestStats.mCountOfDatagramTypeSosSmsSuccess);
+            assertEquals(10, mTestStats.mCountOfDatagramTypeSosSmsFail);
+            assertEquals(0, mTestStats.mCountOfDatagramTypeLocationSharingSuccess);
+            assertEquals(0, mTestStats.mCountOfDatagramTypeLocationSharingFail);
+            assertEquals(0, mTestStats.mCountOfProvisionSuccess);
+            assertEquals(0, mTestStats.mCountOfProvisionFail);
+            assertEquals(0, mTestStats.mCountOfDeprovisionSuccess);
+            assertEquals(0, mTestStats.mCountOfDeprovisionFail);
+            assertEquals(0, mTestStats.mTotalServiceUptimeSec);
+            assertEquals(0, mTestStats.mTotalBatteryConsumptionPercent);
+            assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
+            assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsSuccess);
+            assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsFail);
+            assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramSuccess);
+            assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramFail);
+            assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramSuccess);
+            assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramFail);
+            assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveSuccess);
+            assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveFail);
+            mTestStats.initializeParams();
         }
-        assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsSuccess);
-        assertEquals(0, mTestStats.mCountOfSatelliteServiceEnablementsFail);
-        assertEquals(0, mTestStats.mCountOfOutgoingDatagramSuccess);
-        assertEquals(10, mTestStats.mCountOfOutgoingDatagramFail);
-        assertEquals(0, mTestStats.mCountOfIncomingDatagramSuccess);
-        assertEquals(0, mTestStats.mCountOfIncomingDatagramFail);
-        assertEquals(0, mTestStats.mCountOfDatagramTypeSosSmsSuccess);
-        assertEquals(10, mTestStats.mCountOfDatagramTypeSosSmsFail);
-        assertEquals(0, mTestStats.mCountOfDatagramTypeLocationSharingSuccess);
-        assertEquals(0, mTestStats.mCountOfDatagramTypeLocationSharingFail);
-        assertEquals(0, mTestStats.mCountOfProvisionSuccess);
-        assertEquals(0, mTestStats.mCountOfProvisionFail);
-        assertEquals(0, mTestStats.mCountOfDeprovisionSuccess);
-        assertEquals(0, mTestStats.mCountOfDeprovisionFail);
-        assertEquals(0, mTestStats.mTotalServiceUptimeSec);
-        assertEquals(0, mTestStats.mTotalBatteryConsumptionPercent);
-        assertEquals(0, mTestStats.mTotalBatteryChargedTimeSec);
-        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsSuccess);
-        assertEquals(0, mTestStats.mCountOfDemoModeSatelliteServiceEnablementsFail);
-        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramSuccess);
-        assertEquals(0, mTestStats.mCountOfDemoModeOutgoingDatagramFail);
-        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramSuccess);
-        assertEquals(0, mTestStats.mCountOfDemoModeIncomingDatagramFail);
-        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveSuccess);
-        assertEquals(0, mTestStats.mCountOfDatagramTypeKeepAliveFail);
-        mTestStats.initializeParams();
 
-        datagramType = SatelliteManager.DATAGRAM_TYPE_LOCATION_SHARING;
+        int datagramType = SatelliteManager.DATAGRAM_TYPE_LOCATION_SHARING;
         for (int i = 0; i < 10; i++) {
             mControllerMetricsStatsUT.reportOutgoingDatagramFailCount(datagramType, true);
         }
