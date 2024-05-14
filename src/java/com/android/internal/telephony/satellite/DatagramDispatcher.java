@@ -239,7 +239,7 @@ public class DatagramDispatcher extends Handler {
                     if (mIsDemoMode && (error == SatelliteManager.SATELLITE_RESULT_SUCCESS)) {
                         if (argument.skipCheckingSatelliteAligned) {
                             logd("Satellite was already aligned. No need to check alignment again");
-                        } else if (!mIsAligned) {
+                        } else if (mDatagramController.waitForAligningToSatellite(mIsAligned)) {
                             logd("Satellite is not aligned in demo mode, wait for the alignment.");
                             startSatelliteAlignedTimer(request);
                             break;

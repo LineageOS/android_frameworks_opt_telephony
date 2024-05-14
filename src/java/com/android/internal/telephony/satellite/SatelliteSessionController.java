@@ -450,6 +450,7 @@ public class SatelliteSessionController extends StateMachine {
             }
             unbindService();
             stopNbIotInactivityTimer();
+            DemoSimulator.getInstance().onSatelliteModeOff();
             notifyStateChangedEvent(SatelliteManager.SATELLITE_MODEM_STATE_OFF);
         }
 
@@ -520,6 +521,7 @@ public class SatelliteSessionController extends StateMachine {
                 } else {
                     transitionTo(mIdleState);
                 }
+                DemoSimulator.getInstance().onSatelliteModeOn();
             } else {
                 /*
                  * During the state transition from ENABLING to NOT_CONNECTED, modem might be
