@@ -488,6 +488,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
         mDatagramDispatcherUT.setDemoMode(true);
         mDatagramDispatcherUT.setDuration(TEST_EXPIRE_TIMER_SATELLITE_ALIGN);
         mDatagramDispatcherUT.setDeviceAlignedWithSatellite(false);
+        when(mMockDatagramController.waitForAligningToSatellite(false)).thenReturn(true);
 
         int[] sosDatagramTypes = {DATAGRAM_TYPE1, DATAGRAM_TYPE4, DATAGRAM_TYPE5};
         for (int datagramType : sosDatagramTypes) {
