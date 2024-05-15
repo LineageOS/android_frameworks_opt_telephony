@@ -23,7 +23,7 @@ option java_outer_classname = "PersistAtomsProto";
 
 // Holds atoms to store on persist storage in case of power cycle or process crash.
 // NOTE: using int64 rather than google.protobuf.Timestamp for timestamps simplifies implementation.
-// Next id: 72
+// Next id: 80
 message PersistAtoms {
     /* Aggregated RAT usage during the call. */
     repeated VoiceCallRatUsage voice_call_rat_usage = 1;
@@ -237,6 +237,30 @@ message PersistAtoms {
 
     /* Timestamp of last data_network_validation pull. */
     optional int64 data_network_validation_pull_timestamp_millis = 71;
+
+    /* Snapshot of carrier roaming satellite session. */
+    repeated CarrierRoamingSatelliteSession carrier_roaming_satellite_session = 72;
+
+    /* Timestamp of last carrier_roaming_satellite_session pull. */
+    optional int64 carrier_roaming_satellite_session_pull_timestamp_millis = 73;
+
+    /* Snapshot of carrier roaming satellite controller stats. */
+    repeated CarrierRoamingSatelliteControllerStats carrier_roaming_satellite_controller_stats = 74;
+
+    /* Timestamp of last carrier_roaming_satellite_controller_stats pull. */
+    optional int64 carrier_roaming_satellite_controller_stats_pull_timestamp_millis = 75;
+
+    /* Snapshot of satellite entitlement. */
+    repeated SatelliteEntitlement satellite_entitlement = 76;
+
+    /* Timestamp of last satellite_entitlement pull. */
+    optional int64 satellite_entitlement_pull_timestamp_millis = 77;
+
+    /* Snapshot of satellite config updater. */
+    repeated SatelliteConfigUpdater satellite_config_updater = 78;
+
+    /* Timestamp of last satellite_config_updater pull. */
+    optional int64 satellite_config_updater_pull_timestamp_millis = 79;
 }
 
 // The canonical versions of the following enums live in:
@@ -738,4 +762,48 @@ message DataNetworkValidation {
     optional int64 elapsed_time_in_millis = 5;
     optional bool handover_attempted = 6;
     optional int32 network_validation_count = 7;
+}
+
+message CarrierRoamingSatelliteSession {
+    optional int32 carrier_id = 1;
+    optional bool is_ntn_roaming_in_home_country = 2;
+    optional int32 total_satellite_mode_time_sec = 3;
+    optional int32 number_of_satellite_connections = 4;
+    optional int32 avg_duration_of_satellite_connection_sec = 5;
+    optional int32 satellite_connection_gap_min_sec = 6;
+    optional int32 satellite_connection_gap_avg_sec = 7;
+    optional int32 satellite_connection_gap_max_sec = 8;
+    optional int32 rsrp_avg = 9;
+    optional int32 rsrp_median = 10;
+    optional int32 rssnr_avg = 11;
+    optional int32 rssnr_median = 12;
+    optional int32 count_of_incoming_sms = 13;
+    optional int32 count_of_outgoing_sms = 14;
+    optional int32 count_of_incoming_mms = 15;
+    optional int32 count_of_outgoing_mms = 16;
+}
+
+message CarrierRoamingSatelliteControllerStats {
+    optional int32 config_data_source = 1;
+    optional int32 count_of_entitlement_status_query_request = 2;
+    optional int32 count_of_satellite_config_update_request = 3;
+    optional int32 count_of_satellite_notification_displayed = 4;
+    optional int32 satellite_session_gap_min_sec = 5;
+    optional int32 satellite_session_gap_avg_sec = 6;
+    optional int32 satellite_session_gap_max_sec = 7;
+}
+
+message SatelliteEntitlement {
+    optional int32 carrier_id = 1;
+    optional int32 result = 2;
+    optional int32 entitlement_status = 3;
+    optional bool is_retry = 4;
+    optional int32 count = 5;
+}
+
+message SatelliteConfigUpdater {
+    optional int32 config_version = 1;
+    optional int32 oem_config_result = 2;
+    optional int32 carrier_config_result = 3;
+    optional int32 count = 4;
 }

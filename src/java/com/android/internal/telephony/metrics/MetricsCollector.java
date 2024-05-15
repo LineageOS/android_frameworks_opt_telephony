@@ -17,6 +17,8 @@
 package com.android.internal.telephony.metrics;
 
 import static com.android.internal.telephony.TelephonyStatsLog.CARRIER_ID_TABLE_VERSION;
+import static com.android.internal.telephony.TelephonyStatsLog.CARRIER_ROAMING_SATELLITE_CONTROLLER_STATS;
+import static com.android.internal.telephony.TelephonyStatsLog.CARRIER_ROAMING_SATELLITE_SESSION;
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_DATA_SERVICE_SWITCH;
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_SERVICE_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION;
@@ -37,7 +39,9 @@ import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS;
 import static com.android.internal.telephony.TelephonyStatsLog.PRESENCE_NOTIFY_EVENT;
 import static com.android.internal.telephony.TelephonyStatsLog.RCS_ACS_PROVISIONING_STATS;
 import static com.android.internal.telephony.TelephonyStatsLog.RCS_CLIENT_PROVISIONING_STATS;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_CONFIG_UPDATER;
 import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_CONTROLLER;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_ENTITLEMENT;
 import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_INCOMING_DATAGRAM;
 import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_OUTGOING_DATAGRAM;
 import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_PROVISION;
@@ -70,6 +74,8 @@ import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.imsphone.ImsPhone;
+import com.android.internal.telephony.nano.PersistAtomsProto.CarrierRoamingSatelliteControllerStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.CarrierRoamingSatelliteSession;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
@@ -89,7 +95,9 @@ import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PresenceNotifyEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsAcsProvisioningStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsClientProvisioningStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteConfigUpdater;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteController;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteEntitlement;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteIncomingDatagram;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteOutgoingDatagram;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteProvision;
@@ -178,14 +186,15 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
 
     public MetricsCollector(Context context, @NonNull FeatureFlags featureFlags) {
         this(context, new PersistAtomsStorage(context),
-                new DeviceStateHelper(context), new VonrHelper(featureFlags), featureFlags);
+                new DeviceStateHelper(context), new VonrHelper(featureFlags),
+                new DefaultNetworkMonitor(context, featureFlags), featureFlags);
     }
 
     /** Allows dependency injection. Used during unit tests. */
     @VisibleForTesting
-    public MetricsCollector(
-            Context context, PersistAtomsStorage storage, DeviceStateHelper deviceStateHelper,
-                    VonrHelper vonrHelper, @NonNull FeatureFlags featureFlags) {
+    public MetricsCollector(Context context, PersistAtomsStorage storage,
+            DeviceStateHelper deviceStateHelper, VonrHelper vonrHelper,
+            DefaultNetworkMonitor defaultNetworkMonitor, @NonNull FeatureFlags featureFlags) {
         mStorage = storage;
         mDeviceStateHelper = deviceStateHelper;
         mStatsManager = (StatsManager) context.getSystemService(Context.STATS_MANAGER);
@@ -229,6 +238,10 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             registerAtom(SATELLITE_PROVISION);
             registerAtom(SATELLITE_SOS_MESSAGE_RECOMMENDER);
             registerAtom(DATA_NETWORK_VALIDATION);
+            registerAtom(CARRIER_ROAMING_SATELLITE_SESSION);
+            registerAtom(CARRIER_ROAMING_SATELLITE_CONTROLLER_STATS);
+            registerAtom(SATELLITE_ENTITLEMENT);
+            registerAtom(SATELLITE_CONFIG_UPDATER);
             Rlog.d(TAG, "registered");
         } else {
             Rlog.e(TAG, "could not get StatsManager, atoms not registered");
@@ -325,6 +338,14 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 return pullSatelliteSosMessageRecommender(data);
             case DATA_NETWORK_VALIDATION:
                 return pullDataNetworkValidation(data);
+            case CARRIER_ROAMING_SATELLITE_SESSION:
+                return pullCarrierRoamingSatelliteSession(data);
+            case CARRIER_ROAMING_SATELLITE_CONTROLLER_STATS:
+                return pullCarrierRoamingSatelliteControllerStats(data);
+            case SATELLITE_ENTITLEMENT:
+                return pullSatelliteEntitlement(data);
+            case SATELLITE_CONFIG_UPDATER:
+                return pullSatelliteConfigUpdater(data);
             default:
                 Rlog.e(TAG, String.format("unexpected atom ID %d", atomTag));
                 return StatsManager.PULL_SKIP;
@@ -958,6 +979,59 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         }
     }
 
+    private int pullCarrierRoamingSatelliteSession(List<StatsEvent> data) {
+        CarrierRoamingSatelliteSession[] carrierRoamingSatelliteSessionAtoms =
+                mStorage.getCarrierRoamingSatelliteSessionStats(MIN_COOLDOWN_MILLIS);
+        if (carrierRoamingSatelliteSessionAtoms != null) {
+            Arrays.stream(carrierRoamingSatelliteSessionAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "CARRIER_ROAMING_SATELLITE_SESSION pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+    private int pullCarrierRoamingSatelliteControllerStats(List<StatsEvent> data) {
+        CarrierRoamingSatelliteControllerStats[] carrierRoamingSatelliteControllerStatsAtoms =
+                mStorage.getCarrierRoamingSatelliteControllerStats(MIN_COOLDOWN_MILLIS);
+        if (carrierRoamingSatelliteControllerStatsAtoms != null) {
+            Arrays.stream(carrierRoamingSatelliteControllerStatsAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "CARRIER_ROAMING_SATELLITE_CONTROLLER_STATS "
+                    + "pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+    private int pullSatelliteEntitlement(List<StatsEvent> data) {
+        SatelliteEntitlement[] satelliteEntitlementAtoms =
+                mStorage.getSatelliteEntitlementStats(MIN_COOLDOWN_MILLIS);
+        if (satelliteEntitlementAtoms != null) {
+            Arrays.stream(satelliteEntitlementAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "SATELLITE_ENTITLEMENT pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+    private int pullSatelliteConfigUpdater(List<StatsEvent> data) {
+        SatelliteConfigUpdater[] satelliteConfigUpdaterAtoms =
+                mStorage.getSatelliteConfigUpdaterStats(MIN_COOLDOWN_MILLIS);
+        if (satelliteConfigUpdaterAtoms != null) {
+            Arrays.stream(satelliteConfigUpdaterAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "SATELLITE_CONFIG_UPDATER pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
     /** Registers a pulled atom ID {@code atomId}. */
     private void registerAtom(int atomId) {
         mStatsManager.setPullAtomCallback(atomId, /* metadata= */ null,
@@ -1446,6 +1520,57 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.elapsedTimeInMillis,
                 stats.handoverAttempted,
                 stats.networkValidationCount);
+    }
+
+    private static StatsEvent buildStatsEvent(CarrierRoamingSatelliteSession stats) {
+        return TelephonyStatsLog.buildStatsEvent(
+                CARRIER_ROAMING_SATELLITE_SESSION,
+                stats.carrierId,
+                stats.isNtnRoamingInHomeCountry,
+                stats.totalSatelliteModeTimeSec,
+                stats.numberOfSatelliteConnections,
+                stats.avgDurationOfSatelliteConnectionSec,
+                stats.satelliteConnectionGapMinSec,
+                stats.satelliteConnectionGapAvgSec,
+                stats.satelliteConnectionGapMaxSec,
+                stats.rsrpAvg,
+                stats.rsrpMedian,
+                stats.rssnrAvg,
+                stats.rssnrMedian,
+                stats.countOfIncomingSms,
+                stats.countOfOutgoingSms,
+                stats.countOfIncomingMms,
+                stats.countOfOutgoingMms);
+    }
+
+    private static StatsEvent buildStatsEvent(CarrierRoamingSatelliteControllerStats stats) {
+        return TelephonyStatsLog.buildStatsEvent(
+                CARRIER_ROAMING_SATELLITE_CONTROLLER_STATS,
+                stats.configDataSource,
+                stats.countOfEntitlementStatusQueryRequest,
+                stats.countOfSatelliteConfigUpdateRequest,
+                stats.countOfSatelliteNotificationDisplayed,
+                stats.satelliteSessionGapMinSec,
+                stats.satelliteSessionGapAvgSec,
+                stats.satelliteSessionGapMaxSec);
+    }
+
+    private static StatsEvent buildStatsEvent(SatelliteEntitlement stats) {
+        return TelephonyStatsLog.buildStatsEvent(
+                SATELLITE_ENTITLEMENT,
+                stats.carrierId,
+                stats.result,
+                stats.entitlementStatus,
+                stats.isRetry,
+                stats.count);
+    }
+
+    private static StatsEvent buildStatsEvent(SatelliteConfigUpdater stats) {
+        return TelephonyStatsLog.buildStatsEvent(SATELLITE_CONFIG_UPDATER,
+                stats.configVersion,
+                stats.oemConfigResult,
+                stats.carrierConfigResult,
+                stats.count);
     }
 
     /** Returns all phones in {@link PhoneFactory}, or an empty array if phones not made yet. */
