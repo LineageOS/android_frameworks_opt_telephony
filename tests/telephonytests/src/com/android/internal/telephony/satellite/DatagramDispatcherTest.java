@@ -237,10 +237,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
             clearInvocations(mMockSatelliteModemInterface);
             clearInvocations(mMockDatagramController);
-            mResultListener.clear();
-
-            clearInvocations(mMockSatelliteModemInterface);
-            clearInvocations(mMockDatagramController);
+            clearInvocations(mMockSessionMetricsStats);
             mResultListener.clear();
             doReturn(true).when(mMockDatagramController)
                     .needsWaitingForSatelliteConnected(eq(datagramType));
@@ -282,6 +279,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
             clearInvocations(mMockSatelliteModemInterface);
             clearInvocations(mMockDatagramController);
+            clearInvocations(mMockSessionMetricsStats);
             mResultListener.clear();
             mDatagramDispatcherUT.sendSatelliteDatagram(SUB_ID, datagramType, mDatagram,
                     true, mResultListener::offer);
@@ -356,6 +354,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
         verify(mMockSessionMetricsStats, times(1)).addCountOfSuccessfulOutgoingDatagram();
         clearInvocations(mMockSatelliteModemInterface);
         clearInvocations(mMockDatagramController);
+        clearInvocations(mMockSessionMetricsStats);
         mResultListener.clear();
 
         // No response for the send request from modem
@@ -385,7 +384,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
                 any(SatelliteDatagram.class), anyBoolean(), anyBoolean(), any(Message.class));
         verify(mMockSatelliteModemInterface).abortSendingSatelliteDatagrams(any(Message.class));
         assertThat(mResultListener.peek()).isEqualTo(SATELLITE_RESULT_MODEM_TIMEOUT);
-        verify(mMockSessionMetricsStats, never()).addCountOfFailedOutgoingDatagram();
+        verify(mMockSessionMetricsStats, times(1)).addCountOfFailedOutgoingDatagram();
     }
 
     @Test
