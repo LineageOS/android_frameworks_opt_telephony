@@ -62,14 +62,12 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
     private final PersistAtomsStorage mStorage;
     private final DeviceStateHelper mDeviceStateHelper;
     private boolean mExistAnyConnectedInternetPdn;
-    private final SatelliteController mSatelliteController;
 
     public ServiceStateStats(Phone phone) {
         super(Runnable::run);
         mPhone = phone;
         mStorage = PhoneFactory.getMetricsCollector().getAtomsStorage();
         mDeviceStateHelper = PhoneFactory.getMetricsCollector().getDeviceStateHelper();
-        mSatelliteController = SatelliteController.getInstance();
     }
 
     /** Finalizes the durations of the current service state segment. */
@@ -121,6 +119,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
             // Finish the duration of last service state and mark modem off
             addServiceState(mLastState.getAndSet(new TimestampedServiceState(null, now)), now);
         } else {
+            SatelliteController satelliteController = SatelliteController.getInstance();
             CellularServiceState newState = new CellularServiceState();
             newState.voiceRat = getVoiceRat(mPhone, serviceState);
             newState.dataRat = getRat(serviceState, NetworkRegistrationInfo.DOMAIN_PS);
@@ -138,8 +137,8 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
             newState.overrideVoiceService = mOverrideVoiceService.get();
             newState.isDataEnabled = mPhone.getDataSettingsManager().isDataEnabled();
             newState.isIwlanCrossSim = isCrossSimCallingRegistered(mPhone);
-            newState.isNtn = mSatelliteController != null
-                    ? mSatelliteController.isInSatelliteModeForCarrierRoaming(mPhone) : false;
+            newState.isNtn = satelliteController != null
+                    && satelliteController.isInSatelliteModeForCarrierRoaming(mPhone);
             TimestampedServiceState prevState =
                     mLastState.getAndSet(new TimestampedServiceState(newState, now));
             addServiceStateAndSwitch(
