@@ -1097,13 +1097,8 @@ public class DataNetwork extends StateMachine {
                 mPhone.getPhoneId());
         final NetworkProvider provider = (null == factory) ? null : factory.getProvider();
 
-        // Always prefer IWLAN network for MMS designated network.
-        // TODO(b/293656884) Proper use of primary transport to avoid conflicting with DSDA.
-        boolean isPreferred = mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN
-                && getApnTypeNetworkCapability() == NetworkCapabilities.NET_CAPABILITY_MMS;
-
-        mNetworkScore = new NetworkScore.Builder().setTransportPrimary(isPreferred)
-                .setKeepConnectedReason(isHandoverInProgress()
+        mNetworkScore = new NetworkScore.Builder()
+               .setKeepConnectedReason(isHandoverInProgress()
                         ? NetworkScore.KEEP_CONNECTED_FOR_HANDOVER
                         : NetworkScore.KEEP_CONNECTED_NONE).build();
 
