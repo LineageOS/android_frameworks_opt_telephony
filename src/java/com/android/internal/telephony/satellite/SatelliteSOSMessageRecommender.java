@@ -439,7 +439,8 @@ public class SatelliteSOSMessageRecommender extends Handler {
             ServiceState serviceState = phone.getServiceState();
             if (serviceState != null) {
                 int state = serviceState.getState();
-                if ((state == STATE_IN_SERVICE || state == STATE_EMERGENCY_ONLY)
+                if ((state == STATE_IN_SERVICE || state == STATE_EMERGENCY_ONLY
+                        || serviceState.isEmergencyOnly())
                         && !serviceState.isUsingNonTerrestrialNetwork()) {
                     logv("isCellularAvailable true");
                     return true;
