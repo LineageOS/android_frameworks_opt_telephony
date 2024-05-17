@@ -781,22 +781,16 @@ public class SmsDispatchersController extends Handler {
             if (isSmsDomainSelectionEnabled()) {
                 TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
                 boolean isEmergency = tm.isEmergencyNumber(tracker.mDestAddress);
-                DomainSelectionConnectionHolder holder = getDomainSelectionConnection(isEmergency);
-
-                // If the DomainSelectionConnection is not available,
-                // fallback to the legacy implementation.
-                if (holder != null && holder.getConnection() != null) {
-                    // This may be invoked by another thread, so this operation is posted and
-                    // handled through the execution flow of SmsDispatchersController.
-                    SomeArgs args = SomeArgs.obtain();
-                    args.arg1 = holder;
-                    args.arg2 = new PendingRequest(PendingRequest.TYPE_RETRY_SMS, tracker,
-                            null, null, null, null, null, false, null, 0, null, null, false,
-                            0, false, 0, 0L, false);
-                    args.arg3 = "sendRetrySms";
-                    sendMessage(obtainMessage(EVENT_REQUEST_DOMAIN_SELECTION, args));
-                    return;
-                }
+                // This may be invoked by another thread, so this operation is posted and
+                // handled through the execution flow of SmsDispatchersController.
+                SomeArgs args = SomeArgs.obtain();
+                args.arg1 = getDomainSelectionConnectionHolder(isEmergency);
+                args.arg2 = new PendingRequest(PendingRequest.TYPE_RETRY_SMS, tracker,
+                        null, null, null, null, null, false, null, 0, null, null, false,
+                        0, false, 0, 0L, false);
+                args.arg3 = "sendRetrySms";
+                sendMessage(obtainMessage(EVENT_REQUEST_DOMAIN_SELECTION, args));
+                return;
             }
 
             if (mImsSmsDispatcher.isAvailable()) {
@@ -1007,52 +1001,23 @@ public class SmsDispatchersController extends Handler {
      * Returns a {@link DomainSelectionConnectionHolder} according to the flag specified.
      *
      * @param emergency The flag to indicate that the domain selection is for an emergency SMS.
-     * @return A {@link DomainSelectionConnectionHolder} instance or null.
+     * @return A {@link DomainSelectionConnectionHolder} instance.
      */
     @VisibleForTesting
     @Nullable
     protected DomainSelectionConnectionHolder getDomainSelectionConnectionHolder(
             boolean emergency) {
-        return emergency ? mEmergencyDscHolder : mDscHolder;
-    }
-
-    /**
-     * Returns a {@link DomainSelectionConnectionHolder} if the domain selection supports,
-     * return null otherwise.
-     *
-     * @param emergency The flag to indicate that the domain selection is for an emergency SMS.
-     * @return A {@link DomainSelectionConnectionHolder} that grabs the
-     *         {@link DomainSelectionConnection} and its related information to use the domain
-     *         selection architecture.
-     */
-    private DomainSelectionConnectionHolder getDomainSelectionConnection(boolean emergency) {
-        DomainSelectionConnectionHolder holder = getDomainSelectionConnectionHolder(emergency);
-        DomainSelectionConnection connection = (holder != null) ? holder.getConnection() : null;
-
-        if (connection == null) {
-            connection = mDomainSelectionResolverProxy.getDomainSelectionConnection(
-                    mPhone, DomainSelectionService.SELECTOR_TYPE_SMS, emergency);
-
-            if (connection == null) {
-                // Domain selection architecture is not supported.
-                // Use the legacy architecture.
-                return null;
+        if (emergency) {
+            if (mEmergencyDscHolder == null) {
+                mEmergencyDscHolder = new DomainSelectionConnectionHolder(emergency);
             }
-        }
-
-        if (holder == null) {
-            holder = new DomainSelectionConnectionHolder(emergency);
-
-            if (emergency) {
-                mEmergencyDscHolder = holder;
-            } else {
-                mDscHolder = holder;
+            return mEmergencyDscHolder;
+        } else {
+            if (mDscHolder == null) {
+                mDscHolder = new DomainSelectionConnectionHolder(emergency);
             }
+            return mDscHolder;
         }
-
-        holder.setConnection(connection);
-
-        return holder;
     }
 
     /**
@@ -1102,6 +1067,8 @@ public class SmsDispatchersController extends Handler {
      *
      * @param holder The {@link DomainSelectionConnectionHolder} that contains the
      *               {@link DomainSelectionConnection} and its related information.
+     * @param request The {@link PendingRequest} that stores the SMS request
+     *                (data, text, multipart text) to be sent.
      * @param logTag The log string.
      */
     private void requestDomainSelection(@NonNull DomainSelectionConnectionHolder holder,
@@ -1110,6 +1077,21 @@ public class SmsDispatchersController extends Handler {
         // The domain selection is in progress so waits for the result of
         // the domain selection by adding this request to the pending list.
         holder.addRequest(request);
+
+        if (holder.getConnection() == null) {
+            DomainSelectionConnection connection =
+                    mDomainSelectionResolverProxy.getDomainSelectionConnection(
+                            mPhone, DomainSelectionService.SELECTOR_TYPE_SMS, holder.isEmergency());
+            if (connection == null) {
+                logd("requestDomainSelection: fallback for " + logTag);
+                // If the domain selection connection is not available,
+                // fallback to the legacy implementation.
+                sendAllPendingRequests(holder, NetworkRegistrationInfo.DOMAIN_UNKNOWN);
+                return;
+            } else {
+                holder.setConnection(connection);
+            }
+        }
 
         if (!isDomainSelectionRequested) {
             if (VDBG) {
@@ -1571,19 +1553,13 @@ public class SmsDispatchersController extends Handler {
         }
 
         if (isSmsDomainSelectionEnabled()) {
-            DomainSelectionConnectionHolder holder = getDomainSelectionConnection(false);
-
-            // If the DomainSelectionConnection is not available,
-            // fallback to the legacy implementation.
-            if (holder != null && holder.getConnection() != null) {
-                sendSmsUsingDomainSelection(holder,
-                        new PendingRequest(PendingRequest.TYPE_DATA, null, callingPackage,
-                                destAddr, scAddr, asArrayList(sentIntent),
-                                asArrayList(deliveryIntent), isForVvm, data, destPort, null, null,
-                                false, 0, false, 0, 0L, false),
-                        "sendData");
-                return;
-            }
+            sendSmsUsingDomainSelection(getDomainSelectionConnectionHolder(false),
+                    new PendingRequest(PendingRequest.TYPE_DATA, null, callingPackage,
+                            destAddr, scAddr, asArrayList(sentIntent),
+                            asArrayList(deliveryIntent), isForVvm, data, destPort, null, null,
+                            false, 0, false, 0, 0L, false),
+                    "sendData");
+            return;
         }
 
         if (mImsSmsDispatcher.isAvailable()) {
@@ -1812,20 +1788,14 @@ public class SmsDispatchersController extends Handler {
         if (isSmsDomainSelectionEnabled()) {
             TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
             boolean isEmergency = tm.isEmergencyNumber(destAddr);
-            DomainSelectionConnectionHolder holder = getDomainSelectionConnection(isEmergency);
-
-            // If the DomainSelectionConnection is not available,
-            // fallback to the legacy implementation.
-            if (holder != null && holder.getConnection() != null) {
-                sendSmsUsingDomainSelection(holder,
-                        new PendingRequest(PendingRequest.TYPE_TEXT, null, callingPkg,
-                                destAddr, scAddr, asArrayList(sentIntent),
-                                asArrayList(deliveryIntent), isForVvm, null, 0, asArrayList(text),
-                                messageUri, persistMessage, priority, expectMore, validityPeriod,
-                                messageId, skipShortCodeCheck),
-                        "sendText");
-                return;
-            }
+            sendSmsUsingDomainSelection(getDomainSelectionConnectionHolder(isEmergency),
+                    new PendingRequest(PendingRequest.TYPE_TEXT, null, callingPkg,
+                            destAddr, scAddr, asArrayList(sentIntent),
+                            asArrayList(deliveryIntent), isForVvm, null, 0, asArrayList(text),
+                            messageUri, persistMessage, priority, expectMore, validityPeriod,
+                            messageId, skipShortCodeCheck),
+                    "sendText");
+            return;
         }
 
         if (mImsSmsDispatcher.isAvailable() || mImsSmsDispatcher.isEmergencySmsSupport(destAddr)) {
@@ -1961,19 +1931,13 @@ public class SmsDispatchersController extends Handler {
         if (isSmsDomainSelectionEnabled()) {
             TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
             boolean isEmergency = tm.isEmergencyNumber(destAddr);
-            DomainSelectionConnectionHolder holder = getDomainSelectionConnection(isEmergency);
-
-            // If the DomainSelectionConnection is not available,
-            // fallback to the legacy implementation.
-            if (holder != null && holder.getConnection() != null) {
-                sendSmsUsingDomainSelection(holder,
-                        new PendingRequest(PendingRequest.TYPE_MULTIPART_TEXT, null,
-                                callingPkg, destAddr, scAddr, sentIntents, deliveryIntents, false,
-                                null, 0, parts, messageUri, persistMessage, priority, expectMore,
-                                validityPeriod, messageId, false),
-                        "sendMultipartText");
-                return;
-            }
+            sendSmsUsingDomainSelection(getDomainSelectionConnectionHolder(isEmergency),
+                    new PendingRequest(PendingRequest.TYPE_MULTIPART_TEXT, null,
+                            callingPkg, destAddr, scAddr, sentIntents, deliveryIntents, false,
+                            null, 0, parts, messageUri, persistMessage, priority, expectMore,
+                            validityPeriod, messageId, false),
+                    "sendMultipartText");
+            return;
         }
 
         if (mImsSmsDispatcher.isAvailable()) {
