@@ -3727,11 +3727,6 @@ public class SatelliteController extends Handler {
 
     private void processNewCarrierConfigData(int subId) {
         configureSatellitePlmnForCarrier(subId);
-        synchronized (mIsSatelliteEnabledLock) {
-            mSatelliteAttachRestrictionForCarrierArray.clear();
-            mIsSatelliteAttachEnabledForCarrierArrayPerSub.clear();
-        }
-
         setSatelliteAttachEnabledForCarrierOnSimLoaded(subId);
         updateRestrictReasonForEntitlementPerCarrier(subId);
     }
