@@ -454,12 +454,13 @@ public class SubscriptionInfoInternal {
      */
     private final int mIsOnlyNonTerrestrialNetwork;
 
-    // Below are the fields that do not exist in the SimInfo table.
+    // This field does not exist in the SimInfo table.
     /**
      * The card ID of the SIM card. This maps uniquely to {@link #mCardString}.
      */
     private final int mCardId;
 
+    // This field does not exist in the SimInfo table.
     /**
      * Whether group of the subscription is disabled. This is only useful if it's a grouped
      * opportunistic subscription. In this case, if all primary (non-opportunistic) subscriptions
@@ -1370,11 +1371,14 @@ public class SubscriptionInfoInternal {
                 + "]";
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        SubscriptionInfoInternal that = (SubscriptionInfoInternal) o;
+    /**
+     * Campare only the columns existing in the SimInfo table and the mapped variables to see if
+     * they are equal.
+     *
+     * @param that SubscriptionInfoInternal to be compared
+     * @return {@code true} if equals.
+     */
+    public boolean equalsDbItemsOnly(@NonNull SubscriptionInfoInternal that) {
         return mId == that.mId && mSimSlotIndex == that.mSimSlotIndex
                 && mDisplayNameSource == that.mDisplayNameSource && mIconTint == that.mIconTint
                 && mDataRoaming == that.mDataRoaming && mIsEmbedded == that.mIsEmbedded
@@ -1407,7 +1411,6 @@ public class SubscriptionInfoInternal {
                 && mPortIndex == that.mPortIndex && mUsageSetting == that.mUsageSetting
                 && mLastUsedTPMessageReference == that.mLastUsedTPMessageReference
                 && mUserId == that.mUserId && mIsSatelliteEnabled == that.mIsSatelliteEnabled
-                && mCardId == that.mCardId && mIsGroupDisabled == that.mIsGroupDisabled
                 && mIccId.equals(that.mIccId) && mDisplayName.equals(that.mDisplayName)
                 && mCarrierName.equals(that.mCarrierName) && mNumber.equals(that.mNumber)
                 && mMcc.equals(that.mMcc) && mMnc.equals(that.mMnc) && mEhplmns.equals(
@@ -1428,6 +1431,15 @@ public class SubscriptionInfoInternal {
                 && mTransferStatus == that.mTransferStatus
                 && mIsSatelliteEntitlementStatus == that.mIsSatelliteEntitlementStatus
                 && mSatelliteEntitlementPlmns == that.mSatelliteEntitlementPlmns;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        SubscriptionInfoInternal that = (SubscriptionInfoInternal) o;
+        return equalsDbItemsOnly(that)
+                && mCardId == that.mCardId && mIsGroupDisabled == that.mIsGroupDisabled;
     }
 
     @Override

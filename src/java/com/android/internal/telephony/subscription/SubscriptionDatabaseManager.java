@@ -1044,7 +1044,7 @@ public class SubscriptionDatabaseManager extends Handler {
                 throw new IllegalArgumentException("updateSubscription: subscription does not "
                         + "exist. subId=" + subId);
             }
-            if (oldSubInfo.equals(newSubInfo)) return;
+            if (oldSubInfo.equalsDbItemsOnly(newSubInfo)) return;
 
             if (updateDatabase(subId, createDeltaContentValues(oldSubInfo, newSubInfo)) > 0) {
                 mAllSubscriptionInfoInternalCache.put(subId, newSubInfo);
