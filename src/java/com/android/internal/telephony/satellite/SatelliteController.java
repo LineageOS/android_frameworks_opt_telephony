@@ -1075,7 +1075,7 @@ public class SatelliteController extends Handler {
 
                     mControllerMetricsStats.onSatelliteDisabled();
 
-                    tryFlushPersistedLogs(mIsEmergency);
+                    handlePersistentLoggingOnSessionEnd(mIsEmergency);
 
                     synchronized (mIsSatelliteEnabledLock) {
                         mWaitingForDisableSatelliteModemResponse = false;
@@ -3246,6 +3246,7 @@ public class SatelliteController extends Handler {
     private void handleSatelliteEnabled(SatelliteControllerHandlerRequest request) {
         RequestSatelliteEnabledArgument argument =
                 (RequestSatelliteEnabledArgument) request.argument;
+        handlePersistentLoggingOnSessionStart(argument);
         if (mSatelliteSessionController != null) {
             mSatelliteSessionController.onSatelliteEnablementStarted(argument.enableSatellite);
         } else {
@@ -3631,7 +3632,7 @@ public class SatelliteController extends Handler {
         synchronized (mIsSatelliteEnabledLock) {
             resetSatelliteEnabledRequest();
             setDemoModeEnabled(false);
-            tryFlushPersistedLogs(mIsEmergency);
+            handlePersistentLoggingOnSessionEnd(mIsEmergency);
             mIsEmergency = false;
             mIsSatelliteEnabled = false;
             setSettingsKeyForSatelliteMode(SATELLITE_MODE_ENABLED_FALSE);
@@ -4794,10 +4795,26 @@ public class SatelliteController extends Handler {
         }
     }
 
-    private void tryFlushPersistedLogs(boolean isEmergency) {
+    private void handlePersistentLoggingOnSessionStart(RequestSatelliteEnabledArgument argument) {
+        if (mPersistentLogger == null) {
+            return;
+        }
+        if (argument.isEmergency) {
+            DropBoxManagerLoggerBackend.getInstance(mContext).setLoggingEnabled(true);
+        }
+    }
+
+    private void handlePersistentLoggingOnSessionEnd(boolean isEmergency) {
+        if (mPersistentLogger == null) {
+            return;
+        }
+        DropBoxManagerLoggerBackend loggerBackend =
+                DropBoxManagerLoggerBackend.getInstance(mContext);
         // Flush persistent satellite logs on eSOS session end
         if (isEmergency) {
-            DropBoxManagerLoggerBackend.getInstance(mContext).flushAsync();
+            loggerBackend.flushAsync();
         }
+        // Also turn off persisted logging until new session is started
+        loggerBackend.setLoggingEnabled(false);
     }
 }
