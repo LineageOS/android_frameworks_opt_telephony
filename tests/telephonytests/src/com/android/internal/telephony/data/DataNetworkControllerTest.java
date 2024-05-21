@@ -138,6 +138,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
+import javax.annotation.Nullable;
+
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class DataNetworkControllerTest extends TelephonyTest {
@@ -1138,18 +1140,23 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     private @NonNull TelephonyNetworkRequest createNetworkRequest(Integer... capabilities) {
-        return createNetworkRequest(false, capabilities);
+        return createNetworkRequest(null, capabilities);
     }
 
-    private @NonNull TelephonyNetworkRequest createNetworkRequest(boolean restricted,
+    private @NonNull TelephonyNetworkRequest createNetworkRequest(@Nullable Boolean restricted,
                                                                   Integer... capabilities) {
         NetworkCapabilities netCaps = new NetworkCapabilities();
         for (int networkCapability : capabilities) {
             netCaps.addCapability(networkCapability);
         }
 
-        if (restricted) {
-            netCaps.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+        if (restricted != null) {
+            if (restricted) {
+                netCaps.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+            }
+        } else {
+            // Data Network uses the same to define its own capabilities.
+            netCaps.maybeMarkCapabilitiesRestricted();
         }
 
         NetworkRequest nativeNetworkRequest = new NetworkRequest(netCaps,
@@ -1740,6 +1747,14 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // Verify data is not connected since Network request cannot satisfy by transport
         verify(mMockedDataNetworkControllerCallback, never())
                 .onConnectedInternetDataNetworksChanged(any());
+
+        // However, WLAN network setup shouldn't be affected
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(anyInt());
+        mDataNetworkControllerUT.obtainMessage(5 /*EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS*/,
+                DataEvaluation.DataEvaluationReason.PREFERRED_TRANSPORT_CHANGED).sendToTarget();
+        processAllMessages();
+        verify(mMockedDataNetworkControllerCallback).onConnectedInternetDataNetworksChanged(any());
 
         mIsNonTerrestrialNetwork = false;
     }
@@ -3319,12 +3334,20 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 NetworkCapabilities.NET_CAPABILITY_IMS);
         TelephonyNetworkRequest secondTnr = createNetworkRequest(
                 NetworkCapabilities.NET_CAPABILITY_IMS);
+        TelephonyNetworkRequest thirdTnr = new TelephonyNetworkRequest(
+                new NetworkRequest((new NetworkCapabilities.Builder())
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                        .addTransportType(NetworkCapabilities.TRANSPORT_SATELLITE)
+                        .build(),
+                        ConnectivityManager.TYPE_MOBILE, ++mNetworkRequestId,
+                        NetworkRequest.Type.REQUEST), mPhone, mFeatureFlags);
 
         mDataNetworkControllerUT.addNetworkRequest(firstTnr);
         processAllMessages();
 
         mDataNetworkControllerUT.removeNetworkRequest(firstTnr);
         mDataNetworkControllerUT.addNetworkRequest(secondTnr);
+        mDataNetworkControllerUT.addNetworkRequest(thirdTnr);
         processAllFutureMessages();
 
         verify(mMockedWwanDataServiceManager, times(1)).setupDataCall(anyInt(),
@@ -4157,6 +4180,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         NetworkCapabilities netCaps = new NetworkCapabilities();
         netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+        netCaps.maybeMarkCapabilitiesRestricted();
         netCaps.setRequestorPackageName(FAKE_MMTEL_PACKAGE);
 
         NetworkRequest nativeNetworkRequest = new NetworkRequest(netCaps,
@@ -4209,6 +4233,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // setup emergency data network.
         NetworkCapabilities netCaps = new NetworkCapabilities();
         netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
+        netCaps.maybeMarkCapabilitiesRestricted();
         netCaps.setRequestorPackageName(FAKE_MMTEL_PACKAGE);
 
         NetworkRequest nativeNetworkRequest = new NetworkRequest(netCaps,
@@ -5097,7 +5122,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         mDataNetworkControllerUT.addNetworkRequest(
-                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+                createNetworkRequest(true/*restricted*/,
+                        NetworkCapabilities.NET_CAPABILITY_INTERNET));
         processAllMessages();
         verifyConnectedNetworkHasDataProfile(mEsimBootstrapDataProfile);
 
@@ -5108,13 +5134,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), 2);
         processAllMessages();
         verifyConnectedNetworkHasDataProfile(mEsimBootstrapImsProfile);
-
-        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
-        mDataNetworkControllerUT.addNetworkRequest(
-                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_RCS));
-        processAllMessages();
-        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_RCS);
     }
 
     @Test
@@ -5153,7 +5172,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         mDataNetworkControllerUT.addNetworkRequest(
-                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+                createNetworkRequest(true, NetworkCapabilities.NET_CAPABILITY_INTERNET));
         processAllMessages();
         // With allowed data limit unlimited, connection is allowed
         verifyConnectedNetworkHasDataProfile(mEsimBootstrapDataProfile);

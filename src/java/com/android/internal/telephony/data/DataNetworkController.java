@@ -2122,6 +2122,13 @@ public class DataNetworkController extends Handler {
      */
     private boolean canConnectivityTransportSatisfyNetworkRequest(
             @NonNull TelephonyNetworkRequest networkRequest, @TransportType int transport) {
+        // Check if this is a IWLAN network request.
+        if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+            // If the request would result in bringing up network on IWLAN, then no
+            // need to check if the device is using satellite network.
+            return true;
+        }
+
         // When the device is on satellite, only restricted network request can request network.
         if (mServiceState.isUsingNonTerrestrialNetwork()
                 && networkRequest.hasCapability(
@@ -2133,14 +2140,6 @@ public class DataNetworkController extends Handler {
         // satisfied when the device is either on cellular ot satellite.
         if (!networkRequest.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
                 && !networkRequest.hasTransport(NetworkCapabilities.TRANSPORT_SATELLITE)) {
-            return true;
-        }
-
-        // Check if this is a IWLAN network request.
-        if (networkRequest.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
-                && transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
-            // If the cellular request would result in bringing up network on IWLAN, then no
-            // need to check if the device is using satellite network.
             return true;
         }
 
@@ -3061,8 +3060,18 @@ public class DataNetworkController extends Handler {
             List<NetworkRequestList> groupRequestLists = getGroupedUnsatisfiedNetworkRequests();
             dataSetupRetryEntry.networkRequestList.stream()
                     .filter(request -> groupRequestLists.stream()
-                            .anyMatch(groupRequestList -> groupRequestList
-                                    .get(request.getCapabilities()) != null))
+                            .anyMatch(groupRequestList -> {
+                                // The unsatisfied request has all the requested capabilities.
+                                if (groupRequestList.get(request.getCapabilities()) == null) {
+                                    return false;
+                                }
+                                TelephonyNetworkRequest leading = groupRequestList.getFirst();
+                                // The unsatisfied request covers all the requested transports.
+                                return leading.getTransportTypes().length == 0
+                                        || request.getTransportTypes().length == 0
+                                        || Arrays.stream(request.getTransportTypes())
+                                        .allMatch(leading::hasTransport);
+                            }))
                     .forEach(requestList::add);
         }
         if (requestList.isEmpty()) {
