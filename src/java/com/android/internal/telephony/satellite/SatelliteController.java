@@ -162,6 +162,10 @@ public class SatelliteController extends Handler {
      * to enable satellite.
      */
     public static final int TIMEOUT_TYPE_WAIT_FOR_SATELLITE_ENABLING_RESPONSE = 1;
+    /** This is used by CTS to override demo pointing aligned duration. */
+    public static final int TIMEOUT_TYPE_DEMO_POINTING_ALIGNED_DURATION_MILLIS = 2;
+    /** This is used by CTS to override demo pointing not aligned duration. */
+    public static final int TIMEOUT_TYPE_DEMO_POINTING_NOT_ALIGNED_DURATION_MILLIS = 3;
 
     /** Key used to read/write OEM-enabled satellite provision status in shared preferences. */
     private static final String OEM_ENABLED_SATELLITE_PROVISION_STATUS_KEY =
@@ -401,6 +405,8 @@ public class SatelliteController extends Handler {
     private final SparseArray<List<String>> mMergedPlmnListPerCarrier = new SparseArray<>();
     private static AtomicLong sNextSatelliteEnableRequestId = new AtomicLong(0);
     private long mWaitTimeForSatelliteEnablingResponse;
+    private long mDemoPointingAlignedDurationMillis;
+    private long mDemoPointingNotAlignedDurationMillis;
 
     /** Key used to read/write satellite system notification done in shared preferences. */
     private static final String SATELLITE_SYSTEM_NOTIFICATION_DONE_KEY =
@@ -528,6 +534,9 @@ public class SatelliteController extends Handler {
                 null);
         loadSatelliteSharedPreferences();
         mWaitTimeForSatelliteEnablingResponse = getWaitForSatelliteEnablingResponseTimeoutMillis();
+        mDemoPointingAlignedDurationMillis = getDemoPointingAlignedDurationMillisFromResources();
+        mDemoPointingNotAlignedDurationMillis =
+                getDemoPointingNotAlignedDurationMillisFromResources();
     }
 
     /**
@@ -2046,6 +2055,8 @@ public class SatelliteController extends Handler {
             logd("setDeviceAlignedWithSatellite: oemEnabledSatelliteFlag is disabled");
             return;
         }
+
+        DemoSimulator.getInstance().setDeviceAlignedWithSatellite(isAligned);
         mDatagramController.setDeviceAlignedWithSatellite(isAligned);
     }
 
@@ -2376,6 +2387,25 @@ public class SatelliteController extends Handler {
     }
 
     /**
+     * This API can be used by only CTS to override the boolean configs used by the
+     * DatagramController module.
+     *
+     * @param enable Whether to enable or disable boolean config.
+     * @return {@code true} if the boolean config is set successfully, {@code false} otherwise.
+     */
+    public boolean setDatagramControllerBooleanConfig(
+            boolean reset, int booleanType, boolean enable) {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("setDatagramControllerBooleanConfig: oemEnabledSatelliteFlag is disabled");
+            return false;
+        }
+        logd("setDatagramControllerBooleanConfig: reset=" + reset + ", booleanType="
+                + booleanType + ", enable=" + enable);
+        return mDatagramController.setDatagramControllerBooleanConfig(
+                reset, booleanType, enable);
+    }
+
+    /**
      * This API can be used by only CTS to override timeout durations used by SatelliteController
      * module.
      *
@@ -2402,6 +2432,20 @@ public class SatelliteController extends Handler {
                 mWaitTimeForSatelliteEnablingResponse = timeoutMillis;
             }
             logd("mWaitTimeForSatelliteEnablingResponse=" + mWaitTimeForSatelliteEnablingResponse);
+        } else if (timeoutType == TIMEOUT_TYPE_DEMO_POINTING_ALIGNED_DURATION_MILLIS) {
+            if (reset) {
+                mDemoPointingAlignedDurationMillis =
+                        getDemoPointingAlignedDurationMillisFromResources();
+            } else {
+                mDemoPointingAlignedDurationMillis = timeoutMillis;
+            }
+        } else if (timeoutType == TIMEOUT_TYPE_DEMO_POINTING_NOT_ALIGNED_DURATION_MILLIS) {
+            if (reset) {
+                mDemoPointingNotAlignedDurationMillis =
+                        getDemoPointingNotAlignedDurationMillisFromResources();
+            } else {
+                mDemoPointingNotAlignedDurationMillis = timeoutMillis;
+            }
         } else {
             logw("Invalid timeoutType=" + timeoutType);
             return false;
@@ -4566,6 +4610,40 @@ public class SatelliteController extends Handler {
             loge("notifyEnablementFailedToSatelliteSessionController: mSatelliteSessionController"
                     + " is not initialized yet");
         }
+    }
+
+    private long getDemoPointingAlignedDurationMillisFromResources() {
+        long durationMillis = 15000L;
+        try {
+            durationMillis = mContext.getResources().getInteger(
+                    R.integer.config_demo_pointing_aligned_duration_millis);
+        } catch (Resources.NotFoundException ex) {
+            loge("getPointingAlignedDurationMillis: ex=" + ex);
+        }
+
+        return durationMillis;
+    }
+
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
+    public long getDemoPointingAlignedDurationMillis() {
+        return mDemoPointingAlignedDurationMillis;
+    }
+
+    private long getDemoPointingNotAlignedDurationMillisFromResources() {
+        long durationMillis = 30000L;
+        try {
+            durationMillis = mContext.getResources().getInteger(
+                    R.integer.config_demo_pointing_not_aligned_duration_millis);
+        } catch (Resources.NotFoundException ex) {
+            loge("getPointingNotAlignedDurationMillis: ex=" + ex);
+        }
+
+        return durationMillis;
+    }
+
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
+    public long getDemoPointingNotAlignedDurationMillis() {
+        return mDemoPointingNotAlignedDurationMillis;
     }
 
     private static void logd(@NonNull String log) {

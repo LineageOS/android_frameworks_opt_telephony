@@ -29,6 +29,7 @@ import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCC
 
 import android.annotation.NonNull;
 import android.content.Context;
+import android.content.res.Resources;
 import android.os.Build;
 import android.os.Looper;
 import android.os.SystemProperties;
@@ -69,6 +70,8 @@ public class DatagramController {
     public static final int TIMEOUT_TYPE_WAIT_FOR_DATAGRAM_SENDING_RESPONSE = 3;
     /** This type is used by CTS to override the time to datagram delay in demo mode */
     public static final int TIMEOUT_TYPE_DATAGRAM_DELAY_IN_DEMO_MODE = 4;
+    /** This type is used by CTS to override wait for device alignment in demo datagram boolean */
+    public static final int BOOLEAN_TYPE_WAIT_FOR_DEVICE_ALIGNMENT_IN_DEMO_DATAGRAM = 1;
     private static final String ALLOW_MOCK_MODEM_PROPERTY = "persist.radio.allow_mock_modem";
     private static final boolean DEBUG = !"user".equals(Build.TYPE);
 
@@ -101,6 +104,7 @@ public class DatagramController {
     private long mAlignTimeoutDuration = SATELLITE_ALIGN_TIMEOUT;
     private long mDatagramWaitTimeForConnectedState;
     private long mModemImageSwitchingDuration;
+    private boolean mWaitForDeviceAlignmentInDemoDatagram;
     @GuardedBy("mLock")
     @SatelliteManager.SatelliteModemState
     private int mSatelltieModemState = SatelliteManager.SATELLITE_MODEM_STATE_UNKNOWN;
@@ -155,6 +159,8 @@ public class DatagramController {
 
         mDatagramWaitTimeForConnectedState = getDatagramWaitForConnectedStateTimeoutMillis();
         mModemImageSwitchingDuration = getSatelliteModemImageSwitchingDurationMillis();
+        mWaitForDeviceAlignmentInDemoDatagram =
+                getWaitForDeviceAlignmentInDemoDatagramFromResources();
         mDemoModeDatagramList = new ArrayList<>();
     }
 
@@ -492,6 +498,36 @@ public class DatagramController {
         return true;
     }
 
+    /**
+     * This API can be used by only CTS to override the boolean configs used by the
+     * DatagramController module.
+     *
+     * @param enable Whether to enable or disable boolean config.
+     * @return {@code true} if the boolean config is set successfully, {@code false} otherwise.
+     */
+    boolean setDatagramControllerBooleanConfig(
+            boolean reset, int booleanType, boolean enable) {
+        if (!isMockModemAllowed()) {
+            loge("Updating boolean config is not allowed");
+            return false;
+        }
+
+        logd("setDatagramControllerTimeoutDuration: booleanType=" + booleanType
+                + ", reset=" + reset + ", enable=" + enable);
+        if (booleanType == BOOLEAN_TYPE_WAIT_FOR_DEVICE_ALIGNMENT_IN_DEMO_DATAGRAM) {
+            if (reset) {
+                mWaitForDeviceAlignmentInDemoDatagram =
+                        getWaitForDeviceAlignmentInDemoDatagramFromResources();
+            } else {
+                mWaitForDeviceAlignmentInDemoDatagram = enable;
+            }
+        } else {
+            loge("Invalid boolean type " + booleanType);
+            return false;
+        }
+        return true;
+    }
+
     private boolean isMockModemAllowed() {
         return (DEBUG || SystemProperties.getBoolean(ALLOW_MOCK_MODEM_PROPERTY, false));
     }
@@ -544,6 +580,38 @@ public class DatagramController {
                 pollPendingSatelliteDatagrams(DEFAULT_SUBSCRIPTION_ID, internalCallback);
             }
         }
+    }
+
+    /**
+     * Get whether to wait for device alignment with satellite before sending datagrams.
+     *
+     * @param isAligned if the device is aligned with satellite or not
+     * @return {@code true} if device is not aligned to satellite,
+     * and it is required to wait for alignment else {@code false}
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
+    public boolean waitForAligningToSatellite(boolean isAligned) {
+        if (isAligned) {
+            return false;
+        }
+
+        return getWaitForDeviceAlignmentInDemoDatagram();
+    }
+
+    private boolean getWaitForDeviceAlignmentInDemoDatagram() {
+        return mWaitForDeviceAlignmentInDemoDatagram;
+    }
+
+    private boolean getWaitForDeviceAlignmentInDemoDatagramFromResources() {
+        boolean waitForDeviceAlignmentInDemoDatagram = false;
+        try {
+            waitForDeviceAlignmentInDemoDatagram = mContext.getResources().getBoolean(
+                    R.bool.config_wait_for_device_alignment_in_demo_datagram);
+        } catch (Resources.NotFoundException ex) {
+            loge("getWaitForDeviceAlignmentInDemoDatagram: ex=" + ex);
+        }
+
+        return waitForDeviceAlignmentInDemoDatagram;
     }
 
     private static void logd(@NonNull String log) {

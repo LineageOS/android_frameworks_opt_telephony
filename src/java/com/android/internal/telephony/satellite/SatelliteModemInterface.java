@@ -42,6 +42,7 @@ import android.telephony.satellite.stub.INtnSignalStrengthConsumer;
 import android.telephony.satellite.stub.ISatellite;
 import android.telephony.satellite.stub.ISatelliteCapabilitiesConsumer;
 import android.telephony.satellite.stub.ISatelliteListener;
+import android.telephony.satellite.stub.SatelliteModemState;
 import android.telephony.satellite.stub.SatelliteService;
 import android.text.TextUtils;
 import android.util.Pair;
@@ -64,6 +65,7 @@ public class SatelliteModemInterface {
 
     @NonNull private static SatelliteModemInterface sInstance;
     @NonNull private final Context mContext;
+    @NonNull private final DemoSimulator mDemoSimulator;
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     @NonNull protected final ExponentialBackoff mExponentialBackoff;
     @NonNull private final Object mLock = new Object();
@@ -96,7 +98,14 @@ public class SatelliteModemInterface {
     @NonNull private final RegistrantList mSatelliteSupportedStateChangedRegistrants =
             new RegistrantList();
 
-    @NonNull private final ISatelliteListener mListener = new ISatelliteListener.Stub() {
+    private class SatelliteListener extends ISatelliteListener.Stub {
+
+        private final boolean mIsDemoListener;
+
+        SatelliteListener(boolean isDemoListener) {
+            mIsDemoListener = isDemoListener;
+        }
+
         @Override
         public void onSatelliteProvisionStateChanged(boolean provisioned) {
             mSatelliteProvisionStateChangedRegistrants.notifyResult(provisioned);
@@ -105,15 +114,19 @@ public class SatelliteModemInterface {
         @Override
         public void onSatelliteDatagramReceived(
                 android.telephony.satellite.stub.SatelliteDatagram datagram, int pendingCount) {
-            logd("onSatelliteDatagramReceived: pendingCount=" + pendingCount);
-            mSatelliteDatagramsReceivedRegistrants.notifyResult(new Pair<>(
-                    SatelliteServiceUtils.fromSatelliteDatagram(datagram), pendingCount));
+            if (notifyResultIfExpectedListener()) {
+                logd("onSatelliteDatagramReceived: pendingCount=" + pendingCount);
+                mSatelliteDatagramsReceivedRegistrants.notifyResult(new Pair<>(
+                        SatelliteServiceUtils.fromSatelliteDatagram(datagram), pendingCount));
+            }
         }
 
         @Override
         public void onPendingDatagrams() {
-            logd("onPendingDatagrams");
-            mPendingDatagramsRegistrants.notifyResult(null);
+            if (notifyResultIfExpectedListener()) {
+                logd("onPendingDatagrams");
+                mPendingDatagramsRegistrants.notifyResult(null);
+            }
         }
 
         @Override
@@ -125,33 +138,39 @@ public class SatelliteModemInterface {
 
         @Override
         public void onSatelliteModemStateChanged(int state) {
-            mSatelliteModemStateChangedRegistrants.notifyResult(
-                    SatelliteServiceUtils.fromSatelliteModemState(state));
-            int datagramTransferState = SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_UNKNOWN;
-            switch (state) {
-                case SatelliteManager.SATELLITE_MODEM_STATE_IDLE:
-                    datagramTransferState = SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE;
-                    break;
-                case SatelliteManager.SATELLITE_MODEM_STATE_LISTENING:
-                    datagramTransferState =
-                            SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING;
-                    break;
-                case SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING:
-                    datagramTransferState =
-                            SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING;
-                    break;
-                case SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_RETRYING:
-                    // keep previous state as this could be retrying sending or receiving
-                    break;
+            if (notifyModemStateChanged(state)) {
+                mSatelliteModemStateChangedRegistrants.notifyResult(
+                        SatelliteServiceUtils.fromSatelliteModemState(state));
+                int datagramTransferState =
+                        SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_UNKNOWN;
+                switch (state) {
+                    case SatelliteManager.SATELLITE_MODEM_STATE_IDLE:
+                        datagramTransferState =
+                                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE;
+                        break;
+                    case SatelliteManager.SATELLITE_MODEM_STATE_LISTENING:
+                        datagramTransferState =
+                                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING;
+                        break;
+                    case SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING:
+                        datagramTransferState =
+                                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING;
+                        break;
+                    case SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_RETRYING:
+                        // keep previous state as this could be retrying sending or receiving
+                        break;
+                }
+                mDatagramTransferStateChangedRegistrants.notifyResult(datagramTransferState);
             }
-            mDatagramTransferStateChangedRegistrants.notifyResult(datagramTransferState);
         }
 
         @Override
         public void onNtnSignalStrengthChanged(
                 android.telephony.satellite.stub.NtnSignalStrength ntnSignalStrength) {
-            mNtnSignalStrengthChangedRegistrants.notifyResult(
-                    SatelliteServiceUtils.fromNtnSignalStrength(ntnSignalStrength));
+            if (notifyResultIfExpectedListener()) {
+                mNtnSignalStrengthChangedRegistrants.notifyResult(
+                        SatelliteServiceUtils.fromNtnSignalStrength(ntnSignalStrength));
+            }
         }
 
         @Override
@@ -165,7 +184,22 @@ public class SatelliteModemInterface {
         public void onSatelliteSupportedStateChanged(boolean supported) {
             mSatelliteSupportedStateChangedRegistrants.notifyResult(supported);
         }
-    };
+
+        private boolean notifyResultIfExpectedListener() {
+            // Demo listener should notify results only during demo mode
+            // Vendor listener should notify result only during real mode
+            return mIsDemoListener == mSatelliteController.isDemoModeEnabled();
+        }
+
+        private boolean notifyModemStateChanged(int state) {
+            if (notifyResultIfExpectedListener()) {
+                return true;
+            }
+
+            return state == SatelliteModemState.SATELLITE_MODEM_STATE_OFF
+                    || state == SatelliteModemState.SATELLITE_MODEM_STATE_UNAVAILABLE;
+        }
+    }
 
     /**
      * @return The singleton instance of SatelliteModemInterface.
@@ -202,6 +236,7 @@ public class SatelliteModemInterface {
     protected SatelliteModemInterface(@NonNull Context context,
             SatelliteController satelliteController, @NonNull Looper looper) {
         mContext = context;
+        mDemoSimulator = DemoSimulator.make(context, satelliteController);
         mIsSatelliteServiceSupported = getSatelliteServiceSupport();
         mSatelliteController = satelliteController;
         mExponentialBackoff = new ExponentialBackoff(REBIND_INITIAL_DELAY, REBIND_MAXIMUM_DELAY,
@@ -314,7 +349,11 @@ public class SatelliteModemInterface {
             mSatelliteService = ISatellite.Stub.asInterface(service);
             mExponentialBackoff.stop();
             try {
-                mSatelliteService.setSatelliteListener(mListener);
+                SatelliteListener vendorListener = new SatelliteListener(false);
+                mSatelliteService.setSatelliteListener(vendorListener);
+
+                SatelliteListener demoListener = new SatelliteListener(true);
+                mDemoSimulator.setSatelliteListener(demoListener);
             } catch (RemoteException e) {
                 // TODO: Retry setSatelliteListener
                 logd("setSatelliteListener: RemoteException " + e);
@@ -584,19 +623,26 @@ public class SatelliteModemInterface {
             @Nullable Message message) {
         if (mSatelliteService != null) {
             try {
-                mSatelliteService.enableCellularModemWhileSatelliteModeIsOn(enabled,
-                        new IIntegerConsumer.Stub() {
-                            @Override
-                            public void accept(int result) {
-                                int error = SatelliteServiceUtils.fromSatelliteError(result);
-                                logd("enableCellularModemWhileSatelliteModeIsOn: " + error);
-                                Binder.withCleanCallingIdentity(() -> {
-                                        if (message != null) {
-                                            sendMessageWithResult(message, null, error);
-                                        }
-                                });
+                IIntegerConsumer errorCallback = new IIntegerConsumer.Stub() {
+                    @Override
+                    public void accept(int result) {
+                        int error = SatelliteServiceUtils.fromSatelliteError(result);
+                        logd("enableCellularModemWhileSatelliteModeIsOn: " + error);
+                        Binder.withCleanCallingIdentity(() -> {
+                            if (message != null) {
+                                sendMessageWithResult(message, null, error);
                             }
                         });
+                    }
+                };
+
+                if (mSatelliteController.isDemoModeEnabled()) {
+                    mDemoSimulator.enableCellularModemWhileSatelliteModeIsOn(
+                            enabled, errorCallback);
+                } else {
+                    mSatelliteService.enableCellularModemWhileSatelliteModeIsOn(
+                            enabled, errorCallback);
+                }
             } catch (RemoteException e) {
                 loge("enableCellularModemWhileSatelliteModeIsOn: RemoteException " + e);
                 if (message != null) {

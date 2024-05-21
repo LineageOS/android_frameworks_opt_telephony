@@ -620,7 +620,7 @@ public class DatagramReceiver extends Handler {
             DatagramReceiverHandlerRequest request = new DatagramReceiverHandlerRequest(
                     callback, phone, subId);
             synchronized (mLock) {
-                if (mIsAligned) {
+                if (!mDatagramController.waitForAligningToSatellite(mIsAligned)) {
                     Message msg = obtainMessage(EVENT_POLL_PENDING_SATELLITE_DATAGRAMS_DONE,
                             request);
                     AsyncResult.forMessage(msg, null, null);
