@@ -372,6 +372,7 @@ public class DatagramReceiverTest extends TelephonyTest {
         mTestDemoModeDatagramReceiver.setDemoMode(true);
         mTestDemoModeDatagramReceiver.setDuration(TEST_EXPIRE_TIMER_SATELLITE_ALIGN);
         mTestDemoModeDatagramReceiver.setDeviceAlignedWithSatellite(false);
+        when(mMockDatagramController.waitForAligningToSatellite(false)).thenReturn(true);
         when(mMockDatagramController.popDemoModeDatagram()).thenReturn(mDatagram);
         mTestDemoModeDatagramReceiver.pollPendingSatelliteDatagrams(SUB_ID, mResultListener::offer);
         processAllMessages();
