@@ -1359,28 +1359,6 @@ public class DataNetworkController extends Handler {
             // When reaching here, it means this data network can satisfy all the network requests.
             logv("Found a compatible data network " + dataNetwork + ". Attaching "
                     + requestList);
-
-            // If WLAN preferred, see whether a more suitable data profile shall be used to satisfy
-            // a short-lived request that doesn't perform handover.
-            int capability = requestList.getFirst().getApnTypeNetworkCapability();
-            int preferredTransport = mAccessNetworksManager
-                    .getPreferredTransportByNetworkCapability(capability);
-            if (capability == NetworkCapabilities.NET_CAPABILITY_MMS
-                    && preferredTransport != dataNetwork.getTransport()
-                    && preferredTransport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
-                DataProfile candidate = mDataProfileManager
-                        .getDataProfileForNetworkRequest(requestList.getFirst(),
-                                TelephonyManager.NETWORK_TYPE_IWLAN,
-                                mServiceState.isUsingNonTerrestrialNetwork(),
-                                isEsimBootStrapProvisioningActivated(),
-                                false/*ignorePermanentFailure*/);
-                if (candidate != null && !dataNetwork.getDataProfile().equals(candidate)) {
-                    logv("But skipped because found better data profile " + candidate
-                            + DataUtils.networkCapabilityToString(capability) + " preferred on "
-                            + AccessNetworkConstants.transportTypeToString(preferredTransport));
-                    continue;
-                }
-            }
             return dataNetwork.attachNetworkRequests(requestList);
         }
         return false;
