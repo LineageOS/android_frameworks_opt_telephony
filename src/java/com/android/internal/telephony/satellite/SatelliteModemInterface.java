@@ -66,6 +66,8 @@ public class SatelliteModemInterface {
     @NonNull private static SatelliteModemInterface sInstance;
     @NonNull private final Context mContext;
     @NonNull private final DemoSimulator mDemoSimulator;
+    @NonNull private final SatelliteListener mVendorListener;
+    @NonNull private final SatelliteListener mDemoListener;
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     @NonNull protected final ExponentialBackoff mExponentialBackoff;
     @NonNull private final Object mLock = new Object();
@@ -237,6 +239,8 @@ public class SatelliteModemInterface {
             SatelliteController satelliteController, @NonNull Looper looper) {
         mContext = context;
         mDemoSimulator = DemoSimulator.make(context, satelliteController);
+        mVendorListener = new SatelliteListener(false);
+        mDemoListener = new SatelliteListener(true);
         mIsSatelliteServiceSupported = getSatelliteServiceSupport();
         mSatelliteController = satelliteController;
         mExponentialBackoff = new ExponentialBackoff(REBIND_INITIAL_DELAY, REBIND_MAXIMUM_DELAY,
@@ -349,11 +353,8 @@ public class SatelliteModemInterface {
             mSatelliteService = ISatellite.Stub.asInterface(service);
             mExponentialBackoff.stop();
             try {
-                SatelliteListener vendorListener = new SatelliteListener(false);
-                mSatelliteService.setSatelliteListener(vendorListener);
-
-                SatelliteListener demoListener = new SatelliteListener(true);
-                mDemoSimulator.setSatelliteListener(demoListener);
+                mSatelliteService.setSatelliteListener(mVendorListener);
+                mDemoSimulator.setSatelliteListener(mDemoListener);
             } catch (RemoteException e) {
                 // TODO: Retry setSatelliteListener
                 logd("setSatelliteListener: RemoteException " + e);
