@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.metrics;
 
+import static android.telephony.satellite.NtnSignalStrength.NTN_SIGNAL_STRENGTH_GOOD;
+
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -171,6 +173,7 @@ public class SatelliteStatsTest extends TelephonyTest {
                         .setCountOfIncomingDatagramSuccess(1)
                         .setCountOfIncomingDatagramFailed(0)
                         .setIsDemoMode(false)
+                        .setMaxNtnSignalStrengthLevel(NTN_SIGNAL_STRENGTH_GOOD)
                         .build();
 
         mSatelliteStats.onSatelliteSessionMetrics(param);
@@ -193,6 +196,7 @@ public class SatelliteStatsTest extends TelephonyTest {
                 stats.countOfIncomingDatagramSuccess);
         assertEquals(param.getCountOfIncomingDatagramFailed(), stats.countOfIncomingDatagramFailed);
         assertEquals(param.getIsDemoMode(), stats.isDemoMode);
+        assertEquals(param.getMaxNtnSignalStrengthLevel(), stats.maxNtnSignalStrengthLevel);
 
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }

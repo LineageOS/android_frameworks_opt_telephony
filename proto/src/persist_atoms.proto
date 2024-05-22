@@ -719,6 +719,7 @@ message SatelliteSession {
     optional int32 count_of_incoming_datagram_success = 10;
     optional int32 count_of_incoming_datagram_failed = 11;
     optional bool is_demo_mode = 12;
+    optional int32 max_ntn_signal_strength_level = 13;
 }
 
 message SatelliteIncomingDatagram {

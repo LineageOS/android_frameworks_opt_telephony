@@ -2275,7 +2275,7 @@ public class PersistAtomsStorage {
     }
 
     /**
-     * Returns SatelliteOutgoingDatagram atom that has same values or {@code null}
+     * Returns SatelliteSession atom that has same values or {@code null}
      * if it does not exist.
      */
     private @Nullable SatelliteSession find(
@@ -2294,7 +2294,8 @@ public class PersistAtomsStorage {
                     && stats.countOfOutgoingDatagramFailed == key.countOfOutgoingDatagramFailed
                     && stats.countOfIncomingDatagramSuccess == key.countOfIncomingDatagramSuccess
                     && stats.countOfIncomingDatagramFailed == key.countOfIncomingDatagramFailed
-                    && stats.isDemoMode == key.isDemoMode) {
+                    && stats.isDemoMode == key.isDemoMode
+                    && stats.maxNtnSignalStrengthLevel == key.maxNtnSignalStrengthLevel) {
                 return stats;
             }
         }
@@ -2302,7 +2303,7 @@ public class PersistAtomsStorage {
     }
 
     /**
-     * Returns SatelliteOutgoingDatagram atom that has same values or {@code null}
+     * Returns SatelliteSosMessageRecommender atom that has same values or {@code null}
      * if it does not exist.
      */
     private @Nullable SatelliteSosMessageRecommender find(
