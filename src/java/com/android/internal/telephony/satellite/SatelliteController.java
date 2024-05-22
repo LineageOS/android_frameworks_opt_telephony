@@ -153,6 +153,7 @@ public class SatelliteController extends Handler {
     private static final boolean DEBUG = !"user".equals(Build.TYPE);
     /** File used to store shared preferences related to satellite. */
     public static final String SATELLITE_SHARED_PREF = "satellite_shared_pref";
+    public static final String SATELLITE_SUBSCRIPTION_ID = "satellite_subscription_id";
     /** Value to pass for the setting key SATELLITE_MODE_ENABLED, enabled = 1, disabled = 0 */
     public static final int SATELLITE_MODE_ENABLED_TRUE = 1;
     public static final int SATELLITE_MODE_ENABLED_FALSE = 0;
@@ -1636,6 +1637,7 @@ public class SatelliteController extends Handler {
                 /* We have already successfully queried the satellite modem. */
                 Bundle bundle = new Bundle();
                 bundle.putBoolean(SatelliteManager.KEY_SATELLITE_SUPPORTED, mIsSatelliteSupported);
+                bundle.putInt(SATELLITE_SUBSCRIPTION_ID, subId);
                 result.send(SATELLITE_RESULT_SUCCESS, bundle);
                 return;
             }
