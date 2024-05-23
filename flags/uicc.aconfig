@@ -17,7 +17,7 @@ flag {
     bug:"303780982"
 }
 
-# OWNER=arunvoddu TARGET=24Q3
+# OWNER=arunvoddu TARGET=24Q4
 flag {
     name: "carrier_restriction_status"
     is_exported: true
@@ -49,4 +49,12 @@ flag {
     namespace: "telephony"
     description: "This flag cleans up the OpenLogicalChannelRecord once SIM is removed"
     bug:"335046531"
+}
+
+# OWNER=arunvoddu TARGET=24Q4
+flag {
+    name: "set_carrier_restriction_status"
+    namespace: "telephony"
+    description: "This flag controls the visibility of the setCarrierRestrictionStatus API in carrierRestrictionRules class."
+    bug:"342411308"
 }
