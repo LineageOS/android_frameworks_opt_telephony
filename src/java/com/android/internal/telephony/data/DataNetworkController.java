@@ -559,6 +559,16 @@ public class DataNetworkController extends Handler {
         }
 
         /**
+         * Print "capabilities - connectivity transport". e.g. INTERNET|NOT_RESTRICTED-SATELLITE
+         */
+        @NonNull
+        public String toStringSimplified() {
+            return size() > 0 ? DataUtils.networkCapabilitiesToString(get(0).getCapabilities())
+                    + "-" + DataUtils.connectivityTransportsToString(get(0).getTransportTypes())
+                    : "";
+        }
+
+        /**
          * Dump the network request list.
          *
          * @param pw print writer.
@@ -1838,8 +1848,7 @@ public class DataNetworkController extends Handler {
         log("Re-evaluating " + networkRequestLists.stream().mapToInt(List::size).sum()
                 + " unsatisfied network requests in " + networkRequestLists.size()
                 + " groups, " + networkRequestLists.stream().map(
-                        requestList -> DataUtils.networkCapabilitiesToString(
-                                requestList.get(0).getCapabilities()))
+                        NetworkRequestList::toStringSimplified)
                 .collect(Collectors.joining(", ")) + " due to " + reason);
 
         // Second, see if any existing network can satisfy those network requests.
@@ -2115,23 +2124,20 @@ public class DataNetworkController extends Handler {
             @NonNull TelephonyNetworkRequest networkRequest, @TransportType int transport) {
         // When the device is on satellite, only restricted network request can request network.
         if (mServiceState.isUsingNonTerrestrialNetwork()
-                && networkRequest.getNativeNetworkRequest().hasCapability(
+                && networkRequest.hasCapability(
                         NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
             return false;
         }
 
         // If the network request does not specify cellular or satellite, then it can be
         // satisfied when the device is either on cellular ot satellite.
-        if (!networkRequest.getNativeNetworkRequest().hasTransport(
-                NetworkCapabilities.TRANSPORT_CELLULAR)
-                && !networkRequest.getNativeNetworkRequest().hasTransport(
-                        NetworkCapabilities.TRANSPORT_SATELLITE)) {
+        if (!networkRequest.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+                && !networkRequest.hasTransport(NetworkCapabilities.TRANSPORT_SATELLITE)) {
             return true;
         }
 
         // Check if this is a IWLAN network request.
-        if (networkRequest.getNativeNetworkRequest().hasTransport(
-                NetworkCapabilities.TRANSPORT_CELLULAR)
+        if (networkRequest.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
                 && transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
             // If the cellular request would result in bringing up network on IWLAN, then no
             // need to check if the device is using satellite network.
@@ -2140,8 +2146,7 @@ public class DataNetworkController extends Handler {
 
         // As a short term solution, allowing some networks to be always marked as cellular
         // transport if certain capabilities are in the network request.
-        if (networkRequest.getNativeNetworkRequest().hasTransport(
-                NetworkCapabilities.TRANSPORT_CELLULAR) && Arrays.stream(
+        if (networkRequest.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) && Arrays.stream(
                         networkRequest.getCapabilities())
                 .anyMatch(mDataConfigManager.getForcedCellularTransportCapabilities()::contains)) {
             return true;
@@ -2151,11 +2156,9 @@ public class DataNetworkController extends Handler {
         // the network is satellite, then the request must specify satellite transport and
         // restricted.
         return (mServiceState.isUsingNonTerrestrialNetwork()
-                && networkRequest.getNativeNetworkRequest().hasTransport(
-                        NetworkCapabilities.TRANSPORT_SATELLITE))
+                && networkRequest.hasTransport(NetworkCapabilities.TRANSPORT_SATELLITE))
                 || (!mServiceState.isUsingNonTerrestrialNetwork()
-                        && networkRequest.getNativeNetworkRequest().hasTransport(
-                        NetworkCapabilities.TRANSPORT_CELLULAR));
+                        && networkRequest.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR));
     }
 
     /**
