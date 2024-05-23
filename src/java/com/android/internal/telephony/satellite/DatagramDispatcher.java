@@ -104,6 +104,7 @@ public class DatagramDispatcher extends Handler {
             mPendingNonEmergencyDatagramsMap = new LinkedHashMap<>();
 
     private long mWaitTimeForDatagramSendingResponse;
+    private long mWaitTimeForDatagramSendingForLastMessageResponse;
     @SatelliteManager.DatagramType
     private int mLastSendRequestDatagramType = DATAGRAM_TYPE_UNKNOWN;
 
@@ -142,6 +143,8 @@ public class DatagramDispatcher extends Handler {
             mSendingDatagramInProgress = false;
         }
         mWaitTimeForDatagramSendingResponse = getWaitForDatagramSendingResponseTimeoutMillis();
+        mWaitTimeForDatagramSendingForLastMessageResponse =
+                getWaitForDatagramSendingResponseForLastMessageTimeoutMillis();
     }
 
     private static final class DatagramDispatcherHandlerRequest {
@@ -680,7 +683,8 @@ public class DatagramDispatcher extends Handler {
         }
         sendMessageDelayed(obtainMessage(
                         EVENT_DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMED_OUT, datagramArgs),
-                mDatagramController.getDatagramWaitTimeForConnectedState());
+                mDatagramController.getDatagramWaitTimeForConnectedState(
+                        SatelliteServiceUtils.isLastSosMessage(datagramArgs.datagramType)));
     }
 
     private void stopDatagramWaitForConnectedStateTimer() {
@@ -709,9 +713,13 @@ public class DatagramDispatcher extends Handler {
             logd("WaitForDatagramSendingResponseTimer was already started");
             return;
         }
+        long waitTime = SatelliteServiceUtils.isLastSosMessage(argument.datagramType)
+                ? mWaitTimeForDatagramSendingForLastMessageResponse
+                : mWaitTimeForDatagramSendingResponse;
+        logd("startWaitForDatagramSendingResponseTimer: datagramType=" + argument.datagramType
+                + ", waitTime=" + waitTime);
         sendMessageDelayed(obtainMessage(
-                EVENT_WAIT_FOR_DATAGRAM_SENDING_RESPONSE_TIMED_OUT, argument),
-                mWaitTimeForDatagramSendingResponse);
+                EVENT_WAIT_FOR_DATAGRAM_SENDING_RESPONSE_TIMED_OUT, argument), waitTime);
     }
 
     private void stopWaitForDatagramSendingResponseTimer() {
@@ -758,6 +766,11 @@ public class DatagramDispatcher extends Handler {
     private long getWaitForDatagramSendingResponseTimeoutMillis() {
         return mContext.getResources().getInteger(
                 R.integer.config_wait_for_datagram_sending_response_timeout_millis);
+    }
+
+    private long getWaitForDatagramSendingResponseForLastMessageTimeoutMillis() {
+        return mContext.getResources().getInteger(R.integer
+                .config_wait_for_datagram_sending_response_for_last_message_timeout_millis);
     }
 
     private boolean shouldProcessEventSendSatelliteDatagramDone(
