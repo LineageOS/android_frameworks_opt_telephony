@@ -218,7 +218,8 @@ public class SatelliteController extends Handler {
     @NonNull private static SatelliteController sInstance;
     @NonNull private final Context mContext;
     @NonNull private final SatelliteModemInterface mSatelliteModemInterface;
-    @NonNull private SatelliteSessionController mSatelliteSessionController;
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    @NonNull protected SatelliteSessionController mSatelliteSessionController;
     @NonNull private final PointingAppController mPointingAppController;
     @NonNull private final DatagramController mDatagramController;
     @NonNull private final ControllerMetricsStats mControllerMetricsStats;
@@ -3242,6 +3243,9 @@ public class SatelliteController extends Handler {
         }
         mSatelliteSessionController = SatelliteSessionController.make(
                 mContext, getLooper(), supported);
+        logd("create a new SatelliteSessionController due to isSatelliteSupported state has "
+                + "changed to " + supported);
+
         if (supported) {
             registerForSatelliteProvisionStateChanged();
             registerForPendingDatagramCount();
@@ -3503,6 +3507,10 @@ public class SatelliteController extends Handler {
                 }
             }
             mIsSatelliteSupported = supported;
+            mSatelliteSessionController = SatelliteSessionController.make(
+                    mContext, getLooper(), supported);
+            logd("create a new SatelliteSessionController due to isSatelliteSupported state has "
+                    + "changed to " + supported);
         }
 
         List<ISatelliteSupportedStateCallback> deadCallersList = new ArrayList<>();
