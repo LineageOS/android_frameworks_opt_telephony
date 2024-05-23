@@ -202,6 +202,7 @@ public class SatelliteControllerTest extends TelephonyTest {
     @Mock private TelephonyConfigUpdateInstallReceiver mMockTelephonyConfigUpdateInstallReceiver;
     @Mock private SatelliteConfigParser mMockConfigParser;
     @Mock private SatelliteConfig mMockConfig;
+    @Mock private DemoSimulator mMockDemoSimulator;
 
     private Semaphore mIIntegerConsumerSemaphore = new Semaphore(0);
     private IIntegerConsumer mIIntegerConsumer = new IIntegerConsumer.Stub() {
@@ -475,6 +476,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[]{mPhone, mPhone2});
         replaceInstance(TelephonyConfigUpdateInstallReceiver.class, "sReceiverAdaptorInstance",
                 null, mMockTelephonyConfigUpdateInstallReceiver);
+        replaceInstance(DemoSimulator.class, "sInstance", null, mMockDemoSimulator);
 
         mServiceState2 = Mockito.mock(ServiceState.class);
         when(mPhone.getServiceState()).thenReturn(mServiceState);
@@ -785,6 +787,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         setUpResponseForRequestSatelliteEnabled(true, false, false, SATELLITE_RESULT_SUCCESS);
         mSatelliteControllerUT.requestSatelliteEnabled(SUB_ID, true, false, false,
                 mIIntegerConsumer);
+        mSatelliteControllerUT.setSatelliteSessionController(mMockSatelliteSessionController);
         processAllMessages();
         assertTrue(waitForIIntegerConsumerResult(1));
         assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
@@ -1304,6 +1307,7 @@ public class SatelliteControllerTest extends TelephonyTest {
                 .registerForSatelliteModemStateChanged(callback);
 
         resetSatelliteControllerUTToSupportedAndProvisionedState();
+        mSatelliteControllerUT.setSatelliteSessionController(mMockSatelliteSessionController);
 
         errorCode = mSatelliteControllerUT.registerForSatelliteModemStateChanged(
                 SUB_ID, callback);
@@ -1324,7 +1328,7 @@ public class SatelliteControllerTest extends TelephonyTest {
                 .unregisterForSatelliteModemStateChanged(callback);
 
         resetSatelliteControllerUTToSupportedAndProvisionedState();
-
+        mSatelliteControllerUT.setSatelliteSessionController(mMockSatelliteSessionController);
         mSatelliteControllerUT.unregisterForModemStateChanged(SUB_ID, callback);
         verify(mMockSatelliteSessionController).unregisterForSatelliteModemStateChanged(callback);
     }
@@ -2250,6 +2254,7 @@ public class SatelliteControllerTest extends TelephonyTest {
                 SATELLITE_MODEM_STATE_CONNECTED);
 
         resetSatelliteControllerUTToSupportedAndProvisionedState();
+        mSatelliteControllerUT.setSatelliteSessionController(mMockSatelliteSessionController);
         clearInvocations(mMockSatelliteSessionController);
         clearInvocations(mMockDatagramController);
         sendSatelliteModemStateChangedEvent(SATELLITE_MODEM_STATE_UNAVAILABLE, null);
@@ -4501,6 +4506,10 @@ public class SatelliteControllerTest extends TelephonyTest {
         @Override
         protected long getElapsedRealtime() {
             return elapsedRealtime;
+        }
+
+        void setSatelliteSessionController(SatelliteSessionController satelliteSessionController) {
+            mSatelliteSessionController = satelliteSessionController;
         }
     }
 }

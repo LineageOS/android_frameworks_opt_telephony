@@ -39,7 +39,6 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.RemoteException;
 import android.os.SystemProperties;
-import android.telephony.Rlog;
 import android.telephony.satellite.ISatelliteModemStateCallback;
 import android.telephony.satellite.SatelliteManager;
 import android.telephony.satellite.stub.ISatelliteGateway;
@@ -163,15 +162,9 @@ public class SatelliteSessionController extends StateMachine {
      */
     public static SatelliteSessionController make(
             @NonNull Context context, @NonNull Looper looper, boolean isSatelliteSupported) {
-        if (sInstance == null) {
+        if (sInstance == null || isSatelliteSupported != sInstance.mIsSatelliteSupported) {
             sInstance = new SatelliteSessionController(context, looper, isSatelliteSupported,
                     SatelliteModemInterface.getInstance());
-        } else {
-            if (isSatelliteSupported != sInstance.mIsSatelliteSupported) {
-                Rlog.e(TAG, "New satellite support state " + isSatelliteSupported
-                        + " is different from existing state " + sInstance.mIsSatelliteSupported
-                        + ". Ignore the new state.");
-            }
         }
         return sInstance;
     }
