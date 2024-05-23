@@ -105,6 +105,7 @@ public class DatagramController {
     private long mDatagramWaitTimeForConnectedState;
     private long mModemImageSwitchingDuration;
     private boolean mWaitForDeviceAlignmentInDemoDatagram;
+    private long mDatagramWaitTimeForConnectedStateForLastMessage;
     @GuardedBy("mLock")
     @SatelliteManager.SatelliteModemState
     private int mSatelltieModemState = SatelliteManager.SATELLITE_MODEM_STATE_UNKNOWN;
@@ -161,6 +162,8 @@ public class DatagramController {
         mModemImageSwitchingDuration = getSatelliteModemImageSwitchingDurationMillis();
         mWaitForDeviceAlignmentInDemoDatagram =
                 getWaitForDeviceAlignmentInDemoDatagramFromResources();
+        mDatagramWaitTimeForConnectedStateForLastMessage =
+                getDatagramWaitForConnectedStateForLastMessageTimeoutMillis();
         mDemoModeDatagramList = new ArrayList<>();
     }
 
@@ -447,13 +450,17 @@ public class DatagramController {
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
-    public long getDatagramWaitTimeForConnectedState() {
+    public long getDatagramWaitTimeForConnectedState(boolean isLastSosMessage) {
         synchronized (mLock) {
+            long timeout = isLastSosMessage ? mDatagramWaitTimeForConnectedStateForLastMessage :
+                    mDatagramWaitTimeForConnectedState;
+            logd("getDatagramWaitTimeForConnectedState: isLastSosMessage=" + isLastSosMessage
+                    + ", timeout=" + timeout + ", modemState=" + mSatelltieModemState);
             if (mSatelltieModemState == SATELLITE_MODEM_STATE_OFF
                     || mSatelltieModemState == SATELLITE_MODEM_STATE_IDLE) {
-                return (mDatagramWaitTimeForConnectedState + mModemImageSwitchingDuration);
+                return (timeout + mModemImageSwitchingDuration);
             }
-            return mDatagramWaitTimeForConnectedState;
+            return timeout;
         }
     }
 
@@ -551,6 +558,11 @@ public class DatagramController {
     private long getSatelliteModemImageSwitchingDurationMillis() {
         return mContext.getResources().getInteger(
                 R.integer.config_satellite_modem_image_switching_duration_millis);
+    }
+
+    private long getDatagramWaitForConnectedStateForLastMessageTimeoutMillis() {
+        return mContext.getResources().getInteger(
+                R.integer.config_datagram_wait_for_connected_state_for_last_message_timeout_millis);
     }
 
     /**

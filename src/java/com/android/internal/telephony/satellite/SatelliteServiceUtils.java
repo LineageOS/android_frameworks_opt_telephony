@@ -347,11 +347,23 @@ public class SatelliteServiceUtils {
     }
 
     /**
-     *
+     * Check if the datagramType is the sos message (DATAGRAM_TYPE_SOS_MESSAGE,
+     * DATAGRAM_TYPE_LAST_SOS_MESSAGE_STILL_NEED_HELP,
+     * DATAGRAM_TYPE_LAST_SOS_MESSAGE_NO_HELP_NEEDED) or not
      */
     public static boolean isSosMessage(int datagramType) {
         return datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE
                 || datagramType == SatelliteManager.DATAGRAM_TYPE_LAST_SOS_MESSAGE_STILL_NEED_HELP
+                || datagramType == SatelliteManager.DATAGRAM_TYPE_LAST_SOS_MESSAGE_NO_HELP_NEEDED;
+    }
+
+    /**
+     * Check if the datagramType is the last sos message
+     * (DATAGRAM_TYPE_LAST_SOS_MESSAGE_STILL_NEED_HELP or
+     * DATAGRAM_TYPE_LAST_SOS_MESSAGE_NO_HELP_NEEDED) or not
+     */
+    public static boolean isLastSosMessage(int datagramType) {
+        return datagramType == SatelliteManager.DATAGRAM_TYPE_LAST_SOS_MESSAGE_STILL_NEED_HELP
                 || datagramType == SatelliteManager.DATAGRAM_TYPE_LAST_SOS_MESSAGE_NO_HELP_NEEDED;
     }
 
