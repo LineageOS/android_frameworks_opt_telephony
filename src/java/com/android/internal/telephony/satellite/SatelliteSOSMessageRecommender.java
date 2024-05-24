@@ -43,7 +43,9 @@ import android.os.OutcomeReceiver;
 import android.os.SystemProperties;
 import android.provider.DeviceConfig;
 import android.telecom.Connection;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.DropBoxManagerLoggerBackend;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PersistentLogger;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -68,6 +70,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SmsApplication;
 import com.android.internal.telephony.metrics.SatelliteStats;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 
@@ -452,13 +455,41 @@ public class SatelliteSOSMessageRecommender extends Handler {
                 int state = serviceState.getState();
                 if ((state == STATE_IN_SERVICE || state == STATE_EMERGENCY_ONLY
                         || serviceState.isEmergencyOnly())
-                        && !serviceState.isUsingNonTerrestrialNetwork()) {
+                        && !isSatellitePlmn(phone.getSubId(), serviceState)) {
                     logv("isCellularAvailable true");
                     return true;
                 }
             }
         }
         logv("isCellularAvailable false");
+        return false;
+    }
+
+    private boolean isSatellitePlmn(int subId, @NonNull ServiceState serviceState) {
+        List<String> satellitePlmnList =
+                mSatelliteController.getSatellitePlmnsForCarrier(subId);
+        if (satellitePlmnList.isEmpty()) {
+            logv("isSatellitePlmn: satellitePlmnList is empty");
+            return false;
+        }
+
+        for (NetworkRegistrationInfo nri :
+                serviceState.getNetworkRegistrationInfoListForTransportType(
+                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN)) {
+            String registeredPlmn = nri.getRegisteredPlmn();
+            String mccmnc = nri.getCellIdentity().getMccString()
+                    + nri.getCellIdentity().getMncString();
+            for (String satellitePlmn : satellitePlmnList) {
+                if (TextUtils.equals(satellitePlmn, registeredPlmn)
+                        || TextUtils.equals(satellitePlmn, mccmnc)) {
+                    logv("isSatellitePlmn: return true, satellitePlmn:" + satellitePlmn
+                            + " registeredPlmn:" + registeredPlmn + " mccmnc:" + mccmnc);
+                    return true;
+                }
+            }
+        }
+
+        logv("isSatellitePlmn: return false");
         return false;
     }
 

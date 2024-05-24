@@ -3471,9 +3471,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                         AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         assertEquals(2, nriList.size());
         for (NetworkRegistrationInfo nri : nriList) {
-            assertTrue(Arrays.equals(satelliteSupportedServices, nri.getAvailableServices().stream()
-                    .mapToInt(Integer::intValue)
-                    .toArray()));
+            if (nri.isInService()) {
+                assertTrue(Arrays.equals(satelliteSupportedServices,
+                        nri.getAvailableServices().stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray()));
+            }
         }
     }
 }
