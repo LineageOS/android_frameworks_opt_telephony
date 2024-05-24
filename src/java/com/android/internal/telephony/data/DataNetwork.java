@@ -124,6 +124,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -1001,23 +1002,36 @@ public class DataNetwork extends StateMachine {
                 && transport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
         mDataAllowedReason = dataAllowedReason;
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
-        mAttachedNetworkRequestList.addAll(networkRequestList);
         for (int transportType : mAccessNetworksManager.getAvailableTransports()) {
             mCid.put(transportType, INVALID_CID);
         }
         mTelephonyDisplayInfo = mPhone.getDisplayInfoController().getTelephonyDisplayInfo();
         mTcpBufferSizes = mDataConfigManager.getTcpConfigString(mTelephonyDisplayInfo);
 
-        for (TelephonyNetworkRequest networkRequest : networkRequestList) {
-            networkRequest.setAttachedNetwork(DataNetwork.this);
-            networkRequest.setState(TelephonyNetworkRequest.REQUEST_STATE_SATISFIED);
-        }
-
+        // network capabilities infer connectivity transport and MMTEL from the requested
+        // capabilities.
+        // TODO: Ideally we shouldn't infer network capabilities base on the requested capabilities,
+        // but currently there are 2 hacks associated with getForcedCellularTransportCapabilities
+        // and IMS service requesting IMS|MMTEL that need to support. When we stop supporting these
+        // cases, we shouldn't consider the requests when determining the network capabilities.
+        mAttachedNetworkRequestList.addAll(networkRequestList);
         // Update the capabilities in the constructor is to make sure the data network has initial
         // capability immediately after created. Doing this connecting state creates the window that
         // DataNetworkController might check if existing data network's capability can satisfy the
         // next network request within this window.
         updateNetworkCapabilities();
+
+        // Remove the requests that can't use the initial capabilities
+        ListIterator<TelephonyNetworkRequest> iter = mAttachedNetworkRequestList.listIterator();
+        while (iter.hasNext()) {
+            TelephonyNetworkRequest request = iter.next();
+            if (request.canBeSatisfiedBy(mNetworkCapabilities)) {
+                request.setAttachedNetwork(DataNetwork.this);
+                request.setState(TelephonyNetworkRequest.REQUEST_STATE_SATISFIED);
+            } else {
+                iter.remove();
+            }
+        }
     }
 
     /**
