@@ -818,7 +818,7 @@ public class DatagramReceiver extends Handler {
         }
         sendMessageDelayed(obtainMessage(
                         EVENT_DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMED_OUT),
-                mDatagramController.getDatagramWaitTimeForConnectedState());
+                mDatagramController.getDatagramWaitTimeForConnectedState(false));
     }
 
     private void stopDatagramWaitForConnectedStateTimer() {
