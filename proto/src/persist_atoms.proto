@@ -23,7 +23,7 @@ option java_outer_classname = "PersistAtomsProto";
 
 // Holds atoms to store on persist storage in case of power cycle or process crash.
 // NOTE: using int64 rather than google.protobuf.Timestamp for timestamps simplifies implementation.
-// Next id: 80
+// Next id: 82
 message PersistAtoms {
     /* Aggregated RAT usage during the call. */
     repeated VoiceCallRatUsage voice_call_rat_usage = 1;
@@ -261,6 +261,12 @@ message PersistAtoms {
 
     /* Timestamp of last satellite_config_updater pull. */
     optional int64 satellite_config_updater_pull_timestamp_millis = 79;
+
+    /** Snapshot of satellite access controller. */
+    repeated SatelliteAccessController satellite_access_controller = 80;
+
+    /* Timestamp of last satellite access controller pull. */
+    optional int64 satellite_access_controller_pull_timestamp_millis = 81;
 }
 
 // The canonical versions of the following enums live in:
@@ -707,6 +713,9 @@ message SatelliteController {
     optional int32 count_of_demo_mode_incoming_datagram_fail = 23;
     optional int32 count_of_datagram_type_keep_alive_success = 24;
     optional int32 count_of_datagram_type_keep_alive_fail = 25;
+    optional int32 count_of_allowed_satellite_access = 26;
+    optional int32 count_of_disallowed_satellite_access = 27;
+    optional int32 count_of_satellite_access_check_fail = 28;
 }
 
 message SatelliteSession {
@@ -810,4 +819,16 @@ message SatelliteConfigUpdater {
     optional int32 oem_config_result = 2;
     optional int32 carrier_config_result = 3;
     optional int32 count = 4;
+}
+
+message SatelliteAccessController {
+    optional int32 access_control_type = 1;
+    optional int64 location_query_time_millis = 2;
+    optional int64 on_device_lookup_time_millis = 3;
+    optional int64 total_checking_time_millis = 4;
+    optional bool is_allowed = 5;
+    optional bool is_emergency = 6;
+    optional int32 result_code = 7;
+    repeated string country_codes = 8;
+    optional int32 config_data_source = 9;
 }

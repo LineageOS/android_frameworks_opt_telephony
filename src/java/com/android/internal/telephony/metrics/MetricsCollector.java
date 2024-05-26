@@ -39,6 +39,7 @@ import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS;
 import static com.android.internal.telephony.TelephonyStatsLog.PRESENCE_NOTIFY_EVENT;
 import static com.android.internal.telephony.TelephonyStatsLog.RCS_ACS_PROVISIONING_STATS;
 import static com.android.internal.telephony.TelephonyStatsLog.RCS_CLIENT_PROVISIONING_STATS;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_ACCESS_CONTROLLER;
 import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_CONFIG_UPDATER;
 import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_CONTROLLER;
 import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_ENTITLEMENT;
@@ -95,6 +96,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PresenceNotifyEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsAcsProvisioningStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsClientProvisioningStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteAccessController;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteConfigUpdater;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteController;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteEntitlement;
@@ -242,6 +244,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             registerAtom(CARRIER_ROAMING_SATELLITE_CONTROLLER_STATS);
             registerAtom(SATELLITE_ENTITLEMENT);
             registerAtom(SATELLITE_CONFIG_UPDATER);
+            registerAtom(SATELLITE_ACCESS_CONTROLLER);
             Rlog.d(TAG, "registered");
         } else {
             Rlog.e(TAG, "could not get StatsManager, atoms not registered");
@@ -346,6 +349,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 return pullSatelliteEntitlement(data);
             case SATELLITE_CONFIG_UPDATER:
                 return pullSatelliteConfigUpdater(data);
+            case SATELLITE_ACCESS_CONTROLLER:
+                return pullSatelliteAccessController(data);
             default:
                 Rlog.e(TAG, String.format("unexpected atom ID %d", atomTag));
                 return StatsManager.PULL_SKIP;
@@ -1032,6 +1037,19 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         }
     }
 
+    private int pullSatelliteAccessController(List<StatsEvent> data) {
+        SatelliteAccessController[] satelliteAccessControllerAtoms =
+                mStorage.getSatelliteAccessControllerStats(MIN_COOLDOWN_MILLIS);
+        if (satelliteAccessControllerAtoms != null) {
+            Arrays.stream(satelliteAccessControllerAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "SATELLITE_ACCESS_CONTROLLER pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
     /** Registers a pulled atom ID {@code atomId}. */
     private void registerAtom(int atomId) {
         mStatsManager.setPullAtomCallback(atomId, /* metadata= */ null,
@@ -1452,7 +1470,10 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 satelliteController.countOfDemoModeIncomingDatagramSuccess,
                 satelliteController.countOfDemoModeIncomingDatagramFail,
                 satelliteController.countOfDatagramTypeKeepAliveSuccess,
-                satelliteController.countOfDatagramTypeKeepAliveFail);
+                satelliteController.countOfDatagramTypeKeepAliveFail,
+                satelliteController.countOfAllowedSatelliteAccess,
+                satelliteController.countOfDisallowedSatelliteAccess,
+                satelliteController.countOfSatelliteAccessCheckFail);
     }
 
     private static StatsEvent buildStatsEvent(SatelliteSession satelliteSession) {
@@ -1575,6 +1596,20 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.oemConfigResult,
                 stats.carrierConfigResult,
                 stats.count);
+    }
+
+    private static StatsEvent buildStatsEvent(SatelliteAccessController stats) {
+        return TelephonyStatsLog.buildStatsEvent(
+                SATELLITE_ACCESS_CONTROLLER,
+                stats.accessControlType,
+                stats.locationQueryTimeMillis,
+                stats.onDeviceLookupTimeMillis,
+                stats.totalCheckingTimeMillis,
+                stats.isAllowed,
+                stats.isEmergency,
+                stats.resultCode,
+                stats.countryCodes,
+                stats.configDataSource);
     }
 
     /** Returns all phones in {@link PhoneFactory}, or an empty array if phones not made yet. */

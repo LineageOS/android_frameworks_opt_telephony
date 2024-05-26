@@ -24,6 +24,7 @@ import android.telephony.satellite.SatelliteManager;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.nano.PersistAtomsProto.CarrierRoamingSatelliteControllerStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.CarrierRoamingSatelliteSession;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteAccessController;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteConfigUpdater;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteController;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteEntitlement;
@@ -34,6 +35,8 @@ import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteSession;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteSosMessageRecommender;
 import com.android.internal.telephony.satellite.SatelliteConstants;
 import com.android.telephony.Rlog;
+
+import java.util.Arrays;
 
 /** Tracks Satellite metrics for each phone */
 public class SatelliteStats {
@@ -85,6 +88,9 @@ public class SatelliteStats {
         private final int mCountOfDemoModeIncomingDatagramFail;
         private final int mCountOfDatagramTypeKeepAliveSuccess;
         private final int mCountOfDatagramTypeKeepAliveFail;
+        private final int mCountOfAllowedSatelliteAccess;
+        private final int mCountOfDisallowedSatelliteAccess;
+        private final int mCountOfSatelliteAccessCheckFail;
 
         private SatelliteControllerParams(Builder builder) {
             this.mCountOfSatelliteServiceEnablementsSuccess =
@@ -124,6 +130,12 @@ public class SatelliteStats {
                     builder.mCountOfDatagramTypeKeepAliveSuccess;
             this.mCountOfDatagramTypeKeepAliveFail =
                     builder.mCountOfDatagramTypeKeepAliveFail;
+            this.mCountOfAllowedSatelliteAccess =
+                    builder.mCountOfAllowedSatelliteAccess;
+            this.mCountOfDisallowedSatelliteAccess =
+                    builder.mCountOfDisallowedSatelliteAccess;
+            this.mCountOfSatelliteAccessCheckFail =
+                    builder.mCountOfSatelliteAccessCheckFail;
         }
 
         public int getCountOfSatelliteServiceEnablementsSuccess() {
@@ -226,6 +238,18 @@ public class SatelliteStats {
             return mCountOfDatagramTypeKeepAliveFail;
         }
 
+        public int getCountOfAllowedSatelliteAccess() {
+            return mCountOfAllowedSatelliteAccess;
+        }
+
+        public int getCountOfDisallowedSatelliteAccess() {
+            return mCountOfDisallowedSatelliteAccess;
+        }
+
+        public int getCountOfSatelliteAccessCheckFail() {
+            return mCountOfSatelliteAccessCheckFail;
+        }
+
         /**
          * A builder class to create {@link SatelliteControllerParams} data structure class
          */
@@ -255,6 +279,9 @@ public class SatelliteStats {
             private int mCountOfDemoModeIncomingDatagramFail = 0;
             private int mCountOfDatagramTypeKeepAliveSuccess = 0;
             private int mCountOfDatagramTypeKeepAliveFail = 0;
+            private int mCountOfAllowedSatelliteAccess = 0;
+            private int mCountOfDisallowedSatelliteAccess = 0;
+            private int mCountOfSatelliteAccessCheckFail = 0;
 
             /**
              * Sets countOfSatelliteServiceEnablementsSuccess value of {@link SatelliteController}
@@ -503,6 +530,37 @@ public class SatelliteStats {
             }
 
             /**
+             * Sets countOfAllowedSatelliteAccess value of {@link SatelliteController} atom
+             * then returns Builder class
+             */
+            public Builder setCountOfAllowedSatelliteAccess(
+                    int countOfAllowedSatelliteAccess) {
+                this.mCountOfAllowedSatelliteAccess =
+                        countOfAllowedSatelliteAccess;
+                return this;
+            }
+
+            /**
+             * Sets countOfDisallowedSatelliteAccess value of {@link SatelliteController} atom
+             * then returns Builder class
+             */
+            public Builder setCountOfDisallowedSatelliteAccess(
+                    int countOfDisallowedSatelliteAccess) {
+                this.mCountOfDisallowedSatelliteAccess = countOfDisallowedSatelliteAccess;
+                return this;
+            }
+
+            /**
+             * Sets countOfSatelliteAccessCheckFail value of {@link SatelliteController} atom
+             * then returns Builder class
+             */
+            public Builder setCountOfSatelliteAccessCheckFail(
+                    int countOfSatelliteAccessCheckFail) {
+                this.mCountOfSatelliteAccessCheckFail = countOfSatelliteAccessCheckFail;
+                return this;
+            }
+
+            /**
              * Returns ControllerParams, which contains whole component of
              * {@link SatelliteController} atom
              */
@@ -548,6 +606,9 @@ public class SatelliteStats {
                     + mCountOfDatagramTypeKeepAliveSuccess
                     + ", countOfDatagramTypeKeepAliveFail="
                     + mCountOfDatagramTypeKeepAliveFail
+                    + ", countOfAllowedSatelliteAccess=" + mCountOfAllowedSatelliteAccess
+                    + ", countOfDisallowedSatelliteAccess=" + mCountOfDisallowedSatelliteAccess
+                    + ", countOfSatelliteAccessCheckFail=" + mCountOfSatelliteAccessCheckFail
                     + ")";
         }
     }
@@ -1915,6 +1976,169 @@ public class SatelliteStats {
         }
     }
 
+    /**
+     * A data class to contain whole component of {@link SatelliteAccessControllerParams} atom.
+     * Refer to {@link #onSatelliteAccessControllerMetrics(SatelliteAccessControllerParams)}.
+     */
+    public class SatelliteAccessControllerParams {
+        private final @SatelliteConstants.AccessControlType int mAccessControlType;
+        private final long mLocationQueryTimeMillis;
+        private final long mOnDeviceLookupTimeMillis;
+        private final long mTotalCheckingTimeMillis;
+        private final boolean mIsAllowed;
+        private final boolean mIsEmergency;
+        private final @SatelliteManager.SatelliteResult int mResultCode;
+        private final String[] mCountryCodes;
+        private final @SatelliteConstants.ConfigDataSource int mConfigDataSource;
+
+        private SatelliteAccessControllerParams(Builder builder) {
+            this.mAccessControlType = builder.mAccessControlType;
+            this.mLocationQueryTimeMillis = builder.mLocationQueryTimeMillis;
+            this.mOnDeviceLookupTimeMillis = builder.mOnDeviceLookupTimeMillis;
+            this.mTotalCheckingTimeMillis = builder.mTotalCheckingTimeMillis;
+            this.mIsAllowed = builder.mIsAllowed;
+            this.mIsEmergency = builder.mIsEmergency;
+            this.mResultCode = builder.mResultCode;
+            this.mCountryCodes = builder.mCountryCodes;
+            this.mConfigDataSource = builder.mConfigDataSource;
+        }
+
+        public @SatelliteConstants.AccessControlType int getAccessControlType() {
+            return mAccessControlType;
+        }
+
+        public long getLocationQueryTime() {
+            return mLocationQueryTimeMillis;
+        }
+
+        public long getOnDeviceLookupTime() {
+            return mOnDeviceLookupTimeMillis;
+        }
+
+        public long getTotalCheckingTime() {
+            return mTotalCheckingTimeMillis;
+        }
+
+        public boolean getIsAllowed() {
+            return mIsAllowed;
+        }
+
+        public boolean getIsEmergency() {
+            return mIsEmergency;
+        }
+
+        public @SatelliteManager.SatelliteResult int getResultCode() {
+            return mResultCode;
+        }
+
+        public String[] getCountryCodes() {
+            return mCountryCodes;
+        }
+
+        public @SatelliteConstants.ConfigDataSource int getConfigDataSource() {
+            return mConfigDataSource;
+        }
+
+        /**
+         * A builder class to create {@link SatelliteAccessControllerParams} data structure class
+         */
+        public static class Builder {
+            private @SatelliteConstants.AccessControlType int mAccessControlType;
+            private long mLocationQueryTimeMillis;
+            private long mOnDeviceLookupTimeMillis;
+            private long mTotalCheckingTimeMillis;
+            private boolean mIsAllowed;
+            private boolean mIsEmergency;
+            private @SatelliteManager.SatelliteResult int mResultCode;
+            private String[] mCountryCodes;
+            private @SatelliteConstants.ConfigDataSource int mConfigDataSource;
+
+            /**
+             * Sets AccessControlType value of {@link #SatelliteAccessController}
+             * atom then returns Builder class
+             */
+            public Builder setAccessControlType(
+                    @SatelliteConstants.AccessControlType int accessControlType) {
+                this.mAccessControlType = accessControlType;
+                return this;
+            }
+
+            /** Sets the location query time for current satellite enablement. */
+            public Builder setLocationQueryTime(long locationQueryTimeMillis) {
+                this.mLocationQueryTimeMillis = locationQueryTimeMillis;
+                return this;
+            }
+
+            /** Sets the on device lookup time for current satellite enablement. */
+            public Builder setOnDeviceLookupTime(long onDeviceLookupTimeMillis) {
+                this.mOnDeviceLookupTimeMillis = onDeviceLookupTimeMillis;
+                return this;
+            }
+
+            /** Sets the total checking time for current satellite enablement. */
+            public Builder setTotalCheckingTime(long totalCheckingTimeMillis) {
+                this.mTotalCheckingTimeMillis = totalCheckingTimeMillis;
+                return this;
+            }
+
+            /** Sets whether the satellite communication is allowed from current location. */
+            public Builder setIsAllowed(boolean isAllowed) {
+                this.mIsAllowed = isAllowed;
+                return this;
+            }
+
+            /** Sets whether the current satellite enablement is for emergency or not. */
+            public Builder setIsEmergency(boolean isEmergency) {
+                this.mIsEmergency = isEmergency;
+                return this;
+            }
+
+            /** Sets the result code for checking whether satellite service is allowed from current
+             location. */
+            public Builder setResult(int result) {
+                this.mResultCode = result;
+                return this;
+            }
+
+            /** Sets the country code for current location while attempting satellite enablement. */
+            public Builder setCountryCodes(String[] countryCodes) {
+                this.mCountryCodes = Arrays.stream(countryCodes).toArray(String[]::new);
+                return this;
+            }
+
+            /** Sets the config data source for checking whether satellite service is allowed from
+             current location. */
+            public Builder setConfigDatasource(int configDatasource) {
+                this.mConfigDataSource = configDatasource;
+                return this;
+            }
+
+            /**
+             * Returns AccessControllerParams, which contains whole component of
+             * {@link #SatelliteAccessController} atom
+             */
+            public SatelliteAccessControllerParams build() {
+                return new SatelliteStats()
+                        .new SatelliteAccessControllerParams(this);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return "AccessControllerParams("
+                    + ", AccessControlType=" + mAccessControlType
+                    + ", LocationQueryTime=" + mLocationQueryTimeMillis
+                    + ", OnDeviceLookupTime=" + mOnDeviceLookupTimeMillis
+                    + ", TotalCheckingTime=" + mTotalCheckingTimeMillis
+                    + ", IsAllowed=" + mIsAllowed
+                    + ", IsEmergency=" + mIsEmergency
+                    + ", ResultCode=" + mResultCode
+                    + ", CountryCodes=" + Arrays.toString(mCountryCodes)
+                    + ", ConfigDataSource=" + mConfigDataSource
+                    + ")";
+        }
+    }
+
     /**  Create a new atom or update an existing atom for SatelliteController metrics */
     public synchronized void onSatelliteControllerMetrics(SatelliteControllerParams param) {
         SatelliteController proto = new SatelliteController();
@@ -2078,5 +2302,21 @@ public class SatelliteStats {
         proto.carrierConfigResult = param.getCarrierConfigResult();
         proto.count = param.getCount();
         mAtomsStorage.addSatelliteConfigUpdaterStats(proto);
+    }
+
+    /**  Create a new atom or update an existing atom for SatelliteAccessController metrics */
+    public synchronized void onSatelliteAccessControllerMetrics(
+            SatelliteAccessControllerParams param) {
+        SatelliteAccessController proto = new SatelliteAccessController();
+        proto.accessControlType = param.getAccessControlType();
+        proto.locationQueryTimeMillis = param.getLocationQueryTime();
+        proto.onDeviceLookupTimeMillis = param.getOnDeviceLookupTime();
+        proto.totalCheckingTimeMillis = param.getTotalCheckingTime();
+        proto.isAllowed = param.getIsAllowed();
+        proto.isEmergency = param.getIsEmergency();
+        proto.resultCode = param.getResultCode();
+        proto.countryCodes = param.getCountryCodes();
+        proto.configDataSource = param.getConfigDataSource();
+        mAtomsStorage.addSatelliteAccessControllerStats(proto);
     }
 }
