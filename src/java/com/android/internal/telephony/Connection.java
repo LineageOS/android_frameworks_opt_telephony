@@ -33,6 +33,7 @@ import android.util.Log;
 
 import com.android.ims.internal.ConferenceParticipant;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
@@ -634,7 +635,7 @@ public abstract class Connection {
      *
      * @hide
      */
-    public void setEmergencyCallInfo(CallTracker ct) {
+    public void setEmergencyCallInfo(CallTracker ct, Phone.DialArgs dialArgs) {
         if (ct != null) {
             Phone currentPhone = ct.getPhone();
             if (currentPhone != null) {
@@ -677,20 +678,52 @@ public abstract class Connection {
         } else {
             Rlog.e(TAG, "setEmergencyCallInfo: call tracker is null");
         }
+
+        if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+            if (mEmergencyNumberInfo == null) {
+                Rlog.d(TAG, "setEmergencyCallInfo: create EmergencyNumber");
+                setNonDetectableEmergencyCallInfo((dialArgs != null) ? dialArgs.eccCategory
+                        : EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
+                        new ArrayList<String>());
+            }
+            if (dialArgs != null && dialArgs.intentExtras != null
+                    && dialArgs.intentExtras.getBoolean(
+                            PhoneConstants.EXTRA_USE_EMERGENCY_ROUTING, false)
+                    && mEmergencyNumberInfo.getEmergencyCallRouting()
+                        != EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY) {
+                int eccCategory = dialArgs.intentExtras.getInt(
+                        PhoneConstants.EXTRA_EMERGENCY_SERVICE_CATEGORY,
+                        mEmergencyNumberInfo.getEmergencyServiceCategoryBitmask());
+                Rlog.d(TAG, "setEmergencyCallInfo: enforce emergency routing eccCategory="
+                        + eccCategory);
+                List<String> emergencyUrns = dialArgs.intentExtras.getStringArrayList(
+                        PhoneConstants.EXTRA_EMERGENCY_URNS);
+                if (emergencyUrns == null || emergencyUrns.isEmpty()) {
+                    emergencyUrns = mEmergencyNumberInfo.getEmergencyUrns();
+                }
+                mEmergencyNumberInfo = new EmergencyNumber(mEmergencyNumberInfo.getNumber(),
+                        mEmergencyNumberInfo.getCountryIso(),
+                        mEmergencyNumberInfo.getMnc(),
+                        eccCategory,
+                        emergencyUrns,
+                        mEmergencyNumberInfo.getEmergencyNumberSourceBitmask(),
+                        EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY);
+            }
+        }
     }
 
     /**
      * Set the non-detectable emergency number information.
      */
-    public void setNonDetectableEmergencyCallInfo(int eccCategory) {
-        if (!mIsEmergencyCall) {
-            mIsEmergencyCall = true;
-            mEmergencyNumberInfo = new EmergencyNumber(mAddress, ""/*countryIso*/,
-                                    ""/*mnc*/, eccCategory,
-                                    new ArrayList<String>(),
-                                    EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
-                                    EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
-        }
+    public void setNonDetectableEmergencyCallInfo(int eccCategory,
+            @NonNull List<String> emergencyUrns) {
+        Rlog.d(TAG, "setNonDetectableEmergencyCallInfo: eccCategory=" + eccCategory
+                + ", emergencyUrns=" + emergencyUrns);
+        mIsEmergencyCall = true;
+        mEmergencyNumberInfo = new EmergencyNumber(mAddress, ""/*countryIso*/, ""/*mnc*/,
+                                eccCategory, emergencyUrns,
+                                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
     }
 
     /**
