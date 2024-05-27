@@ -578,7 +578,7 @@ public class DataStallRecoveryManager extends Handler {
         if (isValid) {
             if (mFeatureFlags.dsrsDiagnosticsEnabled()) {
                 // Broadcast intent that data stall recovered.
-                broadcastDataStallDetected(getRecoveryAction());
+                broadcastDataStallDetected(mLastAction);
             }
             reset();
         } else if (isRecoveryNeeded(true)) {
