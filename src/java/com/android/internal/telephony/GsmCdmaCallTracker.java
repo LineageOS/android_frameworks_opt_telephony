@@ -160,7 +160,7 @@ public class GsmCdmaCallTracker extends CallTracker {
     public GsmCdmaCallTracker(GsmCdmaPhone phone, FeatureFlags featureFlags) {
         super(featureFlags);
 
-        if (mFeatureFlags.minimalTelephonyCdmCheck()
+        if (TelephonyCapabilities.minimalTelephonyCdmCheck(mFeatureFlags)
                 && !phone.getContext().getPackageManager().hasSystemFeature(
                     PackageManager.FEATURE_TELEPHONY_CALLING)) {
             throw new UnsupportedOperationException("GsmCdmaCallTracker requires calling");
