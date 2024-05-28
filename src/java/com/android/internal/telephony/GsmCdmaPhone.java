@@ -3039,12 +3039,12 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void registerForCallWaiting(Handler h, int what, Object obj) {
-        mCT.registerForCallWaiting(h, what, obj);
+        if (mCT != null) mCT.registerForCallWaiting(h, what, obj);
     }
 
     @Override
     public void unregisterForCallWaiting(Handler h) {
-        mCT.unregisterForCallWaiting(h);
+        if (mCT != null) mCT.unregisterForCallWaiting(h);
     }
 
     /**

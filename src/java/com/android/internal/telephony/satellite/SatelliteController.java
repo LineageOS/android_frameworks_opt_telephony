@@ -275,6 +275,8 @@ public class SatelliteController extends Handler {
             new AtomicBoolean(false);
     private final AtomicBoolean mIsModemEnabledReportingNtnSignalStrength =
             new AtomicBoolean(false);
+    private final AtomicBoolean mLatestRequestedStateForNtnSignalStrengthReport =
+            new AtomicBoolean(false);
     private final AtomicBoolean mRegisteredForSatelliteSupportedStateChanged =
             new AtomicBoolean(false);
     /**
@@ -1015,6 +1017,7 @@ public class SatelliteController extends Handler {
                         }
                     }
                     // Request Ntn signal strength report when satellite enabled or disabled done.
+                    mLatestRequestedStateForNtnSignalStrengthReport.set(argument.enableSatellite);
                     updateNtnSignalStrengthReporting(argument.enableSatellite);
                 } else {
                     synchronized (mSatelliteEnabledRequestLock) {
@@ -1375,6 +1378,13 @@ public class SatelliteController extends Handler {
                                 + shouldReport);
                 if (errorCode == SATELLITE_RESULT_SUCCESS) {
                     mIsModemEnabledReportingNtnSignalStrength.set(shouldReport);
+                    if (mLatestRequestedStateForNtnSignalStrengthReport.get()
+                            != mIsModemEnabledReportingNtnSignalStrength.get()) {
+                        logd("mLatestRequestedStateForNtnSignalStrengthReport does not match with "
+                                + "mIsModemEnabledReportingNtnSignalStrength");
+                        updateNtnSignalStrengthReporting(
+                                mLatestRequestedStateForNtnSignalStrengthReport.get());
+                    }
                 } else {
                     loge(((boolean) request.argument ? "startSendingNtnSignalStrength"
                             : "stopSendingNtnSignalStrength") + "returns " + errorCode);
@@ -4473,6 +4483,7 @@ public class SatelliteController extends Handler {
             return;
         }
 
+        mLatestRequestedStateForNtnSignalStrengthReport.set(shouldReport);
         if (mIsModemEnabledReportingNtnSignalStrength.get() == shouldReport) {
             logd("handleCmdUpdateNtnSignalStrengthReporting: ignore request. "
                     + "mIsModemEnabledReportingNtnSignalStrength="
