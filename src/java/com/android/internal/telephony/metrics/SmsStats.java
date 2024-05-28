@@ -61,6 +61,7 @@ import com.android.internal.telephony.flags.Flags;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingShortCodeSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
+import com.android.internal.telephony.satellite.metrics.CarrierRoamingSatelliteSessionStats;
 import com.android.telephony.Rlog;
 
 import java.util.Objects;
@@ -202,6 +203,9 @@ public class SmsStats {
         proto.networkErrorCode = networkErrorCode;
 
         mAtomsStorage.addOutgoingSms(proto);
+        CarrierRoamingSatelliteSessionStats sessionStats =
+                CarrierRoamingSatelliteSessionStats.getInstance(mPhone.getSubId());
+        sessionStats.onOutgoingSms(mPhone.getSubId());
     }
 
     /** Create a new atom when user attempted to send an outgoing short code sms. */
