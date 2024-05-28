@@ -74,6 +74,7 @@ import com.android.internal.telephony.SmsConstants.MessageClass;
 import com.android.internal.telephony.analytics.TelephonyAnalytics;
 import com.android.internal.telephony.analytics.TelephonyAnalytics.SmsMmsAnalytics;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.satellite.metrics.CarrierRoamingSatelliteSessionStats;
 import com.android.internal.telephony.util.NotificationChannelController;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.HexDump;
@@ -1104,6 +1105,9 @@ public abstract class InboundSmsHandler extends StateMachine {
                 format, timestamps, block, tracker.getMessageId());
         mPhone.getSmsStats().onIncomingSmsSuccess(is3gpp2(), tracker.getSource(),
                 messageCount, block, tracker.getMessageId());
+        CarrierRoamingSatelliteSessionStats sessionStats =
+                CarrierRoamingSatelliteSessionStats.getInstance(mPhone.getSubId());
+        sessionStats.onIncomingSms();
         if (mPhone != null) {
             TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
             if (telephonyAnalytics != null) {
