@@ -35,9 +35,6 @@ import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteSosMessage
 import com.android.internal.telephony.satellite.SatelliteConstants;
 import com.android.telephony.Rlog;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /** Tracks Satellite metrics for each phone */
 public class SatelliteStats {
     private static final String TAG = SatelliteStats.class.getSimpleName();
@@ -1534,7 +1531,7 @@ public class SatelliteStats {
                     + ", rsrpAvg=" + mRsrpAvg
                     + ", rsrpMedian=" + mRsrpMedian
                     + ", rssnrAvg=" + mRssnrAvg
-                    + ", rssnrMedian=" + mRsrpMedian
+                    + ", rssnrMedian=" + mRssnrMedian
                     + ", countOfIncomingSms=" + mCountOfIncomingSms
                     + ", countOfOutgoingSms=" + mCountOfOutgoingSms
                     + ", countOfIncomingMms=" + mCountOfIncomingMms

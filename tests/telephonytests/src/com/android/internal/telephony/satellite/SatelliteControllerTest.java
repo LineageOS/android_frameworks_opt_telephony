@@ -103,6 +103,7 @@ import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.os.ResultReceiver;
 import android.telephony.CarrierConfigManager;
+import android.telephony.CellSignalStrength;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -201,6 +202,7 @@ public class SatelliteControllerTest extends TelephonyTest {
     @Mock private FeatureFlags mFeatureFlags;
     @Mock private TelephonyConfigUpdateInstallReceiver mMockTelephonyConfigUpdateInstallReceiver;
     @Mock private SatelliteConfigParser mMockConfigParser;
+    @Mock private CellSignalStrength mCellSignalStrength;
     @Mock private SatelliteConfig mMockConfig;
     @Mock private DemoSimulator mMockDemoSimulator;
 
@@ -2627,6 +2629,11 @@ public class SatelliteControllerTest extends TelephonyTest {
                     /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
             );
         }
+        doReturn(mSignalStrength).when(mPhone).getSignalStrength();
+        doReturn(mSignalStrength).when(mPhone2).getSignalStrength();
+        List<CellSignalStrength> cellSignalStrengthList = new ArrayList<>();
+        cellSignalStrengthList.add(mCellSignalStrength);
+        doReturn(cellSignalStrengthList).when(mSignalStrength).getCellSignalStrengths();
         processAllMessages();
         mSatelliteControllerUT.elapsedRealtime = 0;
         assertFalse(mSatelliteControllerUT.isSatelliteConnectedViaCarrierWithinHysteresisTime());
