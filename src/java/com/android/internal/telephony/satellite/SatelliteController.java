@@ -3273,7 +3273,6 @@ public class SatelliteController extends Handler {
             registerForSatelliteModemStateChanged();
             registerForNtnSignalStrengthChanged();
             registerForCapabilitiesChanged();
-            registerForSatelliteSupportedStateChanged();
 
             requestIsSatelliteProvisioned(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                     new ResultReceiver(this) {
@@ -3300,6 +3299,7 @@ public class SatelliteController extends Handler {
                         }
                     });
         }
+        registerForSatelliteSupportedStateChanged();
     }
 
     private void updateSatelliteEnabledState(boolean enabled, String caller) {
@@ -3507,6 +3507,9 @@ public class SatelliteController extends Handler {
                 }
                 return;
             }
+
+            updateSatelliteSupportedStateWhenSatelliteServiceConnected(supported);
+
             /* In case satellite has been reported as not support from modem, but satellite is
                enabled, request disable satellite. */
             synchronized (mIsSatelliteEnabledLock) {
@@ -3528,10 +3531,6 @@ public class SatelliteController extends Handler {
                 }
             }
             mIsSatelliteSupported = supported;
-            mSatelliteSessionController = SatelliteSessionController.make(
-                    mContext, getLooper(), supported);
-            logd("create a new SatelliteSessionController due to isSatelliteSupported state has "
-                    + "changed to " + supported);
         }
 
         List<ISatelliteSupportedStateCallback> deadCallersList = new ArrayList<>();
