@@ -470,7 +470,7 @@ public class GsmCdmaPhone extends Phone {
     };
 
     private boolean hasCalling() {
-        if (!mFeatureFlags.minimalTelephonyCdmCheck()) return true;
+        if (!TelephonyCapabilities.minimalTelephonyCdmCheck(mFeatureFlags)) return true;
         return mContext.getPackageManager().hasSystemFeature(
             PackageManager.FEATURE_TELEPHONY_CALLING);
     }
