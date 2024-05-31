@@ -93,8 +93,10 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
     private TelephonyDisplayInfo mGoodTelephonyDisplayInfo;
     private TelephonyDisplayInfo mBadTelephonyDisplayInfo;
     private int mDefaultDataSub;
+    private DataEvaluation mDataEvaluation;
     private AutoDataSwitchController mAutoDataSwitchControllerUT;
     private Map<Integer, AlarmManager.OnAlarmListener> mEventsToAlarmListener;
+    private Map<Integer, Object> mScheduledEventsToExtras;
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
@@ -137,6 +139,8 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
             doAnswer(invocation -> phone.getSubId() == mDefaultDataSub)
                     .when(phone).isUserDataEnabled();
         }
+        mDataEvaluation = new DataEvaluation(DataEvaluation.DataEvaluationReason.EXTERNAL_QUERY);
+        doReturn(mDataEvaluation).when(mDataNetworkController).getInternetEvaluation(anyBoolean());
         doReturn(new int[]{SUB_1, SUB_2}).when(mSubscriptionManagerService)
                 .getActiveSubIdList(true);
         doAnswer(invocation -> {
@@ -184,9 +188,12 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
                 mAutoDataSwitchControllerUT, mMockedAlarmManager);
         mEventsToAlarmListener = getPrivateField(mAutoDataSwitchControllerUT,
                 "mEventsToAlarmListener", Map.class);
+        mScheduledEventsToExtras = getPrivateField(mAutoDataSwitchControllerUT,
+                "mScheduledEventsToExtras", Map.class);
 
         doReturn(true).when(mFeatureFlags).autoDataSwitchAllowRoaming();
         doReturn(true).when(mFeatureFlags).carrierEnabledSatelliteFlag();
+        doReturn(true).when(mFeatureFlags).autoDataSwitchUsesDataEnabled();
     }
 
     @After
@@ -240,7 +247,10 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         prepareIdealUsesNonDdsCondition();
         processAllFutureMessages();
         clearInvocations(mMockedPhoneSwitcherCallback);
-        doReturn(false).when(mPhone2).isDataAllowed();
+        mDataEvaluation.addDataDisallowedReason(DataEvaluation.DataDisallowedReason
+                .NO_SUITABLE_DATA_PROFILE);
+        doReturn(mDataEvaluation)
+                .when(mDataNetworkController).getInternetEvaluation(anyBoolean());
         mAutoDataSwitchControllerUT.evaluateAutoDataSwitch(EVALUATION_REASON_DATA_SETTINGS_CHANGED);
         processAllFutureMessages();
 
@@ -350,7 +360,6 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
     @Test
     public void testRoaming_same_roaming_condition_uses_rat_signalStrength() {
-        doReturn(true).when(mFeatureFlags).autoDataSwitchRatSs();
         // On primary phone
         // 1. Both roaming, user allow roaming on both phone, uses RAT score to decide switch.
         prepareIdealUsesNonDdsCondition();
@@ -375,7 +384,6 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
     @Test
     public void testCancelSwitch_onPrimary_rat_signalStrength() {
-        doReturn(true).when(mFeatureFlags).autoDataSwitchRatSs();
         // 4.1.1 Display info and signal strength on secondary phone became bad,
         // but primary is still OOS, so still switch to the secondary.
         prepareIdealUsesNonDdsCondition();
@@ -467,7 +475,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         prepareIdealUsesNonDdsCondition();
         // 2.2 Auto switch feature is disabled, no need validation
         clearInvocations(mCellularNetworkValidator);
-        doReturn(false).when(mPhone2).isDataAllowed();
+        mDataEvaluation.addDataDisallowedReason(DataEvaluation.DataDisallowedReason.DATA_DISABLED);
         mAutoDataSwitchControllerUT.evaluateAutoDataSwitch(EVALUATION_REASON_DATA_SETTINGS_CHANGED);
         processAllFutureMessages();
 
@@ -483,11 +491,13 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
         verify(mMockedPhoneSwitcherCallback).onRequireValidation(DEFAULT_PHONE_INDEX,
                 false/*needValidation*/);
+
+        clearInvocations(mMockedPhoneSwitcherCallback);
+        prepareIdealUsesNonDdsCondition();
     }
 
     @Test
     public void testOnNonDdsSwitchBackToPrimary_rat_signalStrength() {
-        doReturn(true).when(mFeatureFlags).autoDataSwitchRatSs();
         prepareIdealUsesNonDdsCondition();
         processAllFutureMessages();
         doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
@@ -536,10 +546,16 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
     @Test
     public void testStabilityCheckOverride_basic() {
+        // Disable RAT + signalStrength base switching.
+        doReturn(-1).when(mDataConfigManager).getAutoDataSwitchScoreTolerance();
+        mAutoDataSwitchControllerUT = new AutoDataSwitchController(mContext, Looper.myLooper(),
+                mPhoneSwitcher, mFeatureFlags, mMockedPhoneSwitcherCallback);
+
         // Starting stability check for switching to non-DDS
         prepareIdealUsesNonDdsCondition();
-        processAllMessages();
+        processAllFutureMessages();
 
+        clearInvocations(mMockedPhoneSwitcherCallback);
         // Switch success, but the previous stability check is still pending
         doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
 
@@ -557,7 +573,6 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
     @Test
     public void testStabilityCheckOverride_uses_rat_signalStrength() {
-        doReturn(true).when(mFeatureFlags).autoDataSwitchRatSs();
         // Switching due to availability first.
         prepareIdealUsesNonDdsCondition();
 
@@ -578,6 +593,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
     public void testValidationFailedRetry() {
         prepareIdealUsesNonDdsCondition();
 
+        clearInvocations(mMockedPhoneSwitcherCallback);
         for (int i = 0; i < MAX_RETRY; i++) {
             mAutoDataSwitchControllerUT.evaluateRetryOnValidationFailed();
             processAllFutureMessages();
@@ -730,7 +746,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
         // 4.2 Auto switch feature is enabled
         doReturn(true).when(mPhone2).getDataRoamingEnabled();
-        doReturn(true).when(mPhone2).isDataAllowed();
+        mDataEvaluation.addDataAllowedReason(DataEvaluation.DataAllowedReason.NORMAL);
 
         // 5. No default network
         mAutoDataSwitchControllerUT.updateDefaultNetworkCapabilities(null /*networkCapabilities*/);
@@ -783,9 +799,11 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
     @Override
     public void processAllFutureMessages() {
-        if (mFeatureFlags.autoDataSwitchRatSs()
-                && mEventsToAlarmListener.containsKey(EVENT_STABILITY_CHECK_PASSED)) {
+        if (mScheduledEventsToExtras.containsKey(EVENT_STABILITY_CHECK_PASSED)) {
             mEventsToAlarmListener.get(EVENT_STABILITY_CHECK_PASSED).onAlarm();
+        }
+        if (mScheduledEventsToExtras.containsKey(EVENT_EVALUATE_AUTO_SWITCH)) {
+            mEventsToAlarmListener.get(EVENT_EVALUATE_AUTO_SWITCH).onAlarm();
         }
         super.processAllFutureMessages();
     }

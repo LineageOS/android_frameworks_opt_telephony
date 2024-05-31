@@ -1481,6 +1481,19 @@ public class DataNetworkController extends Handler {
      * still allowed in this case.
      */
     public boolean isInternetDataAllowed(boolean ignoreExistingNetworks) {
+        return !getInternetEvaluation(ignoreExistingNetworks).containsDisallowedReasons();
+    }
+
+    /**
+     * @param ignoreExistingNetworks {@code true} to skip the existing network check.
+     * @return The internet evaluation result.
+     * For example, if SIM is absent, or airplane mode is on, then data is NOT allowed.
+     * This API does not reflect the currently internet data network status. It's possible there is
+     * no internet data due to weak cellular signal or network side issue, but internet data is
+     * still allowed in this case.
+     */
+    @NonNull
+    public DataEvaluation getInternetEvaluation(boolean ignoreExistingNetworks) {
         TelephonyNetworkRequest internetRequest = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -1492,7 +1505,7 @@ public class DataNetworkController extends Handler {
                 && mDataNetworkList.stream().anyMatch(
                         dataNetwork -> internetRequest.canBeSatisfiedBy(
                                 dataNetwork.getNetworkCapabilities()))) {
-            return true;
+            return new DataEvaluation(DataEvaluationReason.EXTERNAL_QUERY);
         }
 
         // If no existing network can satisfy the request, then check if we can possibly setup
@@ -1500,16 +1513,18 @@ public class DataNetworkController extends Handler {
 
         DataEvaluation evaluation = evaluateNetworkRequest(internetRequest,
                 DataEvaluationReason.EXTERNAL_QUERY);
-        if (evaluation.containsOnly(DataDisallowedReason.ONLY_ALLOWED_SINGLE_NETWORK)) {
+        if (evaluation.containsOnly(DataDisallowedReason.ONLY_ALLOWED_SINGLE_NETWORK)
+                && internetRequest.getPriority() > mDataNetworkList.stream()
+                .map(DataNetwork::getPriority)
+                .max(Comparator.comparing(Integer::valueOf))
+                .orElse(0)) {
             // If the only failed reason is only single network allowed, then check if the request
             // can trump the current network.
-            return internetRequest.getPriority() > mDataNetworkList.stream()
-                    .map(DataNetwork::getPriority)
-                    .max(Comparator.comparing(Integer::valueOf))
-                    .orElse(0);
+            evaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
         }
-        return !evaluation.containsDisallowedReasons();
+        return evaluation;
     }
+
 
     /**
      * @return {@code true} if internet is unmetered.
