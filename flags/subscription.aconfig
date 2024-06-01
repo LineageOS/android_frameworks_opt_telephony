@@ -65,3 +65,15 @@ flag {
     purpose: PURPOSE_BUGFIX
   }
 }
+
+# OWNER=songferngwang TARGET=24Q3
+flag {
+  name: "reset_primary_sim_default_values"
+  namespace: "telephony"
+  description: "Reset the default values to the remaining sim"
+  bug: "339394518"
+
+  metadata {
+    purpose: PURPOSE_BUGFIX
+  }
+}
