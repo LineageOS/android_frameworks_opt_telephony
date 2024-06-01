@@ -645,8 +645,11 @@ public class MultiSimSettingController extends Handler {
         // Otherwise, if user just inserted their first SIM, or there's one primary and one
         // opportunistic subscription active (activeSubInfos.size() > 1), we automatically
         // set the primary to be default SIM and return.
-        if (mPrimarySubList.size() == 1 && (change != PRIMARY_SUB_REMOVED
-                || mActiveModemCount == 1)) {
+        boolean conditionForOnePrimarySim =
+                mFeatureFlags.resetPrimarySimDefaultValues() ? mPrimarySubList.size() == 1
+                        : mPrimarySubList.size() == 1
+                        && (change != PRIMARY_SUB_REMOVED || mActiveModemCount == 1);
+        if (conditionForOnePrimarySim) {
             int subId = mPrimarySubList.get(0);
             if (DBG) log("updateDefaultValues: to only primary sub " + subId);
             if (hasData()) mSubscriptionManagerService.setDefaultDataSubId(subId);

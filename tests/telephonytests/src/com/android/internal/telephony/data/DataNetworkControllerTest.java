@@ -185,7 +185,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private LinkBandwidthEstimatorCallback mLinkBandwidthEstimatorCallback;
 
     private boolean mIsNonTerrestrialNetwork = false;
-    private FeatureFlags mFeatureFlags;
 
     private final DataProfile mGeneralPurposeDataProfile = new DataProfile.Builder()
             .setApnSetting(new ApnSetting.Builder()
@@ -864,7 +863,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mMockedDataNetworkControllerCallback = Mockito.mock(DataNetworkControllerCallback.class);
         mMockedDataRetryManagerCallback = Mockito.mock(DataRetryManagerCallback.class);
         mMockSubInfo = Mockito.mock(SubscriptionInfo.class);
-        mFeatureFlags = Mockito.mock(FeatureFlags.class);
         when(mTelephonyComponentFactory.makeDataSettingsManager(any(Phone.class),
                 any(DataNetworkController.class), any(FeatureFlags.class), any(Looper.class),
                 any(DataSettingsManager.DataSettingsManagerCallback.class))).thenCallRealMethod();
@@ -892,6 +890,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
         doReturn(true).when(mFeatureFlags).carrierEnabledSatelliteFlag();
         doReturn(true).when(mFeatureFlags).satelliteInternet();
+        doReturn(true).when(mFeatureFlags)
+                .ignoreExistingNetworksForInternetAllowedChecking();
 
         List<SubscriptionInfo> infoList = new ArrayList<>();
         infoList.add(mMockSubInfo);
@@ -5393,5 +5393,15 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyAllDataDisconnected();
         verify(mMockedDataNetworkControllerCallback, never()).onAnyDataNetworkExistingChanged(
                 anyBoolean());
+    }
+
+    @Test
+    public void testGetInternetEvaluation() throws Exception {
+        testSetupDataNetwork();
+        doReturn(true).when(mSST).isPendingRadioPowerOffAfterDataOff();
+        assertThat(mDataNetworkControllerUT.getInternetEvaluation(false/*ignoreExistingNetworks*/)
+                .containsDisallowedReasons()).isFalse();
+        assertThat(mDataNetworkControllerUT.getInternetEvaluation(true/*ignoreExistingNetworks*/)
+                .containsDisallowedReasons()).isTrue();
     }
 }
