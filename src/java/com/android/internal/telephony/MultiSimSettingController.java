@@ -255,19 +255,19 @@ public class MultiSimSettingController extends Handler {
     }
 
     private boolean hasCalling() {
-        if (!mFeatureFlags.minimalTelephonyCdmCheck()) return true;
+        if (!TelephonyCapabilities.minimalTelephonyCdmCheck(mFeatureFlags)) return true;
         return mContext.getPackageManager().hasSystemFeature(
                 PackageManager.FEATURE_TELEPHONY_CALLING);
     }
 
     private boolean hasData() {
-        if (!mFeatureFlags.minimalTelephonyCdmCheck()) return true;
+        if (!TelephonyCapabilities.minimalTelephonyCdmCheck(mFeatureFlags)) return true;
         return mContext.getPackageManager().hasSystemFeature(
                 PackageManager.FEATURE_TELEPHONY_DATA);
     }
 
     private boolean hasMessaging() {
-        if (!mFeatureFlags.minimalTelephonyCdmCheck()) return true;
+        if (!TelephonyCapabilities.minimalTelephonyCdmCheck(mFeatureFlags)) return true;
         return mContext.getPackageManager().hasSystemFeature(
                 PackageManager.FEATURE_TELEPHONY_MESSAGING);
     }
