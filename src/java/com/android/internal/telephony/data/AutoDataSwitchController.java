@@ -473,6 +473,7 @@ public class AutoDataSwitchController extends Handler {
     @Override
     public void handleMessage(@NonNull Message msg) {
         AsyncResult ar;
+        Object obj;
         int phoneId;
         switch (msg.what) {
             case EVENT_SERVICE_STATE_CHANGED:
@@ -491,33 +492,20 @@ public class AutoDataSwitchController extends Handler {
                 onSignalStrengthChanged(phoneId);
                 break;
             case EVENT_EVALUATE_AUTO_SWITCH:
-                if (sFeatureFlags.autoDataSwitchRatSs()) {
-                    Object obj = mScheduledEventsToExtras.get(EVENT_EVALUATE_AUTO_SWITCH);
-                    if (obj instanceof EvaluateEventExtra extra) {
-                        mScheduledEventsToExtras.remove(EVENT_EVALUATE_AUTO_SWITCH);
-                        onEvaluateAutoDataSwitch(extra.evaluateReason);
-                    }
-                } else {
-                    int reason = (int) msg.obj;
-                    onEvaluateAutoDataSwitch(reason);
+                obj = mScheduledEventsToExtras.get(EVENT_EVALUATE_AUTO_SWITCH);
+                if (obj instanceof EvaluateEventExtra extra) {
+                    mScheduledEventsToExtras.remove(EVENT_EVALUATE_AUTO_SWITCH);
+                    onEvaluateAutoDataSwitch(extra.evaluateReason);
                 }
                 break;
             case EVENT_STABILITY_CHECK_PASSED:
-                if (sFeatureFlags.autoDataSwitchRatSs()) {
-                    Object obj = mScheduledEventsToExtras.get(EVENT_STABILITY_CHECK_PASSED);
-                    if (obj instanceof StabilityEventExtra extra) {
-                        int targetPhoneId = extra.targetPhoneId;
-                        boolean needValidation = extra.needValidation;
-                        log("require validation on phone " + targetPhoneId
-                                + (needValidation ? "" : " no") + " need to pass");
-                        mScheduledEventsToExtras.remove(EVENT_STABILITY_CHECK_PASSED);
-                        mPhoneSwitcherCallback.onRequireValidation(targetPhoneId, needValidation);
-                    }
-                } else {
-                    int targetPhoneId = msg.arg1;
-                    boolean needValidation = msg.arg2 == 1;
+                obj = mScheduledEventsToExtras.get(EVENT_STABILITY_CHECK_PASSED);
+                if (obj instanceof StabilityEventExtra extra) {
+                    int targetPhoneId = extra.targetPhoneId;
+                    boolean needValidation = extra.needValidation;
                     log("require validation on phone " + targetPhoneId
                             + (needValidation ? "" : " no") + " need to pass");
+                    mScheduledEventsToExtras.remove(EVENT_STABILITY_CHECK_PASSED);
                     mPhoneSwitcherCallback.onRequireValidation(targetPhoneId, needValidation);
                 }
                 break;
@@ -643,15 +631,9 @@ public class AutoDataSwitchController extends Handler {
                 ? mAutoDataSwitchAvailabilityStabilityTimeThreshold
                 << mAutoSwitchValidationFailedCount
                 : 0;
-        if (sFeatureFlags.autoDataSwitchRatSs()) {
-            if (!mScheduledEventsToExtras.containsKey(EVENT_EVALUATE_AUTO_SWITCH)) {
-                scheduleEventWithTimer(EVENT_EVALUATE_AUTO_SWITCH, new EvaluateEventExtra(reason),
-                        delayMs);
-            }
-        } else {
-            if (!hasMessages(EVENT_EVALUATE_AUTO_SWITCH)) {
-                sendMessageDelayed(obtainMessage(EVENT_EVALUATE_AUTO_SWITCH, reason), delayMs);
-            }
+        if (!mScheduledEventsToExtras.containsKey(EVENT_EVALUATE_AUTO_SWITCH)) {
+            scheduleEventWithTimer(EVENT_EVALUATE_AUTO_SWITCH, new EvaluateEventExtra(reason),
+                    delayMs);
         }
     }
 
@@ -700,12 +682,32 @@ public class AutoDataSwitchController extends Handler {
                 return;
             }
 
-            if (!defaultDataPhone.isUserDataEnabled() || !backupDataPhone.isDataAllowed()) {
-                mPhoneSwitcherCallback.onRequireImmediatelySwitchToPhone(DEFAULT_PHONE_INDEX,
-                        EVALUATION_REASON_DATA_SETTINGS_CHANGED);
-                log(debugMessage.append(", immediately back to default as user turns off settings")
-                        .toString());
-                return;
+            DataEvaluation internetEvaluation;
+            if (sFeatureFlags.autoDataSwitchUsesDataEnabled()) {
+                if (!defaultDataPhone.isUserDataEnabled()) {
+                    mPhoneSwitcherCallback.onRequireImmediatelySwitchToPhone(DEFAULT_PHONE_INDEX,
+                            EVALUATION_REASON_DATA_SETTINGS_CHANGED);
+                    log(debugMessage.append(
+                            ", immediately back to default as user turns off default").toString());
+                    return;
+                } else if (!(internetEvaluation = backupDataPhone.getDataNetworkController()
+                        .getInternetEvaluation(false/*ignoreExistingNetworks*/))
+                        .isSubsetOf(DataEvaluation.DataDisallowedReason.NOT_IN_SERVICE)) {
+                    mPhoneSwitcherCallback.onRequireImmediatelySwitchToPhone(
+                            DEFAULT_PHONE_INDEX, EVALUATION_REASON_DATA_SETTINGS_CHANGED);
+                    log(debugMessage.append(
+                                    ", immediately back to default because backup ")
+                            .append(internetEvaluation).toString());
+                    return;
+                }
+            } else {
+                if (!defaultDataPhone.isUserDataEnabled() || !backupDataPhone.isDataAllowed()) {
+                    mPhoneSwitcherCallback.onRequireImmediatelySwitchToPhone(DEFAULT_PHONE_INDEX,
+                            EVALUATION_REASON_DATA_SETTINGS_CHANGED);
+                    log(debugMessage.append(
+                            ", immediately back to default as user turns off settings").toString());
+                    return;
+                }
             }
 
             boolean backToDefault = false;
@@ -915,12 +917,15 @@ public class AutoDataSwitchController extends Handler {
             }
 
             if (secondaryDataPhone != null) {
-                // check auto switch feature enabled
-                if (secondaryDataPhone.isDataAllowed()) {
+                // check internet data is allowed on the candidate
+                DataEvaluation internetEvaluation = secondaryDataPhone.getDataNetworkController()
+                        .getInternetEvaluation(false/*ignoreExistingNetworks*/);
+                if (!internetEvaluation.containsDisallowedReasons()) {
                     return new StabilityEventExtra(phoneId,
                             isForPerformance, mRequirePingTestBeforeSwitch);
                 } else {
-                    debugMessage.append(", but candidate's data is not allowed");
+                    debugMessage.append(", but candidate's data is not allowed ")
+                            .append(internetEvaluation);
                 }
             }
         }
@@ -932,8 +937,7 @@ public class AutoDataSwitchController extends Handler {
      * @return {@code true} If the feature of switching base on RAT and signal strength is enabled.
      */
     private boolean isRatSignalStrengthBasedSwitchEnabled() {
-        return sFeatureFlags.autoDataSwitchRatSs() && mScoreTolerance >= 0
-                && mAutoDataSwitchPerformanceStabilityTimeThreshold >= 0;
+        return mScoreTolerance >= 0 && mAutoDataSwitchPerformanceStabilityTimeThreshold >= 0;
     }
 
     /**
@@ -953,39 +957,27 @@ public class AutoDataSwitchController extends Handler {
      */
     private void startStabilityCheck(int targetPhoneId, boolean isForPerformance,
             boolean needValidation) {
-        String combinationIdentifier = targetPhoneId + "" + needValidation;
-        if (sFeatureFlags.autoDataSwitchRatSs()) {
-            StabilityEventExtra eventExtras = (StabilityEventExtra)
-                    mScheduledEventsToExtras.getOrDefault(EVENT_STABILITY_CHECK_PASSED,
-                            new StabilityEventExtra(INVALID_PHONE_INDEX, false /*need validation*/,
-                            false /*isForPerformance*/));
-            long delayMs = -1;
-            // Check if already scheduled one with that combination of extras.
-            if (eventExtras.targetPhoneId != targetPhoneId
-                    || eventExtras.needValidation != needValidation
-                    || eventExtras.isForPerformance != isForPerformance) {
-                eventExtras =
-                        new StabilityEventExtra(targetPhoneId, isForPerformance, needValidation);
+        StabilityEventExtra eventExtras = (StabilityEventExtra)
+                mScheduledEventsToExtras.getOrDefault(EVENT_STABILITY_CHECK_PASSED,
+                        new StabilityEventExtra(INVALID_PHONE_INDEX, false /*need validation*/,
+                                false /*isForPerformance*/));
+        long delayMs = -1;
+        // Check if already scheduled one with that combination of extras.
+        if (eventExtras.targetPhoneId != targetPhoneId
+                || eventExtras.needValidation != needValidation
+                || eventExtras.isForPerformance != isForPerformance) {
+            eventExtras =
+                    new StabilityEventExtra(targetPhoneId, isForPerformance, needValidation);
 
-                // Reset with new timer.
-                delayMs = isForPerformance
-                        ? mAutoDataSwitchPerformanceStabilityTimeThreshold
-                        : mAutoDataSwitchAvailabilityStabilityTimeThreshold;
-                scheduleEventWithTimer(EVENT_STABILITY_CHECK_PASSED, eventExtras, delayMs);
-            }
-            log("startStabilityCheck: "
-                    + (delayMs != -1 ? "scheduling " : "already scheduled ")
-                    + eventExtras);
-        } else if (!hasEqualMessages(EVENT_STABILITY_CHECK_PASSED, combinationIdentifier)) {
-            removeMessages(EVENT_STABILITY_CHECK_PASSED);
-            sendMessageDelayed(obtainMessage(EVENT_STABILITY_CHECK_PASSED, targetPhoneId,
-                            needValidation ? 1 : 0,
-                            combinationIdentifier),
-                    mAutoDataSwitchAvailabilityStabilityTimeThreshold);
-            log("startStabilityCheck: targetPhoneId=" + targetPhoneId
-                    + " isForPerformance=" + isForPerformance
-                    + " needValidation=" + needValidation);
+            // Reset with new timer.
+            delayMs = isForPerformance
+                    ? mAutoDataSwitchPerformanceStabilityTimeThreshold
+                    : mAutoDataSwitchAvailabilityStabilityTimeThreshold;
+            scheduleEventWithTimer(EVENT_STABILITY_CHECK_PASSED, eventExtras, delayMs);
         }
+        log("startStabilityCheck: "
+                + (delayMs != -1 ? "scheduling " : "already scheduled ")
+                + eventExtras);
     }
 
     /**
@@ -1075,18 +1067,14 @@ public class AutoDataSwitchController extends Handler {
     private void cancelAnyPendingSwitch() {
         mSelectedTargetPhoneId = INVALID_PHONE_INDEX;
         resetFailedCount();
-        if (sFeatureFlags.autoDataSwitchRatSs()) {
-            if (mScheduledEventsToExtras.containsKey(EVENT_STABILITY_CHECK_PASSED)) {
-                if (mEventsToAlarmListener.containsKey(EVENT_STABILITY_CHECK_PASSED)) {
-                    mAlarmManager.cancel(mEventsToAlarmListener.get(EVENT_STABILITY_CHECK_PASSED));
-                } else {
-                    loge("cancelAnyPendingSwitch: EVENT_STABILITY_CHECK_PASSED listener is null");
-                }
-                removeMessages(EVENT_STABILITY_CHECK_PASSED);
-                mScheduledEventsToExtras.remove(EVENT_STABILITY_CHECK_PASSED);
+        if (mScheduledEventsToExtras.containsKey(EVENT_STABILITY_CHECK_PASSED)) {
+            if (mEventsToAlarmListener.containsKey(EVENT_STABILITY_CHECK_PASSED)) {
+                mAlarmManager.cancel(mEventsToAlarmListener.get(EVENT_STABILITY_CHECK_PASSED));
+            } else {
+                loge("cancelAnyPendingSwitch: EVENT_STABILITY_CHECK_PASSED listener is null");
             }
-        } else {
             removeMessages(EVENT_STABILITY_CHECK_PASSED);
+            mScheduledEventsToExtras.remove(EVENT_STABILITY_CHECK_PASSED);
         }
         mPhoneSwitcherCallback.onRequireCancelAnyPendingAutoSwitchValidation();
     }
