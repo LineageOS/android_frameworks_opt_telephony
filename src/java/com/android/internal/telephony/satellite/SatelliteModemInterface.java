@@ -187,6 +187,11 @@ public class SatelliteModemInterface {
             mSatelliteSupportedStateChangedRegistrants.notifyResult(supported);
         }
 
+        @Override
+        public void onRegistrationFailure(int causeCode) {
+            // TO-DO notify registrants
+        }
+
         private boolean notifyResultIfExpectedListener() {
             // Demo listener should notify results only during demo mode
             // Vendor listener should notify result only during real mode
