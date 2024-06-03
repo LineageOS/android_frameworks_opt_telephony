@@ -193,9 +193,11 @@ public class PinStorage extends Handler {
 
         CarrierConfigManager ccm = mContext.getSystemService(CarrierConfigManager.class);
         // Callback directly handle config change and should be executed in handler thread
-        ccm.registerCarrierConfigChangeListener(this::post,
-                (slotIndex, subId, carrierId, specificCarrierId) ->
-                        onCarrierConfigurationChanged(slotIndex));
+        if (ccm != null) {
+            ccm.registerCarrierConfigChangeListener(this::post,
+                    (slotIndex, subId, carrierId, specificCarrierId) ->
+                            onCarrierConfigurationChanged(slotIndex));
+        }
 
         // Initialize the long term secret key. This needs to be present in all cases:
         //  - if the device is not secure or is locked: key does not require user authentication
