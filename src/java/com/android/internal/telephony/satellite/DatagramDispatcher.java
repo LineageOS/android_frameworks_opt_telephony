@@ -275,39 +275,31 @@ public class DatagramDispatcher extends Handler {
                         mPendingNonEmergencyDatagramsMap.remove(argument.datagramId);
                     }
 
-                    if (error == SatelliteManager.SATELLITE_RESULT_SUCCESS) {
+                    if (error == SATELLITE_RESULT_SUCCESS) {
                         // Update send status for current datagram
                         mDatagramController.updateSendStatus(argument.subId, argument.datagramType,
                                 SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_SUCCESS,
                                 getPendingDatagramCount(), error);
                         startWaitForSimulatedPollDatagramsDelayTimer(request);
-                        if (getPendingDatagramCount() > 0) {
-                            // Send response for current datagram
-                            argument.callback.accept(error);
-                            // Send pending datagrams
-                            sendPendingDatagrams();
-                        } else {
-                            mDatagramController.updateSendStatus(argument.subId,
-                                    argument.datagramType,
-                                    SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE, 0,
-                                    SatelliteManager.SATELLITE_RESULT_SUCCESS);
-                            // Send response for current datagram
-                            argument.callback.accept(error);
-                        }
                     } else {
                         // Update send status
                         mDatagramController.updateSendStatus(argument.subId, argument.datagramType,
                                 SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_FAILED,
                                 getPendingDatagramCount(), error);
-                        mDatagramController.updateSendStatus(argument.subId, argument.datagramType,
-                                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
-                                0, SatelliteManager.SATELLITE_RESULT_SUCCESS);
+                    }
+
+                    if (getPendingDatagramCount() > 0) {
                         // Send response for current datagram
-                        // after updating datagram transfer state internally.
                         argument.callback.accept(error);
-                        // Abort sending all the pending datagrams
-                        abortSendingPendingDatagrams(argument.subId,
-                                SatelliteManager.SATELLITE_RESULT_REQUEST_ABORTED);
+                        // Send pending datagrams
+                        sendPendingDatagrams();
+                    } else {
+                        mDatagramController.updateSendStatus(argument.subId,
+                                argument.datagramType,
+                                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE, 0,
+                                SatelliteManager.SATELLITE_RESULT_SUCCESS);
+                        // Send response for current datagram
+                        argument.callback.accept(error);
                     }
                 }
                 break;
