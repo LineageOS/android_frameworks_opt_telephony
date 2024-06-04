@@ -17,13 +17,18 @@
 package com.android.internal.telephony.satellite.metrics;
 
 import static android.telephony.satellite.NtnSignalStrength.NTN_SIGNAL_STRENGTH_NONE;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
 import android.annotation.NonNull;
+import android.os.Bundle;
+import android.os.ResultReceiver;
 import android.telephony.satellite.NtnSignalStrength;
 import android.telephony.satellite.SatelliteManager;
+import android.telephony.satellite.SatelliteSessionStats;
 import android.util.Log;
 
 import com.android.internal.telephony.metrics.SatelliteStats;
+import com.android.internal.telephony.satellite.DatagramDispatcher;
 
 /**
  * Stats to log to satellite session metrics
@@ -41,6 +46,8 @@ public class SessionMetricsStats {
     private int mSessionDurationSec;
     private int mCountOfSuccessfulOutgoingDatagram;
     private int mCountOfFailedOutgoingDatagram;
+    private int mCountOfTimedOutUserMessagesWaitingForConnection;
+    private int mCountOfTimedOutUserMessagesWaitingForAck;
     private int mCountOfSuccessfulIncomingDatagram;
     private int mCountOfIncomingDatagramFailed;
     private boolean mIsDemoMode;
@@ -111,7 +118,13 @@ public class SessionMetricsStats {
     }
 
     /** Increase the count of successful outgoing datagram transmission. */
-    public SessionMetricsStats addCountOfSuccessfulOutgoingDatagram() {
+    public SessionMetricsStats addCountOfSuccessfulOutgoingDatagram(
+            @NonNull @SatelliteManager.DatagramType int datagramType) {
+        if (datagramType == SatelliteManager.DATAGRAM_TYPE_KEEP_ALIVE) {
+            // Ignore KEEP_ALIVE messages
+            return this;
+        }
+
         mCountOfSuccessfulOutgoingDatagram++;
         logd("addCountOfSuccessfulOutgoingDatagram: current count="
                 + mCountOfSuccessfulOutgoingDatagram);
@@ -119,9 +132,51 @@ public class SessionMetricsStats {
     }
 
     /** Increase the count of failed outgoing datagram transmission. */
-    public SessionMetricsStats addCountOfFailedOutgoingDatagram() {
+    public SessionMetricsStats addCountOfFailedOutgoingDatagram(
+            @NonNull @SatelliteManager.DatagramType int datagramType,
+            @NonNull @SatelliteManager.SatelliteResult int resultCode) {
+        if (datagramType == SatelliteManager.DATAGRAM_TYPE_KEEP_ALIVE) {
+            // Ignore KEEP_ALIVE messages
+            return this;
+        }
+
         mCountOfFailedOutgoingDatagram++;
         logd("addCountOfFailedOutgoingDatagram: current count=" + mCountOfFailedOutgoingDatagram);
+
+        if (resultCode == SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE) {
+            addCountOfTimedOutUserMessagesWaitingForConnection(datagramType);
+        } else if (resultCode == SatelliteManager.SATELLITE_RESULT_MODEM_TIMEOUT) {
+            addCountOfTimedOutUserMessagesWaitingForAck(datagramType);
+        }
+
+        return this;
+    }
+
+    /** Increase the count of user messages that timed out waiting for connection. */
+    private SessionMetricsStats addCountOfTimedOutUserMessagesWaitingForConnection(
+            @NonNull @SatelliteManager.DatagramType int datagramType) {
+        if (datagramType == SatelliteManager.DATAGRAM_TYPE_KEEP_ALIVE) {
+            // Ignore KEEP_ALIVE messages
+            return this;
+        }
+
+        mCountOfTimedOutUserMessagesWaitingForConnection++;
+        logd("addCountOfTimedOutUserMessagesWaitingForConnection: current count="
+                + mCountOfTimedOutUserMessagesWaitingForConnection);
+        return this;
+    }
+
+    /** Increase the count of user messages that timed out waiting for ack. */
+    private SessionMetricsStats addCountOfTimedOutUserMessagesWaitingForAck(
+            @NonNull @SatelliteManager.DatagramType int datagramType) {
+        if (datagramType == SatelliteManager.DATAGRAM_TYPE_KEEP_ALIVE) {
+            // Ignore KEEP_ALIVE messages
+            return this;
+        }
+
+        mCountOfTimedOutUserMessagesWaitingForAck++;
+        logd("addCountOfTimedOutUserMessagesWaitingForAck: current count="
+                + mCountOfTimedOutUserMessagesWaitingForAck);
         return this;
     }
 
@@ -180,6 +235,23 @@ public class SessionMetricsStats {
         initializeSessionMetricsParam();
     }
 
+    /** Returns {@link SatelliteSessionStats} of the satellite service. */
+    public void requestSatelliteSessionStats(int subId, @NonNull ResultReceiver result) {
+        Bundle bundle = new Bundle();
+        SatelliteSessionStats sessionStats = new SatelliteSessionStats.Builder()
+                .setCountOfSuccessfulUserMessages(mCountOfSuccessfulOutgoingDatagram)
+                .setCountOfUnsuccessfulUserMessages(mCountOfFailedOutgoingDatagram)
+                .setCountOfTimedOutUserMessagesWaitingForConnection(
+                        mCountOfTimedOutUserMessagesWaitingForConnection)
+                .setCountOfTimedOutUserMessagesWaitingForAck(
+                        mCountOfTimedOutUserMessagesWaitingForAck)
+                .setCountOfUserMessagesInQueueToBeSent(
+                        DatagramDispatcher.getInstance().getPendingUserMessagesCount())
+                .build();
+        bundle.putParcelable(SatelliteManager.KEY_SESSION_STATS, sessionStats);
+        result.send(SATELLITE_RESULT_SUCCESS, bundle);
+    }
+
     /** Returns the processing time for satellite session initialization. */
     public long getSessionInitializationProcessingTimeMillis() {
         return mInitializationProcessingTimeMillis;
@@ -199,6 +271,8 @@ public class SessionMetricsStats {
         mSessionDurationSec = 0;
         mCountOfSuccessfulOutgoingDatagram = 0;
         mCountOfFailedOutgoingDatagram = 0;
+        mCountOfTimedOutUserMessagesWaitingForConnection = 0;
+        mCountOfTimedOutUserMessagesWaitingForAck = 0;
         mCountOfSuccessfulIncomingDatagram = 0;
         mCountOfIncomingDatagramFailed = 0;
         mIsDemoMode = false;
