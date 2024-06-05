@@ -747,7 +747,9 @@ public abstract class InboundSmsHandler extends StateMachine {
         // data will be tracked when the message is processed (processMessagePart).
         if (result != Intents.RESULT_SMS_HANDLED && result != Activity.RESULT_OK) {
             mMetrics.writeIncomingSmsError(mPhone.getPhoneId(), is3gpp2(), smsSource, result);
-            mPhone.getSmsStats().onIncomingSmsError(is3gpp2(), smsSource, result);
+            mPhone.getSmsStats().onIncomingSmsError(is3gpp2(), smsSource, result,
+                    TelephonyManager.from(mContext)
+                            .isEmergencyNumber(smsb.getOriginatingAddress()));
             if (mPhone != null) {
                 TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
                 if (telephonyAnalytics != null) {
@@ -1020,7 +1022,8 @@ public abstract class InboundSmsHandler extends StateMachine {
                     + (pduList.size() == 0 ? "pduList.size() == 0" : "pduList.contains(null)");
             logeWithLocalLog(errorMsg, tracker.getMessageId());
             mPhone.getSmsStats().onIncomingSmsError(
-                    is3gpp2(), tracker.getSource(), RESULT_SMS_NULL_PDU);
+                    is3gpp2(), tracker.getSource(), RESULT_SMS_NULL_PDU,
+                    TelephonyManager.from(mContext).isEmergencyNumber(tracker.getAddress()));
             if (mPhone != null) {
                 TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
                 if (telephonyAnalytics != null) {
@@ -1049,7 +1052,9 @@ public abstract class InboundSmsHandler extends StateMachine {
                                 SmsConstants.FORMAT_3GPP, timestamps, false,
                                 tracker.getMessageId());
                         mPhone.getSmsStats().onIncomingSmsWapPush(tracker.getSource(),
-                                messageCount, RESULT_SMS_NULL_MESSAGE, tracker.getMessageId());
+                                messageCount, RESULT_SMS_NULL_MESSAGE, tracker.getMessageId(),
+                                TelephonyManager.from(mContext)
+                                        .isEmergencyNumber(tracker.getAddress()));
                         return false;
                     }
                 }
@@ -1084,7 +1089,8 @@ public abstract class InboundSmsHandler extends StateMachine {
             mMetrics.writeIncomingWapPush(mPhone.getPhoneId(), tracker.getSource(),
                     format, timestamps, wapPushResult, tracker.getMessageId());
             mPhone.getSmsStats().onIncomingSmsWapPush(tracker.getSource(), messageCount,
-                    result, tracker.getMessageId());
+                    result, tracker.getMessageId(), TelephonyManager.from(mContext)
+                            .isEmergencyNumber(tracker.getAddress()));
             // result is Activity.RESULT_OK if an ordered broadcast was sent
             if (result == Activity.RESULT_OK) {
                 return true;
@@ -1104,7 +1110,8 @@ public abstract class InboundSmsHandler extends StateMachine {
         mMetrics.writeIncomingSmsSession(mPhone.getPhoneId(), tracker.getSource(),
                 format, timestamps, block, tracker.getMessageId());
         mPhone.getSmsStats().onIncomingSmsSuccess(is3gpp2(), tracker.getSource(),
-                messageCount, block, tracker.getMessageId());
+                messageCount, block, tracker.getMessageId(),
+                TelephonyManager.from(mContext).isEmergencyNumber(tracker.getAddress()));
         CarrierRoamingSatelliteSessionStats sessionStats =
                 CarrierRoamingSatelliteSessionStats.getInstance(mPhone.getSubId());
         sessionStats.onIncomingSms();
