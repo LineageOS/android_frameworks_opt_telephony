@@ -1107,7 +1107,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 messageCount, block, tracker.getMessageId());
         CarrierRoamingSatelliteSessionStats sessionStats =
                 CarrierRoamingSatelliteSessionStats.getInstance(mPhone.getSubId());
-        sessionStats.onIncomingSms();
+        sessionStats.onIncomingSms(mPhone.getSubId());
         if (mPhone != null) {
             TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
             if (telephonyAnalytics != null) {
