@@ -314,7 +314,6 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK,
                     TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED,
                     TEAR_DOWN_REASON_DATA_LIMIT_REACHED,
-                    TEAR_DOWN_REASON_DATA_NETWORK_TRANSPORT_NOT_ALLOWED,
             })
     public @interface TearDownReason {}
 
@@ -413,9 +412,6 @@ public class DataNetwork extends StateMachine {
 
     /** Data network tear down due to bootstrap sim data limit reached. */
     public static final int TEAR_DOWN_REASON_DATA_LIMIT_REACHED = 31;
-
-    /** Data network tear down due to current data network transport mismatch. */
-    public static final int TEAR_DOWN_REASON_DATA_NETWORK_TRANSPORT_NOT_ALLOWED = 32;
 
     //********************************************************************************************//
     // WHENEVER ADD A NEW TEAR DOWN REASON, PLEASE UPDATE DataDeactivateReasonEnum in enums.proto //
@@ -701,11 +697,6 @@ public class DataNetwork extends StateMachine {
      * The last known roaming state of this data network.
      */
     private boolean mLastKnownRoamingState;
-
-    /**
-     * The non-terrestrial status
-     */
-    private final boolean mIsSatellite;
 
     /** The reason that why setting up this data network is allowed. */
     private @NonNull DataAllowedReason mDataAllowedReason;
@@ -997,8 +988,6 @@ public class DataNetwork extends StateMachine {
         mTransport = transport;
         mLastKnownDataNetworkType = getDataNetworkType();
         mLastKnownRoamingState = mPhone.getServiceState().getDataRoamingFromRegistration();
-        mIsSatellite = mPhone.getServiceState().isUsingNonTerrestrialNetwork()
-                && transport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
         mDataAllowedReason = dataAllowedReason;
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
         mAttachedNetworkRequestList.addAll(networkRequestList);
@@ -2225,26 +2214,11 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * @return {@code true} if this is a satellite data network.
-     */
-    public boolean isSatellite() {
-        return mIsSatellite;
-    }
-
-    /**
      * Update the network capabilities.
      */
     private void updateNetworkCapabilities() {
-        final NetworkCapabilities.Builder builder = new NetworkCapabilities.Builder();
-
-        if (mFlags.carrierEnabledSatelliteFlag() && mIsSatellite
-                && mDataConfigManager.getForcedCellularTransportCapabilities().stream()
-                .noneMatch(this::hasNetworkCapabilityInNetworkRequests)) {
-            builder.addTransportType(NetworkCapabilities.TRANSPORT_SATELLITE);
-        } else {
-            builder.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
-        }
-
+        final NetworkCapabilities.Builder builder = new NetworkCapabilities.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
         boolean roaming = mPhone.getServiceState().getDataRoaming();
 
         builder.setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
@@ -2411,11 +2385,6 @@ public class DataNetwork extends StateMachine {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
         }
 
-        // mark the network as restricted when service state is non-terrestrial(satellite network)
-        if (mFlags.carrierEnabledSatelliteFlag() && mIsSatellite) {
-            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
-        }
-
         // Check if the feature force MMS on IWLAN is enabled. When the feature is enabled, MMS
         // will be attempted on IWLAN if possible, even if existing cellular networks already
         // supports IWLAN.
@@ -2432,7 +2401,7 @@ public class DataNetwork extends StateMachine {
                 DataProfile dataProfile = mDataNetworkController.getDataProfileManager()
                         .getDataProfileForNetworkRequest(new TelephonyNetworkRequest(
                                 new NetworkRequest.Builder().addCapability(
-                                NetworkCapabilities.NET_CAPABILITY_MMS).build(), mPhone, mFlags),
+                                NetworkCapabilities.NET_CAPABILITY_MMS).build(), mPhone),
                         TelephonyManager.NETWORK_TYPE_IWLAN, false, false, false);
                 // If we find another data data profile that can support MMS on IWLAN, then remove
                 // the MMS capability from this cellular network. This will allow IWLAN to be
@@ -3821,8 +3790,6 @@ public class DataNetwork extends StateMachine {
                 return "TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED";
             case TEAR_DOWN_REASON_DATA_LIMIT_REACHED:
                 return "TEAR_DOWN_REASON_DATA_LIMIT_REACHED";
-            case TEAR_DOWN_REASON_DATA_NETWORK_TRANSPORT_NOT_ALLOWED:
-                return "TEAR_DOWN_REASON_DATA_NETWORK_TRANSPORT_NOT_ALLOWED";
             default:
                 return "UNKNOWN(" + reason + ")";
         }

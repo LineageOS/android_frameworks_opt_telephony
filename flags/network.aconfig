@@ -2,10 +2,14 @@ package: "com.android.internal.telephony.flags"
 container: "system"
 
 flag {
-    name: "enable_carrier_config_n1_control"
+    name: "enable_carrier_config_n1_control_attempt2"
     namespace: "telephony"
     description: "enabling this flag allows KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY to control N1 mode enablement"
-    bug:"302033535"
+    bug:"328848947"
+
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
 }
 
 flag {
