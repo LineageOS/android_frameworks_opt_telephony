@@ -42,6 +42,7 @@ public class CarrierRoamingSatelliteSessionStats {
     private int mCountOfOutgoingSms;
     private int mCountOfIncomingMms;
     private int mCountOfOutgoingMms;
+    private long mIncomingMessageId;
 
     private int mSessionStartTimeSec;
     private List<Long> mConnectionStartTimeList;
@@ -49,8 +50,8 @@ public class CarrierRoamingSatelliteSessionStats {
     private List<Integer> mRsrpList;
     private List<Integer> mRssnrList;
 
-    public CarrierRoamingSatelliteSessionStats() {
-        logd("Create new CarrierRoamingSatelliteSessionStats.");
+    public CarrierRoamingSatelliteSessionStats(int subId) {
+        logd("Create new CarrierRoamingSatelliteSessionStats. subId=" + subId);
         initializeParams();
     }
 
@@ -59,7 +60,7 @@ public class CarrierRoamingSatelliteSessionStats {
         synchronized (sCarrierRoamingSatelliteSessionStats) {
             if (sCarrierRoamingSatelliteSessionStats.get(subId) == null) {
                 sCarrierRoamingSatelliteSessionStats.put(subId,
-                        new CarrierRoamingSatelliteSessionStats());
+                        new CarrierRoamingSatelliteSessionStats(subId));
             }
             return sCarrierRoamingSatelliteSessionStats.get(subId);
         }
@@ -107,15 +108,41 @@ public class CarrierRoamingSatelliteSessionStats {
     }
 
     /** Log incoming sms success case */
-    public void onIncomingSms() {
+    public void onIncomingSms(int subId) {
+        if (!isNtnConnected()) {
+            return;
+        }
         mCountOfIncomingSms += 1;
-        logd("onIncomingSms: mCountOfIncomingSms=" + mCountOfIncomingSms);
+        logd("onIncomingSms: subId=" + subId + ", count=" + mCountOfIncomingSms);
     }
 
     /** Log outgoing sms success case */
-    public void onOutgoingSms() {
+    public void onOutgoingSms(int subId) {
+        if (!isNtnConnected()) {
+            return;
+        }
         mCountOfOutgoingSms += 1;
-        logd("onOutgoingSms: mCountOfOutgoingSms=" + mCountOfOutgoingSms);
+        logd("onOutgoingSms: subId=" + subId + ", count=" + mCountOfOutgoingSms);
+    }
+
+    /** Log incoming or outgoing mms success case */
+    public void onMms(boolean isIncomingMms, long messageId) {
+        if (!isNtnConnected()) {
+            return;
+        }
+        if (isIncomingMms) {
+            mIncomingMessageId = messageId;
+            mCountOfIncomingMms += 1;
+            logd("onMms: messageId=" + messageId + ", countOfIncomingMms=" + mCountOfIncomingMms);
+        } else {
+            if (mIncomingMessageId == messageId) {
+                logd("onMms: NotifyResponse ignore it.");
+                mIncomingMessageId = 0;
+                return;
+            }
+            mCountOfOutgoingMms += 1;
+            logd("onMms: countOfOutgoingMms=" + mCountOfOutgoingMms);
+        }
     }
 
     private void reportMetrics() {
@@ -165,12 +192,14 @@ public class CarrierRoamingSatelliteSessionStats {
         mCountOfOutgoingSms = 0;
         mCountOfIncomingMms = 0;
         mCountOfOutgoingMms = 0;
+        mIncomingMessageId = 0;
 
         mSessionStartTimeSec = 0;
         mConnectionStartTimeList = new ArrayList<>();
         mConnectionEndTimeList = new ArrayList<>();
         mRsrpList = new ArrayList<>();
         mRssnrList = new ArrayList<>();
+        logd("initializeParams");
     }
 
     private CellSignalStrengthLte getCellSignalStrengthLte(Phone phone) {
@@ -257,6 +286,10 @@ public class CarrierRoamingSatelliteSessionStats {
 
     private long getCurrentTime() {
         return System.currentTimeMillis();
+    }
+
+    private boolean isNtnConnected() {
+        return mSessionStartTimeSec != 0;
     }
 
     private void logd(@NonNull String log) {
