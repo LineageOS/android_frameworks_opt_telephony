@@ -1022,6 +1022,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mIncomingSms1.count = 1;
         mIncomingSms1.isManagedProfile = false;
         mIncomingSms1.isNtn = false;
+        mIncomingSms1.isEmergency = true;
 
         mIncomingSms2 = new IncomingSms();
         mIncomingSms2.smsFormat = INCOMING_SMS__SMS_FORMAT__SMS_FORMAT_3GPP2;
@@ -1041,6 +1042,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mIncomingSms2.count = 2;
         mIncomingSms2.isManagedProfile = true;
         mIncomingSms2.isNtn = true;
+        mIncomingSms2.isEmergency = true;
 
         mIncomingSms = new IncomingSms[] {mIncomingSms1, mIncomingSms2};
 
@@ -5981,7 +5983,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                     && incomingSms.carrierId == expectedIncomingSms.carrierId
                     && incomingSms.messageId == expectedIncomingSms.messageId
                     && incomingSms.isManagedProfile == expectedIncomingSms.isManagedProfile
-                    && incomingSms.isNtn == expectedIncomingSms.isNtn) {
+                    && incomingSms.isNtn == expectedIncomingSms.isNtn
+                    && incomingSms.isEmergency == expectedIncomingSms.isEmergency) {
                 actualCount = incomingSms.count;
             }
         }
