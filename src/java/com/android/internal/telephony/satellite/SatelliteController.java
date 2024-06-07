@@ -131,6 +131,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -435,6 +436,9 @@ public class SatelliteController extends Handler {
 
     private long mSessionStartTimeStamp;
     private long mSessionProcessingTimeStamp;
+
+    // Variable for backup and restore device's screen rotation settings.
+    private String mDeviceRotationLockToBackupAndRestore = null;
 
     /**
      * @return The singleton instance of SatelliteController.
@@ -984,6 +988,7 @@ public class SatelliteController extends Handler {
                             mWaitingForRadioDisabled = true;
                         }
                         setSettingsKeyForSatelliteMode(SATELLITE_MODE_ENABLED_TRUE);
+                        setSettingsKeyToAllowDeviceRotation(SATELLITE_MODE_ENABLED_TRUE);
                         evaluateToSendSatelliteEnabledSuccess();
                     } else {
                         /**
@@ -3554,6 +3559,109 @@ public class SatelliteController extends Handler {
                     Settings.Global.SATELLITE_MODE_ENABLED, val);
     }
 
+    /**
+     * Allow screen rotation temporary in rotation locked foldable device.
+     * <p>
+     * Temporarily allow screen rotation user to catch satellite signals properly by UI guide in
+     * emergency situations. Unlock the setting value so that the screen rotation is not locked, and
+     * return it to the original value when the satellite service is finished.
+     * <p>
+     * Note that, only the unfolded screen will be temporarily allowed screen rotation.
+     *
+     * @param val {@link SATELLITE_MODE_ENABLED_TRUE} if satellite mode is enabled,
+     *     {@link SATELLITE_MODE_ENABLED_FALSE} satellite mode is not enabled.
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    protected void setSettingsKeyToAllowDeviceRotation(int val) {
+        // Only allows on a foldable device type.
+        if (!isFoldable(mContext)) {
+            return;
+        }
+
+        switch (val) {
+            case SATELLITE_MODE_ENABLED_TRUE:
+                mDeviceRotationLockToBackupAndRestore =
+                        Settings.Secure.getString(mContentResolver,
+                                Settings.Secure.DEVICE_STATE_ROTATION_LOCK);
+                String unlockedRotationSettings = replaceDeviceRotationValue(
+                        mDeviceRotationLockToBackupAndRestore == null
+                                ? "" : mDeviceRotationLockToBackupAndRestore,
+                        Settings.Secure.DEVICE_STATE_ROTATION_KEY_UNFOLDED,
+                        Settings.Secure.DEVICE_STATE_ROTATION_LOCK_UNLOCKED);
+                Settings.Secure.putString(mContentResolver,
+                        Settings.Secure.DEVICE_STATE_ROTATION_LOCK, unlockedRotationSettings);
+                logd("setSettingsKeyToAllowDeviceRotation(TRUE), RotationSettings is changed"
+                        + " from " + mDeviceRotationLockToBackupAndRestore
+                        + " to " + unlockedRotationSettings);
+                break;
+            case SATELLITE_MODE_ENABLED_FALSE:
+                if (mDeviceRotationLockToBackupAndRestore == null) {
+                    break;
+                }
+                Settings.Secure.putString(mContentResolver,
+                        Settings.Secure.DEVICE_STATE_ROTATION_LOCK,
+                        mDeviceRotationLockToBackupAndRestore);
+                logd("setSettingsKeyToAllowDeviceRotation(FALSE), RotationSettings is restored to"
+                        + mDeviceRotationLockToBackupAndRestore);
+                mDeviceRotationLockToBackupAndRestore = "";
+                break;
+            default:
+                loge("setSettingsKeyToAllowDeviceRotation(" + val + "), never reach here.");
+                break;
+        }
+    }
+
+    /**
+     * If the device type is foldable.
+     *
+     * @param context context
+     * @return {@code true} if device type is foldable. {@code false} for otherwise.
+     */
+    private boolean isFoldable(Context context) {
+        return context.getResources().getIntArray(R.array.config_foldedDeviceStates).length > 0;
+    }
+
+    /**
+     * Replaces a value of given a target key with a new value in a string of key-value pairs.
+     * <p>
+     * Replaces the value corresponding to the target key with a new value. If the key value is not
+     * found in the device rotation information, it is not replaced.
+     *
+     * @param deviceRotationValue Device rotation key values separated by colon(':').
+     * @param targetKey The key of the new item caller wants to add.
+     * @param newValue  The value of the new item caller want to add.
+     * @return A new string where all the key-value pairs.
+     */
+    private static String replaceDeviceRotationValue(
+            @NonNull String deviceRotationValue, int targetKey, int newValue) {
+        // Use list of Key-Value pair
+        List<Pair<Integer, Integer>> keyValuePairs = new ArrayList<>();
+
+        String[] pairs = deviceRotationValue.split(":");
+        if (pairs.length % 2 != 0) {
+            // Return without modifying. The key-value may be incorrect if length is an odd number.
+            loge("The length of key-value pair do not match. Return without modification.");
+            return deviceRotationValue;
+        }
+
+        // collect into keyValuePairs
+        for (int i = 0; i < pairs.length; i += 2) {
+            try {
+                int key = Integer.parseInt(pairs[i]);
+                int value = Integer.parseInt(pairs[i + 1]);
+                keyValuePairs.add(new Pair<>(key, key == targetKey ? newValue : value));
+            } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+                // Return without modifying if got exception.
+                loge("got error while parsing key-value. Return without modification. e:" + e);
+                return deviceRotationValue;
+            }
+        }
+
+        return keyValuePairs.stream()
+                .map(pair -> pair.first + ":" + pair.second) // Convert to "key:value" format
+                .collect(Collectors.joining(":")); // Join pairs with colons
+    }
+
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected boolean areAllRadiosDisabled() {
         synchronized (mRadioStateLock) {
@@ -3607,6 +3715,7 @@ public class SatelliteController extends Handler {
             mIsEmergency = false;
             mIsSatelliteEnabled = false;
             setSettingsKeyForSatelliteMode(SATELLITE_MODE_ENABLED_FALSE);
+            setSettingsKeyToAllowDeviceRotation(SATELLITE_MODE_ENABLED_FALSE);
             if (callback != null) callback.accept(error);
             updateSatelliteEnabledState(
                     false, "moveSatelliteToOffStateAndCleanUpResources");
