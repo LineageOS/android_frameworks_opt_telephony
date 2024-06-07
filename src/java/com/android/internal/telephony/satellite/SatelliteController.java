@@ -4195,7 +4195,7 @@ public class SatelliteController extends Handler {
                         sessionStats.onSignalStrength(phone);
                         if (!mWasSatelliteConnectedViaCarrier.get(subId)) {
                             // Log satellite connection start
-                            sessionStats.onConnectionStart();
+                            sessionStats.onConnectionStart(phone);
                         }
                     }
 
@@ -4266,7 +4266,7 @@ public class SatelliteController extends Handler {
                 // Log satellite session start
                 CarrierRoamingSatelliteSessionStats sessionStats =
                         CarrierRoamingSatelliteSessionStats.getInstance(subId);
-                sessionStats.onSessionStart(phone.getCarrierId());
+                sessionStats.onSessionStart(phone.getCarrierId(), phone);
                 mCarrierRoamingSatelliteSessionStatsMap.put(subId, sessionStats);
             } else if (lastNotifiedNtnMode && !currNtnMode) {
                 // Log satellite session end
