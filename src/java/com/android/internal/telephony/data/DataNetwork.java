@@ -2445,6 +2445,7 @@ public class DataNetwork extends StateMachine {
         }
 
         // Always start with not-restricted, and then remove if needed.
+        // By default, NET_CAPABILITY_NOT_RESTRICTED and NET_CAPABILITY_NOT_CONSTRAINED are included
         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
 
         // When data is disabled, or data roaming is disabled and the device is roaming, we need
@@ -2480,11 +2481,6 @@ public class DataNetwork extends StateMachine {
         }
 
         if (mDataNetworkController.isEsimBootStrapProvisioningActivated()) {
-            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
-        }
-
-        // mark the network as restricted when service state is non-terrestrial(satellite network)
-        if (mFlags.satelliteInternet() && mIsSatellite) {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
         }
 
@@ -2528,6 +2524,23 @@ public class DataNetwork extends StateMachine {
         // Set the bandwidth information.
         builder.setLinkDownstreamBandwidthKbps(mNetworkBandwidth.downlinkBandwidthKbps);
         builder.setLinkUpstreamBandwidthKbps(mNetworkBandwidth.uplinkBandwidthKbps);
+
+        // Configure the network as restricted/constrained for unrestricted satellite network.
+        if (mFlags.satelliteInternet() && mIsSatellite && builder.build()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
+            switch (mDataConfigManager.getSatelliteDataSupportMode()) {
+                case CarrierConfigManager.SATELLITE_DATA_SUPPORT_ONLY_RESTRICTED
+                        -> builder.removeCapability(
+                                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+                case CarrierConfigManager.SATELLITE_DATA_SUPPORT_BANDWIDTH_CONSTRAINED -> {
+                    try {
+                        builder.removeCapability(DataUtils
+                                .NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED);
+                    } catch (Exception ignored) { }
+                }
+                // default case CarrierConfigManager.SATELLITE_DATA_SUPPORT_ALL
+            }
+        }
 
         NetworkCapabilities nc = builder.build();
         if (mNetworkCapabilities == null || mNetworkAgent == null) {

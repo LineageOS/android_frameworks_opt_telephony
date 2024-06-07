@@ -53,6 +53,7 @@ import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation;
 import android.telephony.Annotation.DataFailureCause;
+import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
 import android.telephony.DataSpecificRegistrationInfo;
 import android.telephony.LteVopsSupportInfo;
@@ -333,33 +334,40 @@ public class DataNetworkTest extends TelephonyTest {
     private void serviceStateChanged(@Annotation.NetworkType int networkType,
             @NetworkRegistrationInfo.RegistrationState int regState,
             DataSpecificRegistrationInfo dsri, boolean isNtn) {
-        ServiceState ss = new ServiceState();
-        ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
+        doReturn(isNtn).when(mServiceState).isUsingNonTerrestrialNetwork();
+
+        doReturn(new NetworkRegistrationInfo.Builder()
                 .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                 .setAccessNetworkTechnology(networkType)
                 .setRegistrationState(regState)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
                 .setDataSpecificInfo(dsri)
                 .setIsNonTerrestrialNetwork(isNtn)
-                .build());
+                .build()).when(mServiceState)
+                .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
 
-        ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
+        doReturn(new NetworkRegistrationInfo.Builder()
                 .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
                 .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
                 .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
-                .build());
+                .build()).when(mServiceState)
+                .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                        AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
 
-        ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
+        doReturn(new NetworkRegistrationInfo.Builder()
                 .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                 .setAccessNetworkTechnology(networkType)
                 .setRegistrationState(regState)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
-                .build());
-        ss.setDataRoamingFromRegistration(regState
-                == NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
-        doReturn(ss).when(mSST).getServiceState();
-        doReturn(ss).when(mPhone).getServiceState();
+                .build()).when(mServiceState)
+                .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_CS,
+                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+        boolean isRoaming = regState == NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING;
+        doReturn(isRoaming).when(mServiceState).getDataRoamingFromRegistration();
+        doReturn(isRoaming).when(mServiceState).getDataRoaming();
 
         if (mDataNetworkUT != null) {
             mDataNetworkUT.obtainMessage(9/*EVENT_SERVICE_STATE_CHANGED*/).sendToTarget();
@@ -420,6 +428,8 @@ public class DataNetworkTest extends TelephonyTest {
         doReturn(Set.of(NetworkCapabilities.NET_CAPABILITY_IMS,
                 NetworkCapabilities.NET_CAPABILITY_EIMS, NetworkCapabilities.NET_CAPABILITY_XCAP))
                 .when(mDataConfigManager).getForcedCellularTransportCapabilities();
+        doReturn(CarrierConfigManager.SATELLITE_DATA_SUPPORT_ONLY_RESTRICTED)
+                .when(mDataConfigManager).getSatelliteDataSupportMode();
         doReturn(true).when(mFeatureFlags).carrierEnabledSatelliteFlag();
         doReturn(true).when(mFeatureFlags).satelliteInternet();
 
@@ -2373,6 +2383,7 @@ public class DataNetworkTest extends TelephonyTest {
     }
 
     private void setupNonTerrestrialDataNetwork() {
+        doReturn(true).when(mServiceState).isUsingNonTerrestrialNetwork();
         NetworkRequestList networkRequestList = new NetworkRequestList();
 
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
@@ -2387,6 +2398,8 @@ public class DataNetworkTest extends TelephonyTest {
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 DataAllowedReason.NORMAL, mDataNetworkCallback);
         processAllMessages();
+
+        assertThat(mDataNetworkUT.isSatellite()).isTrue();
     }
 
     private void setupTerrestrialDataNetwork() {
@@ -2506,6 +2519,42 @@ public class DataNetworkTest extends TelephonyTest {
         processAllMessages();
 
         verify(mDataNetworkCallback).onQosSessionsChanged(newQosSessions);
+    }
+
+    @Test
+    public void testUnrestrictedSatelliteNetworkCapabilities() {
+        setupNonTerrestrialDataNetwork();
+        assertThat(mDataNetworkUT.isSatellite()).isTrue();
+
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)).isFalse();
+
+        // Test constrained traffic
+        doReturn(CarrierConfigManager.SATELLITE_DATA_SUPPORT_BANDWIDTH_CONSTRAINED)
+                .when(mDataConfigManager).getSatelliteDataSupportMode();
+        mDataNetworkUT.sendMessage(22/*EVENT_VOICE_CALL_STARTED*/); // update network capabilities
+        processAllMessages();
+
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)).isTrue();
+        try {
+            assertThat(mDataNetworkUT.getNetworkCapabilities()
+                    .hasCapability(DataUtils.NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED)).isFalse();
+        } catch (Exception ignored) { }
+
+        // Test not constrained traffic
+        doReturn(CarrierConfigManager.SATELLITE_DATA_SUPPORT_ALL)
+                .when(mDataConfigManager).getSatelliteDataSupportMode();
+        mDataNetworkUT.sendMessage(22/*EVENT_VOICE_CALL_STARTED*/); // update network capabilities
+        processAllMessages();
+
+        assertThat(mDataNetworkUT.getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)).isTrue();
+        // TODO(enable after NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED become a default cap)
+//        try {
+//            assertThat(mDataNetworkUT.getNetworkCapabilities()
+//                    .hasCapability(DataUtils.NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED)).isTrue();
+//        } catch (Exception ignored) {}
     }
 
     @Test
