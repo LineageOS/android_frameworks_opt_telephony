@@ -83,4 +83,25 @@ public class SatelliteConstants {
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface ConfigUpdateResult {}
+
+    // Access control type is unknown
+    public static final int ACCESS_CONTROL_TYPE_UNKNOWN = 0;
+    // Network country code is used for satellite access decision
+    public static final int ACCESS_CONTROL_TYPE_NETWORK_COUNTRY_CODE = 1;
+    // Device's current location is used for satellite access decision
+    public static final int ACCESS_CONTROL_TYPE_CURRENT_LOCATION = 2;
+    // Device's last known location is used for satellite access decision
+    public static final int ACCESS_CONTROL_TYPE_LAST_KNOWN_LOCATION = 3;
+    // Cached country codes are used for satellite access decision
+    public static final int ACCESS_CONTROL_TYPE_CACHED_COUNTRY_CODE = 4;
+
+    @IntDef(prefix = {"ACCESS_CONTROL_TYPE_"}, value = {
+            ACCESS_CONTROL_TYPE_UNKNOWN,
+            ACCESS_CONTROL_TYPE_NETWORK_COUNTRY_CODE,
+            ACCESS_CONTROL_TYPE_CURRENT_LOCATION,
+            ACCESS_CONTROL_TYPE_LAST_KNOWN_LOCATION,
+            ACCESS_CONTROL_TYPE_CACHED_COUNTRY_CODE
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface AccessControlType {}
 }
