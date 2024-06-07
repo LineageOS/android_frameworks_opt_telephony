@@ -124,6 +124,16 @@ public class DatagramDispatcher extends Handler {
     }
 
     /**
+     * @return The singleton instance of DatagramDispatcher.
+     */
+    public static DatagramDispatcher getInstance() {
+        if (sInstance == null) {
+            loge("DatagramDispatcher was not yet initialized.");
+        }
+        return sInstance;
+    }
+
+    /**
      * Create a DatagramDispatcher to send satellite datagrams.
      *
      * @param context The Context for the DatagramDispatcher.
@@ -570,6 +580,22 @@ public class DatagramDispatcher extends Handler {
         }
     }
 
+    /** Return pending user messages count */
+    public int getPendingUserMessagesCount() {
+        synchronized (mLock) {
+            int pendingUserMessagesCount = 0;
+            for (Entry<Long, SendSatelliteDatagramArgument> entry :
+                    mPendingNonEmergencyDatagramsMap.entrySet()) {
+                SendSatelliteDatagramArgument argument = entry.getValue();
+                if (argument.datagramType != SatelliteManager.DATAGRAM_TYPE_KEEP_ALIVE) {
+                    pendingUserMessagesCount += 1;
+                }
+            }
+            pendingUserMessagesCount += mPendingEmergencyDatagramsMap.size();
+            return pendingUserMessagesCount;
+        }
+    }
+
     /**
      * Posts the specified command to be executed on the main thread and returns immediately.
      *
@@ -600,11 +626,12 @@ public class DatagramDispatcher extends Handler {
         if (resultCode == SatelliteManager.SATELLITE_RESULT_SUCCESS) {
             mControllerMetricsStats.reportOutgoingDatagramSuccessCount(argument.datagramType,
                     mIsDemoMode);
-            mSessionMetricsStats.addCountOfSuccessfulOutgoingDatagram();
+            mSessionMetricsStats.addCountOfSuccessfulOutgoingDatagram(argument.datagramType);
         } else {
             mControllerMetricsStats.reportOutgoingDatagramFailCount(argument.datagramType,
                     mIsDemoMode);
-            mSessionMetricsStats.addCountOfFailedOutgoingDatagram();
+            mSessionMetricsStats.addCountOfFailedOutgoingDatagram(argument.datagramType,
+                    resultCode);
         }
     }
 
@@ -809,8 +836,7 @@ public class DatagramDispatcher extends Handler {
             }
 
             // Abort sending all the pending datagrams
-            abortSendingPendingDatagrams(argument.subId,
-                    SatelliteManager.SATELLITE_RESULT_REQUEST_ABORTED);
+            abortSendingPendingDatagrams(argument.subId, SATELLITE_RESULT_MODEM_TIMEOUT);
         }
     }
 
