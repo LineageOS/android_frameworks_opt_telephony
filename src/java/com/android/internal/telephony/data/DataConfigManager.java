@@ -714,8 +714,7 @@ public class DataConfigManager extends Handler {
     /**
      * Update the voice over PS related config from the carrier config.
      */
-    private void updateVopsConfig() {
-        synchronized (this) {
+    private synchronized void updateVopsConfig() {
             mShouldKeepNetworkUpInNonVops = mCarrierConfig.getBoolean(CarrierConfigManager
                     .Ims.KEY_KEEP_PDN_UP_IN_NO_VOPS_BOOL);
             int[] allowedNetworkTypes = mCarrierConfig.getIntArray(
@@ -723,7 +722,6 @@ public class DataConfigManager extends Handler {
             if (allowedNetworkTypes != null) {
                 Arrays.stream(allowedNetworkTypes).forEach(mEnabledVopsNetworkTypesInNonVops::add);
             }
-        }
     }
 
     /**
@@ -883,6 +881,14 @@ public class DataConfigManager extends Handler {
             return bandwidth;
         }
         return new DataNetwork.NetworkBandwidth(DEFAULT_BANDWIDTH, DEFAULT_BANDWIDTH);
+    }
+
+    /**
+     * @return What kind of traffic is supported on an unrestricted satellite network.
+     */
+    @CarrierConfigManager.SATELLITE_DATA_SUPPORT_MODE
+    public int getSatelliteDataSupportMode() {
+        return mCarrierConfig.getInt(CarrierConfigManager.KEY_SATELLITE_DATA_SUPPORT_MODE_INT);
     }
 
     /**

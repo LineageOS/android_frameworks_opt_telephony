@@ -236,6 +236,36 @@ public class ControllerMetricsStats {
         mSatelliteStats.onSatelliteControllerMetrics(controllerParam);
     }
 
+    /**
+     * Report a counter when checking result whether satellite communication is allowed or not for
+     * current location.
+     */
+    public void reportAllowedSatelliteAccessCount(boolean isAllowed) {
+        SatelliteStats.SatelliteControllerParams.Builder builder;
+        if (isAllowed) {
+            builder = new SatelliteStats.SatelliteControllerParams.Builder()
+                    .setCountOfAllowedSatelliteAccess(ADD_COUNT);
+        } else {
+            builder = new SatelliteStats.SatelliteControllerParams.Builder()
+                    .setCountOfDisallowedSatelliteAccess(ADD_COUNT);
+        }
+        SatelliteStats.SatelliteControllerParams controllerParam = builder.build();
+        logd("reportAllowedSatelliteAccessCount:" + controllerParam);
+        mSatelliteStats.onSatelliteControllerMetrics(controllerParam);
+    }
+
+    /**
+     * Report a counter when checking whether satellite communication for current location is
+     * allowed has failed.
+     */
+    public void reportFailedSatelliteAccessCheckCount() {
+        SatelliteStats.SatelliteControllerParams controllerParam =
+                new SatelliteStats.SatelliteControllerParams.Builder()
+                        .setCountOfSatelliteAccessCheckFail(ADD_COUNT).build();
+        logd("reportFailedSatelliteAccessCheckCount:" + controllerParam);
+        mSatelliteStats.onSatelliteControllerMetrics(controllerParam);
+    }
+
     /** Return the total service up time for satellite service */
     @VisibleForTesting
     public int captureTotalServiceUpTimeSec() {

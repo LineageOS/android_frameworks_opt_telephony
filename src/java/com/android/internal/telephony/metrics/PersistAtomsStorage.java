@@ -51,6 +51,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PresenceNotifyEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsAcsProvisioningStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsClientProvisioningStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteAccessController;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteConfigUpdater;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteController;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteEntitlement;
@@ -766,6 +767,9 @@ public class PersistAtomsStorage {
                 += stats.countOfDatagramTypeKeepAliveSuccess;
         atom.countOfDatagramTypeKeepAliveFail
                 += stats.countOfDatagramTypeKeepAliveFail;
+        atom.countOfAllowedSatelliteAccess += stats.countOfAllowedSatelliteAccess;
+        atom.countOfDisallowedSatelliteAccess += stats.countOfDisallowedSatelliteAccess;
+        atom.countOfSatelliteAccessCheckFail += stats.countOfSatelliteAccessCheckFail;
 
         mAtoms.satelliteController = atomArray;
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
@@ -891,6 +895,14 @@ public class PersistAtomsStorage {
             mAtoms.satelliteConfigUpdater = insertAtRandomPlace(mAtoms.satelliteConfigUpdater,
                     stats, mMaxNumSatelliteStats);
         }
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
+    }
+
+    /** Adds a new {@link SatelliteAccessController} to the storage. */
+    public synchronized void addSatelliteAccessControllerStats(SatelliteAccessController stats) {
+        mAtoms.satelliteAccessController =
+                insertAtRandomPlace(mAtoms.satelliteAccessController, stats,
+                        mMaxNumSatelliteStats);
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
 
@@ -1542,7 +1554,7 @@ public class PersistAtomsStorage {
             long minIntervalMillis) {
         if (getWallTimeMillis() - mAtoms.satelliteSosMessageRecommenderPullTimestampMillis
                 > minIntervalMillis) {
-            mAtoms.satelliteProvisionPullTimestampMillis = getWallTimeMillis();
+            mAtoms.satelliteSosMessageRecommenderPullTimestampMillis = getWallTimeMillis();
             SatelliteSosMessageRecommender[] statsArray = mAtoms.satelliteSosMessageRecommender;
             mAtoms.satelliteSosMessageRecommender = new SatelliteSosMessageRecommender[0];
             saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
@@ -1641,6 +1653,25 @@ public class PersistAtomsStorage {
             mAtoms.satelliteConfigUpdaterPullTimestampMillis = getWallTimeMillis();
             SatelliteConfigUpdater[] statsArray = mAtoms.satelliteConfigUpdater;
             mAtoms.satelliteConfigUpdater = new SatelliteConfigUpdater[0];
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
+            return statsArray;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Returns and clears the {@link SatelliteAccessController} stats if last pulled longer
+     * than {@code minIntervalMillis} ago, otherwise returns {@code null}.
+     */
+    @Nullable
+    public synchronized SatelliteAccessController[] getSatelliteAccessControllerStats(
+            long minIntervalMillis) {
+        if (getWallTimeMillis() - mAtoms.satelliteAccessControllerPullTimestampMillis
+                > minIntervalMillis) {
+            mAtoms.satelliteAccessControllerPullTimestampMillis = getWallTimeMillis();
+            SatelliteAccessController[] statsArray = mAtoms.satelliteAccessController;
+            mAtoms.satelliteAccessController = new SatelliteAccessController[0];
             saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             return statsArray;
         } else {
@@ -1814,6 +1845,9 @@ public class PersistAtomsStorage {
                     SatelliteEntitlement.class, mMaxNumSatelliteStats);
             atoms.satelliteConfigUpdater = sanitizeAtoms(atoms.satelliteConfigUpdater,
                     SatelliteConfigUpdater.class, mMaxNumSatelliteStats);
+            atoms.satelliteAccessController = sanitizeAtoms(
+                    atoms.satelliteAccessController, SatelliteAccessController.class,
+                    mMaxNumSatelliteStats);
 
             // out of caution, sanitize also the timestamps
             atoms.voiceCallRatUsagePullTimestampMillis =
@@ -1886,6 +1920,8 @@ public class PersistAtomsStorage {
                     sanitizeTimestamp(atoms.satelliteEntitlementPullTimestampMillis);
             atoms.satelliteConfigUpdaterPullTimestampMillis =
                     sanitizeTimestamp(atoms.satelliteConfigUpdaterPullTimestampMillis);
+            atoms.satelliteAccessControllerPullTimestampMillis =
+                    sanitizeTimestamp(atoms.satelliteAccessControllerPullTimestampMillis);
             return atoms;
         } catch (NoSuchFileException e) {
             Rlog.d(TAG, "PersistAtoms file not found");
@@ -2629,6 +2665,7 @@ public class PersistAtomsStorage {
         atoms.carrierRoamingSatelliteControllerStatsPullTimestampMillis = currentTime;
         atoms.satelliteEntitlementPullTimestampMillis = currentTime;
         atoms.satelliteConfigUpdaterPullTimestampMillis = currentTime;
+        atoms.satelliteAccessControllerPullTimestampMillis = currentTime;
 
         Rlog.d(TAG, "created new PersistAtoms");
         return atoms;

@@ -30,6 +30,7 @@ import android.os.PersistableBundle;
 import android.os.UserManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.analytics.TelephonyAnalytics;
 import com.android.internal.telephony.analytics.TelephonyAnalytics.SmsMmsAnalytics;
@@ -243,7 +244,8 @@ public class SmsBroadcastUndelivered {
                             message.mMessageCount);
                     if (phone != null) {
                         phone.getSmsStats().onDroppedIncomingMultipartSms(message.mIs3gpp2, rows,
-                                message.mMessageCount);
+                                message.mMessageCount, TelephonyManager.from(context)
+                                        .isEmergencyNumber(message.mAddress));
                         TelephonyAnalytics telephonyAnalytics = phone.getTelephonyAnalytics();
                         if (telephonyAnalytics != null) {
                             SmsMmsAnalytics smsMmsAnalytics =

@@ -5052,18 +5052,84 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     @Test
     public void testNonTerrestrialNetwork() throws Exception {
+        TelephonyNetworkRequest request;
         mIsNonTerrestrialNetwork = true;
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
-        mDataNetworkControllerUT.addNetworkRequest(
-                createNetworkRequest(false, NetworkCapabilities.NET_CAPABILITY_RCS));
+        // By default, Test only support restricted network, regardless whether constrained.
+        // Verify not_restricted network not supported.
+        request = createNetworkRequest(false, NetworkCapabilities.NET_CAPABILITY_RCS);
+        mDataNetworkControllerUT.addNetworkRequest(request);
         processAllMessages();
         verifyAllDataDisconnected();
+        mDataNetworkControllerUT.removeNetworkRequest(request);
 
-        mDataNetworkControllerUT.addNetworkRequest(
-                createNetworkRequest(true, NetworkCapabilities.NET_CAPABILITY_RCS));
+        // Verify restricted network is supported.
+        request = createNetworkRequest(true, NetworkCapabilities.NET_CAPABILITY_RCS);
+        mDataNetworkControllerUT.addNetworkRequest(request);
         processAllMessages();
         verifyConnectedNetworkHasDataProfile(mNtnDataProfile);
+        mDataNetworkControllerUT.removeNetworkRequest(request);
+        getDataNetworks().get(0).tearDown(DataNetwork
+                .TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED);
+
+        // Test constrained network is supported, regardless whether it's restricted
+        processAllFutureMessages();
+        verifyAllDataDisconnected();
+        mCarrierConfig.putInt(CarrierConfigManager.KEY_SATELLITE_DATA_SUPPORT_MODE_INT,
+                CarrierConfigManager.SATELLITE_DATA_SUPPORT_BANDWIDTH_CONSTRAINED);
+        carrierConfigChanged();
+        // Verify not_restricted, not_constrained network not supported.
+        NetworkCapabilities netCaps = new NetworkCapabilities();
+        netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_RCS);
+        try {
+            netCaps.addCapability(DataUtils.NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED);
+        } catch (Exception ignored) { }
+        request = new TelephonyNetworkRequest(new NetworkRequest(netCaps,
+                ConnectivityManager.TYPE_MOBILE, ++mNetworkRequestId,
+                NetworkRequest.Type.REQUEST), mPhone, mFeatureFlags);
+
+        mDataNetworkControllerUT.addNetworkRequest(request);
+        processAllMessages();
+        verifyAllDataDisconnected();
+        mDataNetworkControllerUT.removeNetworkRequest(request);
+
+        // Verify restricted, not_constrained network is supported.
+        netCaps = new NetworkCapabilities();
+        netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_RCS);
+        netCaps.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+        try {
+            netCaps.addCapability(DataUtils.NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED);
+        } catch (Exception ignored) { }
+        request = new TelephonyNetworkRequest(new NetworkRequest(netCaps,
+                ConnectivityManager.TYPE_MOBILE, ++mNetworkRequestId,
+                NetworkRequest.Type.REQUEST), mPhone, mFeatureFlags);
+        mDataNetworkControllerUT.addNetworkRequest(request);
+        processAllMessages();
+        verifyConnectedNetworkHasDataProfile(mNtnDataProfile);
+        mDataNetworkControllerUT.removeNetworkRequest(request);
+        getDataNetworks().get(0).tearDown(DataNetwork
+                .TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED);
+
+        // TODO(enable after NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED become a default cap)
+        // Test not constrained network supported
+//        processAllFutureMessages();
+//        verifyAllDataDisconnected();
+//        mCarrierConfig.putInt(CarrierConfigManager.KEY_SATELLITE_DATA_SUPPORT_MODE_INT,
+//                CarrierConfigManager.SATELLITE_DATA_SUPPORT_ALL);
+//        carrierConfigChanged();
+//
+//        netCaps = new NetworkCapabilities();
+//        netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_RCS);
+//        try {
+//            netCaps.addCapability(DataUtils.NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED);
+//        } catch (Exception ignored) {}
+//        mDataNetworkControllerUT.addNetworkRequest(
+//                new TelephonyNetworkRequest(new NetworkRequest(netCaps,
+//                        ConnectivityManager.TYPE_MOBILE, ++mNetworkRequestId,
+//                        NetworkRequest.Type.REQUEST), mPhone, mFeatureFlags));
+//        processAllMessages();
+//        verifyConnectedNetworkHasDataProfile(mNtnDataProfile);
     }
 
     @Test

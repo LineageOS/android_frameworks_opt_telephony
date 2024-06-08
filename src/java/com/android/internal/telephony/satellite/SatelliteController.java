@@ -2912,6 +2912,20 @@ public class SatelliteController extends Handler {
     }
 
     /**
+     * Request to get the {@link SatelliteSessionStats} of the satellite service.
+     *
+     * @param subId The subId of the subscription to the satellite session stats for.
+     * @param result The result receiver that returns the {@link SatelliteSessionStats}
+     *               if the request is successful or an error code if the request failed.
+     */
+    public void requestSatelliteSessionStats(int subId, @NonNull ResultReceiver result) {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            return;
+        }
+        mSessionMetricsStats.requestSatelliteSessionStats(subId, result);
+    }
+
+    /**
      * Get the carrier-enabled emergency call wait for connection timeout millis
      */
     public long getCarrierEmergencyCallWaitForConnectionTimeoutMillis() {

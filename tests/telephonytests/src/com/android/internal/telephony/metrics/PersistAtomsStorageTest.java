@@ -20,6 +20,7 @@ import static android.telephony.SmsManager.RESULT_ERROR_NONE;
 import static android.telephony.SmsManager.RESULT_RIL_SMS_SEND_FAIL_RETRY;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_BITMASK_GPRS;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_BITMASK_GSM;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 import static android.text.format.DateUtils.DAY_IN_MILLIS;
 import static android.text.format.DateUtils.HOUR_IN_MILLIS;
 
@@ -44,6 +45,10 @@ import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSIO
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__DIRECTION__CALL_DIRECTION_MO;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__DIRECTION__CALL_DIRECTION_MT;
+import static com.android.internal.telephony.satellite.SatelliteConstants.ACCESS_CONTROL_TYPE_CURRENT_LOCATION;
+import static com.android.internal.telephony.satellite.SatelliteConstants.ACCESS_CONTROL_TYPE_NETWORK_COUNTRY_CODE;
+import static com.android.internal.telephony.satellite.SatelliteConstants.CONFIG_DATA_SOURCE_CONFIG_UPDATER;
+import static com.android.internal.telephony.satellite.SatelliteConstants.CONFIG_DATA_SOURCE_DEVICE_CONFIG;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -96,6 +101,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PresenceNotifyEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsAcsProvisioningStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsClientProvisioningStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteAccessController;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteConfigUpdater;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteController;
 import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteEntitlement;
@@ -129,6 +135,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.TimeUnit;
 
 public class PersistAtomsStorageTest extends TelephonyTest {
     private static final String TEST_FILE = "PersistAtomsStorageTest.pb";
@@ -315,6 +322,10 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private SatelliteConfigUpdater mSatelliteConfigUpdater1;
     private SatelliteConfigUpdater mSatelliteConfigUpdater2;
     private SatelliteConfigUpdater[] mSatelliteConfigUpdaters;
+
+    private SatelliteAccessController mSatelliteAccessController1;
+    private SatelliteAccessController mSatelliteAccessController2;
+    private SatelliteAccessController[] mSatelliteAccessControllers;
 
     private void makeTestData() {
         // MO call with SRVCC (LTE to UMTS)
@@ -1022,6 +1033,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mIncomingSms1.count = 1;
         mIncomingSms1.isManagedProfile = false;
         mIncomingSms1.isNtn = false;
+        mIncomingSms1.isEmergency = true;
 
         mIncomingSms2 = new IncomingSms();
         mIncomingSms2.smsFormat = INCOMING_SMS__SMS_FORMAT__SMS_FORMAT_3GPP2;
@@ -1041,6 +1053,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mIncomingSms2.count = 2;
         mIncomingSms2.isManagedProfile = true;
         mIncomingSms2.isNtn = true;
+        mIncomingSms2.isEmergency = true;
 
         mIncomingSms = new IncomingSms[] {mIncomingSms1, mIncomingSms2};
 
@@ -1390,6 +1403,32 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
         mSatelliteConfigUpdaters = new SatelliteConfigUpdater[] {mSatelliteConfigUpdater1,
                 mSatelliteConfigUpdater2};
+
+        mSatelliteAccessController1 = new SatelliteAccessController();
+        mSatelliteAccessController1.accessControlType = ACCESS_CONTROL_TYPE_NETWORK_COUNTRY_CODE;
+        mSatelliteAccessController1.locationQueryTimeMillis = TimeUnit.SECONDS.toMillis(1);
+        mSatelliteAccessController1.onDeviceLookupTimeMillis = TimeUnit.SECONDS.toMillis(2);
+        mSatelliteAccessController1.totalCheckingTimeMillis = TimeUnit.SECONDS.toMillis(3);
+        mSatelliteAccessController1.isAllowed = true;
+        mSatelliteAccessController1.isEmergency = false;
+        mSatelliteAccessController1.resultCode = SATELLITE_RESULT_SUCCESS;
+        mSatelliteAccessController1.countryCodes = new String[]{"AB", "CD"};
+        mSatelliteAccessController1.configDataSource = CONFIG_DATA_SOURCE_DEVICE_CONFIG;
+
+        mSatelliteAccessController2 = new SatelliteAccessController();
+        mSatelliteAccessController1.accessControlType = ACCESS_CONTROL_TYPE_CURRENT_LOCATION;
+        mSatelliteAccessController1.locationQueryTimeMillis = TimeUnit.SECONDS.toMillis(4);
+        mSatelliteAccessController2.onDeviceLookupTimeMillis = TimeUnit.SECONDS.toMillis(5);
+        mSatelliteAccessController2.totalCheckingTimeMillis = TimeUnit.SECONDS.toMillis(6);
+        mSatelliteAccessController2.isAllowed = false;
+        mSatelliteAccessController2.isEmergency = true;
+        mSatelliteAccessController2.resultCode = SATELLITE_RESULT_SUCCESS;
+        mSatelliteAccessController2.countryCodes = new String[]{"EF", "GH"};
+        mSatelliteAccessController2.configDataSource = CONFIG_DATA_SOURCE_CONFIG_UPDATER;
+
+        mSatelliteAccessControllers = new SatelliteAccessController[]{
+                mSatelliteAccessController1, mSatelliteAccessController2
+        };
     }
 
     private void generateTestDataNetworkValidationsData() {
@@ -1628,6 +1667,9 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteConfigUpdater1 = null;
         mSatelliteConfigUpdater2 = null;
         mSatelliteConfigUpdaters = null;
+        mSatelliteAccessController1 = null;
+        mSatelliteAccessController2 = null;
+        mSatelliteAccessControllers = null;
         super.tearDown();
     }
 
@@ -5182,6 +5224,63 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     }
 
     @Test
+    public void addSatelliteAccessControllerStats_emptyProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSatelliteAccessControllerStats(
+                mSatelliteAccessController1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteAccessController[] output =
+                mPersistAtomsStorage.getSatelliteAccessControllerStats(0L);
+        assertProtoArrayEquals(
+                new SatelliteAccessController[] {mSatelliteAccessController1}, output);
+    }
+
+    @Test
+    public void addSatelliteAccessControllerStats_tooManyEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // Store atoms up to maximum number + 1
+        int maxCount = 15 + 1;
+        for (int i = 0; i < maxCount; i++) {
+            mPersistAtomsStorage
+                    .addSatelliteAccessControllerStats(//mSatelliteAccessController1);
+                            copyOf(mSatelliteAccessController1));
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+
+        // Store 1 different atom
+        mPersistAtomsStorage
+                .addSatelliteAccessControllerStats(mSatelliteAccessController2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        verifyCurrentStateSavedToFileOnce();
+
+        SatelliteAccessController[] result =
+                mPersistAtomsStorage.getSatelliteAccessControllerStats(0L);
+        // First atom should have count 14, the other should have 1
+        assertHasStatsAndCount(result, mSatelliteAccessController1, 14);
+        assertHasStatsAndCount(result, mSatelliteAccessController2, 1);
+    }
+
+    @Test
+    public void getSatelliteAccessControllerStats_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        SatelliteAccessController[] output =
+                mPersistAtomsStorage.getSatelliteAccessControllerStats(100L);
+
+        // Should be denied
+        assertNull(output);
+    }
+
+    @Test
     @SmallTest
     public void addDataNetworkValidation_newEntry() throws Exception {
         createEmptyTestFile();
@@ -5347,6 +5446,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         atoms.satelliteEntitlementPullTimestampMillis = lastPullTimeMillis;
         atoms.satelliteConfigUpdater = mSatelliteConfigUpdaters;
         atoms.satelliteConfigUpdaterPullTimestampMillis = lastPullTimeMillis;
+        atoms.satelliteAccessControllerPullTimestampMillis = lastPullTimeMillis;
         FileOutputStream stream = new FileOutputStream(mTestFile);
         stream.write(PersistAtoms.toByteArray(atoms));
         stream.close();
@@ -5531,6 +5631,11 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
     private static SatelliteConfigUpdater copyOf(SatelliteConfigUpdater source) throws Exception {
         return SatelliteConfigUpdater.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static SatelliteAccessController copyOf(SatelliteAccessController source)
+            throws Exception {
+        return SatelliteAccessController.parseFrom(MessageNano.toByteArray(source));
     }
 
     private void assertAllPullTimestampEquals(long timestamp) {
@@ -5825,6 +5930,28 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         assertEquals(expectedCount, actualCount);
     }
 
+    private static void assertHasStatsAndCount(
+            SatelliteAccessController[] tested,
+            @Nullable SatelliteAccessController expectedStats, int expectedCount) {
+        assertNotNull(tested);
+        int actualCount = 0;
+        for (SatelliteAccessController stats : tested) {
+            if (stats.accessControlType
+                    == expectedStats.accessControlType
+                    && stats.locationQueryTimeMillis == expectedStats.locationQueryTimeMillis
+                    && stats.onDeviceLookupTimeMillis == expectedStats.onDeviceLookupTimeMillis
+                    && stats.totalCheckingTimeMillis == expectedStats.totalCheckingTimeMillis
+                    && stats.isAllowed == expectedStats.isAllowed
+                    && stats.isEmergency == expectedStats.isEmergency
+                    && stats.resultCode == expectedStats.resultCode
+                    && Arrays.equals(stats.countryCodes, expectedStats.countryCodes)
+                    && stats.configDataSource == expectedStats.configDataSource) {
+                actualCount++;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+    }
+
     private static void assertHasStatsAndCountDuration(
             RcsAcsProvisioningStats[] statses,
             @Nullable RcsAcsProvisioningStats expectedStats, int count, long duration) {
@@ -5981,7 +6108,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                     && incomingSms.carrierId == expectedIncomingSms.carrierId
                     && incomingSms.messageId == expectedIncomingSms.messageId
                     && incomingSms.isManagedProfile == expectedIncomingSms.isManagedProfile
-                    && incomingSms.isNtn == expectedIncomingSms.isNtn) {
+                    && incomingSms.isNtn == expectedIncomingSms.isNtn
+                    && incomingSms.isEmergency == expectedIncomingSms.isEmergency) {
                 actualCount = incomingSms.count;
             }
         }
