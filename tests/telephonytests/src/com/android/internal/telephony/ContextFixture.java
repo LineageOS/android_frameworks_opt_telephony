@@ -65,6 +65,7 @@ import android.net.vcn.VcnManager;
 import android.net.wifi.WifiManager;
 import android.os.BatteryManager;
 import android.os.Bundle;
+import android.os.DropBoxManager;
 import android.os.Handler;
 import android.os.IInterface;
 import android.os.PersistableBundle;
@@ -313,6 +314,8 @@ public class ContextFixture implements TestFixture<Context> {
                     return mImsManager;
                 case Context.DEVICE_POLICY_SERVICE:
                     return mDevicePolicyManager;
+                case Context.DROPBOX_SERVICE:
+                    return mDropBoxManager;
                 default:
                     return null;
             }
@@ -364,6 +367,8 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.DEVICE_POLICY_SERVICE;
             } else if (serviceClass == NotificationManager.class) {
                 return Context.NOTIFICATION_SERVICE;
+            } else if (serviceClass == DropBoxManager.class) {
+                return Context.DROPBOX_SERVICE;
             }
             return super.getSystemServiceName(serviceClass);
         }
@@ -739,6 +744,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final NetworkPolicyManager mNetworkPolicyManager = mock(NetworkPolicyManager.class);
     private final ImsManager mImsManager = mock(ImsManager.class);
     private final DevicePolicyManager mDevicePolicyManager = mock(DevicePolicyManager.class);
+    private final DropBoxManager mDropBoxManager = mock(DropBoxManager.class);
     private final Configuration mConfiguration = new Configuration();
     private final DisplayMetrics mDisplayMetrics = new DisplayMetrics();
     private final SharedPreferences mSharedPreferences = PreferenceManager

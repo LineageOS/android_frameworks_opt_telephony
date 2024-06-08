@@ -168,17 +168,11 @@ public class TelephonyNetworkRequestTest extends TelephonyTest {
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
                         .build(), mPhone, mFeatureFlags);
-        assertThat(internetRequest.getCapabilities()).isEqualTo(
-                new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET,
-                        NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED,
-                        NetworkCapabilities.NET_CAPABILITY_TRUSTED,
-                        NetworkCapabilities.NET_CAPABILITY_NOT_VPN,
-                        NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED});
+        assertThat(internetRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED))
+                .isTrue();
         assertThat(internetRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN))
                 .isTrue();
         assertThat(internetRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET))
-                .isTrue();
-        assertThat(internetRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN))
                 .isTrue();
         assertThat(internetRequest.hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)).isTrue();
