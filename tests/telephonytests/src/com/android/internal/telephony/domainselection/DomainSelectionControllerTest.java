@@ -16,8 +16,11 @@
 
 package com.android.internal.telephony.domainselection;
 
+import static android.telephony.DomainSelectionService.SELECTOR_TYPE_CALLING;
+
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
+import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertTrue;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -36,6 +39,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.RemoteException;
 import android.telephony.DomainSelectionService;
+import android.telephony.TelephonyManager;
+import android.test.mock.MockContext;
 
 import androidx.test.filters.SmallTest;
 import androidx.test.runner.AndroidJUnit4;
@@ -71,6 +76,8 @@ public class DomainSelectionControllerTest extends TelephonyTest {
                 }
             };
 
+    Context mTestContext;
+
     // Mocked classes
     IDomainSelectionServiceController mMockServiceControllerBinder;
     Context mMockContext;
@@ -84,9 +91,40 @@ public class DomainSelectionControllerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(this.getClass().getSimpleName());
 
+        when(mTelephonyManager.getSupportedModemCount()).thenReturn(2);
         mMockContext = mock(Context.class);
+        mTestContext = new MockContext() {
+            @Override
+            public String getSystemServiceName(Class<?> serviceClass) {
+                if (serviceClass == TelephonyManager.class) {
+                    return Context.TELEPHONY_SERVICE;
+                }
+                return super.getSystemServiceName(serviceClass);
+            }
+
+            @Override
+            public Object getSystemService(String name) {
+                switch (name) {
+                    case (Context.TELEPHONY_SERVICE) : {
+                        return mTelephonyManager;
+                    }
+                }
+                return super.getSystemService(name);
+            }
+
+            @Override
+            public boolean bindService(Intent service, ServiceConnection conn, int flags) {
+                return mMockContext.bindService(service, conn, flags);
+            }
+
+            @Override
+            public void unbindService(ServiceConnection conn) {
+                mMockContext.unbindService(conn);
+            }
+        };
+
         mMockServiceControllerBinder = mock(IDomainSelectionServiceController.class);
-        mTestController = new DomainSelectionController(mMockContext,
+        mTestController = new DomainSelectionController(mTestContext,
                 Looper.getMainLooper(), BIND_RETRY);
         mHandler = mTestController.getHandlerForTest();
 
@@ -262,6 +300,17 @@ public class DomainSelectionControllerTest extends TelephonyTest {
 
         // Unbind should stop the autobind from occurring.
         verify(mMockContext, times(1)).bindService(any(), any(), anyInt());
+    }
+
+    @SmallTest
+    @Test
+    public void testGetDomainSelectionConnection() throws Exception {
+        when(mPhone.getPhoneId()).thenReturn(1);
+        DomainSelectionConnection dsc = mTestController.getDomainSelectionConnection(
+                mPhone, SELECTOR_TYPE_CALLING, false);
+
+        assertNotNull(dsc);
+        assertTrue(dsc instanceof NormalCallDomainSelectionConnection);
     }
 
     private void bindAndNullServiceError() {

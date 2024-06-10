@@ -271,7 +271,9 @@ public class DomainSelectionController {
                 mHandler,
                 mRestartBindingRunnable);
 
-        int numPhones = TelephonyManager.getDefault().getActiveModemCount();
+        TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
+        int numPhones = tm.getSupportedModemCount();
+        logi("numPhones=" + numPhones);
         mConnectionCounts = new int[numPhones];
         for (int i = 0; i < numPhones; i++) {
             mConnectionCounts[i] = 0;
