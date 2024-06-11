@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -25,9 +26,14 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.telephony.emergency.EmergencyNumber;
 
+import com.android.internal.telephony.PhoneInternalInterface.DialArgs;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 
 import org.junit.After;
@@ -150,7 +156,7 @@ public class ConnectionTest extends TelephonyTest {
         assertNull(connection1.getEmergencyNumberInfo());
         assertFalse(connection1.hasKnownUserIntentEmergency());
 
-        connection2.setEmergencyCallInfo(mPhone.getCallTracker());
+        connection2.setEmergencyCallInfo(mPhone.getCallTracker(), null);
         connection2.setHasKnownUserIntentEmergency(true);
         connection1.migrateFrom(connection2);
 
@@ -164,7 +170,7 @@ public class ConnectionTest extends TelephonyTest {
     @Test
     public void testEmergencyCallParameters() {
         Connection connection = new TestConnection(TEST_PHONE_TYPE);
-        connection.setEmergencyCallInfo(mPhone.getCallTracker());
+        connection.setEmergencyCallInfo(mPhone.getCallTracker(), null);
         assertTrue(connection.isEmergencyCall());
         assertEquals(getTestEmergencyNumber(), connection.getEmergencyNumberInfo());
         connection.setHasKnownUserIntentEmergency(true);
@@ -186,8 +192,43 @@ public class ConnectionTest extends TelephonyTest {
                 .thenReturn(getTestEmergencyNumber());
 
         //Ensure the connection is considered as an emergency call:
-        mTestConnection.setEmergencyCallInfo(mCT);
+        mTestConnection.setEmergencyCallInfo(mCT, null);
         assertTrue(mTestConnection.isEmergencyCall());
+    }
+
+    @Test
+    public void testUpdateEmergencyRouting() {
+        DialArgs dialArgs = new DialArgs.Builder().build();
+        Connection connection = new TestConnection(TEST_PHONE_TYPE);
+        connection.setEmergencyCallInfo(mPhone.getCallTracker(), dialArgs);
+
+        // Not updated when DomainSelectionService is disabled.
+        assertEquals(getTestEmergencyNumber(), connection.getEmergencyNumberInfo());
+
+        // Enable DomainSelectionService
+        doReturn(true).when(mDomainSelectionResolver).isDomainSelectionSupported();
+        connection = new TestConnection(TEST_PHONE_TYPE);
+        connection.setEmergencyCallInfo(mPhone.getCallTracker(), dialArgs);
+
+        // Not updated when IS_EMERGENCY_ROUTING is not specified.
+        assertEquals(getTestEmergencyNumber(), connection.getEmergencyNumberInfo());
+
+        Bundle extras = new Bundle();
+        extras.putBoolean(PhoneConstants.EXTRA_USE_EMERGENCY_ROUTING, true);
+        extras.putInt(PhoneConstants.EXTRA_EMERGENCY_SERVICE_CATEGORY,
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE);
+        dialArgs = new DialArgs.Builder().setIntentExtras(extras).build();
+
+        connection = new TestConnection(TEST_PHONE_TYPE);
+        connection.setEmergencyCallInfo(mPhone.getCallTracker(), dialArgs);
+        EmergencyNumber expectedNumber = new EmergencyNumber("911", "us", "30",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE,
+                new ArrayList<String>(), EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY);
+
+        // Updated when DomainSelectionService is enabled.
+        assertNotEquals(getTestEmergencyNumber(), connection.getEmergencyNumberInfo());
+        assertEquals(expectedNumber, connection.getEmergencyNumberInfo());
     }
 
     // TODO Verify more methods in Connection
