@@ -133,7 +133,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -2990,6 +2989,29 @@ public class SatelliteController extends Handler {
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected long getElapsedRealtime() {
         return SystemClock.elapsedRealtime();
+    }
+
+    /**
+     * Register the handler for SIM Refresh notifications.
+     * @param handler Handler for notification message.
+     * @param what User-defined message code.
+     */
+    public void registerIccRefresh(Handler handler, int what) {
+        for (Phone phone : PhoneFactory.getPhones()) {
+            CommandsInterface ci = phone.mCi;
+            ci.registerForIccRefresh(handler, what, null);
+        }
+    }
+
+    /**
+     * Unregister the handler for SIM Refresh notifications.
+     * @param handler Handler for notification message.
+     */
+    public void unRegisterIccRefresh(Handler handler) {
+        for (Phone phone : PhoneFactory.getPhones()) {
+            CommandsInterface ci = phone.mCi;
+            ci.unregisterForIccRefresh(handler);
+        }
     }
 
     /**
