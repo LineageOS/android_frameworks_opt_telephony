@@ -318,6 +318,8 @@ public class SatelliteController extends Handler {
     private final Object mIsSatelliteEnabledLock = new Object();
     @GuardedBy("mIsSatelliteEnabledLock")
     private Boolean mIsSatelliteEnabled = null;
+    private final Object mIsRadioOnLock = new Object();
+    @GuardedBy("mIsRadioOnLock")
     private boolean mIsRadioOn = false;
     private final Object mSatelliteViaOemProvisionLock = new Object();
     @GuardedBy("mSatelliteViaOemProvisionLock")
@@ -514,7 +516,10 @@ public class SatelliteController extends Handler {
                 mContext, looper, mFeatureFlags, mPointingAppController);
 
         mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
-        mIsRadioOn = phone.isRadioOn();
+        synchronized (mIsRadioOnLock) {
+            mIsRadioOn = phone.isRadioOn();
+        }
+
         registerForSatelliteProvisionStateChanged();
         registerForPendingDatagramCount();
         registerForSatelliteModemStateChanged();
@@ -1218,11 +1223,13 @@ public class SatelliteController extends Handler {
             }
 
             case EVENT_RADIO_STATE_CHANGED: {
-                if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON) {
-                    mIsRadioOn = true;
-                } else if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) {
-                    mIsRadioOn = false;
-                    resetCarrierRoamingSatelliteModeParams();
+                synchronized (mIsRadioOnLock) {
+                    logd("EVENT_RADIO_STATE_CHANGED: radioState=" + mCi.getRadioState());
+                    if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON) {
+                        mIsRadioOn = true;
+                    } else if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) {
+                        resetCarrierRoamingSatelliteModeParams();
+                    }
                 }
 
                 if (mCi.getRadioState() != TelephonyManager.RADIO_POWER_UNAVAILABLE) {
@@ -1498,11 +1505,13 @@ public class SatelliteController extends Handler {
         }
 
         if (enableSatellite) {
-            if (!mIsRadioOn) {
-                ploge("Radio is not on, can not enable satellite");
-                sendErrorAndReportSessionMetrics(
-                        SatelliteManager.SATELLITE_RESULT_INVALID_MODEM_STATE, result);
-                return;
+            synchronized (mIsRadioOnLock) {
+                if (!mIsRadioOn) {
+                    ploge("Radio is not on, can not enable satellite");
+                    sendErrorAndReportSessionMetrics(
+                            SatelliteManager.SATELLITE_RESULT_INVALID_MODEM_STATE, result);
+                    return;
+                }
             }
         } else {
             /* if disable satellite, always assume demo is also disabled */
@@ -2644,12 +2653,15 @@ public class SatelliteController extends Handler {
      * modem. {@link SatelliteController} will then power off the satellite modem.
      */
     public void onCellularRadioPowerOffRequested() {
+        logd("onCellularRadioPowerOffRequested()");
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
             plogd("onCellularRadioPowerOffRequested: oemEnabledSatelliteFlag is disabled");
             return;
         }
 
-        mIsRadioOn = false;
+        synchronized (mIsRadioOnLock) {
+            mIsRadioOn = false;
+        }
         requestSatelliteEnabled(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                 false /* enableSatellite */, false /* enableDemoMode */, false /* isEmergency */,
                 new IIntegerConsumer.Stub() {
