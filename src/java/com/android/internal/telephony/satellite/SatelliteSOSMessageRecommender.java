@@ -195,8 +195,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
      *                   call.
      */
     public void onEmergencyCallStarted(@NonNull Connection connection) {
-        if (!mSatelliteController.isSatelliteSupportedViaOem()
-                && !mSatelliteController.isSatelliteEmergencyMessagingSupportedViaCarrier()) {
+        if (!isSatelliteSupported()) {
             plogd("onEmergencyCallStarted: satellite is not supported");
             return;
         }
@@ -227,8 +226,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
     public void onEmergencyCallConnectionStateChanged(
             String callId, @Connection.ConnectionState int state) {
         plogd("callId=" + callId + ", state=" + state);
-        if (!mSatelliteController.isSatelliteSupportedViaOem()
-                && !mSatelliteController.isSatelliteEmergencyMessagingSupportedViaCarrier()) {
+        if (!isSatelliteSupported()) {
             plogd("onEmergencyCallConnectionStateChanged: satellite is not supported");
             return;
         }
@@ -758,6 +756,19 @@ public class SatelliteSOSMessageRecommender extends Handler {
     private static boolean isMockModemAllowed() {
         return (SystemProperties.getBoolean(ALLOW_MOCK_MODEM_PROPERTY, false)
                 || SystemProperties.getBoolean(BOOT_ALLOW_MOCK_MODEM_PROPERTY, false));
+    }
+
+    private boolean isSatelliteSupported() {
+        if (mSatelliteController.isSatelliteEmergencyMessagingSupportedViaCarrier()) return true;
+        if (mSatelliteController.isSatelliteSupportedViaOem() && isSatelliteViaOemProvisioned()) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isSatelliteViaOemProvisioned() {
+        Boolean provisioned = mSatelliteController.isSatelliteViaOemProvisioned();
+        return (provisioned != null) && provisioned;
     }
 
     private static void logv(@NonNull String log) {
