@@ -82,6 +82,7 @@ import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DropBoxManagerLoggerBackend;
 import android.telephony.NetworkRegistrationInfo;
@@ -2893,7 +2894,7 @@ public class SatelliteController extends Handler {
             return true;
         }
 
-        if (serviceState.getState() == ServiceState.STATE_IN_SERVICE) {
+        if (getWwanIsInService(serviceState)) {
             // Device is connected to terrestrial network which has coverage
             resetCarrierRoamingSatelliteModeParams(subId);
             return false;
@@ -4383,7 +4384,7 @@ public class SatelliteController extends Handler {
                     }
                 } else {
                     Boolean connected = mWasSatelliteConnectedViaCarrier.get(subId);
-                    if (serviceState.getState() == ServiceState.STATE_IN_SERVICE) {
+                    if (getWwanIsInService(serviceState)) {
                         resetCarrierRoamingSatelliteModeParams(subId);
                     } else if (connected != null && connected) {
                         // The device just got disconnected from a satellite network
@@ -4890,6 +4891,25 @@ public class SatelliteController extends Handler {
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
     public long getDemoPointingNotAlignedDurationMillis() {
         return mDemoPointingNotAlignedDurationMillis;
+    }
+
+    private boolean getWwanIsInService(ServiceState serviceState) {
+        List<NetworkRegistrationInfo> nriList = serviceState
+                .getNetworkRegistrationInfoListForTransportType(
+                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        for (NetworkRegistrationInfo nri : nriList) {
+            if (nri.isInService()) {
+                logv("getWwanIsInService: return true");
+                return true;
+            }
+        }
+
+        logv("getWwanIsInService: return false");
+        return false;
+    }
+
+    private static void logv(@NonNull String log) {
+        Rlog.v(TAG, log);
     }
 
     private static void logd(@NonNull String log) {
