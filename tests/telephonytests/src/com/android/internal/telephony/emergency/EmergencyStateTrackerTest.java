@@ -3171,6 +3171,207 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
                 anyBoolean(), eq(0));
     }
 
+    /**
+     * Test Phone selection.
+     * SIM absent and SIM ready on the other Phone.
+     */
+    @Test
+    @SmallTest
+    public void testSwitchPhoneAbsentAndReady() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        Phone phone0 = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        Phone phone1 = getPhone(1);
+
+        // Phone0
+        doReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+                .when(phone0).getSubId();
+        doReturn(TelephonyManager.SIM_STATE_ABSENT)
+                .when(mTelephonyManagerProxy).getSimState(eq(0));
+
+        // Phone1
+        doReturn(2).when(phone1).getSubId();
+        doReturn(TelephonyManager.SIM_STATE_READY)
+                .when(mTelephonyManagerProxy).getSimState(eq(1));
+
+        CompletableFuture<Integer> future = emergencyStateTracker.startEmergencyCall(
+                phone0, mTestConnection1, true);
+        processAllMessages();
+
+        assertTrue(future.isDone());
+        // Expect: DisconnectCause#EMERGENCY_PERM_FAILURE
+        assertEquals(future.getNow(DisconnectCause.NOT_DISCONNECTED),
+                Integer.valueOf(DisconnectCause.EMERGENCY_PERM_FAILURE));
+        verify(phone0, never()).setEmergencyMode(anyInt(), any(Message.class));
+    }
+
+    /**
+     * Test Phone selection.
+     * PIN locked and SIM ready on the other Phone.
+     */
+    @Test
+    @SmallTest
+    public void testSwitchPhonePinLockedAndReady() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        Phone phone0 = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        Phone phone1 = getPhone(1);
+
+        // Phone0
+        doReturn(1).when(phone0).getSubId();
+        doReturn(TelephonyManager.SIM_STATE_PIN_REQUIRED)
+                .when(mTelephonyManagerProxy).getSimState(eq(0));
+
+        // Phone1
+        doReturn(2).when(phone1).getSubId();
+        doReturn(TelephonyManager.SIM_STATE_READY)
+                .when(mTelephonyManagerProxy).getSimState(eq(1));
+
+        CompletableFuture<Integer> future = emergencyStateTracker.startEmergencyCall(
+                phone0, mTestConnection1, true);
+        processAllMessages();
+
+        assertTrue(future.isDone());
+        // Expect: DisconnectCause#EMERGENCY_PERM_FAILURE
+        assertEquals(future.getNow(DisconnectCause.NOT_DISCONNECTED),
+                Integer.valueOf(DisconnectCause.EMERGENCY_PERM_FAILURE));
+        verify(phone0, never()).setEmergencyMode(anyInt(), any(Message.class));
+    }
+
+    /**
+     * Test Phone selection.
+     * SIM ready and SIM ready on the other Phone.
+     */
+    @Test
+    @SmallTest
+    public void testSwitchPhoneReadyAndReady() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        Phone phone0 = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        Phone phone1 = getPhone(1);
+
+        // Phone0
+        doReturn(1).when(phone0).getSubId();
+        doReturn(TelephonyManager.SIM_STATE_READY)
+                .when(mTelephonyManagerProxy).getSimState(eq(0));
+
+        // Phone1
+        doReturn(2).when(phone1).getSubId();
+        doReturn(TelephonyManager.SIM_STATE_READY)
+                .when(mTelephonyManagerProxy).getSimState(eq(1));
+
+        CompletableFuture<Integer> future = emergencyStateTracker.startEmergencyCall(
+                phone0, mTestConnection1, true);
+        processAllMessages();
+
+        assertFalse(future.isDone());
+        verify(phone0).setEmergencyMode(anyInt(), any(Message.class));
+    }
+
+    /**
+     * Test Phone selection.
+     * PIN locked and PIN locked on the other Phone.
+     */
+    @Test
+    @SmallTest
+    public void testSwitchPhonePinLockedAndPinLocked() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        Phone phone0 = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        Phone phone1 = getPhone(1);
+
+        // Phone0
+        doReturn(1).when(phone0).getSubId();
+        doReturn(TelephonyManager.SIM_STATE_PIN_REQUIRED)
+                .when(mTelephonyManagerProxy).getSimState(eq(0));
+
+        // Phone1
+        doReturn(2).when(phone1).getSubId();
+        doReturn(TelephonyManager.SIM_STATE_PIN_REQUIRED)
+                .when(mTelephonyManagerProxy).getSimState(eq(1));
+
+        CompletableFuture<Integer> future = emergencyStateTracker.startEmergencyCall(
+                phone0, mTestConnection1, true);
+        processAllMessages();
+
+        assertFalse(future.isDone());
+        verify(phone0).setEmergencyMode(anyInt(), any(Message.class));
+    }
+
+    /**
+     * Test Phone selection.
+     * SIM absent and SIM absent on default Phone.
+     */
+    @Test
+    @SmallTest
+    public void testSwitchPhoneAbsentAndAbsentOnDefaultPhone() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        Phone phone0 = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        Phone phone1 = getPhone(1);
+
+        // Phone0
+        doReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+                .when(phone0).getSubId();
+        doReturn(TelephonyManager.SIM_STATE_ABSENT)
+                .when(mTelephonyManagerProxy).getSimState(eq(0));
+
+        // Phone1
+        doReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+                .when(phone1).getSubId();
+        doReturn(TelephonyManager.SIM_STATE_ABSENT)
+                .when(mTelephonyManagerProxy).getSimState(eq(1));
+
+        CompletableFuture<Integer> future = emergencyStateTracker.startEmergencyCall(
+                phone1, mTestConnection1, true);
+        processAllMessages();
+
+        assertTrue(future.isDone());
+        // Expect: DisconnectCause#EMERGENCY_PERM_FAILURE
+        assertEquals(future.getNow(DisconnectCause.NOT_DISCONNECTED),
+                Integer.valueOf(DisconnectCause.EMERGENCY_PERM_FAILURE));
+        verify(phone1, never()).setEmergencyMode(anyInt(), any(Message.class));
+    }
+
+    /**
+     * Test Phone selection.
+     * PIN locked and PIN locked on default Phone.
+     */
+    @Test
+    @SmallTest
+    public void testSwitchPhonePinLockedandPinLockedOnDefaultPhone() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        Phone phone0 = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        Phone phone1 = getPhone(1);
+
+        // Phone0
+        doReturn(1).when(phone0).getSubId();
+        doReturn(TelephonyManager.SIM_STATE_PIN_REQUIRED)
+                .when(mTelephonyManagerProxy).getSimState(eq(0));
+
+        // Phone1
+        doReturn(2).when(phone1).getSubId();
+        doReturn(TelephonyManager.SIM_STATE_PIN_REQUIRED)
+                .when(mTelephonyManagerProxy).getSimState(eq(1));
+
+        CompletableFuture<Integer> future = emergencyStateTracker.startEmergencyCall(
+                phone1, mTestConnection1, true);
+        processAllMessages();
+
+        assertTrue(future.isDone());
+        // Expect: DisconnectCause#EMERGENCY_PERM_FAILURE
+        assertEquals(future.getNow(DisconnectCause.NOT_DISCONNECTED),
+                Integer.valueOf(DisconnectCause.EMERGENCY_PERM_FAILURE));
+        verify(phone1, never()).setEmergencyMode(anyInt(), any(Message.class));
+    }
+
     private EmergencyStateTracker setupEmergencyStateTracker(
             boolean isSuplDdsSwitchRequiredForEmergencyCall) {
         doReturn(mPhoneSwitcher).when(mPhoneSwitcherProxy).getPhoneSwitcher();
