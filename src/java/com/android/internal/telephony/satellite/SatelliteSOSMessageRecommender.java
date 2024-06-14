@@ -243,6 +243,8 @@ public class SatelliteSOSMessageRecommender extends Handler {
     }
 
     private void handleEmergencyCallStartedEvent(@NonNull Connection connection) {
+        mSatelliteController.setLastEmergencyCallTime();
+
         if (sendEventDisplayEmergencyMessageForcefully(connection)) {
             return;
         }
@@ -344,6 +346,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
 
     private void handleEmergencyCallConnectionStateChangedEvent(
             @NonNull Pair<String, Integer> arg) {
+        mSatelliteController.setLastEmergencyCallTime();
         if (mEmergencyConnection == null) {
             // Either the call was not created or the timer already timed out.
             return;

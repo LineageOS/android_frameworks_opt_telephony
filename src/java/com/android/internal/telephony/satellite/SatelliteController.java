@@ -425,6 +425,11 @@ public class SatelliteController extends Handler {
     private long mWaitTimeForSatelliteEnablingResponse;
     private long mDemoPointingAlignedDurationMillis;
     private long mDemoPointingNotAlignedDurationMillis;
+    private final Object mLock = new Object();
+    @GuardedBy("mLock")
+    private long mLastEmergencyCallTime;
+    private long mSatelliteEmergencyModeDurationMillis;
+    private static final int DEFAULT_SATELLITE_EMERGENCY_MODE_DURATION_SECONDS = 300;
 
     /** Key used to read/write satellite system notification done in shared preferences. */
     private static final String SATELLITE_SYSTEM_NOTIFICATION_DONE_KEY =
@@ -570,6 +575,8 @@ public class SatelliteController extends Handler {
         mDemoPointingAlignedDurationMillis = getDemoPointingAlignedDurationMillisFromResources();
         mDemoPointingNotAlignedDurationMillis =
                 getDemoPointingNotAlignedDurationMillisFromResources();
+        mSatelliteEmergencyModeDurationMillis =
+                getSatelliteEmergencyModeDurationFromOverlayConfig(context);
     }
 
     /**
@@ -4979,5 +4986,42 @@ public class SatelliteController extends Handler {
         }
         // Also turn off persisted logging until new session is started
         loggerBackend.setLoggingEnabled(false);
+    }
+
+    /**
+     * Set last emergency call time to the current time.
+     */
+    public void setLastEmergencyCallTime() {
+        synchronized (mLock) {
+            mLastEmergencyCallTime = getElapsedRealtime();
+            plogd("mLastEmergencyCallTime=" + mLastEmergencyCallTime);
+        }
+    }
+
+    /**
+     * Check if satellite is in emergency mode.
+     */
+    public boolean isInEmergencyMode() {
+        synchronized (mLock) {
+            if (mLastEmergencyCallTime == 0) return false;
+
+            long currentTime = getElapsedRealtime();
+            if ((currentTime - mLastEmergencyCallTime) <= mSatelliteEmergencyModeDurationMillis) {
+                plogd("Satellite is in emergency mode");
+                return true;
+            }
+            return false;
+        }
+    }
+
+    private long getSatelliteEmergencyModeDurationFromOverlayConfig(@NonNull Context context) {
+        Integer duration = DEFAULT_SATELLITE_EMERGENCY_MODE_DURATION_SECONDS;
+        try {
+            duration = context.getResources().getInteger(com.android.internal.R.integer
+                    .config_satellite_emergency_mode_duration);
+        } catch (Resources.NotFoundException ex) {
+            ploge("getSatelliteEmergencyModeDurationFromOverlayConfig: got ex=" + ex);
+        }
+        return TimeUnit.SECONDS.toMillis(duration);
     }
 }
