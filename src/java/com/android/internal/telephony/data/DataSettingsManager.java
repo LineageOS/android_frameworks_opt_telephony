@@ -20,6 +20,7 @@ import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.content.ContentResolver;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -47,6 +48,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SettingsObserver;
 import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.metrics.DeviceTelephonyPropertiesStats;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
@@ -57,6 +59,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
@@ -88,6 +91,7 @@ public class DataSettingsManager extends Handler {
     private static final int EVENT_INITIALIZE = 11;
 
     private final Phone mPhone;
+    private final @NonNull FeatureFlags mFeatureFlags;
     private final ContentResolver mResolver;
     private final SettingsObserver mSettingsObserver;
     private final String mLogTag;
@@ -178,10 +182,12 @@ public class DataSettingsManager extends Handler {
      * @param callback Data settings manager callback.
      */
     public DataSettingsManager(@NonNull Phone phone,
-            @NonNull DataNetworkController dataNetworkController, @NonNull Looper looper,
+            @NonNull DataNetworkController dataNetworkController,
+            @NonNull FeatureFlags featureFlags, @NonNull Looper looper,
             @NonNull DataSettingsManagerCallback callback) {
         super(looper);
         mPhone = phone;
+        mFeatureFlags = Objects.requireNonNull(featureFlags);
         mLogTag = "DSMGR-" + mPhone.getPhoneId();
         log("DataSettingsManager created.");
         mSubId = mPhone.getSubId();
@@ -264,6 +270,12 @@ public class DataSettingsManager extends Handler {
         }
     }
 
+    private boolean hasCalling() {
+        if (!mFeatureFlags.minimalTelephonyCdmCheck()) return true;
+        return mPhone.getContext().getPackageManager().hasSystemFeature(
+            PackageManager.FEATURE_TELEPHONY_CALLING);
+    }
+
     /**
      * Called when needed to register for all events that data network controller is interested.
      */
@@ -281,9 +293,12 @@ public class DataSettingsManager extends Handler {
         mSettingsObserver.observe(
                 Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED),
                 EVENT_PROVISIONING_DATA_ENABLED_CHANGED);
-        mPhone.getCallTracker().registerForVoiceCallStarted(this, EVENT_CALL_STATE_CHANGED, null);
-        mPhone.getCallTracker().registerForVoiceCallEnded(this, EVENT_CALL_STATE_CHANGED, null);
-        if (mPhone.getImsPhone() != null) {
+        if (hasCalling()) {
+            mPhone.getCallTracker().registerForVoiceCallStarted(this, EVENT_CALL_STATE_CHANGED,
+                    null);
+            mPhone.getCallTracker().registerForVoiceCallEnded(this, EVENT_CALL_STATE_CHANGED, null);
+        }
+        if (hasCalling() && mPhone.getImsPhone() != null) {
             mPhone.getImsPhone().getCallTracker().registerForVoiceCallStarted(
                     this, EVENT_CALL_STATE_CHANGED, null);
             mPhone.getImsPhone().getCallTracker().registerForVoiceCallEnded(

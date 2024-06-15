@@ -1270,8 +1270,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     }
 
-    private @NonNull final FeatureFlags mFeatureFlags;
-
     //***** Events
 
 
@@ -1284,8 +1282,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @VisibleForTesting
     public ImsPhoneCallTracker(ImsPhone phone, ConnectorFactory factory, Executor executor,
             FeatureFlags featureFlags) {
+        super(featureFlags);
+
         this.mPhone = phone;
-        mFeatureFlags = featureFlags;
         mConnectorFactory = factory;
         if (executor != null) {
             mExecutor = executor;
@@ -3596,14 +3595,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 ImsPhoneConnection conn = findConnection(imsCall);
                 // Since onCallInitiating and onCallProgressing reset mPendingMO,
                 // we can't depend on mPendingMO.
-                if ((reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
-                        || reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_NOT_REGISTERED
-                        || reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED)
-                        && conn != null) {
+                if (conn != null) {
                     logi("onCallStartFailed eccCategory=" + eccCategory);
-                    if (reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
-                            || reasonInfo.getExtraCode()
-                                    == ImsReasonInfo.EXTRA_CODE_CALL_RETRY_EMERGENCY) {
+                    int reason = reasonInfo.getCode();
+                    int extraCode = reasonInfo.getExtraCode();
+                    if ((reason == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED
+                            && extraCode == ImsReasonInfo.EXTRA_CODE_CALL_RETRY_EMERGENCY)
+                            || (reason == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL)) {
                         conn.setNonDetectableEmergencyCallInfo(eccCategory);
                     }
                     conn.setImsReasonInfo(reasonInfo);
@@ -4468,13 +4466,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         public void onCallQualityChanged(ImsCall imsCall, CallQuality callQuality) {
             // convert ServiceState.radioTech to TelephonyManager.NetworkType constant
             mPhone.onCallQualityChanged(callQuality, imsCall.getNetworkType());
-            String callId = imsCall.getSession().getCallId();
-            CallQualityMetrics cqm = mCallQualityMetrics.get(callId);
-            if (cqm == null) {
-                cqm = new CallQualityMetrics(mPhone);
+            if (imsCall.getSession() != null) {
+                String callId = imsCall.getSession().getCallId();
+                CallQualityMetrics cqm = mCallQualityMetrics.get(callId);
+                if (cqm == null) {
+                    cqm = new CallQualityMetrics(mPhone);
+                }
+                cqm.saveCallQuality(callQuality);
+                mCallQualityMetrics.put(callId, cqm);
             }
-            cqm.saveCallQuality(callQuality);
-            mCallQualityMetrics.put(callId, cqm);
 
             ImsPhoneConnection conn = findConnection(imsCall);
             if (conn != null) {

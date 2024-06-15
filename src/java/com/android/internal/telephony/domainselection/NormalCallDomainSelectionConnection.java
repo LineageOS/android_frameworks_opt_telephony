@@ -20,6 +20,8 @@ import static android.telephony.DomainSelectionService.SELECTOR_TYPE_CALLING;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.net.Uri;
+import android.telecom.PhoneAccount;
 import android.telephony.AccessNetworkConstants.RadioAccessNetworkType;
 import android.telephony.Annotation.DisconnectCauses;
 import android.telephony.DisconnectCause;
@@ -78,7 +80,7 @@ public class NormalCallDomainSelectionConnection extends DomainSelectionConnecti
     /** {@inheritDoc} */
     @Override
     public void onRequestEmergencyNetworkScan(@RadioAccessNetworkType int[] preferredNetworks,
-            @EmergencyScanType int scanType) {
+            @EmergencyScanType int scanType, boolean resetScan) {
         // Not expected with normal calling.
         // Override to prevent abnormal behavior.
     }
@@ -119,7 +121,7 @@ public class NormalCallDomainSelectionConnection extends DomainSelectionConnecti
                         slotId, subId, SELECTOR_TYPE_CALLING)
                         .setEmergency(false)
                         .setCallId(callId)
-                        .setNumber(number)
+                        .setAddress(Uri.fromParts(PhoneAccount.SCHEME_TEL, number, null))
                         .setCsDisconnectCause(callFailCause)
                         .setVideoCall(isVideoCall);
 

@@ -102,12 +102,12 @@ import android.telephony.ims.aidl.ISrvccStartedCallback;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
-import android.test.suitebuilder.annotation.MediumTest;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
+import androidx.test.filters.MediumTest;
+import androidx.test.filters.SmallTest;
 
 import com.android.ims.FeatureConnector;
 import com.android.ims.ImsCall;
@@ -2494,6 +2494,34 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertNotNull(emergencyNumber);
         assertEquals(EMERGENCY_SERVICE_CATEGORY_AMBULANCE,
                 emergencyNumber.getEmergencyServiceCategoryBitmask());
+    }
+
+    @Test
+    @SmallTest
+    public void testDomainSelectionEmergencyPermFailure() {
+        doReturn(true).when(mDomainSelectionResolver).isDomainSelectionSupported();
+        startOutgoingCall();
+        ImsPhoneConnection c = mCTUT.mForegroundCall.getFirstConnection();
+        mImsCallListener.onCallStartFailed(mSecondImsCall,
+                new ImsReasonInfo(ImsReasonInfo.CODE_EMERGENCY_PERM_FAILURE, -1));
+        processAllMessages();
+        assertNotNull(c.getImsReasonInfo());
+        assertEquals(ImsReasonInfo.CODE_EMERGENCY_PERM_FAILURE,
+                c.getImsReasonInfo().getCode());
+    }
+
+    @Test
+    @SmallTest
+    public void testDomainSelectionEmergencyTempFailure() {
+        doReturn(true).when(mDomainSelectionResolver).isDomainSelectionSupported();
+        startOutgoingCall();
+        ImsPhoneConnection c = mCTUT.mForegroundCall.getFirstConnection();
+        mImsCallListener.onCallStartFailed(mSecondImsCall,
+                new ImsReasonInfo(ImsReasonInfo.CODE_EMERGENCY_TEMP_FAILURE, -1));
+        processAllMessages();
+        assertNotNull(c.getImsReasonInfo());
+        assertEquals(ImsReasonInfo.CODE_EMERGENCY_TEMP_FAILURE,
+                c.getImsReasonInfo().getCode());
     }
 
     @Test

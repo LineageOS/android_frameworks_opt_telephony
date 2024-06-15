@@ -41,3 +41,24 @@ flag {
     description: "This flag terminates active video call instead holding when accepting 2nd incoming video call as audio only"
     bug:"309548300"
 }
+
+flag {
+    name: "emergency_registration_state"
+    namespace: "telephony"
+    description: "This flag is created to notify emergency registration state changed."
+    bug:"312101946"
+}
+
+flag {
+    name: "call_extra_for_non_hold_supported_carriers"
+    namespace: "telephony"
+    description: "For DSDA devices, controls whether the existing call will be dropped when an incoming call on a different sub is answered, when either sub does not support hold capability."
+    bug:"315993953"
+}
+
+flag {
+    name: "update_roaming_state_to_set_wfc_mode"
+    namespace: "telephony"
+    description: "This flag updates roaming state to set wfc mode"
+    bug:"317298331"
+}

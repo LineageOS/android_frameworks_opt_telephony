@@ -18,7 +18,8 @@ package com.android.internal.telephony;
 
 import android.telephony.TelephonyManager;
 import android.test.AndroidTestCase;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.telephony.Rlog;
 

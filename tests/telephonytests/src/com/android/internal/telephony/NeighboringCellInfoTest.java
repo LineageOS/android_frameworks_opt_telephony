@@ -15,15 +15,16 @@
  */
 package com.android.internal.telephony;
 
-import android.os.Parcel;
-import android.test.AndroidTestCase;
-import android.telephony.NeighboringCellInfo;
-import android.test.suitebuilder.annotation.SmallTest;
-
-import static android.telephony.TelephonyManager.NETWORK_TYPE_UNKNOWN;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_EDGE;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_GPRS;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_UMTS;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_UNKNOWN;
+
+import android.os.Parcel;
+import android.telephony.NeighboringCellInfo;
+import android.test.AndroidTestCase;
+
+import androidx.test.filters.SmallTest;
 
 public class NeighboringCellInfoTest extends AndroidTestCase {
     @SmallTest

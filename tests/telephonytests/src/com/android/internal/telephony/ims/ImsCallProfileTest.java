@@ -27,8 +27,8 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.telecom.DisconnectCause;
 import android.telephony.ims.ImsCallProfile;
-import android.test.suitebuilder.annotation.SmallTest;
 
+import androidx.test.filters.SmallTest;
 import androidx.test.runner.AndroidJUnit4;
 
 import org.junit.Test;

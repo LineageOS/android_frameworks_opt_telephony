@@ -21,8 +21,9 @@ import static junit.framework.Assert.assertEquals;
 import static org.junit.Assert.assertArrayEquals;
 import static org.mockito.Mockito.mock;
 
-import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Pair;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.TestExecutorService;
 

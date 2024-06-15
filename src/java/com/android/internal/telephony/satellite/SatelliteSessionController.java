@@ -40,7 +40,7 @@ import android.os.Message;
 import android.os.RemoteException;
 import android.os.SystemProperties;
 import android.telephony.Rlog;
-import android.telephony.satellite.ISatelliteStateCallback;
+import android.telephony.satellite.ISatelliteModemStateCallback;
 import android.telephony.satellite.SatelliteManager;
 import android.telephony.satellite.stub.ISatelliteGateway;
 import android.telephony.satellite.stub.SatelliteGatewayService;
@@ -130,7 +130,7 @@ public class SatelliteSessionController extends StateMachine {
     private long mSatelliteStayAtListeningFromSendingMillis;
     private long mSatelliteStayAtListeningFromReceivingMillis;
     private long mSatelliteNbIotInactivityTimeoutMillis;
-    private final ConcurrentHashMap<IBinder, ISatelliteStateCallback> mListeners;
+    private final ConcurrentHashMap<IBinder, ISatelliteModemStateCallback> mListeners;
     @SatelliteManager.SatelliteModemState private int mCurrentState;
     final boolean mIsSatelliteSupported;
     private boolean mIsDemoMode = false;
@@ -272,7 +272,8 @@ public class SatelliteSessionController extends StateMachine {
      *
      * @param callback The callback to handle the satellite modem state changed event.
      */
-    public void registerForSatelliteModemStateChanged(@NonNull ISatelliteStateCallback callback) {
+    public void registerForSatelliteModemStateChanged(
+            @NonNull ISatelliteModemStateCallback callback) {
         try {
             callback.onSatelliteModemStateChanged(mCurrentState);
             mListeners.put(callback.asBinder(), callback);
@@ -286,9 +287,10 @@ public class SatelliteSessionController extends StateMachine {
      * If callback was not registered before, the request will be ignored.
      *
      * @param callback The callback that was passed to
-     *                 {@link #registerForSatelliteModemStateChanged(ISatelliteStateCallback)}.
+     * {@link #registerForSatelliteModemStateChanged(ISatelliteModemStateCallback)}.
      */
-    public void unregisterForSatelliteModemStateChanged(@NonNull ISatelliteStateCallback callback) {
+    public void unregisterForSatelliteModemStateChanged(
+            @NonNull ISatelliteModemStateCallback callback) {
         mListeners.remove(callback.asBinder());
     }
 
@@ -356,6 +358,7 @@ public class SatelliteSessionController extends StateMachine {
         }
         return true;
     }
+
     /**
      * Adjusts listening timeout duration when demo mode is on
      *
@@ -709,6 +712,9 @@ public class SatelliteSessionController extends StateMachine {
                     && datagramTransferState.receiveState
                     == SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE) {
                 startNbIotInactivityTimer();
+            } else if (isSending(datagramTransferState.sendState)
+                    || isReceiving(datagramTransferState.receiveState)) {
+                restartNbIotInactivityTimer();
             }
         }
     }
@@ -759,9 +765,8 @@ public class SatelliteSessionController extends StateMachine {
 
         private void handleEventDatagramTransferStateChanged(
                 @NonNull DatagramTransferState datagramTransferState) {
-            if (datagramTransferState.sendState == SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING
-                    || datagramTransferState.receiveState
-                    == SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING) {
+            if (isSending(datagramTransferState.sendState)
+                    || isReceiving(datagramTransferState.receiveState)) {
                 transitionTo(mTransferringState);
             }
         }
@@ -809,7 +814,7 @@ public class SatelliteSessionController extends StateMachine {
     private void notifyStateChangedEvent(@SatelliteManager.SatelliteModemState int state) {
         mDatagramController.onSatelliteModemStateChanged(state);
 
-        List<ISatelliteStateCallback> toBeRemoved = new ArrayList<>();
+        List<ISatelliteModemStateCallback> toBeRemoved = new ArrayList<>();
         mListeners.values().forEach(listener -> {
             try {
                 listener.onSatelliteModemStateChanged(state);
@@ -970,6 +975,11 @@ public class SatelliteSessionController extends StateMachine {
     private long getSatelliteNbIotInactivityTimeoutMillis() {
         return mContext.getResources().getInteger(
                 R.integer.config_satellite_nb_iot_inactivity_timeout_millis);
+    }
+
+    private void restartNbIotInactivityTimer() {
+        stopNbIotInactivityTimer();
+        startNbIotInactivityTimer();
     }
 
     private void startNbIotInactivityTimer() {

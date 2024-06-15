@@ -139,7 +139,8 @@ public class DataProfileManagerTest extends TelephonyTest {
                 Telephony.Carriers.SKIP_464XLAT,
                 Telephony.Carriers.ALWAYS_ON,
                 Telephony.Carriers.INFRASTRUCTURE_BITMASK,
-                Telephony.Carriers.ESIM_BOOTSTRAP_PROVISIONING
+                Telephony.Carriers.ESIM_BOOTSTRAP_PROVISIONING,
+                Telephony.Carriers.EDITED_STATUS
         };
 
         private int mPreferredApnSet = 0;
@@ -180,7 +181,8 @@ public class DataProfileManagerTest extends TelephonyTest {
                         -1,                     // skip_464xlat
                         0,                      // always_on
                         1,                      // INFRASTRUCTURE_CELLULAR
-                        0                       // esim_bootstrap_provisioning
+                        0,                      // esim_bootstrap_provisioning
+                        0                       // UNEDITED
                 },
                 // default internet data profile for RAT CDMA, to test update preferred data profile
                 new Object[]{
@@ -216,8 +218,9 @@ public class DataProfileManagerTest extends TelephonyTest {
                         -1,                     // carrier_id
                         -1,                     // skip_464xlat
                         0,                      // always_on
-                        1,                       // INFRASTRUCTURE_CELLULAR
-                        0                       // esim_bootstrap_provisioning
+                        1,                      // INFRASTRUCTURE_CELLULAR
+                        0,                      // esim_bootstrap_provisioning
+                        0                       // UNEDITED
                 },
                 new Object[]{
                         2,                      // id
@@ -252,8 +255,9 @@ public class DataProfileManagerTest extends TelephonyTest {
                         -1,                     // carrier_id
                         -1,                     // skip_464xlat
                         0,                      // always_on
-                        1,                       // INFRASTRUCTURE_CELLULAR
-                        0                       // esim_bootstrap_provisioning
+                        1,                      // INFRASTRUCTURE_CELLULAR
+                        0,                      // esim_bootstrap_provisioning
+                        0                       // UNEDITED
                 },
                 new Object[]{
                         3,                      // id
@@ -288,8 +292,9 @@ public class DataProfileManagerTest extends TelephonyTest {
                         -1,                     // carrier_id
                         -1,                     // skip_464xlat
                         0,                      // always_on
-                        1,                       // INFRASTRUCTURE_CELLULAR
-                        0                       // esim_bootstrap_provisioning
+                        1,                      // INFRASTRUCTURE_CELLULAR
+                        0,                      // esim_bootstrap_provisioning
+                        0                       // UNEDITED
                 },
                 new Object[]{
                         4,                      // id
@@ -325,8 +330,9 @@ public class DataProfileManagerTest extends TelephonyTest {
                         -1,                     // carrier_id
                         -1,                     // skip_464xlat
                         0,                      // always_on
-                        1,                       // INFRASTRUCTURE_CELLULAR
-                        0                       // esim_bootstrap_provisioning
+                        1,                      // INFRASTRUCTURE_CELLULAR
+                        0,                      // esim_bootstrap_provisioning
+                        0                       // UNEDITED
                 },
                 // This APN entry is created to test de-duping.
                 new Object[]{
@@ -363,8 +369,9 @@ public class DataProfileManagerTest extends TelephonyTest {
                         -1,                     // carrier_id
                         -1,                     // skip_464xlat
                         0,                      // always_on
-                        1,                       // INFRASTRUCTURE_CELLULAR
-                        0                       // esim_bootstrap_provisioning
+                        1,                      // INFRASTRUCTURE_CELLULAR
+                        0,                      // esim_bootstrap_provisioning
+                        0                       // UNEDITED
                 },
                 new Object[]{
                         6,                      // id
@@ -400,8 +407,9 @@ public class DataProfileManagerTest extends TelephonyTest {
                         -1,                     // carrier_id
                         -1,                     // skip_464xlat
                         0,                      // always_on
-                        1,                       // INFRASTRUCTURE_CELLULAR
-                        0                       // esim_bootstrap_provisioning
+                        1,                      // INFRASTRUCTURE_CELLULAR
+                        0,                      // esim_bootstrap_provisioning
+                        0                       // UNEDITED
                 },
                 new Object[]{
                         7,                      // id
@@ -437,8 +445,9 @@ public class DataProfileManagerTest extends TelephonyTest {
                         -1,                     // carrier_id
                         -1,                     // skip_464xlat
                         0,                      // always_on
-                        1,                       // INFRASTRUCTURE_CELLULAR
-                        0                       // esim_bootstrap_provisioning
+                        1,                      // INFRASTRUCTURE_CELLULAR
+                        0,                      // esim_bootstrap_provisioning
+                        0                       // UNEDITED
                 },
                 new Object[]{
                         8,                      // id
@@ -474,8 +483,9 @@ public class DataProfileManagerTest extends TelephonyTest {
                         -1,                     // carrier_id
                         -1,                     // skip_464xlat
                         0,                      // always_on
-                        1,                       // INFRASTRUCTURE_CELLULAR
-                        0                       // esim_bootstrap_provisioning
+                        1,                      // INFRASTRUCTURE_CELLULAR
+                        0,                      // esim_bootstrap_provisioning
+                        0                       // UNEDITED
                 },
                 new Object[]{
                         9,                      // id
@@ -512,10 +522,11 @@ public class DataProfileManagerTest extends TelephonyTest {
                         -1,                     // skip_464xlat
                         0,                      // always_on
                         2,                      // INFRASTRUCTURE_SATELLITE
-                        0                      // esim_bootstrap_provisioning
+                        0,                      // esim_bootstrap_provisioning
+                        0                       // UNEDITED
                 },
                 new Object[]{
-                        10,                      // id
+                        10,                     // id
                         PLMN,                   // numeric
                         ESIM_BOOTSTRAP_PROVISIONING_APN, // name
                         ESIM_BOOTSTRAP_PROVISIONING_APN, // apn
@@ -527,7 +538,7 @@ public class DataProfileManagerTest extends TelephonyTest {
                         "",                     // user
                         "",                     // password
                         -1,                     // authtype
-                        "default,supl",          // types
+                        "default,supl",         // types
                         "IPV4V6",               // protocol
                         "IPV4V6",               // roaming_protocol
                         1,                      // carrier_enabled
@@ -548,8 +559,9 @@ public class DataProfileManagerTest extends TelephonyTest {
                         -1,                     // carrier_id
                         -1,                     // skip_464xlat
                         0,                      // always_on
-                        1,                       // INFRASTRUCTURE_CELLULAR
-                        1                       // esim_bootstrap_provisioning
+                        1,                      // INFRASTRUCTURE_CELLULAR
+                        1,                      // esim_bootstrap_provisioning
+                        0                       // UNEDITED
                 },
                 new Object[]{
                         11,                      // id
@@ -585,8 +597,9 @@ public class DataProfileManagerTest extends TelephonyTest {
                         -1,                     // carrier_id
                         -1,                     // skip_464xlat
                         0,                      // always_on
-                        1,                       // INFRASTRUCTURE_SATELLITE
-                        1                       // esim_bootstrap_provisioning
+                        1,                      // INFRASTRUCTURE_SATELLITE
+                        1,                      // esim_bootstrap_provisioning
+                        0                       // UNEDITED
                 },
                 new Object[]{
                         12,                     // id
@@ -622,14 +635,15 @@ public class DataProfileManagerTest extends TelephonyTest {
                         -1,                     // carrier_id
                         -1,                     // skip_464xlat
                         0,                      // always_on
-                        2,                       // INFRASTRUCTURE_SATELLITE
-                        1                       // esim_bootstrap_provisioning
+                        2,                      // INFRASTRUCTURE_SATELLITE
+                        1,                      // esim_bootstrap_provisioning
+                        0                       // UNEDITED
                 },
                 new Object[]{
-                        13,                      // id
+                        13,                     // id
                         PLMN,                   // numeric
-                        RCS_APN1,                // name
-                        RCS_APN1,                // apn
+                        RCS_APN1,               // name
+                        RCS_APN1,               // apn
                         "",                     // proxy
                         "",                     // port
                         "",                     // mmsc
@@ -659,8 +673,9 @@ public class DataProfileManagerTest extends TelephonyTest {
                         -1,                     // carrier_id
                         -1,                     // skip_464xlat
                         0,                      // always_on
-                        2,                       // INFRASTRUCTURE_SATELLITE
-                        1                       // esim_bootstrap_provisioning
+                        2,                      // INFRASTRUCTURE_SATELLITE
+                        1,                      // esim_bootstrap_provisioning
+                        0                       // UNEDITED
                 }
         );
 

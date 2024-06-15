@@ -23,11 +23,11 @@ import static junit.framework.Assert.assertTrue;
 
 import android.net.Uri;
 import android.telephony.PhoneNumberUtils;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.text.SpannableStringBuilder;
 import android.text.style.TtsSpan;
 
 import androidx.test.filters.FlakyTest;
+import androidx.test.filters.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;

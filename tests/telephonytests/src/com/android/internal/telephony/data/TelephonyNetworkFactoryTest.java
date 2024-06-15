@@ -35,12 +35,12 @@ import android.net.NetworkRequest;
 import android.net.TelephonyNetworkSpecifier;
 import android.os.Looper;
 import android.os.Message;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.util.ArraySet;
 
 import androidx.test.filters.FlakyTest;
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.RadioConfig;
@@ -190,7 +190,8 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
     private void createMockedTelephonyComponents() throws Exception {
         replaceInstance(PhoneSwitcher.class, "sPhoneSwitcher", null, mPhoneSwitcher);
 
-        mTelephonyNetworkFactoryUT = new TelephonyNetworkFactory(Looper.myLooper(), mPhone);
+        mTelephonyNetworkFactoryUT = new TelephonyNetworkFactory(Looper.myLooper(), mPhone,
+                mFeatureFlags);
         final ArgumentCaptor<NetworkProvider> providerCaptor =
                 ArgumentCaptor.forClass(NetworkProvider.class);
         verify(mConnectivityManager).registerNetworkProvider(providerCaptor.capture());

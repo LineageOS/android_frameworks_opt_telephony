@@ -1,0 +1,15 @@
+package: "com.android.internal.telephony.flags"
+
+flag {
+  name: "simultaneous_calling_indications"
+  namespace: "telephony"
+  description: "APIs that are used to notify simultaneous calling changes to other applications."
+  bug: "297446980"
+}
+
+flag {
+  name: "show_call_fail_notification_for_2g_toggle"
+  namespace: "telephony"
+  description: "Used in DisconnectCause and TelephonyConnection if a non-emergency call fails on a device with no 2G, to guard whether a user can see an updated error message reminding the 2G is disabled and potentially disrupting their call connectivity"
+  bug: "300142897"
+}

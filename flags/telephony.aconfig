@@ -13,3 +13,31 @@ flag {
     description: "This flag controls telephony feature flags mapping for public APIs and CTS."
     bug:"297989574"
 }
+
+flag {
+    name: "prevent_system_server_and_phone_deadlock"
+    namespace: "telephony"
+    description: "This flag controls the order of the binder to prevent deadlock in system_server"
+    bug: "315973270"
+}
+
+flag {
+    name: "prevent_invocation_repeat_of_ril_call_when_device_does_not_support_voice"
+    namespace: "telephony"
+    description: "This flag prevents repeat invocation of call related APIs in RIL when the device is not voice capable"
+    bug: "290833783"
+}
+
+flag {
+    name: "minimal_telephony_cdm_check"
+    namespace: "telephony"
+    description: "This flag disables Calling/Data/Messaging features if their respective feature is missing"
+    bug: "310710841"
+}
+
+flag {
+    name: "minimal_telephony_managers_conditional_on_features"
+    namespace: "telephony"
+    description: "This flag enables checking for telephony features before initializing corresponding managers"
+    bug: "310710841"
+}

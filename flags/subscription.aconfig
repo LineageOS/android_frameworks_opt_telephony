@@ -6,3 +6,38 @@ flag {
   description: "To support separation between personal and work from TelephonyManager and SubscriptionManager API perspective."
   bug: "296076674"
 }
+
+flag {
+  name: "enforce_subscription_user_filter"
+  namespace: "telephony"
+  description: "Enabled flag means subscriptions enforce filtering result base on calling user handle. It marks the telephony completion of user filtering."
+  bug: "296076674"
+}
+
+flag {
+  name: "data_only_cellular_service"
+  namespace: "telephony"
+  description: "Supports customized cellular service capabilities per subscription."
+  bug: "296097429"
+}
+
+flag {
+  name: "data_only_service_allow_emergency_call_only"
+  namespace: "telephony"
+  description: "Support emergency call only for data only cellular service."
+  bug: "296097429"
+}
+
+flag {
+  name: "support_psim_to_esim_conversion"
+  namespace: "telephony"
+  description: "Support the psim to esim conversion."
+  bug: "315073761"
+}
+
+flag {
+  name: "subscription_user_association_query"
+  namespace: "telephony"
+  description: "Supports querying if a subscription is associated with the caller"
+  bug: "325045841"
+}

@@ -88,12 +88,12 @@ import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
-import android.test.suitebuilder.annotation.MediumTest;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.text.TextUtils;
 import android.util.Pair;
 
 import androidx.test.filters.FlakyTest;
+import androidx.test.filters.MediumTest;
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.R;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
@@ -260,7 +260,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSatelliteController = Mockito.mock(SatelliteController.class);
         replaceInstance(SatelliteController.class, "sInstance", null,
                 mSatelliteController);
-        doReturn(new ArrayList<>()).when(mSatelliteController).getSatellitePlmnList(anyInt());
+        doReturn(new ArrayList<>()).when(mSatelliteController).getSatellitePlmnsForCarrier(
+                anyInt());
 
         mContextFixture.putResource(R.string.kg_text_message_separator, " \u2014 ");
 
@@ -3372,7 +3373,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertFalse(sst.mSS.isIwlanPreferred());
 
         when(mAccessNetworksManager.isAnyApnOnIwlan()).thenReturn(true);
-        accessNetworksManagerCallback.onPreferredTransportChanged(0);
+        accessNetworksManagerCallback.onPreferredTransportChanged(0, false);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
 
         assertTrue(sst.mSS.isIwlanPreferred());
@@ -3386,7 +3387,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         CellIdentityGsm cellIdentity =
                 new CellIdentityGsm(0, 1, 900, 5, "101", "23", "test", "tst",
                         Collections.emptyList());
-        doReturn(Arrays.asList("10123")).when(mSatelliteController).getSatellitePlmnList(anyInt());
+        doReturn(Arrays.asList("10123")).when(mSatelliteController).getSatellitePlmnsForCarrier(
+                anyInt());
         doReturn(satelliteSupportedServiceList).when(mSatelliteController)
                 .getSupportedSatelliteServices(sst.mSubId, "10123");
 

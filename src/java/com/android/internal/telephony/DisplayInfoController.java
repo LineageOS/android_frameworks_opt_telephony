@@ -108,7 +108,7 @@ public class DisplayInfoController extends Handler {
                 TelephonyManager.NETWORK_TYPE_UNKNOWN,
                 TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
                 false);
-        mNetworkTypeController = new NetworkTypeController(phone, this);
+        mNetworkTypeController = new NetworkTypeController(phone, this, featureFlags);
         // EVENT_UPDATE will transition from DefaultState to the current state
         // and update the TelephonyDisplayInfo based on the current state.
         mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);

@@ -16,14 +16,20 @@
 
 package com.android.internal.telephony.euicc;
 
+import static android.content.pm.PackageManager.FEATURE_TELEPHONY_EUICC;
+import static android.telephony.TelephonyManager.ENABLE_FEATURE_MAPPING;
+
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
+import android.app.compat.CompatChanges;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ComponentInfo;
+import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.RemoteException;
@@ -39,6 +45,7 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
@@ -66,6 +73,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     private SimSlotStatusChangedBroadcastReceiver mSimSlotStatusChangeReceiver;
     private EuiccController mEuiccController;
     private UiccController mUiccController;
+    private FeatureFlags mFeatureFlags;
+    private PackageManager mPackageManager;
 
     private static EuiccCardController sInstance;
 
@@ -87,10 +96,10 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     /** Initialize the instance. Should only be called once. */
-    public static EuiccCardController init(Context context) {
+    public static EuiccCardController init(Context context, FeatureFlags featureFlags) {
         synchronized (EuiccCardController.class) {
             if (sInstance == null) {
-                sInstance = new EuiccCardController(context);
+                sInstance = new EuiccCardController(context, featureFlags);
             } else {
                 Log.wtf(TAG, "init() called multiple times! sInstance = " + sInstance);
             }
@@ -110,8 +119,9 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         return sInstance;
     }
 
-    private EuiccCardController(Context context) {
-        this(context, new Handler(), EuiccController.get(), UiccController.getInstance());
+    private EuiccCardController(Context context, FeatureFlags featureFlags) {
+        this(context, new Handler(), EuiccController.get(), UiccController.getInstance(),
+                featureFlags);
         TelephonyFrameworkInitializer
                 .getTelephonyServiceManager()
                 .getEuiccCardControllerServiceRegisterer()
@@ -123,13 +133,16 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             Context context,
             Handler handler,
             EuiccController euiccController,
-            UiccController uiccController) {
+            UiccController uiccController,
+            FeatureFlags featureFlags) {
         mContext = context;
         mAppOps = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
 
         mEuiccMainThreadHandler = handler;
         mUiccController = uiccController;
         mEuiccController = euiccController;
+        mFeatureFlags = featureFlags;
+        mPackageManager = context.getPackageManager();
 
         if (isBootUp(mContext)) {
             mSimSlotStatusChangeReceiver = new SimSlotStatusChangedBroadcastReceiver();
@@ -293,6 +306,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "getAllProfiles");
+
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
@@ -342,6 +357,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "getProfile");
+
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
@@ -389,6 +406,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
             return;
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "getEnabledProfile");
 
         String iccId = null;
         boolean isValidSlotPort = false;
@@ -474,6 +493,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "disableProfile");
+
         EuiccPort port = getEuiccPortFromIccId(cardId, iccid);
         if (port == null) {
             try {
@@ -521,6 +542,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
             return;
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "switchToProfile");
 
         EuiccPort port = getEuiccPort(cardId, portIndex);
         if (port == null) {
@@ -588,6 +611,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "setNickname");
+
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
@@ -635,6 +660,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
             return;
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "deleteProfile");
 
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
@@ -687,6 +714,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "resetMemory");
+
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
@@ -738,6 +767,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "getDefaultSmdpAddress");
+
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
@@ -785,6 +816,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
             return;
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "getSmdsAddress");
 
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
@@ -834,6 +867,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "setDefaultSmdpAddress");
+
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
@@ -881,6 +916,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
             return;
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "getRulesAuthTable");
 
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
@@ -931,6 +968,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "getEuiccChallenge");
+
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
@@ -978,6 +1017,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
             return;
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "getEuiccInfo1");
 
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
@@ -1027,6 +1068,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "getEuiccInfo2");
+
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
@@ -1075,6 +1118,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
             return;
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "authenticateServer");
 
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
@@ -1126,6 +1171,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "prepareDownload");
+
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
@@ -1174,6 +1221,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
             return;
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "loadBoundProfilePackage");
 
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
@@ -1226,6 +1275,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "cancelSession");
+
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
@@ -1273,6 +1324,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
             return;
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "listNotifications");
 
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
@@ -1323,6 +1376,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "retrieveNotificationList");
+
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
@@ -1371,6 +1426,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
             return;
         }
+
+        enforceTelephonyFeatureWithException(callingPackage, "retrieveNotification");
 
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
@@ -1421,6 +1478,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
+        enforceTelephonyFeatureWithException(callingPackage, "removeNotificationFromList");
+
         EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
@@ -1467,6 +1526,29 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         pw.println("mBestComponent=" + mBestComponent);
 
         Binder.restoreCallingIdentity(token);
+    }
+
+    /**
+     * Make sure the device has required telephony feature
+     *
+     * @throws UnsupportedOperationException if the device does not have required telephony feature
+     */
+    private void enforceTelephonyFeatureWithException(@Nullable String callingPackage,
+            @NonNull String methodName) {
+        if (callingPackage == null || mPackageManager == null) {
+            return;
+        }
+
+        if (!mFeatureFlags.enforceTelephonyFeatureMappingForPublicApis()
+                || !CompatChanges.isChangeEnabled(ENABLE_FEATURE_MAPPING, callingPackage,
+                Binder.getCallingUserHandle())) {
+            return;
+        }
+
+        if (!mPackageManager.hasSystemFeature(FEATURE_TELEPHONY_EUICC)) {
+            throw new UnsupportedOperationException(
+                    methodName + " is unsupported without " + FEATURE_TELEPHONY_EUICC);
+        }
     }
 
     private static void loge(String message) {

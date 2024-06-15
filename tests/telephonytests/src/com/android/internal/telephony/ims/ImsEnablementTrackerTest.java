@@ -33,8 +33,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.RemoteException;
 import android.telephony.ims.aidl.IImsServiceController;
-import android.test.suitebuilder.annotation.SmallTest;
 
+import androidx.test.filters.SmallTest;
 import androidx.test.runner.AndroidJUnit4;
 
 import org.junit.After;

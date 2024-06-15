@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -40,6 +41,7 @@ import static org.mockito.Mockito.when;
 import android.Manifest;
 import android.annotation.Nullable;
 import android.app.PendingIntent;
+import android.app.admin.flags.Flags;
 import android.compat.testing.PlatformCompatChangeRule;
 import android.content.Context;
 import android.content.Intent;
@@ -48,6 +50,8 @@ import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.os.Parcelable;
 import android.os.RemoteException;
+import android.os.UserManager;
+import android.platform.test.flag.junit.SetFlagsRule;
 import android.provider.Settings;
 import android.service.euicc.DownloadSubscriptionResult;
 import android.service.euicc.EuiccService;
@@ -70,6 +74,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.euicc.EuiccConnector.GetOtaStatusCommandCallback;
 import com.android.internal.telephony.euicc.EuiccConnector.OtaStatusChangedCallback;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.uicc.UiccSlot;
 
 import libcore.junit.util.compat.CoreCompatChangeRule.DisableCompatChanges;
@@ -92,11 +97,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @RunWith(AndroidJUnit4.class)
 public class EuiccControllerTest extends TelephonyTest {
     @Rule
     public TestRule compatChangeRule = new PlatformCompatChangeRule();
+    @Rule
+    public final SetFlagsRule mSetFlagsRule = new SetFlagsRule();
+
     private static final DownloadableSubscription SUBSCRIPTION =
             DownloadableSubscription.forActivationCode("abcde");
 
@@ -132,6 +141,7 @@ public class EuiccControllerTest extends TelephonyTest {
     private static final String ICC_ID = "54321";
     private static final int CARD_ID = 25;
     private static final int REMOVABLE_CARD_ID = 26;
+    private static final long AVAILABLE_MEMORY = 123L;
 
     // Mocked classes
     private EuiccConnector mMockConnector;
@@ -156,8 +166,8 @@ public class EuiccControllerTest extends TelephonyTest {
         // Number of OTA status changed.
         private int mNumOtaStatusChanged;
 
-        TestEuiccController(Context context, EuiccConnector connector) {
-            super(context, connector);
+        TestEuiccController(Context context, EuiccConnector connector, FeatureFlags featureFlags) {
+            super(context, connector, featureFlags);
             mNumOtaStatusChanged = 0;
         }
 
@@ -186,6 +196,19 @@ public class EuiccControllerTest extends TelephonyTest {
         }
 
         @Override
+        public void refreshSubscriptionsAndSendResult(
+                PendingIntent callbackIntent,
+                int resultCode,
+                Intent extrasIntent,
+                boolean isCallerAdmin,
+                String callingPackage,
+                int cardId,
+                Set<Integer> subscriptions) {
+            mCalledRefreshSubscriptionsAndSendResult = true;
+            sendResult(callbackIntent, resultCode, extrasIntent);
+        }
+
+        @Override
         public void sendOtaStatusChangedBroadcast() {
             ++mNumOtaStatusChanged;
         }
@@ -196,7 +219,7 @@ public class EuiccControllerTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         mMockConnector = Mockito.mock(EuiccConnector.class);
         mUiccSlot = Mockito.mock(UiccSlot.class);
-        mController = new TestEuiccController(mContext, mMockConnector);
+        mController = new TestEuiccController(mContext, mMockConnector, mFeatureFlags);
 
         PackageInfo pi = new PackageInfo();
         pi.packageName = PACKAGE_NAME;
@@ -252,6 +275,89 @@ public class EuiccControllerTest extends TelephonyTest {
         setGetEidPermissions(false /* hasPhoneStatePrivileged */, true /* hasCarrierPrivileges */);
         assertEquals("ABCDE", callGetEid(true /* success */, "ABCDE" /* eid */,
                 TelephonyManager.UNSUPPORTED_CARD_ID));
+    }
+
+    @Test(expected = SecurityException.class)
+    public void testGetAvailableMemoryInBytes_noPrivileges() throws Exception {
+        setGetAvailableMemoryInBytesPermissions(
+                false /* hasPhoneState */,
+                false /* hasPhoneStatePrivileged */,
+                false /* hasCarrierPrivileges */);
+        callGetAvailableMemoryInBytes(AvailableMemoryCallbackStatus.SUCCESS,
+                AVAILABLE_MEMORY, CARD_ID);
+    }
+
+    @Test
+    public void testGetAvailableMemoryInBytes_withPhoneState() throws Exception {
+        setGetAvailableMemoryInBytesPermissions(
+                true /* hasPhoneState */,
+                false /* hasPhoneStatePrivileged */,
+                false /* hasCarrierPrivileges */);
+        assertEquals(
+                AVAILABLE_MEMORY,
+                callGetAvailableMemoryInBytes(AvailableMemoryCallbackStatus.SUCCESS,
+                        AVAILABLE_MEMORY, CARD_ID));
+    }
+
+    @Test
+    public void testGetAvailableMemoryInBytes_withPhoneStatePrivileged() throws Exception {
+        setGetAvailableMemoryInBytesPermissions(
+                false /* hasPhoneState */,
+                true /* hasPhoneStatePrivileged */,
+                false /* hasCarrierPrivileges */);
+        assertEquals(
+                AVAILABLE_MEMORY,
+                callGetAvailableMemoryInBytes(AvailableMemoryCallbackStatus.SUCCESS,
+                        AVAILABLE_MEMORY, CARD_ID));
+    }
+
+    @Test
+    public void testGetAvailableMemoryInBytes_withCarrierPrivileges() throws Exception {
+        setGetAvailableMemoryInBytesPermissions(
+                false /* hasPhoneState */,
+                false /* hasPhoneStatePrivileged */,
+                true /* hasCarrierPrivileges */);
+        assertEquals(
+                AVAILABLE_MEMORY,
+                callGetAvailableMemoryInBytes(AvailableMemoryCallbackStatus.SUCCESS,
+                        AVAILABLE_MEMORY, CARD_ID));
+    }
+
+    @Test
+    public void testGetAvailableMemoryInBytes_failure() throws Exception {
+        setGetAvailableMemoryInBytesPermissions(
+                true /* hasPhoneState */,
+                false /* hasPhoneStatePrivileged */,
+                false /* hasCarrierPrivileges */);
+        assertEquals(
+                EuiccManager.EUICC_MEMORY_FIELD_UNAVAILABLE,
+                callGetAvailableMemoryInBytes(AvailableMemoryCallbackStatus.UNAVAILABLE,
+                        AVAILABLE_MEMORY, CARD_ID));
+    }
+
+    @Test
+    public void testGetAvailableMemoryInBytes_exception() throws Exception {
+        setGetAvailableMemoryInBytesPermissions(
+                true /* hasPhoneState */,
+                false /* hasPhoneStatePrivileged */,
+                false /* hasCarrierPrivileges */);
+        assertThrows(UnsupportedOperationException.class, () -> callGetAvailableMemoryInBytes(
+                AvailableMemoryCallbackStatus.EXCEPTION,
+                AVAILABLE_MEMORY, CARD_ID));
+    }
+
+    @Test
+    public void testGetAvailableMemoryInBytes_unsupportedCardId() throws Exception {
+        setGetAvailableMemoryInBytesPermissions(
+                false /* hasPhoneState */,
+                false /* hasPhoneStatePrivileged */,
+                true /* hasCarrierPrivileges */);
+        assertEquals(
+                AVAILABLE_MEMORY,
+                callGetAvailableMemoryInBytes(
+                        AvailableMemoryCallbackStatus.SUCCESS,
+                        AVAILABLE_MEMORY,
+                        TelephonyManager.UNSUPPORTED_CARD_ID));
     }
 
     @Test(expected = SecurityException.class)
@@ -746,6 +852,132 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
+    public void testDownloadSubscription_noAdminPermission()
+            throws Exception {
+        mSetFlagsRule.enableFlags(Flags.FLAG_ESIM_MANAGEMENT_ENABLED);
+        setHasWriteEmbeddedPermission(false);
+        setHasManageDevicePolicyManagedSubscriptionsPermission(false);
+        setUpUiccSlotData();
+        GetDownloadableSubscriptionMetadataResult result =
+                new GetDownloadableSubscriptionMetadataResult(
+                        EuiccService.RESULT_OK, SUBSCRIPTION_WITH_METADATA);
+        prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
+        PackageInfo pi = new PackageInfo();
+        pi.packageName = PACKAGE_NAME;
+        when(mPackageManager.getPackageInfo(eq(PACKAGE_NAME), anyInt())).thenReturn(pi);
+        setCanManageSubscriptionOnTargetSim(false /* isTargetEuicc */, false /* hasPrivileges */);
+
+        callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
+                12345, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
+
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).downloadSubscription(anyInt(), anyInt(),
+                any(), anyBoolean(), anyBoolean(), any(), any());
+    }
+
+    @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
+    public void testDownloadSubscription_adminPermission()
+            throws Exception {
+        mSetFlagsRule.enableFlags(Flags.FLAG_ESIM_MANAGEMENT_ENABLED);
+        setHasManageDevicePolicyManagedSubscriptionsPermission(true);
+        setHasWriteEmbeddedPermission(false);
+
+        callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
+                EuiccService.RESULT_OK, 0 /* resolvableError */, "whatever" /* callingPackage */);
+
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
+    }
+
+    @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
+    public void testDownloadSubscription_adminPermission_usingSwitchAfterDownload()
+            throws Exception {
+        mSetFlagsRule.enableFlags(Flags.FLAG_ESIM_MANAGEMENT_ENABLED);
+        setHasWriteEmbeddedPermission(false);
+        setHasManageDevicePolicyManagedSubscriptionsPermission(true);
+        setUpUiccSlotData();
+        GetDownloadableSubscriptionMetadataResult result =
+                new GetDownloadableSubscriptionMetadataResult(
+                        EuiccService.RESULT_OK, SUBSCRIPTION_WITH_METADATA);
+        prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
+        PackageInfo pi = new PackageInfo();
+        pi.packageName = PACKAGE_NAME;
+        when(mPackageManager.getPackageInfo(eq(PACKAGE_NAME), anyInt())).thenReturn(pi);
+        setCanManageSubscriptionOnTargetSim(false /* isTargetEuicc */, false /* hasPrivileges */);
+
+        callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
+                12345, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
+
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).downloadSubscription(anyInt(), anyInt(),
+                any(), anyBoolean(), anyBoolean(), any(), any());
+    }
+
+    @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
+    public void testDownloadSubscription_onlyAdminManagedAllowed_callerNotAdmin_throws()
+            throws Exception {
+        mSetFlagsRule.enableFlags(Flags.FLAG_ESIM_MANAGEMENT_ENABLED);
+        setHasManageDevicePolicyManagedSubscriptionsPermission(false);
+        setHasWriteEmbeddedPermission(true);
+        doReturn(true)
+                .when(mUserManager)
+                .hasUserRestriction(UserManager.DISALLOW_SIM_GLOBALLY);
+
+        assertThrows(SecurityException.class,
+                () ->
+                        callDownloadSubscription(
+                                SUBSCRIPTION,
+                                false /* switchAfterDownload */,
+                                true /* complete */,
+                                EuiccService.RESULT_OK,
+                                0 /* resolvableError */,
+                                "whatever" /* callingPackage */));
+        assertFalse(mController.mCalledRefreshSubscriptionsAndSendResult);
+    }
+
+    @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
+    public void testDownloadSubscription_onlyAdminManagedAllowed_callerNotAdmin_disabled_success()
+            throws Exception {
+        mSetFlagsRule.disableFlags(Flags.FLAG_ESIM_MANAGEMENT_ENABLED);
+        setHasManageDevicePolicyManagedSubscriptionsPermission(false);
+        setHasWriteEmbeddedPermission(true);
+        doReturn(true)
+                .when(mUserManager)
+                .hasUserRestriction(UserManager.DISALLOW_SIM_GLOBALLY);
+
+        callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
+                EuiccService.RESULT_OK, 0 /* resolvableError */, "whatever" /* callingPackage */);
+
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
+    }
+
+    @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
+    public void testDownloadSubscription_onlyAdminManagedAllowed_callerIsAdmin_success()
+            throws Exception {
+        mSetFlagsRule.enableFlags(Flags.FLAG_ESIM_MANAGEMENT_ENABLED);
+        setHasManageDevicePolicyManagedSubscriptionsPermission(true);
+        setHasWriteEmbeddedPermission(false);
+        doReturn(true)
+                .when(mUserManager)
+                .hasUserRestriction(UserManager.DISALLOW_SIM_GLOBALLY);
+
+        callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
+                EuiccService.RESULT_OK, 0 /* resolvableError */, "whatever" /* callingPackage */);
+
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
+    }
+
+    @Test
     public void testDeleteSubscription_noSuchSubscription() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callDeleteSubscription(
@@ -787,6 +1019,82 @@ public class EuiccControllerTest extends TelephonyTest {
                 EuiccService.RESULT_OK, "whatever" /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
         assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
+    }
+
+
+    @Test
+    public void testDeleteSubscription_adminOwned_success() throws Exception {
+        mSetFlagsRule.enableFlags(Flags.FLAG_ESIM_MANAGEMENT_ENABLED);
+        setHasWriteEmbeddedPermission(false);
+        setHasManageDevicePolicyManagedSubscriptionsPermission(true);
+        String callingPackage = "whatever";
+        SubscriptionInfo subInfo1 = new SubscriptionInfo.Builder()
+                .setId(SUBSCRIPTION_ID)
+                .setEmbedded(true)
+                .setIccId(ICC_ID)
+                .setCardId(CARD_ID)
+                .setPortIndex(TelephonyManager.DEFAULT_PORT_INDEX)
+                .setGroupOwner(callingPackage)
+                .build();
+        ArrayList<SubscriptionInfo> subInfos = new ArrayList<>(Arrays.asList(subInfo1));
+        when(mSubscriptionManager.getAvailableSubscriptionInfoList()).thenReturn(subInfos);
+
+        callDeleteSubscription(
+                SUBSCRIPTION_ID, ICC_ID, true /* complete */,
+                0 /* result */, callingPackage /* callingPackage */);
+
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK,
+                0 /* detailedCode */);
+    }
+
+    @Test
+    public void testDeleteSubscription_adminOwned_featureDisabled_success() throws Exception {
+        mSetFlagsRule.disableFlags(Flags.FLAG_ESIM_MANAGEMENT_ENABLED);
+        setHasWriteEmbeddedPermission(true);
+        setHasManageDevicePolicyManagedSubscriptionsPermission(false);
+        String callingPackage = "whatever";
+        SubscriptionInfo subInfo1 = new SubscriptionInfo.Builder()
+                .setId(SUBSCRIPTION_ID)
+                .setEmbedded(true)
+                .setIccId(ICC_ID)
+                .setCardId(CARD_ID)
+                .setPortIndex(TelephonyManager.DEFAULT_PORT_INDEX)
+                .setGroupOwner(callingPackage)
+                .build();
+        ArrayList<SubscriptionInfo> subInfos = new ArrayList<>(Arrays.asList(subInfo1));
+        when(mSubscriptionManager.getAvailableSubscriptionInfoList()).thenReturn(subInfos);
+
+        callDeleteSubscription(
+                SUBSCRIPTION_ID, ICC_ID, true /* complete */,
+                0 /* result */, callingPackage /* callingPackage */);
+
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK,
+                0 /* detailedCode */);
+    }
+
+    @Test
+    public void testDeleteSubscription_adminOwned_noPermissions_error() throws Exception {
+        mSetFlagsRule.enableFlags(Flags.FLAG_ESIM_MANAGEMENT_ENABLED);
+        setHasWriteEmbeddedPermission(false);
+        setHasManageDevicePolicyManagedSubscriptionsPermission(false);
+        String callingPackage = "whatever";
+        SubscriptionInfo subInfo1 = new SubscriptionInfo.Builder()
+                .setId(SUBSCRIPTION_ID)
+                .setEmbedded(true)
+                .setIccId(ICC_ID)
+                .setCardId(CARD_ID)
+                .setPortIndex(TelephonyManager.DEFAULT_PORT_INDEX)
+                .setGroupOwner(callingPackage)
+                .build();
+        ArrayList<SubscriptionInfo> subInfos = new ArrayList<>(Arrays.asList(subInfo1));
+        when(mSubscriptionManager.getAvailableSubscriptionInfoList()).thenReturn(subInfos);
+
+        callDeleteSubscription(
+                SUBSCRIPTION_ID, ICC_ID, true /* complete */,
+                0 /* result */, callingPackage /* callingPackage */);
+
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
+                0 /* detailedCode */);
     }
 
     @Test
@@ -1295,6 +1603,30 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @EnableCompatChanges({EuiccManager.INACTIVE_PORT_AVAILABILITY_CHECK,
+            TelephonyManager.ENABLE_FEATURE_MAPPING})
+    public void testIsSimPortAvailable_WithTelephonyFeatureMapping() {
+        // Feature flag enabled, device has required telephony feature.
+        doReturn(true).when(mFeatureFlags).enforceTelephonyFeatureMappingForPublicApis();
+        doReturn(true).when(mPackageManager).hasSystemFeature(
+                eq(PackageManager.FEATURE_TELEPHONY_EUICC));
+
+        setUiccCardInfos(false, true, true);
+
+        // assert non euicc card id
+        assertFalse(mController.isSimPortAvailable(REMOVABLE_CARD_ID, 0, TEST_PACKAGE_NAME));
+
+        // assert invalid port index
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 5 /* portIndex */, TEST_PACKAGE_NAME));
+
+        // Device does not have required telephony feature.
+        doReturn(false).when(mPackageManager).hasSystemFeature(
+                eq(PackageManager.FEATURE_TELEPHONY_EUICC));
+        assertThrows(UnsupportedOperationException.class,
+                () -> mController.isSimPortAvailable(REMOVABLE_CARD_ID, 0, TEST_PACKAGE_NAME));
+    }
+
+    @Test
     @EnableCompatChanges({EuiccManager.INACTIVE_PORT_AVAILABILITY_CHECK})
     public void testIsSimPortAvailable_invalidCase() {
         setUiccCardInfos(false, true, true);
@@ -1469,12 +1801,40 @@ public class EuiccControllerTest extends TelephonyTest {
         setHasCarrierPrivilegesOnActiveSubscription(hasCarrierPrivileges);
     }
 
+    private void setGetAvailableMemoryInBytesPermissions(
+            boolean hasPhoneState, boolean hasPhoneStatePrivileged, boolean hasCarrierPrivileges)
+            throws Exception {
+        doReturn(
+                        hasPhoneState
+                                ? PackageManager.PERMISSION_GRANTED
+                                : PackageManager.PERMISSION_DENIED)
+                .when(mContext)
+                .checkCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+        doReturn(
+                        hasPhoneStatePrivileged
+                                ? PackageManager.PERMISSION_GRANTED
+                                : PackageManager.PERMISSION_DENIED)
+                .when(mContext)
+                .checkCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        when(mTelephonyManager.getPhoneCount()).thenReturn(1);
+        setHasCarrierPrivilegesOnActiveSubscription(hasCarrierPrivileges);
+    }
+
     private void setHasWriteEmbeddedPermission(boolean hasPermission) {
         doReturn(hasPermission
                 ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED)
                 .when(mContext)
                 .checkCallingOrSelfPermission(Manifest.permission.WRITE_EMBEDDED_SUBSCRIPTIONS);
     }
+
+    private void setHasManageDevicePolicyManagedSubscriptionsPermission(boolean hasPermission) {
+        doReturn(hasPermission
+                ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED)
+                .when(mContext)
+                .checkCallingOrSelfPermission(
+                        Manifest.permission.MANAGE_DEVICE_POLICY_MANAGED_SUBSCRIPTIONS);
+    }
+
 
     private void setHasMasterClearPermission(boolean hasPermission) {
         Stubber stubber = hasPermission ? doNothing() : doThrow(new SecurityException());
@@ -1590,6 +1950,33 @@ public class EuiccControllerTest extends TelephonyTest {
         }).when(mMockConnector).getEid(anyInt(),
                 Mockito.<EuiccConnector.GetEidCommandCallback>any());
         return mController.getEid(cardId, PACKAGE_NAME);
+    }
+
+    private long callGetAvailableMemoryInBytes(
+            final AvailableMemoryCallbackStatus status,
+            final long availableMemoryInBytes,
+            int cardId) {
+        doAnswer(
+                new Answer<Void>() {
+                    @Override
+                    public Void answer(InvocationOnMock invocation) throws Exception {
+                        EuiccConnector.GetAvailableMemoryInBytesCommandCallback cb =
+                                invocation.getArgument(1 /* resultCallback */);
+                        if (status == AvailableMemoryCallbackStatus.SUCCESS) {
+                            cb.onGetAvailableMemoryInBytesComplete(availableMemoryInBytes);
+                        } else if (status == AvailableMemoryCallbackStatus.UNAVAILABLE) {
+                            cb.onEuiccServiceUnavailable();
+                        } else if (status == AvailableMemoryCallbackStatus.EXCEPTION) {
+                            cb.onUnsupportedOperationExceptionComplete("exception message");
+                        }
+                        return null;
+                    }
+                })
+                .when(mMockConnector)
+                .getAvailableMemoryInBytes(
+                        anyInt(),
+                        Mockito.<EuiccConnector.GetAvailableMemoryInBytesCommandCallback>any());
+        return mController.getAvailableMemoryInBytes(cardId, PACKAGE_NAME);
     }
 
     private int callGetOtaStatus(final boolean success, final int status) {
@@ -1861,5 +2248,11 @@ public class EuiccControllerTest extends TelephonyTest {
                             EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE, 0));
         }
         return mController.mExtrasIntent;
+    }
+
+    public enum AvailableMemoryCallbackStatus {
+        SUCCESS,
+        EXCEPTION,
+        UNAVAILABLE
     }
 }

@@ -376,6 +376,7 @@ public class PointingAppController {
             loge("startPointingUI: launchIntent is null");
             return;
         }
+        logd("startPointingUI: needFullScreenPointingUI: " + needFullScreenPointingUI);
         launchIntent.putExtra("needFullScreen", needFullScreenPointingUI);
 
         try {

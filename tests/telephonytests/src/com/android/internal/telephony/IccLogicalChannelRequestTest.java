@@ -22,7 +22,8 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.os.Parcel;
 import android.telephony.SubscriptionManager;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import junit.framework.TestCase;
 

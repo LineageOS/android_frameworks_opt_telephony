@@ -98,6 +98,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_NEIGHB
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_PHONE_CAPABILITY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_PREFERRED_NETWORK_TYPE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_RADIO_CAPABILITY;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SIMULTANEOUS_CALLING_SUPPORT;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SIM_PHONEBOOK_CAPACITY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SIM_PHONEBOOK_RECORDS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SIM_STATUS;
@@ -116,9 +117,11 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP_WAI
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_REGISTRATION_STATE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ISIM_AUTHENTICATION;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_CELLULAR_IDENTIFIER_DISCLOSED_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_N1_MODE_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_NULL_CIPHER_AND_INTEGRITY_ENABLED;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_SECURITY_ALGORITHMS_UPDATED_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_VONR_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_LAST_CALL_FAIL_CAUSE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_LAST_DATA_CALL_FAIL_CAUSE;
@@ -157,6 +160,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_BAND_M
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_CALL_FORWARD;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_CALL_WAITING;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_CARRIER_INFO_IMSI_ENCRYPTION;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_CELLULAR_IDENTIFIER_DISCLOSED_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_CLIR;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_DATA_PROFILE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_DATA_THROTTLING;
@@ -176,6 +180,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_NULL_C
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFERRED_DATA_MODEM;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_RADIO_CAPABILITY;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SECURITY_ALGORITHMS_UPDATED_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SIGNAL_STRENGTH_REPORTING_CRITERIA;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SIM_CARD_POWER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SMSC_ADDRESS;
@@ -231,6 +236,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_OTA_PRO
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_PRL_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CELLULAR_IDENTIFIER_DISCLOSED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CELL_INFO_LIST;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CONNECTION_SETUP_FAILURE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_DATA_CALL_LIST_CHANGED;
@@ -272,7 +278,9 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_SIM
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESTRICTED_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RIL_CONNECTED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RINGBACK_TONE;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SECURITY_ALGORITHMS_UPDATED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIGNAL_STRENGTH;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIMULTANEOUS_CALLING_SUPPORT_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_REFRESH;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_SMS_STORAGE_FULL;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SLICING_CONFIG_CHANGED;
@@ -300,6 +308,7 @@ import android.service.carrier.CarrierIdentifier;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
 import android.telephony.BarringInfo;
+import android.telephony.CarrierInfo;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellConfigLte;
 import android.telephony.CellIdentity;
@@ -326,7 +335,7 @@ import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.CellularIdentifierDisclosure;
 import android.telephony.ClosedSubscriberGroupInfo;
 import android.telephony.DomainSelectionService;
-import android.telephony.EmergencyRegResult;
+import android.telephony.EmergencyRegistrationResult;
 import android.telephony.LinkCapacityEstimate;
 import android.telephony.ModemInfo;
 import android.telephony.NetworkRegistrationInfo;
@@ -334,6 +343,7 @@ import android.telephony.PhoneCapability;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.RadioAccessSpecifier;
+import android.telephony.SecurityAlgorithmUpdate;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SignalThresholdInfo;
@@ -4030,6 +4040,9 @@ public class RILUtils {
     public static List<CarrierIdentifier> convertHalCarrierList(
             android.hardware.radio.sim.Carrier[] carrierList) {
         List<CarrierIdentifier> ret = new ArrayList<>();
+        if (carrierList == null) {
+            return ret;
+        }
         for (int i = 0; i < carrierList.length; i++) {
             String mcc = carrierList[i].mcc;
             String mnc = carrierList[i].mnc;
@@ -4048,6 +4061,85 @@ public class RILUtils {
             ret.add(new CarrierIdentifier(mcc, mnc, spn, imsi, gid1, gid2));
         }
         return ret;
+    }
+
+    /**
+     * Convert an array of CarrierInfo defined in
+     * radio/aidl/android/hardware/radio/sim/CarrierInfo.aidl to a list of CarrierInfo
+     * defined in android/service/carrier/CarrierInfo.java
+     *
+     * @param carrierInfos array of CarrierInfo defined in
+     *                     radio/aidl/android/hardware/radio/sim/CarrierInfo.aidl
+     * @return The converted list of CarrierInfo
+     */
+    public static List<CarrierInfo> convertAidlCarrierInfoList(
+            android.hardware.radio.sim.CarrierInfo[] carrierInfos) {
+        List<CarrierInfo> carrierInfoList = new ArrayList<>();
+        if (carrierInfos == null) {
+            loge("convertAidlCarrierInfoList received NULL carrierInfos");
+            return carrierInfoList;
+        }
+        for (int index = 0; index < carrierInfos.length; index++) {
+            String mcc = carrierInfos[index].mcc;
+            String mnc = carrierInfos[index].mnc;
+            String spn = carrierInfos[index].spn;
+            String gid1 = carrierInfos[index].gid1;
+            String gid2 = carrierInfos[index].gid2;
+            String imsi = carrierInfos[index].imsiPrefix;
+            String iccid = carrierInfos[index].iccid;
+            String impi = carrierInfos[index].impi;
+            List<android.hardware.radio.sim.Plmn> halEhplmn = carrierInfos[index].ehplmn;
+            List<String> eHplmnList = new ArrayList<>();
+            if (halEhplmn != null) {
+                for (int plmnIndex = 0; plmnIndex < halEhplmn.size(); plmnIndex++) {
+                    String ehplmnMcc = halEhplmn.get(plmnIndex).mcc;
+                    String ehplmnMnc = halEhplmn.get(plmnIndex).mnc;
+                    eHplmnList.add(ehplmnMcc + "," + ehplmnMnc);
+                }
+            } else {
+                loge("convertAidlCarrierInfoList ehplmList is NULL");
+            }
+            CarrierInfo carrierInfo = new CarrierInfo(mcc, mnc, spn, gid1, gid2, imsi, iccid, impi,
+                    eHplmnList);
+            carrierInfoList.add(carrierInfo);
+        }
+        return carrierInfoList;
+    }
+
+    /**
+     * Convert the sim policy defined in
+     * radio/aidl/android/hardware/radio/sim/SimLockMultiSimPolicy.aidl to the equivalent sim
+     * policy defined in android.telephony/CarrierRestrictionRules.MultiSimPolicy
+     *
+     * @param multiSimPolicy of type defined in SimLockMultiSimPolicy.aidl
+     * @return int of type CarrierRestrictionRules.MultiSimPolicy
+     */
+    public static @CarrierRestrictionRules.MultiSimPolicy int convertAidlSimLockMultiSimPolicy(
+            int multiSimPolicy) {
+        switch (multiSimPolicy) {
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.ONE_VALID_SIM_MUST_BE_PRESENT:
+                return CarrierRestrictionRules.MULTISIM_POLICY_ONE_VALID_SIM_MUST_BE_PRESENT;
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.APPLY_TO_ALL_SLOTS:
+                return CarrierRestrictionRules.MULTISIM_POLICY_APPLY_TO_ALL_SLOTS;
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.APPLY_TO_ONLY_SLOT_1:
+                return CarrierRestrictionRules.MULTISIM_POLICY_APPLY_TO_ONLY_SLOT_1;
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.VALID_SIM_MUST_PRESENT_ON_SLOT_1:
+                return CarrierRestrictionRules.MULTISIM_POLICY_VALID_SIM_MUST_PRESENT_ON_SLOT_1;
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.
+                    ACTIVE_SERVICE_ON_SLOT_1_TO_UNBLOCK_OTHER_SLOTS:
+                return CarrierRestrictionRules.
+                        MULTISIM_POLICY_ACTIVE_SERVICE_ON_SLOT_1_TO_UNBLOCK_OTHER_SLOTS;
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.
+                    ACTIVE_SERVICE_ON_ANY_SLOT_TO_UNBLOCK_OTHER_SLOTS:
+                return CarrierRestrictionRules.
+                        MULTISIM_POLICY_ACTIVE_SERVICE_ON_ANY_SLOT_TO_UNBLOCK_OTHER_SLOTS;
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.ALL_SIMS_MUST_BE_VALID:
+                return CarrierRestrictionRules.MULTISIM_POLICY_ALL_SIMS_MUST_BE_VALID;
+            case android.hardware.radio.sim.SimLockMultiSimPolicy.SLOT_POLICY_OTHER:
+                return CarrierRestrictionRules.MULTISIM_POLICY_SLOT_POLICY_OTHER;
+            default:
+                return CarrierRestrictionRules.MULTISIM_POLICY_NONE;
+        }
     }
 
     /**
@@ -4381,14 +4473,20 @@ public class RILUtils {
     public static PhoneCapability convertHalPhoneCapability(int[] deviceNrCapabilities, Object o) {
         int maxActiveVoiceCalls = 0;
         int maxActiveData = 0;
-        int maxActiveInternetData = 0;
         boolean validationBeforeSwitchSupported = false;
         List<ModemInfo> logicalModemList = new ArrayList<>();
         if (o instanceof android.hardware.radio.config.PhoneCapability) {
             final android.hardware.radio.config.PhoneCapability phoneCapability =
                     (android.hardware.radio.config.PhoneCapability) o;
             maxActiveData = phoneCapability.maxActiveData;
-            maxActiveInternetData = phoneCapability.maxActiveInternetData;
+            // If the maxActiveVoice field has been set, use that value. Otherwise, default to the
+            // legacy behavior and rely on the maxActiveInternetData field:
+            if (phoneCapability.maxActiveVoice ==
+                    android.hardware.radio.config.PhoneCapability.UNKNOWN) {
+                maxActiveVoiceCalls = phoneCapability.maxActiveInternetData;
+            } else {
+                maxActiveVoiceCalls = phoneCapability.maxActiveVoice;
+            }
             validationBeforeSwitchSupported = phoneCapability.isInternetLingeringSupported;
             for (int modemId : phoneCapability.logicalModemIds) {
                 logicalModemList.add(new ModemInfo(modemId));
@@ -4397,16 +4495,15 @@ public class RILUtils {
             final android.hardware.radio.config.V1_1.PhoneCapability phoneCapability =
                     (android.hardware.radio.config.V1_1.PhoneCapability) o;
             maxActiveData = phoneCapability.maxActiveData;
-            maxActiveInternetData = phoneCapability.maxActiveInternetData;
+            // maxActiveInternetData defines how many logical modems can have internet PDN
+            // connections simultaneously. For L+L DSDS modem it’s 1, and for DSDA modem it’s 2.
+            maxActiveVoiceCalls = phoneCapability.maxActiveInternetData;
             validationBeforeSwitchSupported = phoneCapability.isInternetLingeringSupported;
             for (android.hardware.radio.config.V1_1.ModemInfo modemInfo :
                     phoneCapability.logicalModemList) {
                 logicalModemList.add(new ModemInfo(modemInfo.modemId));
             }
         }
-        // maxActiveInternetData defines how many logical modems can have internet PDN connections
-        // simultaneously. For L+L DSDS modem it’s 1, and for DSDA modem it’s 2.
-        maxActiveVoiceCalls = maxActiveInternetData;
         return new PhoneCapability(maxActiveVoiceCalls, maxActiveData, logicalModemList,
                 validationBeforeSwitchSupported, deviceNrCapabilities);
     }
@@ -4449,13 +4546,13 @@ public class RILUtils {
     }
 
     /**
-     * Convert EmergencyRegResult.aidl to EmergencyRegResult.
+     * Convert EmergencyRegResult.aidl to EmergencyRegistrationResult.
      * @param halResult EmergencyRegResult.aidl in HAL.
-     * @return Converted EmergencyRegResult.
+     * @return Converted EmergencyRegistrationResult.
      */
-    public static EmergencyRegResult convertHalEmergencyRegResult(
+    public static EmergencyRegistrationResult convertHalEmergencyRegResult(
             android.hardware.radio.network.EmergencyRegResult halResult) {
-        return new EmergencyRegResult(
+        return new EmergencyRegistrationResult(
                 halResult.accessNetwork,
                 convertHalRegState(halResult.regState),
                 halResult.emcDomain,
@@ -5128,6 +5225,16 @@ public class RILUtils {
                 return "SET_LOCATION_PRIVACY_SETTING";
             case RIL_REQUEST_GET_LOCATION_PRIVACY_SETTING:
                 return "GET_LOCATION_PRIVACY_SETTING";
+            case RIL_REQUEST_IS_CELLULAR_IDENTIFIER_DISCLOSED_ENABLED:
+                return "IS_CELLULAR_IDENTIFIER_DISCLOSED_ENABLED";
+            case RIL_REQUEST_SET_CELLULAR_IDENTIFIER_DISCLOSED_ENABLED:
+                return "SET_CELLULAR_IDENTIFIER_DISCLOSED_ENABLED";
+            case RIL_REQUEST_SET_SECURITY_ALGORITHMS_UPDATED_ENABLED:
+                return "SET_SECURITY_ALGORITHMS_UPDATED_ENABLED";
+            case RIL_REQUEST_IS_SECURITY_ALGORITHMS_UPDATED_ENABLED:
+                return "IS_SECURITY_ALGORITHMS_UPDATED_ENABLED";
+            case RIL_REQUEST_GET_SIMULTANEOUS_CALLING_SUPPORT:
+                return "GET_SIMULTANEOUS_CALLING_SUPPORT";
             default:
                 return "<unknown request " + request + ">";
         }
@@ -5250,6 +5357,10 @@ public class RILUtils {
                 return "UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED";
             case RIL_UNSOL_SLICING_CONFIG_CHANGED:
                 return "UNSOL_SLICING_CONFIG_CHANGED";
+            case RIL_UNSOL_CELLULAR_IDENTIFIER_DISCLOSED:
+                return "UNSOL_CELLULAR_IDENTIFIER_DISCLOSED";
+            case RIL_UNSOL_SECURITY_ALGORITHMS_UPDATED:
+                return "UNSOL_SECURITY_ALGORITHMS_UPDATED";
             /* The follow unsols are not defined in RIL.h */
             case RIL_UNSOL_ICC_SLOT_STATUS:
                 return "UNSOL_ICC_SLOT_STATUS";
@@ -5273,6 +5384,8 @@ public class RILUtils {
                 return "UNSOL_TRIGGER_IMS_DEREGISTRATION";
             case RIL_UNSOL_IMEI_MAPPING_CHANGED:
                 return "UNSOL_IMEI_MAPPING_CHANGED";
+            case RIL_UNSOL_SIMULTANEOUS_CALLING_SUPPORT_CHANGED:
+                return "UNSOL_SIMULTANEOUS_CALLING_SUPPORT_CHANGED";
             default:
                 return "<unknown response " + response + ">";
         }
@@ -5688,6 +5801,20 @@ public class RILUtils {
                 identifierDisclsoure.identifier,
                 identifierDisclsoure.plmn,
                 identifierDisclsoure.isEmergency);
+    }
+
+    /** Convert an AIDL-based SecurityAlgorithmUpdate to its Java wrapper. */
+    public static SecurityAlgorithmUpdate convertSecurityAlgorithmUpdate(
+            android.hardware.radio.network.SecurityAlgorithmUpdate securityAlgorithmUpdate) {
+        if (securityAlgorithmUpdate == null) {
+            return null;
+        }
+
+        return new SecurityAlgorithmUpdate(
+                securityAlgorithmUpdate.connectionEvent,
+                securityAlgorithmUpdate.encryption,
+                securityAlgorithmUpdate.integrity,
+                securityAlgorithmUpdate.isUnprotectedEmergency);
     }
 
     private static void logd(String log) {

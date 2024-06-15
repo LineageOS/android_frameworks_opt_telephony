@@ -959,8 +959,8 @@ public class DataServiceManager extends Handler {
      * @param onCompleteMessage The result message for this request. Null if the client does not
      * care about the result.
      */
-    public void requestValidation(int cid, @Nullable Message onCompleteMessage) {
-        if (DBG) log("requestValidation");
+    public void requestNetworkValidation(int cid, @Nullable Message onCompleteMessage) {
+        if (DBG) log("requestNetworkValidation");
         if (!mBound) {
             loge("DataService is not bound.");
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
@@ -978,9 +978,9 @@ public class DataServiceManager extends Handler {
             mMessageMap.put(callback.asBinder(), onCompleteMessage);
         }
         try {
-            mIDataService.requestValidation(mPhone.getPhoneId(), cid, callback);
+            mIDataService.requestNetworkValidation(mPhone.getPhoneId(), cid, callback);
         } catch (RemoteException e) {
-            loge("Cannot invoke requestValidation on data service.");
+            loge("Cannot invoke requestNetworkValidation on data service.");
             if (callback != null) {
                 mMessageMap.remove(callback.asBinder());
             }

@@ -19,7 +19,8 @@ package com.android.internal.telephony;
 import static com.google.common.truth.Truth.assertThat;
 
 import android.os.Parcel;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.IccUtils;

@@ -18,12 +18,14 @@ package com.android.internal.telephony;
 import static org.junit.Assert.assertEquals;
 
 import android.telephony.PhoneNumberFormattingTextWatcher;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.text.Editable;
 import android.text.Selection;
 import android.text.SpannableStringBuilder;
 import android.text.TextWatcher;
 import android.text.style.TtsSpan;
+
+import androidx.test.filters.SmallTest;
+
 import org.junit.Ignore;
 import org.junit.Test;
 

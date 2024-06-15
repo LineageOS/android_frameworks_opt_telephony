@@ -16,8 +16,9 @@
 
 package com.android.internal.telephony;
 
+import androidx.test.filters.SmallTest;
+
 import junit.framework.TestCase;
-import android.test.suitebuilder.annotation.SmallTest;
 
 public class ATResponseParserTest extends TestCase {
     @SmallTest

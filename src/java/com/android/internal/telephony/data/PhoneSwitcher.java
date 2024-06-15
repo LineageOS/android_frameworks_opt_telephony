@@ -1522,18 +1522,22 @@ public class PhoneSwitcher extends Handler {
      */
     private void validate(int subId, boolean needValidation, int switchReason,
             @Nullable ISetOpportunisticDataCallback callback) {
-        logl("Validate subId " + subId + " due to " + switchReasonToString(switchReason)
-                + " needValidation=" + needValidation);
         int subIdToValidate = (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID)
                 ? mPrimaryDataSubId : subId;
+        logl("Validate subId " + subId + " due to " + switchReasonToString(switchReason)
+                + " needValidation=" + needValidation + " subIdToValidate=" + subIdToValidate
+                + " mAutoSelectedDataSubId=" + mAutoSelectedDataSubId
+                + " mPreferredDataSubId=" + mPreferredDataSubId.get());
         if (!isActiveSubId(subIdToValidate)) {
             logl("Can't switch data to inactive subId " + subIdToValidate);
             if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
                 // the default data sub is not selected yet, store the intent of switching to
                 // default subId once it becomes available.
                 mAutoSelectedDataSubId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
+                sendSetOpptCallbackHelper(callback, SET_OPPORTUNISTIC_SUB_SUCCESS);
+            } else {
+                sendSetOpptCallbackHelper(callback, SET_OPPORTUNISTIC_SUB_INACTIVE_SUBSCRIPTION);
             }
-            sendSetOpptCallbackHelper(callback, SET_OPPORTUNISTIC_SUB_INACTIVE_SUBSCRIPTION);
             return;
         }
 

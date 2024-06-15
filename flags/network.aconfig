@@ -1,10 +1,14 @@
 package: "com.android.internal.telephony.flags"
 
 flag {
-    name: "enable_carrier_config_n1_control"
+    name: "enable_carrier_config_n1_control_attempt2"
     namespace: "telephony"
     description: "enabling this flag allows KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY to control N1 mode enablement"
-    bug:"302033535"
+    bug:"328848947"
+
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
 }
 
 flag {
@@ -17,6 +21,48 @@ flag {
 flag {
   name: "enable_identifier_disclosure_transparency"
   namespace: "telephony"
+  description: "Guards APIs for enabling and disabling identifier disclosure transparency"
+  bug: "276752426"
+}
+
+flag {
+  name: "enable_identifier_disclosure_transparency_unsol_events"
+  namespace: "telephony"
   description: "Allows the framework to register for CellularIdentifierDisclosure events and emit notifications to the user about them"
   bug: "276752426"
+}
+
+flag {
+  name: "enable_modem_cipher_transparency"
+  namespace: "telephony"
+  description: "Guards APIs for enabling and disabling modem cipher transparency."
+  bug: "283336425"
+}
+
+flag {
+  name: "enable_modem_cipher_transparency_unsol_events"
+  namespace: "telephony"
+  description: "Allows the framework to register for SecurityAlgorithmChanged events and emit notifications to the user when a device is using null ciphers."
+  bug: "283336425"
+}
+
+flag {
+  name: "hide_prefer_3g_item"
+  namespace: "telephony"
+  description: "Used in the Preferred Network Types menu to determine if the 3G option is displayed."
+  bug: "310639009"
+}
+
+flag {
+  name: "support_nr_sa_rrc_idle"
+  namespace: "telephony"
+  description: "Support RRC idle for NR SA."
+  bug: "298233308"
+}
+
+flag {
+  name: "network_registration_info_reject_cause"
+  namespace: "telephony"
+  description: "Elevate NRI#getRejectCause from System to Public"
+  bug: "239730435"
 }

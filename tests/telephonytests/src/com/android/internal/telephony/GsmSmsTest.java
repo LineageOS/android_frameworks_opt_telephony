@@ -16,9 +16,12 @@
 
 package com.android.internal.telephony;
 
+import android.content.pm.PackageManager;
 import android.telephony.TelephonyManager;
 import android.test.AndroidTestCase;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.android.internal.telephony.gsm.SmsMessage;
 import com.android.internal.util.HexDump;
@@ -26,6 +29,12 @@ import com.android.internal.util.HexDump;
 import java.util.ArrayList;
 
 public class GsmSmsTest extends AndroidTestCase {
+
+    private boolean hasMessaging() {
+        final PackageManager pm = InstrumentationRegistry.getInstrumentation().getContext()
+                .getPackageManager();
+        return pm.hasSystemFeature(PackageManager.FEATURE_TELEPHONY_MESSAGING);
+    }
 
     @SmallTest
     public void testAddressing() throws Exception {
@@ -257,8 +266,8 @@ public class GsmSmsTest extends AndroidTestCase {
 
     @SmallTest
     public void testFragmentText() throws Exception {
-        boolean isGsmPhone = (TelephonyManager.getDefault().getPhoneType() ==
-                TelephonyManager.PHONE_TYPE_GSM);
+        boolean isGsmPhoneWithMessaging = (TelephonyManager.getDefault().getPhoneType()
+                == TelephonyManager.PHONE_TYPE_GSM) && hasMessaging();
 
         // Valid 160 character 7-bit text.
         String text = "123456789012345678901234567890123456789012345678901234567890" +
@@ -270,7 +279,7 @@ public class GsmSmsTest extends AndroidTestCase {
         assertEquals(1, ted.codeUnitSize);
         assertEquals(0, ted.languageTable);
         assertEquals(0, ted.languageShiftTable);
-        if (isGsmPhone) {
+        if (isGsmPhoneWithMessaging) {
             ArrayList<String> fragments = android.telephony.SmsMessage.fragmentText(text);
             assertEquals(1, fragments.size());
         }
@@ -285,7 +294,7 @@ public class GsmSmsTest extends AndroidTestCase {
         assertEquals(1, ted.codeUnitSize);
         assertEquals(0, ted.languageTable);
         assertEquals(0, ted.languageShiftTable);
-        if (isGsmPhone) {
+        if (isGsmPhoneWithMessaging) {
             ArrayList<String> fragments = android.telephony.SmsMessage.fragmentText(text);
             assertEquals(2, fragments.size());
             assertEquals(text, fragments.get(0) + fragments.get(1));
@@ -296,8 +305,8 @@ public class GsmSmsTest extends AndroidTestCase {
 
     @SmallTest
     public void testFragmentTurkishText() throws Exception {
-        boolean isGsmPhone = (TelephonyManager.getDefault().getPhoneType() ==
-                TelephonyManager.PHONE_TYPE_GSM);
+        boolean isGsmPhoneWithMessaging = (TelephonyManager.getDefault().getPhoneType()
+                == TelephonyManager.PHONE_TYPE_GSM) && hasMessaging();
 
         int[] oldTables = GsmAlphabet.getEnabledSingleShiftTables();
         int[] turkishTable = { 1 };
@@ -312,7 +321,7 @@ public class GsmSmsTest extends AndroidTestCase {
         assertEquals(1, ted.codeUnitSize);
         assertEquals(0, ted.languageTable);
         assertEquals(1, ted.languageShiftTable);
-        if (isGsmPhone) {
+        if (isGsmPhoneWithMessaging) {
             ArrayList<String> fragments = android.telephony.SmsMessage.fragmentText(text);
             assertEquals(1, fragments.size());
             assertEquals(text, fragments.get(0));
@@ -328,7 +337,7 @@ public class GsmSmsTest extends AndroidTestCase {
         assertEquals(1, ted.codeUnitSize);
         assertEquals(0, ted.languageTable);
         assertEquals(1, ted.languageShiftTable);
-        if (isGsmPhone) {
+        if (isGsmPhoneWithMessaging) {
             ArrayList<String> fragments = android.telephony.SmsMessage.fragmentText(text);
             assertEquals(2, fragments.size());
             assertEquals(text, fragments.get(0) + fragments.get(1));
@@ -346,7 +355,7 @@ public class GsmSmsTest extends AndroidTestCase {
         assertEquals(1, ted.codeUnitSize);
         assertEquals(0, ted.languageTable);
         assertEquals(1, ted.languageShiftTable);
-        if (isGsmPhone) {
+        if (isGsmPhoneWithMessaging) {
             ArrayList<String> fragments = android.telephony.SmsMessage.fragmentText(text);
             assertEquals(3, fragments.size());
             assertEquals(text, fragments.get(0) + fragments.get(1) + fragments.get(2));

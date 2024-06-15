@@ -239,6 +239,10 @@ public class ImsStats {
                 return;
             }
 
+            stats.registeredTimes = mLastRegistrationStats.registeredTimes;
+            // initialize registeredTimes after copying mLastRegistrationStats to be updated
+            mLastRegistrationStats.registeredTimes = 0;
+
             switch (mLastRegistrationState) {
                 case REGISTRATION_STATE_REGISTERED:
                     stats.registeredMillis = duration;
@@ -334,6 +338,13 @@ public class ImsStats {
 
     /** Updates the stats when IMS registration succeeds. */
     public synchronized void onImsRegistered(ImsRegistrationAttributes attributes) {
+        // Updates registered_times as soon as the UE is registered
+        if (mLastRegistrationState != REGISTRATION_STATE_REGISTERED) {
+            // RegistrationStats captures in every state. Changing REGISTERED state has to capture
+            // only once.
+            mLastRegistrationStats.registeredTimes = 1;
+        }
+
         conclude();
 
         mLastTransportType = attributes.getTransportType();
@@ -341,6 +352,7 @@ public class ImsStats {
         if (mLastRegistrationState == REGISTRATION_STATE_NOT_REGISTERED) {
             updateImsRegistrationStats();
         }
+
         mLastRegistrationStats.rat =
                 convertTransportTypeToNetworkType(attributes.getTransportType());
         mLastRegistrationStats.isIwlanCrossSim = attributes.getRegistrationTechnology()

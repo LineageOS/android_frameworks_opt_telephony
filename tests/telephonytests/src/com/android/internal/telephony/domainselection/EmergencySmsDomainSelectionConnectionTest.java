@@ -25,6 +25,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -36,13 +37,14 @@ import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.DomainSelectionService;
-import android.telephony.DomainSelector;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.data.ApnSetting;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
+import androidx.test.filters.SmallTest;
+
+import com.android.internal.telephony.IDomainSelector;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.AccessNetworksManager;
 import com.android.internal.telephony.data.AccessNetworksManager.QualifiedNetworks;
@@ -67,7 +69,7 @@ import java.util.concurrent.CompletableFuture;
 public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
     private DomainSelectionController mDsController;
     private DomainSelectionConnection.DomainSelectionConnectionCallback mDscCallback;
-    private DomainSelector mDomainSelector;
+    private IDomainSelector mDomainSelector;
     private EmergencyStateTracker mEmergencyStateTracker;
 
     private Handler mHandler;
@@ -85,9 +87,10 @@ public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
 
         mHandler = new Handler(Looper.myLooper());
         mDsController = Mockito.mock(DomainSelectionController.class);
+        doReturn(true).when(mDsController).selectDomain(any(), any());
         mDscCallback = Mockito.mock(
                 DomainSelectionConnection.DomainSelectionConnectionCallback.class);
-        mDomainSelector = Mockito.mock(DomainSelector.class);
+        mDomainSelector = Mockito.mock(IDomainSelector.class);
         mEmergencyStateTracker = Mockito.mock(EmergencyStateTracker.class);
         mAnm = Mockito.mock(AccessNetworksManager.class);
         when(mPhone.getAccessNetworksManager()).thenReturn(mAnm);
@@ -441,7 +444,7 @@ public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
 
         assertFalse(future.isDone());
         verify(mAnm).unregisterForQualifiedNetworksChanged(any(Handler.class));
-        verify(mDomainSelector).cancelSelection();
+        verify(mDomainSelector).finishSelection();
     }
 
     @Test

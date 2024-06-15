@@ -257,7 +257,9 @@ public class DataEvaluation {
         /** Tracking area code changed. */
         TAC_CHANGED(true),
         /** Unsatisfied network request detached. */
-        UNSATISFIED_REQUEST_DETACHED(true);
+        UNSATISFIED_REQUEST_DETACHED(true),
+        /** track bootstrap sim data usage */
+        CHECK_DATA_USAGE(false);
 
         /**
          * {@code true} if the evaluation is due to environmental changes (i.e. SIM removal,
@@ -342,7 +344,9 @@ public class DataEvaluation {
         /** Data enabled settings are not ready. */
         DATA_SETTINGS_NOT_READY(true),
         /** Handover max retry stopped but network is not on the preferred transport. */
-        HANDOVER_RETRY_STOPPED(true);
+        HANDOVER_RETRY_STOPPED(true),
+        /** BootStrap sim data limit reached. */
+        DATA_LIMIT_REACHED(true);
 
         private final boolean mIsHardReason;
 

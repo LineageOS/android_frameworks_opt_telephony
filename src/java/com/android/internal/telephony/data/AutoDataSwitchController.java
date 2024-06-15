@@ -23,6 +23,7 @@ import static android.telephony.SubscriptionManager.INVALID_PHONE_INDEX;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -34,13 +35,14 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo.RegistrationState;
+import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionInfo;
-import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyDisplayInfo;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
@@ -48,6 +50,7 @@ import android.util.LocalLog;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.flags.FeatureFlags;
+import com.android.internal.telephony.flags.FeatureFlagsImpl;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.util.NotificationChannelController;
@@ -59,7 +62,10 @@ import java.io.PrintWriter;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -105,7 +111,7 @@ public class AutoDataSwitchController extends Handler {
     /** Event for signal strength changed. */
     private static final int EVENT_SIGNAL_STRENGTH_CHANGED = 4;
     /** Event indicates the switch state is stable, proceed to validation as the next step. */
-    private static final int EVENT_MEETS_AUTO_DATA_SWITCH_STATE = 5;
+    private static final int EVENT_STABILITY_CHECK_PASSED = 5;
     /** Event when subscriptions changed. */
     private static final int EVENT_SUBSCRIPTIONS_CHANGED = 6;
 
@@ -124,21 +130,53 @@ public class AutoDataSwitchController extends Handler {
     /** Notification ID **/
     private static final int AUTO_DATA_SWITCH_NOTIFICATION_ID = 1;
 
+    /**
+     * The threshold of long timer, longer than or equal to which we use alarm manager to schedule
+     * instead of handler.
+     */
+    private static final long RETRY_LONG_DELAY_TIMER_THRESHOLD_MILLIS = TimeUnit
+            .MINUTES.toMillis(1);
+
     private final @NonNull LocalLog mLocalLog = new LocalLog(128);
     private final @NonNull Context mContext;
-    private final @NonNull FeatureFlags mFlags;
+    private static @NonNull FeatureFlags sFeatureFlags = new FeatureFlagsImpl();
     private final @NonNull SubscriptionManagerService mSubscriptionManagerService;
     private final @NonNull PhoneSwitcher mPhoneSwitcher;
     private final @NonNull AutoDataSwitchControllerCallback mPhoneSwitcherCallback;
+    private final @NonNull AlarmManager mAlarmManager;
+    /** A map of a scheduled event to its associated extra for action when the event fires off. */
+    private final @NonNull Map<Integer, Object> mScheduledEventsToExtras;
+    /** A map of an event to its associated alarm listener callback for when the event fires off. */
+    private final @NonNull Map<Integer, AlarmManager.OnAlarmListener> mEventsToAlarmListener;
+    /**
+     * Event extras for checking environment stability.
+     * @param targetPhoneId The target phone Id to switch to when the stability check pass.
+     * @param isForPerformance Whether the switch is due to RAT/signal strength performance.
+     * @param needValidation Whether ping test needs to pass.
+     */
+    private record StabilityEventExtra(int targetPhoneId, boolean isForPerformance,
+                               boolean needValidation) {}
+
+    /**
+     * Event extras for evaluating switch environment.
+     * @param evaluateReason The reason that triggers the evaluation.
+     */
+    private record EvaluateEventExtra(@AutoDataSwitchEvaluationReason int evaluateReason) {}
     private boolean mDefaultNetworkIsOnNonCellular = false;
     /** {@code true} if we've displayed the notification the first time auto switch occurs **/
     private boolean mDisplayedNotification = false;
     /**
-     * Time threshold in ms to define a internet connection status to be stable(e.g. out of service,
-     * in service, wifi is the default active network.etc), while -1 indicates auto switch
-     * feature disabled.
+     * Configurable time threshold in ms to define an internet connection status to be stable(e.g.
+     * out of service, in service, wifi is the default active network.etc), while -1 indicates auto
+     * switch feature disabled.
      */
     private long mAutoDataSwitchAvailabilityStabilityTimeThreshold = -1;
+    /**
+     * Configurable time threshold in ms to define an internet connection performance status to be
+     * stable (e.g. LTE + 4 signal strength, UMTS + 2 signal strength), while -1 indicates
+     * auto switch feature based on RAT/SS is disabled.
+     */
+    private long mAutoDataSwitchPerformanceStabilityTimeThreshold = -1;
     /**
      * The tolerated gap of score for auto data switch decision, larger than which the device will
      * switch to the SIM with higher score. If 0, the device will always switch to the higher score
@@ -150,6 +188,12 @@ public class AutoDataSwitchController extends Handler {
      * even if ping test fails.
      */
     private boolean mRequirePingTestBeforeSwitch = true;
+    /**
+     * TODO: remove after V.
+     * To indicate whether allow using roaming nDDS if user enabled its roaming when the DDS is not
+     * usable(OOS or disabled roaming)
+     */
+    private boolean mAllowNddsRoamning = true;
     /** The count of consecutive auto switch validation failure **/
     private int mAutoSwitchValidationFailedCount = 0;
     /**
@@ -173,7 +217,10 @@ public class AutoDataSwitchController extends Handler {
          * How preferred the current phone is.
          */
         enum UsableState {
-            HOME(1), ROAMING_ENABLED(0), NOT_USABLE(-1);
+            HOME(2),
+            ROAMING_ENABLED(1),
+            NON_TERRESTRIAL(0),
+            NOT_USABLE(-1);
             /**
              * The higher the score, the more preferred.
              * HOME is preferred over ROAMING assuming roaming is metered.
@@ -186,8 +233,7 @@ public class AutoDataSwitchController extends Handler {
         /** The phone */
         @NonNull private final Phone mPhone;
         /** Data registration state of the phone */
-        @RegistrationState private int mDataRegState = NetworkRegistrationInfo
-                .REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
+        @RegistrationState private int mDataRegState;
         /** Current Telephony display info of the phone */
         @NonNull private TelephonyDisplayInfo mDisplayInfo;
         /** Signal strength of the phone */
@@ -196,6 +242,10 @@ public class AutoDataSwitchController extends Handler {
         private boolean mListeningForEvents;
         private PhoneSignalStatus(@NonNull Phone phone) {
             this.mPhone = phone;
+            this.mDataRegState = phone.getServiceState().getNetworkRegistrationInfo(
+                            NetworkRegistrationInfo.DOMAIN_PS,
+                            AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                    .getRegistrationState();
             this.mDisplayInfo = phone.getDisplayInfoController().getTelephonyDisplayInfo();
             this.mSignalStrength = phone.getSignalStrength();
         }
@@ -214,12 +264,24 @@ public class AutoDataSwitchController extends Handler {
          * @return The current usable state of the phone.
          */
         private UsableState getUsableState() {
+            ServiceState serviceState = mPhone.getServiceState();
+            boolean isUsingNonTerrestrialNetwork = sFeatureFlags.carrierEnabledSatelliteFlag()
+                    && (serviceState != null) && serviceState.isUsingNonTerrestrialNetwork();
+
             switch (mDataRegState) {
                 case NetworkRegistrationInfo.REGISTRATION_STATE_HOME:
+                    if (isUsingNonTerrestrialNetwork) {
+                        return UsableState.NON_TERRESTRIAL;
+                    }
                     return UsableState.HOME;
                 case NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING:
-                    return mPhone.getDataRoamingEnabled()
-                            ? UsableState.ROAMING_ENABLED : UsableState.NOT_USABLE;
+                    if (mPhone.getDataRoamingEnabled()) {
+                        if (isUsingNonTerrestrialNetwork) {
+                            return UsableState.NON_TERRESTRIAL;
+                        }
+                        return UsableState.ROAMING_ENABLED;
+                    }
+                    return UsableState.NOT_USABLE;
                 default:
                     return UsableState.NOT_USABLE;
             }
@@ -230,8 +292,8 @@ public class AutoDataSwitchController extends Handler {
             return "{phone " + mPhone.getPhoneId()
                     + " score=" + getRatSignalScore() + " dataRegState="
                     + NetworkRegistrationInfo.registrationStateToString(mDataRegState)
-                    + " " + getUsableState()
-                    + " display=" + mDisplayInfo + " signalStrength=" + mSignalStrength.getLevel()
+                    + " " + getUsableState() + " " + mDisplayInfo
+                    + " signalStrength=" + mSignalStrength.getLevel()
                     + " listeningForEvents=" + mListeningForEvents
                     + "}";
 
@@ -275,10 +337,13 @@ public class AutoDataSwitchController extends Handler {
             @NonNull AutoDataSwitchControllerCallback phoneSwitcherCallback) {
         super(looper);
         mContext = context;
-        mFlags = featureFlags;
+        sFeatureFlags = featureFlags;
+        mPhoneSwitcherCallback = phoneSwitcherCallback;
+        mAlarmManager = context.getSystemService(AlarmManager.class);
+        mScheduledEventsToExtras = new HashMap<>();
+        mEventsToAlarmListener = new HashMap<>();
         mSubscriptionManagerService = SubscriptionManagerService.getInstance();
         mPhoneSwitcher = phoneSwitcher;
-        mPhoneSwitcherCallback = phoneSwitcherCallback;
         readDeviceResourceConfig();
         int numActiveModems = PhoneFactory.getPhones().length;
         mPhonesSignalStatus = new PhoneSignalStatus[numActiveModems];
@@ -385,8 +450,11 @@ public class AutoDataSwitchController extends Handler {
         DataConfigManager dataConfig = phone.getDataNetworkController().getDataConfigManager();
         mScoreTolerance =  dataConfig.getAutoDataSwitchScoreTolerance();
         mRequirePingTestBeforeSwitch = dataConfig.isPingTestBeforeAutoDataSwitchRequired();
+        mAllowNddsRoamning = dataConfig.doesAutoDataSwitchAllowRoaming();
         mAutoDataSwitchAvailabilityStabilityTimeThreshold =
                 dataConfig.getAutoDataSwitchAvailabilityStabilityTimeThreshold();
+        mAutoDataSwitchPerformanceStabilityTimeThreshold =
+                dataConfig.getAutoDataSwitchPerformanceStabilityTimeThreshold();
         mAutoDataSwitchValidationMaxRetry =
                 dataConfig.getAutoDataSwitchValidationMaxRetry();
     }
@@ -412,15 +480,35 @@ public class AutoDataSwitchController extends Handler {
                 onSignalStrengthChanged(phoneId);
                 break;
             case EVENT_EVALUATE_AUTO_SWITCH:
-                int reason = (int) msg.obj;
-                onEvaluateAutoDataSwitch(reason);
+                if (sFeatureFlags.autoDataSwitchRatSs()) {
+                    Object obj = mScheduledEventsToExtras.get(EVENT_EVALUATE_AUTO_SWITCH);
+                    if (obj instanceof EvaluateEventExtra extra) {
+                        mScheduledEventsToExtras.remove(EVENT_EVALUATE_AUTO_SWITCH);
+                        onEvaluateAutoDataSwitch(extra.evaluateReason);
+                    }
+                } else {
+                    int reason = (int) msg.obj;
+                    onEvaluateAutoDataSwitch(reason);
+                }
                 break;
-            case EVENT_MEETS_AUTO_DATA_SWITCH_STATE:
-                int targetPhoneId = msg.arg1;
-                boolean needValidation = msg.arg2 == 1;
-                log("require validation on phone " + targetPhoneId
-                        + (needValidation ? "" : " no") + " need to pass");
-                mPhoneSwitcherCallback.onRequireValidation(targetPhoneId, needValidation);
+            case EVENT_STABILITY_CHECK_PASSED:
+                if (sFeatureFlags.autoDataSwitchRatSs()) {
+                    Object obj = mScheduledEventsToExtras.get(EVENT_STABILITY_CHECK_PASSED);
+                    if (obj instanceof StabilityEventExtra extra) {
+                        int targetPhoneId = extra.targetPhoneId;
+                        boolean needValidation = extra.needValidation;
+                        log("require validation on phone " + targetPhoneId
+                                + (needValidation ? "" : " no") + " need to pass");
+                        mScheduledEventsToExtras.remove(EVENT_STABILITY_CHECK_PASSED);
+                        mPhoneSwitcherCallback.onRequireValidation(targetPhoneId, needValidation);
+                    }
+                } else {
+                    int targetPhoneId = msg.arg1;
+                    boolean needValidation = msg.arg2 == 1;
+                    log("require validation on phone " + targetPhoneId
+                            + (needValidation ? "" : " no") + " need to pass");
+                    mPhoneSwitcherCallback.onRequireValidation(targetPhoneId, needValidation);
+                }
                 break;
             case EVENT_SUBSCRIPTIONS_CHANGED:
                 onSubscriptionsChanged();
@@ -513,16 +601,21 @@ public class AutoDataSwitchController extends Handler {
 
     /**
      * Called as a preliminary check for the frequent signal/display info change.
-     * @return The phone Id if found a candidate phone with higher signal score.
+     * @return The phone Id if found a candidate phone with higher signal score, or the DDS has
+     * an equal score.
      */
     private int getHigherScoreCandidatePhoneId() {
         int preferredPhoneId = mPhoneSwitcher.getPreferredDataPhoneId();
-        if (isActiveModemPhone(preferredPhoneId)) {
+        int ddsPhoneId = mSubscriptionManagerService.getPhoneId(
+                mSubscriptionManagerService.getDefaultDataSubId());
+        if (isActiveModemPhone(preferredPhoneId) && isActiveModemPhone(ddsPhoneId)) {
             int currentScore = mPhonesSignalStatus[preferredPhoneId].getRatSignalScore();
             for (int phoneId = 0; phoneId < mPhonesSignalStatus.length; phoneId++) {
+                if (phoneId == preferredPhoneId) continue;
                 int candidateScore = mPhonesSignalStatus[phoneId].getRatSignalScore();
-                if (phoneId != preferredPhoneId
-                        && (candidateScore - currentScore) > mScoreTolerance) {
+                if ((candidateScore - currentScore) > mScoreTolerance
+                        // Also reevaluate if DDS has the same score as the current phone.
+                        || (candidateScore >= currentScore && phoneId == ddsPhoneId)) {
                     return phoneId;
                 }
             }
@@ -539,8 +632,15 @@ public class AutoDataSwitchController extends Handler {
                 ? mAutoDataSwitchAvailabilityStabilityTimeThreshold
                 << mAutoSwitchValidationFailedCount
                 : 0;
-        if (!hasMessages(EVENT_EVALUATE_AUTO_SWITCH)) {
-            sendMessageDelayed(obtainMessage(EVENT_EVALUATE_AUTO_SWITCH, reason), delayMs);
+        if (sFeatureFlags.autoDataSwitchRatSs()) {
+            if (!mScheduledEventsToExtras.containsKey(EVENT_EVALUATE_AUTO_SWITCH)) {
+                scheduleEventWithTimer(EVENT_EVALUATE_AUTO_SWITCH, new EvaluateEventExtra(reason),
+                        delayMs);
+            }
+        } else {
+            if (!hasMessages(EVENT_EVALUATE_AUTO_SWITCH)) {
+                sendMessageDelayed(obtainMessage(EVENT_EVALUATE_AUTO_SWITCH, reason), delayMs);
+            }
         }
     }
 
@@ -556,14 +656,15 @@ public class AutoDataSwitchController extends Handler {
         int defaultDataSubId = mSubscriptionManagerService.getDefaultDataSubId();
         // check is valid DSDS
         if (mSubscriptionManagerService.getActiveSubIdList(true).length < 2) return;
-        Phone defaultDataPhone = PhoneFactory.getPhone(mSubscriptionManagerService.getPhoneId(
-                defaultDataSubId));
+        int defaultDataPhoneId = mSubscriptionManagerService.getPhoneId(
+                defaultDataSubId);
+        Phone defaultDataPhone = PhoneFactory.getPhone(defaultDataPhoneId);
         if (defaultDataPhone == null) {
             loge("onEvaluateAutoDataSwitch: cannot find the phone associated with default data"
                     + " subscription " + defaultDataSubId);
             return;
         }
-        int defaultDataPhoneId = defaultDataPhone.getPhoneId();
+
         int preferredPhoneId = mPhoneSwitcher.getPreferredDataPhoneId();
         StringBuilder debugMessage = new StringBuilder("onEvaluateAutoDataSwitch:");
         debugMessage.append(" defaultPhoneId: ").append(defaultDataPhoneId)
@@ -571,11 +672,11 @@ public class AutoDataSwitchController extends Handler {
                 .append(", reason: ").append(evaluationReasonToString(reason));
         if (preferredPhoneId == defaultDataPhoneId) {
             // on default data sub
-            int candidatePhoneId = getSwitchCandidatePhoneId(defaultDataPhoneId, debugMessage);
+            StabilityEventExtra res = evaluateAnyCandidateToUse(defaultDataPhoneId, debugMessage);
             log(debugMessage.toString());
-            if (candidatePhoneId != INVALID_PHONE_INDEX) {
-                mSelectedTargetPhoneId = candidatePhoneId;
-                startStabilityCheck(candidatePhoneId, mRequirePingTestBeforeSwitch);
+            if (res.targetPhoneId != INVALID_PHONE_INDEX) {
+                mSelectedTargetPhoneId = res.targetPhoneId;
+                startStabilityCheck(res.targetPhoneId, res.isForPerformance, res.needValidation);
             } else {
                 cancelAnyPendingSwitch();
             }
@@ -597,9 +698,10 @@ public class AutoDataSwitchController extends Handler {
             }
 
             boolean backToDefault = false;
+            boolean isForPerformance = false;
             boolean needValidation = true;
 
-            if (mFlags.autoSwitchAllowRoaming()) {
+            if (isNddsRoamingEnabled()) {
                 if (mDefaultNetworkIsOnNonCellular) {
                     debugMessage.append(", back to default as default network")
                             .append(" is active on nonCellular transport");
@@ -634,12 +736,13 @@ public class AutoDataSwitchController extends Handler {
                                         .getRatSignalScore();
                                 int currentScore = mPhonesSignalStatus[preferredPhoneId]
                                         .getRatSignalScore();
-                                if ((defaultScore - currentScore) > mScoreTolerance) {
+                                if (defaultScore >= currentScore) {
                                     debugMessage
-                                            .append(", back to default for higher score ")
+                                            .append(", back to default for higher or equal score ")
                                             .append(defaultScore).append(" versus current ")
                                             .append(currentScore);
                                     backToDefault = true;
+                                    isForPerformance = true;
                                     needValidation = mRequirePingTestBeforeSwitch;
                                 }
                             } else {
@@ -668,12 +771,13 @@ public class AutoDataSwitchController extends Handler {
                 } else if (isRatSignalStrengthBasedSwitchEnabled()) {
                     int defaultScore = mPhonesSignalStatus[defaultDataPhoneId].getRatSignalScore();
                     int currentScore = mPhonesSignalStatus[preferredPhoneId].getRatSignalScore();
-                    if ((defaultScore - currentScore) > mScoreTolerance) {
+                    if (defaultScore >= currentScore) {
                         debugMessage
-                                .append(", back to default as default phone has higher score ")
+                                .append(", back to default as default has higher or equal score ")
                                 .append(defaultScore).append(" versus current ")
                                 .append(currentScore);
                         backToDefault = true;
+                        isForPerformance = true;
                         needValidation = mRequirePingTestBeforeSwitch;
                     }
                 } else if (isInService(mPhonesSignalStatus[defaultDataPhoneId].mDataRegState)) {
@@ -686,7 +790,7 @@ public class AutoDataSwitchController extends Handler {
             if (backToDefault) {
                 log(debugMessage.toString());
                 mSelectedTargetPhoneId = defaultDataPhoneId;
-                startStabilityCheck(DEFAULT_PHONE_INDEX, needValidation);
+                startStabilityCheck(DEFAULT_PHONE_INDEX, isForPerformance, needValidation);
             } else {
                 // cancel any previous attempts of switching back to default phone
                 cancelAnyPendingSwitch();
@@ -698,40 +802,44 @@ public class AutoDataSwitchController extends Handler {
      * Called when consider switching from primary default data sub to another data sub.
      * @param defaultPhoneId The default data phone
      * @param debugMessage Debug message.
-     * @return the target subId if a suitable candidate is found, otherwise return
-     * {@link SubscriptionManager#INVALID_PHONE_INDEX}
+     * @return StabilityEventExtra As evaluation result.
      */
-    private int getSwitchCandidatePhoneId(int defaultPhoneId, @NonNull StringBuilder debugMessage) {
+    @NonNull private StabilityEventExtra evaluateAnyCandidateToUse(int defaultPhoneId,
+            @NonNull StringBuilder debugMessage) {
         Phone defaultDataPhone = PhoneFactory.getPhone(defaultPhoneId);
+        boolean isForPerformance = false;
+        StabilityEventExtra invalidResult = new StabilityEventExtra(INVALID_PHONE_INDEX,
+                isForPerformance, mRequirePingTestBeforeSwitch);
+
         if (defaultDataPhone == null) {
             debugMessage.append(", no candidate as no sim loaded");
-            return INVALID_PHONE_INDEX;
+            return invalidResult;
         }
 
         if (!defaultDataPhone.isUserDataEnabled()) {
             debugMessage.append(", no candidate as user disabled mobile data");
-            return INVALID_PHONE_INDEX;
+            return invalidResult;
         }
 
         if (mDefaultNetworkIsOnNonCellular) {
             debugMessage.append(", no candidate as default network is active")
                     .append(" on non-cellular transport");
-            return INVALID_PHONE_INDEX;
+            return invalidResult;
         }
 
-        if (mFlags.autoSwitchAllowRoaming()) {
+        if (isNddsRoamingEnabled()) {
             // check whether primary and secondary signal status are worth switching
             if (!isRatSignalStrengthBasedSwitchEnabled()
                     && isHomeService(mPhonesSignalStatus[defaultPhoneId].mDataRegState)) {
                 debugMessage.append(", no candidate as default phone is in HOME service");
-                return INVALID_PHONE_INDEX;
+                return invalidResult;
             }
         } else {
             // check whether primary and secondary signal status are worth switching
             if (!isRatSignalStrengthBasedSwitchEnabled()
                     && isInService(mPhonesSignalStatus[defaultPhoneId].mDataRegState)) {
                 debugMessage.append(", no candidate as default phone is in service");
-                return INVALID_PHONE_INDEX;
+                return invalidResult;
             }
         }
 
@@ -741,30 +849,30 @@ public class AutoDataSwitchController extends Handler {
 
             Phone secondaryDataPhone = null;
             PhoneSignalStatus candidatePhoneStatus = mPhonesSignalStatus[phoneId];
-            if (mFlags.autoSwitchAllowRoaming()) {
+            if (isNddsRoamingEnabled()) {
                 PhoneSignalStatus.UsableState currentUsableState =
                         mPhonesSignalStatus[defaultPhoneId].getUsableState();
-                PhoneSignalStatus.UsableState candidatePhoneUsableRank =
+                PhoneSignalStatus.UsableState candidateUsableState =
                         mPhonesSignalStatus[phoneId].getUsableState();
-                debugMessage.append(", found phone ").append(phoneId).append(" is ").append(
-                        candidatePhoneUsableRank)
-                        .append(", current is ").append(currentUsableState);
-                if (candidatePhoneUsableRank.mScore > currentUsableState.mScore) {
+                debugMessage.append(", found phone ").append(phoneId).append(" ")
+                        .append(candidateUsableState)
+                        .append(", default is ").append(currentUsableState);
+                if (candidateUsableState.mScore > currentUsableState.mScore) {
                     secondaryDataPhone = PhoneFactory.getPhone(phoneId);
                 } else if (isRatSignalStrengthBasedSwitchEnabled()
-                        && currentUsableState.mScore == candidatePhoneUsableRank.mScore) {
+                        && currentUsableState.mScore == candidateUsableState.mScore) {
                     // Both phones are home or both roaming enabled, so compare RAT/signal score.
 
                     int defaultScore = defaultPhoneStatus.getRatSignalScore();
                     int candidateScore = candidatePhoneStatus.getRatSignalScore();
                     if ((candidateScore - defaultScore) > mScoreTolerance) {
-                        debugMessage.append(" with higher score ").append(
-                                        candidateScore)
-                                .append(" versus current ").append(defaultScore);
+                        debugMessage.append(" with ").append(defaultScore)
+                                .append(" versus candidate higher score ").append(candidateScore);
                         secondaryDataPhone = PhoneFactory.getPhone(phoneId);
+                        isForPerformance = true;
                     } else {
-                        debugMessage.append(", but its score ").append(candidateScore)
-                                .append(" doesn't meet the bar to switch given the current ")
+                        debugMessage.append(", candidate's score ").append(candidateScore)
+                                .append(" doesn't justify the switch given the current ")
                                 .append(defaultScore);
                     }
                 }
@@ -782,6 +890,7 @@ public class AutoDataSwitchController extends Handler {
                             debugMessage.append(" with higher score ").append(candidateScore)
                                     .append(" versus current ").append(defaultScore);
                             secondaryDataPhone = PhoneFactory.getPhone(phoneId);
+                            isForPerformance = true;
                         } else {
                             debugMessage.append(", but its score ").append(candidateScore)
                                     .append(" doesn't meet the bar to switch given the current ")
@@ -797,21 +906,30 @@ public class AutoDataSwitchController extends Handler {
             if (secondaryDataPhone != null) {
                 // check auto switch feature enabled
                 if (secondaryDataPhone.isDataAllowed()) {
-                    return phoneId;
+                    return new StabilityEventExtra(phoneId,
+                            isForPerformance, mRequirePingTestBeforeSwitch);
                 } else {
-                    debugMessage.append(", but its data is not allowed");
+                    debugMessage.append(", but candidate's data is not allowed");
                 }
             }
         }
         debugMessage.append(", found no qualified candidate.");
-        return INVALID_PHONE_INDEX;
+        return invalidResult;
     }
 
     /**
      * @return {@code true} If the feature of switching base on RAT and signal strength is enabled.
      */
     private boolean isRatSignalStrengthBasedSwitchEnabled() {
-        return mFlags.autoDataSwitchRatSs() && mScoreTolerance >= 0;
+        return sFeatureFlags.autoDataSwitchRatSs() && mScoreTolerance >= 0
+                && mAutoDataSwitchPerformanceStabilityTimeThreshold >= 0;
+    }
+
+    /**
+     * @return {@code true} If the feature of switching to roaming non DDS is enabled.
+     */
+    private boolean isNddsRoamingEnabled() {
+        return sFeatureFlags.autoDataSwitchAllowRoaming() && mAllowNddsRoamning;
     }
 
     /**
@@ -819,18 +937,77 @@ public class AutoDataSwitchController extends Handler {
      * Start pre-switch validation if the current environment suits auto data switch for
      * {@link #mAutoDataSwitchAvailabilityStabilityTimeThreshold} MS.
      * @param targetPhoneId the target phone Id.
+     * @param isForPerformance {@code true} entails longer stability check.
      * @param needValidation {@code true} if validation is needed.
      */
-    private void startStabilityCheck(int targetPhoneId, boolean needValidation) {
-        log("startAutoDataSwitchStabilityCheck: targetPhoneId=" + targetPhoneId
-                + " needValidation=" + needValidation);
+    private void startStabilityCheck(int targetPhoneId, boolean isForPerformance,
+            boolean needValidation) {
         String combinationIdentifier = targetPhoneId + "" + needValidation;
-        if (!hasEqualMessages(EVENT_MEETS_AUTO_DATA_SWITCH_STATE, combinationIdentifier)) {
-            removeMessages(EVENT_MEETS_AUTO_DATA_SWITCH_STATE);
-            sendMessageDelayed(obtainMessage(EVENT_MEETS_AUTO_DATA_SWITCH_STATE, targetPhoneId,
+        if (sFeatureFlags.autoDataSwitchRatSs()) {
+            StabilityEventExtra eventExtras = (StabilityEventExtra)
+                    mScheduledEventsToExtras.getOrDefault(EVENT_STABILITY_CHECK_PASSED,
+                            new StabilityEventExtra(INVALID_PHONE_INDEX, false /*need validation*/,
+                            false /*isForPerformance*/));
+            long delayMs = -1;
+            // Check if already scheduled one with that combination of extras.
+            if (eventExtras.targetPhoneId != targetPhoneId
+                    || eventExtras.needValidation != needValidation
+                    || eventExtras.isForPerformance != isForPerformance) {
+                eventExtras =
+                        new StabilityEventExtra(targetPhoneId, isForPerformance, needValidation);
+
+                // Reset with new timer.
+                delayMs = isForPerformance
+                        ? mAutoDataSwitchPerformanceStabilityTimeThreshold
+                        : mAutoDataSwitchAvailabilityStabilityTimeThreshold;
+                scheduleEventWithTimer(EVENT_STABILITY_CHECK_PASSED, eventExtras, delayMs);
+            }
+            log("startStabilityCheck: "
+                    + (delayMs != -1 ? "scheduling " : "already scheduled ")
+                    + eventExtras);
+        } else if (!hasEqualMessages(EVENT_STABILITY_CHECK_PASSED, combinationIdentifier)) {
+            removeMessages(EVENT_STABILITY_CHECK_PASSED);
+            sendMessageDelayed(obtainMessage(EVENT_STABILITY_CHECK_PASSED, targetPhoneId,
                             needValidation ? 1 : 0,
                             combinationIdentifier),
                     mAutoDataSwitchAvailabilityStabilityTimeThreshold);
+            log("startStabilityCheck: targetPhoneId=" + targetPhoneId
+                    + " isForPerformance=" + isForPerformance
+                    + " needValidation=" + needValidation);
+        }
+    }
+
+    /**
+     * Use when need to schedule with timer. Short timer uses handler, while the longer timer uses
+     * alarm manager to account for real time elapse.
+     *
+     * @param event The event.
+     * @param extras Any extra data associated with the event.
+     * @param delayMs The delayed interval in ms.
+     */
+    private void scheduleEventWithTimer(int event, @NonNull Object extras, long delayMs) {
+        // Get singleton alarm listener.
+        mEventsToAlarmListener.putIfAbsent(event, () -> sendEmptyMessage(event));
+        AlarmManager.OnAlarmListener listener = mEventsToAlarmListener.get(event);
+
+        // Cancel any existing.
+        removeMessages(event);
+        mAlarmManager.cancel(listener);
+        // Override with new extras.
+        mScheduledEventsToExtras.put(event, extras);
+        // Reset timer.
+        if (delayMs <= RETRY_LONG_DELAY_TIMER_THRESHOLD_MILLIS) {
+            // Use handler for short timer.
+            sendEmptyMessageDelayed(event, delayMs);
+        } else {
+            // Not using setWhileIdle because it can wait util the next time the device wakes up to
+            // save power.
+            // If another evaluation is processed before the alarm fires,
+            // this timer is restarted (AlarmManager using the same listener resets the
+            // timer).
+            mAlarmManager.setExact(AlarmManager.ELAPSED_REALTIME,
+                    SystemClock.elapsedRealtime() + delayMs,
+                    LOG_TAG /*debug tag*/, listener, this);
         }
     }
 
@@ -886,7 +1063,19 @@ public class AutoDataSwitchController extends Handler {
     private void cancelAnyPendingSwitch() {
         mSelectedTargetPhoneId = INVALID_PHONE_INDEX;
         resetFailedCount();
-        removeMessages(EVENT_MEETS_AUTO_DATA_SWITCH_STATE);
+        if (sFeatureFlags.autoDataSwitchRatSs()) {
+            if (mScheduledEventsToExtras.containsKey(EVENT_STABILITY_CHECK_PASSED)) {
+                if (mEventsToAlarmListener.containsKey(EVENT_STABILITY_CHECK_PASSED)) {
+                    mAlarmManager.cancel(mEventsToAlarmListener.get(EVENT_STABILITY_CHECK_PASSED));
+                } else {
+                    loge("cancelAnyPendingSwitch: EVENT_STABILITY_CHECK_PASSED listener is null");
+                }
+                removeMessages(EVENT_STABILITY_CHECK_PASSED);
+                mScheduledEventsToExtras.remove(EVENT_STABILITY_CHECK_PASSED);
+            }
+        } else {
+            removeMessages(EVENT_STABILITY_CHECK_PASSED);
+        }
         mPhoneSwitcherCallback.onRequireCancelAnyPendingAutoSwitchValidation();
     }
 
@@ -900,8 +1089,6 @@ public class AutoDataSwitchController extends Handler {
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         if (mDisplayedNotification) {
             // cancel posted notification if any exist
-            log("displayAutoDataSwitchNotification: canceling any notifications for phone "
-                    + phoneId);
             notificationManager.cancel(AUTO_DATA_SWITCH_NOTIFICATION_TAG,
                     AUTO_DATA_SWITCH_NOTIFICATION_ID);
             return;

@@ -1013,10 +1013,12 @@ public abstract class SMSDispatcher extends Handler {
      * Notifies the {@link SmsDispatchersController} that sending MO SMS is failed.
      *
      * @param tracker holds the SMS message to be sent
+     * @param isOverIms a flag specifying whether SMS is sent via IMS or not
      */
-    protected void notifySmsSentFailedToEmergencyStateTracker(SmsTracker tracker) {
+    protected void notifySmsSentFailedToEmergencyStateTracker(SmsTracker tracker,
+            boolean isOverIms) {
         mSmsDispatchersController.notifySmsSentFailedToEmergencyStateTracker(
-                tracker.mDestAddress, tracker.mMessageId);
+                tracker.mDestAddress, tracker.mMessageId, isOverIms);
     }
 
     /**
@@ -1052,7 +1054,7 @@ public abstract class SMSDispatcher extends Handler {
             tracker.onSent(mContext);
             mPhone.notifySmsSent(tracker.mDestAddress);
             mSmsDispatchersController.notifySmsSentToEmergencyStateTracker(
-                    tracker.mDestAddress, tracker.mMessageId);
+                    tracker.mDestAddress, tracker.mMessageId, false);
 
             mPhone.getSmsStats().onOutgoingSms(
                     tracker.mImsRetry > 0 /* isOverIms */,
@@ -1103,7 +1105,7 @@ public abstract class SMSDispatcher extends Handler {
             // if sms over IMS is not supported on data and voice is not available...
             if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {
                 tracker.onFailed(mContext, getNotInServiceError(ss), NO_ERROR_CODE);
-                notifySmsSentFailedToEmergencyStateTracker(tracker);
+                notifySmsSentFailedToEmergencyStateTracker(tracker, false);
                 mPhone.getSmsStats().onOutgoingSms(
                         tracker.mImsRetry > 0 /* isOverIms */,
                         SmsConstants.FORMAT_3GPP2.equals(getFormat()),
@@ -1164,7 +1166,7 @@ public abstract class SMSDispatcher extends Handler {
             } else {
                 int errorCode = (smsResponse != null) ? smsResponse.mErrorCode : NO_ERROR_CODE;
                 tracker.onFailed(mContext, error, errorCode);
-                notifySmsSentFailedToEmergencyStateTracker(tracker);
+                notifySmsSentFailedToEmergencyStateTracker(tracker, false);
                 mPhone.getSmsStats().onOutgoingSms(
                         tracker.mImsRetry > 0 /* isOverIms */,
                         SmsConstants.FORMAT_3GPP2.equals(getFormat()),
@@ -2389,7 +2391,7 @@ public abstract class SMSDispatcher extends Handler {
             int errorCode) {
         for (SmsTracker tracker : trackers) {
             tracker.onFailed(mContext, error, errorCode);
-            notifySmsSentFailedToEmergencyStateTracker(tracker);
+            notifySmsSentFailedToEmergencyStateTracker(tracker, false);
         }
         if (trackers.length > 0) {
             // This error occurs before the SMS is sent. Make an assumption if it would have
@@ -2544,7 +2546,13 @@ public abstract class SMSDispatcher extends Handler {
         /** Return if the SMS was originated from the default SMS application. */
         public boolean isFromDefaultSmsApplication(Context context) {
             if (mIsFromDefaultSmsApplication == null) {
-                UserHandle userHandle = TelephonyUtils.getSubscriptionUserHandle(context, mSubId);
+                UserHandle userHandle;
+                final long identity = Binder.clearCallingIdentity();
+                try {
+                    userHandle = TelephonyUtils.getSubscriptionUserHandle(context, mSubId);
+                } finally {
+                    Binder.restoreCallingIdentity(identity);
+                }
                 // Perform a lazy initialization, due to the cost of the operation.
                 mIsFromDefaultSmsApplication = SmsApplication.isDefaultSmsApplicationAsUser(context,
                                     getAppPackageName(), userHandle);

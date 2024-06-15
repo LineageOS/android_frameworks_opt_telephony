@@ -20,8 +20,8 @@ import static org.junit.Assert.assertEquals;
 
 import android.os.Parcel;
 import android.telephony.CallQuality;
-import android.test.suitebuilder.annotation.SmallTest;
 
+import androidx.test.filters.SmallTest;
 import androidx.test.runner.AndroidJUnit4;
 
 import org.junit.Test;

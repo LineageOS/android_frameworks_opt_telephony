@@ -52,11 +52,11 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import androidx.test.InstrumentationRegistry;
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.data.DataSettingsManager;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
@@ -247,11 +247,15 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
             return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         }).when(mPhoneMock2).getSubId();
 
+        PersistableBundle bundle = new PersistableBundle();
+        bundle.putBoolean(CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL, true);
+        doReturn(bundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
+
         replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
         // Capture listener to emulate the carrier config change notification used later
         ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
                 ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
-        mMultiSimSettingControllerUT = new MultiSimSettingController(mContext);
+        mMultiSimSettingControllerUT = new MultiSimSettingController(mContext, mFeatureFlags);
         processAllMessages();
         verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
                 listenerArgumentCaptor.capture());
@@ -885,6 +889,13 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(true).when(mPhoneMock2).isUserDataEnabled();
         mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
         processAllMessages();
+
+        PersistableBundle bundle = new PersistableBundle();
+        bundle.putBoolean(CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL, true);
+        doReturn(bundle).when(mCarrierConfigManager).getConfigForSubId(eq(1));
+        PersistableBundle bundle2 = new PersistableBundle();
+        doReturn(bundle).when(mCarrierConfigManager).getConfigForSubId(eq(2));
+
         sendCarrierConfigChanged(0, 1);
         // Notify carrier config change on phone1 without specifying subId.
         sendCarrierConfigChanged(1, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
@@ -893,13 +904,9 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         verify(mDataSettingsManagerMock2, never()).setDataEnabled(
                 TelephonyManager.DATA_ENABLED_REASON_USER, false, PHONE_PACKAGE);
 
-        // Still notify carrier config without specifying subId2, but this time subController
-        // and CarrierConfigManager have subId 2 active and ready.
-        doReturn(2).when(mSubscriptionManagerService).getSubId(1);
-        CarrierConfigManager cm = (CarrierConfigManager) mContext.getSystemService(
-                mContext.CARRIER_CONFIG_SERVICE);
-        doReturn(new PersistableBundle()).when(cm).getConfigForSubId(2);
-        sendCarrierConfigChanged(1, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        logd("Sending the correct phone id and sub id");
+        bundle2.putBoolean(CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL, true);
+        sendCarrierConfigChanged(1, 2);
         processAllMessages();
         // This time user data should be disabled on phone1.
         verify(mDataSettingsManagerMock2).setDataEnabled(

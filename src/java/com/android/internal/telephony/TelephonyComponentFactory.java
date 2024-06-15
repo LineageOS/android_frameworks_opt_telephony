@@ -48,6 +48,8 @@ import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.nitz.NitzStateMachineImpl;
 import com.android.internal.telephony.security.CellularIdentifierDisclosureNotifier;
+import com.android.internal.telephony.security.CellularNetworkSecuritySafetySource;
+import com.android.internal.telephony.security.NullCipherNotifier;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccProfile;
@@ -277,8 +279,14 @@ public class TelephonyComponentFactory {
         return sInstance;
     }
 
-    public GsmCdmaCallTracker makeGsmCdmaCallTracker(GsmCdmaPhone phone) {
-        return new GsmCdmaCallTracker(phone);
+    /**
+     * Create a new GsmCdmaCallTracker
+     * @param phone GsmCdmaPhone
+     * @param featureFlags Telephony feature flag
+     */
+    public GsmCdmaCallTracker makeGsmCdmaCallTracker(GsmCdmaPhone phone,
+            @NonNull FeatureFlags featureFlags) {
+        return new GsmCdmaCallTracker(phone, featureFlags);
     }
 
     public SmsStorageMonitor makeSmsStorageMonitor(Phone phone) {
@@ -297,8 +305,9 @@ public class TelephonyComponentFactory {
     /**
      * Create a new EmergencyNumberTracker.
      */
-    public EmergencyNumberTracker makeEmergencyNumberTracker(Phone phone, CommandsInterface ci) {
-        return new EmergencyNumberTracker(phone, ci);
+    public EmergencyNumberTracker makeEmergencyNumberTracker(Phone phone, CommandsInterface ci,
+            @NonNull FeatureFlags featureFlags) {
+        return new EmergencyNumberTracker(phone, ci, featureFlags);
     }
 
     private static final boolean USE_NEW_NITZ_STATE_MACHINE = true;
@@ -342,8 +351,9 @@ public class TelephonyComponentFactory {
      * Create a new UiccProfile object.
      */
     public UiccProfile makeUiccProfile(Context context, CommandsInterface ci, IccCardStatus ics,
-                                       int phoneId, UiccCard uiccCard, Object lock) {
-        return new UiccProfile(context, ci, ics, phoneId, uiccCard, lock);
+                                       int phoneId, UiccCard uiccCard, Object lock,
+            @NonNull FeatureFlags flags) {
+        return new UiccProfile(context, ci, ics, phoneId, uiccCard, lock, flags);
     }
 
     public EriManager makeEriManager(Phone phone, int eriFileSource) {
@@ -468,8 +478,8 @@ public class TelephonyComponentFactory {
     }
 
     public LocaleTracker makeLocaleTracker(Phone phone, NitzStateMachine nitzStateMachine,
-                                           Looper looper) {
-        return new LocaleTracker(phone, nitzStateMachine, looper);
+                                           Looper looper, @NonNull FeatureFlags featureFlags) {
+        return new LocaleTracker(phone, nitzStateMachine, looper, featureFlags);
     }
 
     public Phone makePhone(Context context, CommandsInterface ci, PhoneNotifier notifier,
@@ -498,8 +508,9 @@ public class TelephonyComponentFactory {
      * @param c The context.
      * @return The multi sim settings controller instance.
      */
-    public MultiSimSettingController initMultiSimSettingController(Context c) {
-        return MultiSimSettingController.init(c);
+    public MultiSimSettingController initMultiSimSettingController(Context c,
+            @NonNull FeatureFlags featureFlags) {
+        return MultiSimSettingController.init(c, featureFlags);
     }
 
     /**
@@ -562,13 +573,28 @@ public class TelephonyComponentFactory {
      * @return The data settings manager instance.
      */
     public @NonNull DataSettingsManager makeDataSettingsManager(@NonNull Phone phone,
-            @NonNull DataNetworkController dataNetworkController, @NonNull Looper looper,
+            @NonNull DataNetworkController dataNetworkController,
+            @NonNull FeatureFlags featureFlags, @NonNull Looper looper,
             @NonNull DataSettingsManager.DataSettingsManagerCallback callback) {
-        return new DataSettingsManager(phone, dataNetworkController, looper, callback);
+        return new DataSettingsManager(phone, dataNetworkController, featureFlags, looper,
+                callback);
+    }
+
+    /** Create CellularNetworkSecuritySafetySource. */
+    public CellularNetworkSecuritySafetySource makeCellularNetworkSecuritySafetySource(
+            Context context) {
+        return CellularNetworkSecuritySafetySource.getInstance(context);
     }
 
     /** Create CellularIdentifierDisclosureNotifier. */
-    public CellularIdentifierDisclosureNotifier makeIdentifierDisclosureNotifier() {
-        return CellularIdentifierDisclosureNotifier.getInstance();
+    public CellularIdentifierDisclosureNotifier makeIdentifierDisclosureNotifier(
+            CellularNetworkSecuritySafetySource safetySource) {
+        return CellularIdentifierDisclosureNotifier.getInstance(safetySource);
+    }
+
+    /** Create NullCipherNotifier. */
+    public NullCipherNotifier makeNullCipherNotifier(
+            CellularNetworkSecuritySafetySource safetySource) {
+        return NullCipherNotifier.getInstance(safetySource);
     }
 }

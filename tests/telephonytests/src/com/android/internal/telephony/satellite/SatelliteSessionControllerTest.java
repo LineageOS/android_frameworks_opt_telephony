@@ -18,6 +18,7 @@ package com.android.internal.telephony.satellite;
 
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_SUCCESS;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_FAILED;
@@ -38,7 +39,7 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.os.Looper;
 import android.os.Message;
-import android.telephony.satellite.ISatelliteStateCallback;
+import android.telephony.satellite.ISatelliteModemStateCallback;
 import android.telephony.satellite.SatelliteManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -76,7 +77,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
     private TestSatelliteModemInterface mSatelliteModemInterface;
     private TestSatelliteSessionController mTestSatelliteSessionController;
-    private TestSatelliteStateCallback mTestSatelliteStateCallback;
+    private TestSatelliteModemStateCallback mTestSatelliteModemStateCallback;
 
     @Mock private SatelliteController mMockSatelliteController;
     @Mock private DatagramReceiver mMockDatagramReceiver;
@@ -107,11 +108,11 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
                 Looper.myLooper(), true, mSatelliteModemInterface);
         processAllMessages();
 
-        mTestSatelliteStateCallback = new TestSatelliteStateCallback();
+        mTestSatelliteModemStateCallback = new TestSatelliteModemStateCallback();
         mTestSatelliteSessionController.registerForSatelliteModemStateChanged(
-                mTestSatelliteStateCallback);
+                mTestSatelliteModemStateCallback);
         assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
+                mTestSatelliteModemStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
     }
 
     @After
@@ -176,7 +177,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to IDLE state after the modem is powered on.
         assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
+                mTestSatelliteModemStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
         assertEquals(STATE_IDLE, mTestSatelliteSessionController.getCurrentStateName());
         assertFalse(mTestSatelliteSessionController.isSendingTriggeredDuringTransferringState());
 
@@ -186,7 +187,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move back to POWER_OFF state.
         assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
+                mTestSatelliteModemStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
         assertEquals(STATE_POWER_OFF, mTestSatelliteSessionController.getCurrentStateName());
         assertFalse(mTestSatelliteSessionController.isSendingTriggeredDuringTransferringState());
 
@@ -196,7 +197,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to IDLE state after radio is turned on.
         assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
+                mTestSatelliteModemStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
         assertEquals(STATE_IDLE, mTestSatelliteSessionController.getCurrentStateName());
         assertFalse(mTestSatelliteSessionController.isSendingTriggeredDuringTransferringState());
 
@@ -206,7 +207,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to TRANSFERRING state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
         assertEquals(STATE_TRANSFERRING, mTestSatelliteSessionController.getCurrentStateName());
         assertTrue(mTestSatelliteSessionController.isSendingTriggeredDuringTransferringState());
@@ -218,7 +219,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to IDLE state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
         assertEquals(STATE_IDLE, mTestSatelliteSessionController.getCurrentStateName());
         assertFalse(mTestSatelliteSessionController.isSendingTriggeredDuringTransferringState());
@@ -230,7 +231,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to TRANSFERRING state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
         assertEquals(STATE_TRANSFERRING, mTestSatelliteSessionController.getCurrentStateName());
         assertTrue(mTestSatelliteSessionController.isSendingTriggeredDuringTransferringState());
@@ -242,7 +243,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to LISTENING state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_LISTENING);
         assertEquals(STATE_LISTENING, mTestSatelliteSessionController.getCurrentStateName());
         assertEquals(1, mSatelliteModemInterface.getListeningEnabledCount());
@@ -255,7 +256,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to TRANSFERRING state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
         assertEquals(STATE_TRANSFERRING, mTestSatelliteSessionController.getCurrentStateName());
         assertEquals(1, mSatelliteModemInterface.getListeningDisabledCount());
@@ -267,7 +268,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to LISTENING state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_LISTENING);
         assertEquals(STATE_LISTENING, mTestSatelliteSessionController.getCurrentStateName());
         assertEquals(2, mSatelliteModemInterface.getListeningEnabledCount());
@@ -280,7 +281,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to TRANSFERRING state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
         assertEquals(STATE_TRANSFERRING, mTestSatelliteSessionController.getCurrentStateName());
         assertEquals(2, mSatelliteModemInterface.getListeningDisabledCount());
@@ -293,7 +294,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to IDLE state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
         assertEquals(STATE_IDLE, mTestSatelliteSessionController.getCurrentStateName());
         assertFalse(mTestSatelliteSessionController.isSendingTriggeredDuringTransferringState());
@@ -305,7 +306,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to TRANSFERRING state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
         assertEquals(STATE_TRANSFERRING, mTestSatelliteSessionController.getCurrentStateName());
         assertFalse(mTestSatelliteSessionController.isSendingTriggeredDuringTransferringState());
@@ -316,7 +317,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to LISTENING state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_LISTENING);
         assertEquals(STATE_LISTENING, mTestSatelliteSessionController.getCurrentStateName());
         assertEquals(3, mSatelliteModemInterface.getListeningEnabledCount());
@@ -327,7 +328,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to IDLE state after timeout
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
         assertEquals(STATE_IDLE, mTestSatelliteSessionController.getCurrentStateName());
         assertEquals(3, mSatelliteModemInterface.getListeningDisabledCount());
@@ -340,7 +341,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to TRANSFERRING state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
         assertEquals(STATE_TRANSFERRING, mTestSatelliteSessionController.getCurrentStateName());
         assertFalse(mTestSatelliteSessionController.isSendingTriggeredDuringTransferringState());
@@ -352,7 +353,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should stay at TRANSFERRING state.
-        assertModemStateChangedCallbackNotCalled(mTestSatelliteStateCallback);
+        assertModemStateChangedCallbackNotCalled(mTestSatelliteModemStateCallback);
         assertEquals(STATE_TRANSFERRING, mTestSatelliteSessionController.getCurrentStateName());
         assertTrue(mTestSatelliteSessionController.isSendingTriggeredDuringTransferringState());
 
@@ -364,7 +365,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should stay at TRANSFERRING state instead of moving to IDLE
         // state.
-        assertModemStateChangedCallbackNotCalled(mTestSatelliteStateCallback);
+        assertModemStateChangedCallbackNotCalled(mTestSatelliteModemStateCallback);
         assertEquals(STATE_TRANSFERRING, mTestSatelliteSessionController.getCurrentStateName());
         assertTrue(mTestSatelliteSessionController.isSendingTriggeredDuringTransferringState());
 
@@ -375,7 +376,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should stay at TRANSFERRING state.
-        assertModemStateChangedCallbackNotCalled(mTestSatelliteStateCallback);
+        assertModemStateChangedCallbackNotCalled(mTestSatelliteModemStateCallback);
         assertEquals(STATE_TRANSFERRING, mTestSatelliteSessionController.getCurrentStateName());
         assertTrue(mTestSatelliteSessionController.isSendingTriggeredDuringTransferringState());
 
@@ -387,7 +388,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should stay at TRANSFERRING state instead of moving to IDLE
         // state.
-        assertModemStateChangedCallbackNotCalled(mTestSatelliteStateCallback);
+        assertModemStateChangedCallbackNotCalled(mTestSatelliteModemStateCallback);
         assertEquals(STATE_TRANSFERRING, mTestSatelliteSessionController.getCurrentStateName());
         assertTrue(mTestSatelliteSessionController.isSendingTriggeredDuringTransferringState());
 
@@ -397,7 +398,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to POWER_OFF state.
         assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
+                mTestSatelliteModemStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
         assertEquals(STATE_POWER_OFF, mTestSatelliteSessionController.getCurrentStateName());
         assertFalse(mTestSatelliteSessionController.isSendingTriggeredDuringTransferringState());
     }
@@ -419,8 +420,8 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to NOT_CONNECTED state after the satellite modem
         // is powered on.
-        assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
+                SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
         assertEquals(STATE_NOT_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
         assertFalse(mTestSatelliteSessionController.isNbIotInactivityTimerStarted());
         verify(mMockDatagramController).onSatelliteModemStateChanged(
@@ -430,7 +431,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         moveTimeForward(TEST_SATELLITE_TIMEOUT_MILLIS);
         processAllMessages();
         // SatelliteSessionController should stay at NOT_CONNECTED state.
-        assertModemStateChangedCallbackNotCalled(mTestSatelliteStateCallback);
+        assertModemStateChangedCallbackNotCalled(mTestSatelliteModemStateCallback);
         assertEquals(STATE_NOT_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
 
         setupDatagramTransferringState(true);
@@ -441,7 +442,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move back to POWER_OFF state.
         assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
+                mTestSatelliteModemStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
         assertEquals(STATE_POWER_OFF, mTestSatelliteSessionController.getCurrentStateName());
         verify(mMockDatagramController).onSatelliteModemStateChanged(
                 SatelliteManager.SATELLITE_MODEM_STATE_OFF);
@@ -452,8 +453,8 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to NOT_CONNECTED state after radio is turned on.
-        assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
+                SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
         assertEquals(STATE_NOT_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
         assertTrue(mTestSatelliteSessionController.isNbIotInactivityTimerStarted());
         verify(mMockDatagramController).onSatelliteModemStateChanged(
@@ -466,7 +467,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // The datagram sending event should be ignored.
-        assertModemStateChangedCallbackNotCalled(mTestSatelliteStateCallback);
+        assertModemStateChangedCallbackNotCalled(mTestSatelliteModemStateCallback);
         assertEquals(STATE_NOT_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
 
         // Satellite modem is connected to a satellite network.
@@ -476,7 +477,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to CONNECTED state
         assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
+                mTestSatelliteModemStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
         assertEquals(STATE_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
         assertTrue(mTestSatelliteSessionController.isNbIotInactivityTimerStarted());
         verify(mMockDatagramController).onSatelliteModemStateChanged(
@@ -489,7 +490,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to TRANSFERRING state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
         assertEquals(STATE_TRANSFERRING, mTestSatelliteSessionController.getCurrentStateName());
         assertFalse(mTestSatelliteSessionController.isNbIotInactivityTimerStarted());
@@ -504,7 +505,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to CONNECTED state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
         assertEquals(STATE_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
         assertTrue(mTestSatelliteSessionController.isNbIotInactivityTimerStarted());
@@ -519,7 +520,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to TRANSFERRING state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
         assertEquals(STATE_TRANSFERRING, mTestSatelliteSessionController.getCurrentStateName());
         assertFalse(mTestSatelliteSessionController.isNbIotInactivityTimerStarted());
@@ -534,7 +535,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to CONNECTED state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
         assertEquals(STATE_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
         assertTrue(mTestSatelliteSessionController.isNbIotInactivityTimerStarted());
@@ -549,7 +550,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to TRANSFERRING state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
         assertEquals(STATE_TRANSFERRING, mTestSatelliteSessionController.getCurrentStateName());
         assertFalse(mTestSatelliteSessionController.isNbIotInactivityTimerStarted());
@@ -563,7 +564,36 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to CONNECTED state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
+                SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
+        assertEquals(STATE_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
+        assertTrue(mTestSatelliteSessionController.isNbIotInactivityTimerStarted());
+        verify(mMockDatagramController).onSatelliteModemStateChanged(
+                SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
+        clearInvocations(mMockDatagramController);
+
+        // Start receiving datagrams
+        mTestSatelliteSessionController.onDatagramTransferStateChanged(
+                SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
+                SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_SUCCESS);
+        processAllMessages();
+
+        // SatelliteSessionController should move to TRANSFERRING state.
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
+                SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
+        assertEquals(STATE_TRANSFERRING, mTestSatelliteSessionController.getCurrentStateName());
+        assertFalse(mTestSatelliteSessionController.isNbIotInactivityTimerStarted());
+        verify(mMockDatagramController).onSatelliteModemStateChanged(
+                SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
+        clearInvocations(mMockDatagramController);
+
+        // Receiving datagrams is successful and done.
+        mTestSatelliteSessionController.onDatagramTransferStateChanged(
+                SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE, SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE);
+        processAllMessages();
+
+        // SatelliteSessionController should move to CONNECTED state.
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
         assertEquals(STATE_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
         assertTrue(mTestSatelliteSessionController.isNbIotInactivityTimerStarted());
@@ -576,7 +606,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to IDLE state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
         assertEquals(STATE_IDLE, mTestSatelliteSessionController.getCurrentStateName());
         assertFalse(mTestSatelliteSessionController.isNbIotInactivityTimerStarted());
@@ -591,7 +621,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to NOT_CONNECTED state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
         assertEquals(STATE_NOT_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
         verify(mMockDatagramController).onSatelliteModemStateChanged(
@@ -605,7 +635,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to CONNECTED state
         assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
+                mTestSatelliteModemStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
         assertEquals(STATE_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
         verify(mMockDatagramController).onSatelliteModemStateChanged(
                 SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
@@ -617,8 +647,8 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to NOT_CONNECTED state
-        assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
+                SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
         assertEquals(STATE_NOT_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
         verify(mMockDatagramController).onSatelliteModemStateChanged(
                 SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
@@ -631,7 +661,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to CONNECTED state
         assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
+                mTestSatelliteModemStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
         assertEquals(STATE_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
         verify(mMockDatagramController).onSatelliteModemStateChanged(
                 SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
@@ -643,7 +673,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to POWER_OFF state.
         assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
+                mTestSatelliteModemStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
         assertEquals(STATE_POWER_OFF, mTestSatelliteSessionController.getCurrentStateName());
         verify(mMockDatagramController).onSatelliteModemStateChanged(
                 SatelliteManager.SATELLITE_MODEM_STATE_OFF);
@@ -655,8 +685,8 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to NOT_CONNECTED state after the satellite modem
         // is powered on.
-        assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
+                SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
         assertEquals(STATE_NOT_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
         verify(mMockDatagramController).onSatelliteModemStateChanged(
                 SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
@@ -669,7 +699,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to CONNECTED state
         assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
+                mTestSatelliteModemStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
         assertEquals(STATE_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
 
         // Wait for timeout
@@ -677,7 +707,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should move to IDLE state.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
         assertEquals(STATE_IDLE, mTestSatelliteSessionController.getCurrentStateName());
 
@@ -692,7 +722,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should stay at IDLE state because it failed to disable
         // cellular scanning.
-        assertModemStateChangedCallbackNotCalled(mTestSatelliteStateCallback);
+        assertModemStateChangedCallbackNotCalled(mTestSatelliteModemStateCallback);
         assertEquals(STATE_IDLE, mTestSatelliteSessionController.getCurrentStateName());
 
         mSatelliteModemInterface.setErrorCode(SatelliteManager.SATELLITE_RESULT_SUCCESS);
@@ -703,7 +733,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to POWER_OFF
         assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
+                mTestSatelliteModemStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
         assertEquals(STATE_POWER_OFF, mTestSatelliteSessionController.getCurrentStateName());
 
         // Power on the modem.
@@ -712,8 +742,8 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to NOT_CONNECTED state after the satellite modem
         // is powered on.
-        assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
+                SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
         assertEquals(STATE_NOT_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
 
         moveTimeForward(TEST_SATELLITE_TIMEOUT_MILLIS);
@@ -721,7 +751,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to IDLE state because NB-IOT inactivity timer has
         // timed out.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
         assertEquals(STATE_IDLE, mTestSatelliteSessionController.getCurrentStateName());
 
@@ -731,7 +761,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to POWER_OFF
         assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
+                mTestSatelliteModemStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_OFF);
         assertEquals(STATE_POWER_OFF, mTestSatelliteSessionController.getCurrentStateName());
 
         // Power on the modem.
@@ -740,8 +770,8 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to NOT_CONNECTED state after the satellite modem
         // is powered on.
-        assertSuccessfulModemStateChangedCallback(
-                mTestSatelliteStateCallback, SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
+                SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
         assertEquals(STATE_NOT_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
 
         // Start sending datagrams and the NB-IOT inactivity timer should be stopped.
@@ -752,7 +782,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         processAllMessages();
 
         // SatelliteSessionController should stay at NOT_CONNECTED state because.
-        assertModemStateChangedCallbackNotCalled(mTestSatelliteStateCallback);
+        assertModemStateChangedCallbackNotCalled(mTestSatelliteModemStateCallback);
         assertEquals(STATE_NOT_CONNECTED, mTestSatelliteSessionController.getCurrentStateName());
 
         // Transferring datagram failed because satellite failed to connect to a satellite network.
@@ -771,7 +801,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
 
         // SatelliteSessionController should move to IDLE state because NB-IOT inactivity timer has
         // timed out.
-        assertSuccessfulModemStateChangedCallback(mTestSatelliteStateCallback,
+        assertSuccessfulModemStateChangedCallback(mTestSatelliteModemStateCallback,
                 SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
         assertEquals(STATE_IDLE, mTestSatelliteSessionController.getCurrentStateName());
     }
@@ -850,7 +880,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
         }
     }
 
-    private static class TestSatelliteStateCallback extends ISatelliteStateCallback.Stub {
+    private static class TestSatelliteModemStateCallback extends ISatelliteModemStateCallback.Stub {
         private final AtomicInteger mModemState = new AtomicInteger(
                 SatelliteManager.SATELLITE_MODEM_STATE_OFF);
         private final Semaphore mSemaphore = new Semaphore(0);
@@ -885,7 +915,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
     }
 
     private static void assertSuccessfulModemStateChangedCallback(
-            TestSatelliteStateCallback callback,
+            TestSatelliteModemStateCallback callback,
             @SatelliteManager.SatelliteModemState int expectedModemState) {
         boolean successful = callback.waitUntilResult();
         assertTrue(successful);
@@ -893,7 +923,7 @@ public class SatelliteSessionControllerTest extends TelephonyTest {
     }
 
     private static void assertModemStateChangedCallbackNotCalled(
-            TestSatelliteStateCallback callback) {
+            TestSatelliteModemStateCallback callback) {
         boolean successful = callback.waitUntilResult();
         assertFalse(successful);
     }

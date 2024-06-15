@@ -16,13 +16,11 @@
 
 package com.android.internal.telephony;
 
-import com.android.internal.telephony.GsmAlphabet;
+import androidx.test.filters.SmallTest;
+
 import com.android.internal.telephony.uicc.IccUtils;
 
 import junit.framework.TestCase;
-
-import android.test.suitebuilder.annotation.LargeTest;
-import android.test.suitebuilder.annotation.SmallTest;
 
 public class GsmAlphabetTest extends TestCase {
 

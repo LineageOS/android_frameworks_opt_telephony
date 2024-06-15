@@ -90,7 +90,7 @@ public class RadioOnStateListenerTest extends TelephonyTest {
         waitForHandlerAction(mListener.getHandler(), TIMEOUT_MS);
 
         verify(mMockPhone).unregisterForServiceStateChanged(any(Handler.class));
-        verify(mSatelliteController).unregisterForSatelliteModemStateChanged(anyInt(), any());
+        verify(mSatelliteController).unregisterForModemStateChanged(anyInt(), any());
         verify(mMockPhone).registerForServiceStateChanged(any(Handler.class),
                 eq(RadioOnStateListener.MSG_SERVICE_STATE_CHANGED), isNull());
         verify(mSatelliteController, never()).registerForSatelliteModemStateChanged(
@@ -110,7 +110,7 @@ public class RadioOnStateListenerTest extends TelephonyTest {
 
         waitForHandlerAction(mListener.getHandler(), TIMEOUT_MS);
 
-        verify(mSatelliteController).unregisterForSatelliteModemStateChanged(anyInt(), any());
+        verify(mSatelliteController).unregisterForModemStateChanged(anyInt(), any());
         verify(mSatelliteController).registerForSatelliteModemStateChanged(anyInt(), any());
     }
 

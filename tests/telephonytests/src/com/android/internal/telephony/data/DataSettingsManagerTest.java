@@ -77,7 +77,7 @@ public class DataSettingsManagerTest extends TelephonyTest {
                 .when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
 
         mDataSettingsManagerUT = new DataSettingsManager(mPhone, mDataNetworkController,
-                Looper.myLooper(), mMockedDataSettingsManagerCallback);
+                mFeatureFlags, Looper.myLooper(), mMockedDataSettingsManagerCallback);
         logd("DataSettingsManagerTest -Setup!");
     }
 

@@ -23,8 +23,6 @@ import static android.telephony.TelephonyManager.EXTRA_EMERGENCY_CALL_TO_SATELLI
 import static android.telephony.TelephonyManager.EXTRA_EMERGENCY_CALL_TO_SATELLITE_LAUNCH_INTENT;
 import static android.telephony.satellite.SatelliteManager.EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_SOS;
 import static android.telephony.satellite.SatelliteManager.EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_T911;
-import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_COMMUNICATION_ALLOWED;
-import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
 import static com.android.internal.telephony.satellite.SatelliteController.INVALID_EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE;
 
@@ -39,7 +37,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.os.ResultReceiver;
+import android.os.OutcomeReceiver;
 import android.os.SystemProperties;
 import android.provider.DeviceConfig;
 import android.telecom.Connection;
@@ -51,6 +49,7 @@ import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.satellite.ISatelliteProvisionStateCallback;
+import android.telephony.satellite.SatelliteManager;
 import android.text.TextUtils;
 import android.util.Pair;
 import android.util.SparseArray;
@@ -58,6 +57,7 @@ import android.util.SparseArray;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.internal.R;
+import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
@@ -83,6 +83,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
     private static final int EVENT_SATELLITE_PROVISIONED_STATE_CHANGED = 4;
     private static final int EVENT_EMERGENCY_CALL_CONNECTION_STATE_CHANGED = 5;
     private static final int CMD_SEND_EVENT_DISPLAY_EMERGENCY_MESSAGE_FORCEFULLY = 6;
+    private static final int EVENT_SATELLITE_ACCESS_RESTRICTION_CHECKING_RESULT = 7;
 
     @NonNull private final Context mContext;
     @NonNull
@@ -94,12 +95,17 @@ public class SatelliteSOSMessageRecommender extends Handler {
     /** Key: Phone ID; Value: IMS RegistrationCallback */
     private SparseArray<RegistrationManager.RegistrationCallback>
             mImsRegistrationCallbacks = new SparseArray<>();
-    private AtomicBoolean mIsSatelliteAllowedInCurrentLocation = new AtomicBoolean();
-    private final ResultReceiver mReceiverForRequestIsSatelliteAllowedForCurrentLocation;
+    @GuardedBy("mLock")
+    private boolean mIsSatelliteAllowedForCurrentLocation = false;
+    @GuardedBy("mLock")
+    private boolean mCheckingAccessRestrictionInProgress = false;
     private final long mTimeoutMillis;
     private final AtomicBoolean mIsSatelliteConnectedViaCarrierWithinHysteresisTime =
             new AtomicBoolean(false);
+    @GuardedBy("mLock")
+    private boolean mIsTimerTimedOut = false;
     protected int mCountOfTimerStarted = 0;
+    private final Object mLock = new Object();
 
     /**
      * Create an instance of SatelliteSOSMessageRecommender.
@@ -139,31 +145,6 @@ public class SatelliteSOSMessageRecommender extends Handler {
                 sendMessage(obtainMessage(EVENT_SATELLITE_PROVISIONED_STATE_CHANGED, provisioned));
             }
         };
-        mReceiverForRequestIsSatelliteAllowedForCurrentLocation = new ResultReceiver(this) {
-            @Override
-            protected void onReceiveResult(int resultCode, Bundle resultData) {
-                if (resultCode == SATELLITE_RESULT_SUCCESS) {
-                    if (resultData.containsKey(KEY_SATELLITE_COMMUNICATION_ALLOWED)) {
-                        boolean isSatelliteCommunicationAllowed =
-                                resultData.getBoolean(KEY_SATELLITE_COMMUNICATION_ALLOWED);
-                        mIsSatelliteAllowedInCurrentLocation.set(isSatelliteCommunicationAllowed);
-                        if (!isSatelliteCommunicationAllowed) {
-                            logd("Satellite is not allowed for current location.");
-                            cleanUpResources();
-                        }
-                    } else {
-                        loge("KEY_SATELLITE_COMMUNICATION_ALLOWED does not exist.");
-                        mIsSatelliteAllowedInCurrentLocation.set(false);
-                        cleanUpResources();
-                    }
-                } else {
-                    loge("requestIsSatelliteCommunicationAllowedForCurrentLocation() resultCode="
-                            + resultCode);
-                    mIsSatelliteAllowedInCurrentLocation.set(false);
-                    cleanUpResources();
-                }
-            }
-        };
     }
 
     @Override
@@ -187,6 +168,9 @@ public class SatelliteSOSMessageRecommender extends Handler {
             case CMD_SEND_EVENT_DISPLAY_EMERGENCY_MESSAGE_FORCEFULLY:
                 handleCmdSendEventDisplayEmergencyMessageForcefully((Connection) msg.obj);
                 break;
+            case EVENT_SATELLITE_ACCESS_RESTRICTION_CHECKING_RESULT:
+                handleSatelliteAccessRestrictionCheckingResult((boolean) msg.obj);
+                break;
             default:
                 logd("handleMessage: unexpected message code: " + msg.what);
                 break;
@@ -206,7 +190,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
             return;
         }
 
-        /**
+        /*
          * Right now, assume that the device is connected to satellite via carrier within hysteresis
          * time. However, this might not be correct when the monitoring timer expires. Thus, we
          * should do this check now so that we have higher chance of sending the event
@@ -226,6 +210,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
      */
     public void onEmergencyCallConnectionStateChanged(
             String callId, @Connection.ConnectionState int state) {
+        logd("callId=" + callId + ", state=" + state);
         if (!mSatelliteController.isSatelliteSupportedViaOem()
                 && !mSatelliteController.isSatelliteSupportedViaCarrier()) {
             logd("onEmergencyCallConnectionStateChanged: satellite is not supported");
@@ -245,13 +230,14 @@ public class SatelliteSOSMessageRecommender extends Handler {
             return;
         }
         if (mEmergencyConnection == null) {
-            mSatelliteController.requestIsSatelliteCommunicationAllowedForCurrentLocation(
-                    SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
-                    mReceiverForRequestIsSatelliteAllowedForCurrentLocation);
             handleStateChangedEventForHysteresisTimer();
             registerForInterestedStateChangedEvents();
         }
         mEmergencyConnection = connection;
+        synchronized (mLock) {
+            mCheckingAccessRestrictionInProgress = false;
+            mIsSatelliteAllowedForCurrentLocation = false;
+        }
     }
 
     private void handleSatelliteProvisionStateChangedEvent(boolean provisioned) {
@@ -261,32 +247,59 @@ public class SatelliteSOSMessageRecommender extends Handler {
     }
 
     private void handleTimeoutEvent() {
-        /**
-         * The device might be connected to satellite after the emergency call started. Thus, we
-         * need to do this check again so that we will have higher chance of sending the event
-         * EVENT_DISPLAY_EMERGENCY_MESSAGE to Dialer.
-         */
-        updateSatelliteViaCarrierAvailability();
-
-        boolean isDialerNotified = false;
-        if (!isImsRegistered() && !isCellularAvailable()
-                && mIsSatelliteAllowedInCurrentLocation.get()
-                && (isSatelliteViaOemAvailable() || isSatelliteViaCarrierAvailable())
-                && shouldTrackCall(mEmergencyConnection.getState())) {
-            logd("handleTimeoutEvent: Sent EVENT_DISPLAY_EMERGENCY_MESSAGE to Dialer");
-            Bundle extras = createExtraBundleForEventDisplayEmergencyMessage();
-            mEmergencyConnection.sendConnectionEvent(
-                    TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE, extras);
-            isDialerNotified = true;
-
+        synchronized (mLock) {
+            mIsTimerTimedOut = true;
+            evaluateSendingConnectionEventDisplayEmergencyMessage();
         }
-        logd("handleTimeoutEvent: isImsRegistered=" + isImsRegistered()
-                + ", isCellularAvailable=" + isCellularAvailable()
-                + ", mIsSatelliteAllowedInCurrentLocation="
-                + mIsSatelliteAllowedInCurrentLocation.get()
-                + ", shouldTrackCall=" + shouldTrackCall(mEmergencyConnection.getState()));
-        reportEsosRecommenderDecision(isDialerNotified);
-        cleanUpResources();
+    }
+
+    private void evaluateSendingConnectionEventDisplayEmergencyMessage() {
+        synchronized (mLock) {
+            if (mEmergencyConnection == null) {
+                loge("No emergency call is ongoing...");
+                return;
+            }
+
+            if (!mIsTimerTimedOut || mCheckingAccessRestrictionInProgress) {
+                logd("mIsTimerTimedOut=" + mIsTimerTimedOut
+                        + ", mCheckingAccessRestrictionInProgress="
+                        + mCheckingAccessRestrictionInProgress);
+                return;
+            }
+
+            /*
+             * The device might be connected to satellite after the emergency call started. Thus, we
+             * need to do this check again so that we will have higher chance of sending the event
+             * EVENT_DISPLAY_EMERGENCY_MESSAGE to Dialer.
+             */
+            updateSatelliteViaCarrierAvailability();
+
+            boolean isDialerNotified = false;
+            if (!isImsRegistered() && !isCellularAvailable()
+                    && isSatelliteAllowed()
+                    && (isSatelliteViaOemAvailable() || isSatelliteViaCarrierAvailable())
+                    && shouldTrackCall(mEmergencyConnection.getState())) {
+                logd("handleTimeoutEvent: Sent EVENT_DISPLAY_EMERGENCY_MESSAGE to Dialer");
+                Bundle extras = createExtraBundleForEventDisplayEmergencyMessage();
+                mEmergencyConnection.sendConnectionEvent(
+                        TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE, extras);
+                isDialerNotified = true;
+
+            }
+            logd("handleTimeoutEvent: isImsRegistered=" + isImsRegistered()
+                    + ", isCellularAvailable=" + isCellularAvailable()
+                    + ", isSatelliteAllowed=" + isSatelliteAllowed()
+                    + ", shouldTrackCall=" + shouldTrackCall(mEmergencyConnection.getState()));
+            reportEsosRecommenderDecision(isDialerNotified);
+            cleanUpResources();
+        }
+    }
+
+    private boolean isSatelliteAllowed() {
+        synchronized (mLock) {
+            if (isSatelliteViaCarrierAvailable()) return true;
+            return mIsSatelliteAllowedForCurrentLocation;
+        }
     }
 
     private void updateSatelliteViaCarrierAvailability() {
@@ -296,8 +309,14 @@ public class SatelliteSOSMessageRecommender extends Handler {
         }
     }
 
-    private boolean isSatelliteViaOemAvailable() {
-        return mSatelliteController.isSatelliteViaOemProvisioned();
+    /**
+     * Check if satellite is available via OEM
+     * @return {@code true} if satellite is provisioned via OEM else return {@code false}
+     */
+    @VisibleForTesting
+    public boolean isSatelliteViaOemAvailable() {
+        Boolean satelliteProvisioned = mSatelliteController.isSatelliteViaOemProvisioned();
+        return satelliteProvisioned != null ? satelliteProvisioned : false;
     }
 
     private boolean isSatelliteViaCarrierAvailable() {
@@ -317,7 +336,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
             loge("handleEmergencyCallConnectionStateChangedEvent: unexpected state changed event "
                     + ", mEmergencyConnection=" + mEmergencyConnection + ", callId=" + callId
                     + ", state=" + state);
-            /**
+            /*
              * TelephonyConnectionService sent us a connection state changed event for a call that
              * we're not tracking. There must be some unexpected things happened in
              * TelephonyConnectionService. Thus, we need to clean up the resources.
@@ -329,6 +348,13 @@ public class SatelliteSOSMessageRecommender extends Handler {
         if (!shouldTrackCall(state)) {
             reportEsosRecommenderDecision(false);
             cleanUpResources();
+        } else {
+            // Location service will enter emergency mode only when connection state changes to
+            // STATE_DIALING
+            if (state == Connection.STATE_DIALING
+                    && mSatelliteController.isSatelliteSupportedViaOem()) {
+                requestIsSatelliteAllowedForCurrentLocation();
+            }
         }
     }
 
@@ -341,18 +367,22 @@ public class SatelliteSOSMessageRecommender extends Handler {
                         .setCellularServiceState(getBestCellularServiceState())
                         .setIsMultiSim(isMultiSim())
                         .setRecommendingHandoverType(getEmergencyCallToSatelliteHandoverType())
-                        .setIsSatelliteAllowedInCurrentLocation(
-                                mIsSatelliteAllowedInCurrentLocation.get())
+                        .setIsSatelliteAllowedInCurrentLocation(isSatelliteAllowed())
                         .build());
     }
 
     private void cleanUpResources() {
-        stopTimer();
-        if (mEmergencyConnection != null) {
-            unregisterForInterestedStateChangedEvents();
+        synchronized (mLock) {
+            stopTimer();
+            if (mEmergencyConnection != null) {
+                unregisterForInterestedStateChangedEvents();
+            }
+            mEmergencyConnection = null;
+            mCountOfTimerStarted = 0;
+            mIsTimerTimedOut = false;
+            mCheckingAccessRestrictionInProgress = false;
+            mIsSatelliteAllowedForCurrentLocation = false;
         }
-        mEmergencyConnection = null;
-        mCountOfTimerStarted = 0;
     }
 
     private void registerForInterestedStateChangedEvents() {
@@ -450,15 +480,28 @@ public class SatelliteSOSMessageRecommender extends Handler {
     }
 
     private void startTimer() {
-        if (hasMessages(EVENT_TIME_OUT)) {
-            return;
+        synchronized (mLock) {
+            if (hasMessages(EVENT_TIME_OUT)) {
+                return;
+            }
+            sendMessageDelayed(obtainMessage(EVENT_TIME_OUT), mTimeoutMillis);
+            mCountOfTimerStarted++;
+            mIsTimerTimedOut = false;
         }
-        sendMessageDelayed(obtainMessage(EVENT_TIME_OUT), mTimeoutMillis);
-        mCountOfTimerStarted++;
     }
 
     private void stopTimer() {
-        removeMessages(EVENT_TIME_OUT);
+        synchronized (mLock) {
+            removeMessages(EVENT_TIME_OUT);
+        }
+    }
+
+    private void handleSatelliteAccessRestrictionCheckingResult(boolean satelliteAllowed) {
+        synchronized (mLock) {
+            mIsSatelliteAllowedForCurrentLocation = satelliteAllowed;
+            mCheckingAccessRestrictionInProgress = false;
+            evaluateSendingConnectionEventDisplayEmergencyMessage();
+        }
     }
 
     private static long getEmergencyCallWaitForConnectionTimeoutMillis(@NonNull Context context) {
@@ -625,6 +668,42 @@ public class SatelliteSOSMessageRecommender extends Handler {
         } else {
             return EMERGENCY_CALL_TO_SATELLITE_HANDOVER_TYPE_SOS;
         }
+    }
+
+    private void requestIsSatelliteAllowedForCurrentLocation() {
+        synchronized (mLock) {
+            if (mCheckingAccessRestrictionInProgress) {
+                logd("requestIsSatelliteCommunicationAllowedForCurrentLocation was already sent");
+                return;
+            }
+            mCheckingAccessRestrictionInProgress = true;
+        }
+
+        OutcomeReceiver<Boolean, SatelliteManager.SatelliteException> callback =
+                new OutcomeReceiver<>() {
+                    @Override
+                    public void onResult(Boolean result) {
+                        logd("requestIsSatelliteAllowedForCurrentLocation: result=" + result);
+                        sendMessage(obtainMessage(
+                                EVENT_SATELLITE_ACCESS_RESTRICTION_CHECKING_RESULT, result));
+                    }
+
+                    @Override
+                    public void onError(SatelliteManager.SatelliteException ex) {
+                        logd("requestIsSatelliteAllowedForCurrentLocation: onError, ex=" + ex);
+                        sendMessage(obtainMessage(
+                                EVENT_SATELLITE_ACCESS_RESTRICTION_CHECKING_RESULT, false));
+                    }
+                };
+        requestIsSatelliteCommunicationAllowedForCurrentLocation(callback);
+    }
+
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    protected void requestIsSatelliteCommunicationAllowedForCurrentLocation(
+            @NonNull OutcomeReceiver<Boolean, SatelliteManager.SatelliteException> callback) {
+        SatelliteManager satelliteManager = mContext.getSystemService(SatelliteManager.class);
+        satelliteManager.requestIsCommunicationAllowedForCurrentLocation(
+                this::post, callback);
     }
 
     private static boolean isMockModemAllowed() {

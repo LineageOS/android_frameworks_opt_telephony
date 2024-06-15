@@ -409,6 +409,7 @@ public class PersistAtomsStorage {
             existingStats.utAvailableMillis += stats.utAvailableMillis;
             existingStats.registeringMillis += stats.registeringMillis;
             existingStats.unregisteredMillis += stats.unregisteredMillis;
+            existingStats.registeredTimes += stats.registeredTimes;
             existingStats.lastUsedMillis = getWallTimeMillis();
         } else {
             stats.lastUsedMillis = getWallTimeMillis();

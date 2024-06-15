@@ -588,13 +588,14 @@ public class DatagramReceiver extends Handler {
             @NonNull Consumer<Integer> callback) {
         if (!mDatagramController.isSendingInIdleState()) {
             // Poll request should be sent to satellite modem only when it is free.
-            logd("pollPendingSatelliteDatagrams: satellite modem is busy sending datagrams.");
+            logd("pollPendingSatelliteDatagramsInternal: satellite modem is busy sending "
+                    + "datagrams.");
             callback.accept(SatelliteManager.SATELLITE_RESULT_MODEM_BUSY);
             return;
         }
 
         if (mDatagramController.needsWaitingForSatelliteConnected()) {
-            logd("pollPendingSatelliteDatagrams: wait for satellite connected");
+            logd("pollPendingSatelliteDatagramsInternal: wait for satellite connected");
             synchronized (mLock) {
                 mPendingPollSatelliteDatagramsRequest = new DatagramReceiverHandlerRequest(
                         callback, SatelliteServiceUtils.getPhone(), subId);

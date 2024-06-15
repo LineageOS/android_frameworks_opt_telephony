@@ -1,10 +1,13 @@
 package: "com.android.internal.telephony.flags"
 
 flag {
-  name: "auto_switch_allow_roaming"
+  name: "auto_data_switch_allow_roaming"
   namespace: "telephony"
   description: "Allow using roaming network as target if user allows it from settings."
-  bug: "306488039"
+  bug: "287132491"
+  metadata {
+    purpose: PURPOSE_BUGFIX
+  }
 }
 
 flag {
@@ -89,4 +92,39 @@ flag {
   namespace: "telephony"
   description: "Collect vonr status in voice call metric"
   bug:"288449751"
+}
+
+flag {
+  name: "ignore_existing_networks_for_internet_allowed_checking"
+  namespace: "telephony"
+  description: "Ignore existing networks when checking if internet is allowed"
+  bug: "284420611"
+}
+
+flag {
+  name: "data_call_session_stats_captures_cross_sim_calling"
+  namespace: "telephony"
+  description: "The DataCallSessionStats metrics will capture whether the IWLAN PDN is set up on cross-SIM calling."
+  bug: "313956117"
+}
+
+flag {
+  name: "force_iwlan_mms"
+  namespace: "telephony"
+  description: "When QNS prefers MMS on IWLAN, MMS will be attempted on IWLAN if it can, even though if existing cellular network already supports MMS."
+  bug: "316211526"
+}
+
+flag {
+  name: "reconnect_qualified_network"
+  namespace: "telephony"
+  description: "This flag is for internal implementation to handle reconnect request from QNS in telephony FWK."
+  bug: "319520561"
+}
+
+flag {
+  name: "dsrs_diagnostics_enabled"
+  namespace: "telephony"
+  description: "Enable DSRS diagnostics."
+  bug: "319601607"
 }

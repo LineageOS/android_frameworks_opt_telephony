@@ -15,7 +15,7 @@
  */
 package com.android.internal.telephony;
 
-import android.test.suitebuilder.annotation.SmallTest;
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.VisualVoicemailSmsParser.WrappedMessageData;
 

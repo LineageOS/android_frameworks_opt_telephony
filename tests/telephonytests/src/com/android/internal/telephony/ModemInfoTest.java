@@ -21,7 +21,8 @@ import static org.junit.Assert.assertNotEquals;
 
 import android.os.Parcel;
 import android.telephony.ModemInfo;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import org.junit.Test;
 

@@ -15,6 +15,18 @@ flag {
 flag {
     name: "carrier_restriction_status"
     namespace: "telephony"
-    description: "This flag control the visibility of the getCarrierRestrictionStatus in carrierRestrictionRules class."
+    description: "This flag controls the visibility of the getCarrierRestrictionStatus in carrierRestrictionRules class."
     bug:"313553044"
+}
+flag {
+    name: "carrier_restriction_rules_enhancement"
+    namespace: "telephony"
+    description: "This flag controls the new enhancements to the existing carrier restrictions rules"
+    bug:"317226653"
+}
+flag {
+    name: "esim_available_memory"
+    namespace: "telephony"
+    description: "This flag controls eSIM available memory feature."
+    bug:"318348580"
 }

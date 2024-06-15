@@ -16,11 +16,16 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.CarrierRestrictionRules.MULTISIM_POLICY_ONE_VALID_SIM_MUST_BE_PRESENT;
 import android.os.Parcel;
 import android.service.carrier.CarrierIdentifier;
+import android.telephony.CarrierInfo;
 import android.telephony.CarrierRestrictionRules;
 import android.test.AndroidTestCase;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
+
+import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -339,5 +344,102 @@ public class CarrierRestrictionRulesTest extends AndroidTestCase {
 
         List<Boolean> expected = Arrays.asList(false, false, false);
         assertTrue(result.equals(expected));
+    }
+
+    @Test
+    public void testBuilderAllowedAndExcludedCarrierInfos() {
+        List<CarrierInfo> allowedCarriers = new ArrayList<>();
+        allowedCarriers.add(new CarrierInfo(MCC1, MNC1, null, null, null, null, null, null, null));
+        allowedCarriers.add(new CarrierInfo(MCC2, MNC2, null, null, null, null, null, null, null));
+
+        List<CarrierInfo> excludedCarriers = new ArrayList<>();
+        excludedCarriers.add(new CarrierInfo(MCC2, MNC2, null, null, GID1, null, null, null, null));
+
+        CarrierRestrictionRules rules =
+                CarrierRestrictionRules.newBuilder().setAllowedCarrierInfo(
+                        allowedCarriers).setExcludedCarrierInfo(excludedCarriers).build();
+
+        assertEquals(false, rules.isAllCarriersAllowed());
+        assertTrue(rules.getAllowedCarriersInfoList().equals(allowedCarriers));
+        assertTrue(rules.getExcludedCarriersInfoList().equals(excludedCarriers));
+        assertEquals(CarrierRestrictionRules.CARRIER_RESTRICTION_DEFAULT_NOT_ALLOWED,
+                rules.getDefaultCarrierRestriction());
+    }
+
+    @Test
+    public void testBuilderAllowedAndExcludedCarrierInfoWithEplmn() {
+        List<String> plmns = new ArrayList<>();
+        plmns.add("**1" + "," + "123");
+        plmns.add("2*1" + "," + "1*3");
+
+        List<String> plmns2 = new ArrayList<>();
+        plmns2.add("**1" + "," + "123");
+        plmns2.add("2*1" + "," + "1*3");
+        plmns2.add("2**" + "," + "*");
+
+        List<CarrierInfo> allowedCarriers = new ArrayList<>();
+        allowedCarriers.add(new CarrierInfo(MCC1, MNC1, null, null, null, null, null, null, plmns));
+        allowedCarriers.add(
+                new CarrierInfo(MCC2, MNC2, null, null, null, null, null, null, plmns2));
+
+        List<CarrierInfo> excludedCarriers = new ArrayList<>();
+        excludedCarriers.add(new CarrierInfo(MCC2, MNC2, null, null, GID1, null, null, null, null));
+
+        CarrierRestrictionRules rules =
+                CarrierRestrictionRules.newBuilder().setAllowedCarrierInfo(
+                        allowedCarriers).setExcludedCarrierInfo(excludedCarriers).build();
+
+        assertEquals(false, rules.isAllCarriersAllowed());
+        assertTrue(rules.getAllowedCarriersInfoList().equals(allowedCarriers));
+        assertTrue(rules.getExcludedCarriersInfoList().equals(excludedCarriers));
+        assertTrue(rules.getAllowedCarriersInfoList().get(0).getEhplmn().equals(plmns));
+        assertTrue(rules.getAllowedCarriersInfoList().get(1).getEhplmn().equals(plmns2));
+        assertEquals(CarrierRestrictionRules.CARRIER_RESTRICTION_DEFAULT_NOT_ALLOWED,
+                rules.getDefaultCarrierRestriction());
+    }
+
+    @Test
+    public void testBuilderAllowedAndExcludedCarrierInfoWithNullEplmn() {
+        List<String> plmns = new ArrayList<>();
+        List<CarrierInfo> allowedCarriers = new ArrayList<>();
+        allowedCarriers.add(new CarrierInfo(MCC1, MNC1, null, null, null, null, null, null, plmns));
+
+        List<CarrierInfo> excludedCarriers = new ArrayList<>();
+        excludedCarriers.add(new CarrierInfo(MCC2, MNC2, null, null, GID1, null, null, null, null));
+
+        CarrierRestrictionRules rules =
+                CarrierRestrictionRules.newBuilder().setAllowedCarrierInfo(
+                        allowedCarriers).setExcludedCarrierInfo(excludedCarriers).build();
+
+        assertEquals(false, rules.isAllCarriersAllowed());
+        assertTrue(rules.getAllowedCarriersInfoList().equals(allowedCarriers));
+        assertTrue(rules.getExcludedCarriersInfoList().equals(excludedCarriers));
+        assertTrue(rules.getAllowedCarriersInfoList().get(0).getEhplmn().equals(plmns));
+        assertEquals(CarrierRestrictionRules.CARRIER_RESTRICTION_DEFAULT_NOT_ALLOWED,
+                rules.getDefaultCarrierRestriction());
+    }
+
+    @Test
+    public void testBuilderAllowedAndExcludedCarrierInfoWithSimPolicy() {
+        List<CarrierInfo> allowedCarriers = new ArrayList<>();
+        allowedCarriers.add(new CarrierInfo(MCC1, MNC1, null, null, null, null, null, null, null));
+
+        List<CarrierInfo> excludedCarriers = new ArrayList<>();
+        excludedCarriers.add(new CarrierInfo(MCC2, MNC2, null, null, GID1, null, null, null, null));
+
+        CarrierRestrictionRules rules =
+                CarrierRestrictionRules.newBuilder().
+                        setAllowedCarrierInfo(allowedCarriers).
+                        setExcludedCarrierInfo(excludedCarriers).
+                        setDefaultCarrierRestriction(
+                                CarrierRestrictionRules.CARRIER_RESTRICTION_DEFAULT_ALLOWED).
+                        setMultiSimPolicy(MULTISIM_POLICY_ONE_VALID_SIM_MUST_BE_PRESENT).build();
+
+        assertEquals(true, rules.isAllCarriersAllowed());
+        assertTrue(rules.getAllowedCarriersInfoList().equals(allowedCarriers));
+        assertTrue(rules.getExcludedCarriersInfoList().equals(excludedCarriers));
+        assertEquals(MULTISIM_POLICY_ONE_VALID_SIM_MUST_BE_PRESENT, rules.getMultiSimPolicy());
+        assertEquals(CarrierRestrictionRules.CARRIER_RESTRICTION_DEFAULT_ALLOWED,
+                rules.getDefaultCarrierRestriction());
     }
 }

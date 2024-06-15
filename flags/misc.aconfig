@@ -65,8 +65,28 @@ flag {
 }
 
 flag {
-  name: "radio_info_is_radio_on"
-  namespace: "telephony"
-  description: "change method to show mobile radio power from service state to radio power"
-  bug: "306084899"
+    name: "reset_mobile_network_settings"
+    namespace: "telephony"
+    description: "Allows applications to launch Reset Mobile Network Settings page in Settings app."
+    bug:"271921464"
+}
+
+flag {
+    name: "fix_crash_on_getting_config_when_phone_is_gone"
+    namespace: "telephony"
+    description: "Fix VCN crash when calling CarrierConfigManager.getConfigForSubId while phone process has gone."
+    bug:"319791612"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
+}
+
+flag {
+    name: "add_anomaly_when_notify_config_changed_with_invalid_phone"
+    namespace: "telephony"
+    description: "Report anomaly when CarrierConfigLoader received config change with sub that maps to invalid phoneId"
+    bug:"270757342"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
 }

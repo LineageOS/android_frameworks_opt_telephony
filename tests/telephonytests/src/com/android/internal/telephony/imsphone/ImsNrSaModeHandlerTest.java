@@ -41,6 +41,9 @@ import android.testing.TestableLooper;
 import android.util.ArraySet;
 
 import com.android.internal.telephony.Call;
+import com.android.internal.telephony.GsmCdmaPhone;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
@@ -66,6 +69,8 @@ public final class ImsNrSaModeHandlerTest extends TelephonyTest{
     private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
     private Handler mPreciseCallStateHandler;
 
+    private Phone mPassthroughPhone;
+
     @Mock private ImsPhoneCall mForegroundCall;
     @Mock private ImsPhoneCall mBackgroundCall;
     private Call.State mActiveState = ImsPhoneCall.State.ACTIVE;
@@ -90,7 +95,13 @@ public final class ImsNrSaModeHandlerTest extends TelephonyTest{
         doReturn(mAnyInt).when(mImsPhone).getSubId();
         doReturn(mContextFixture.getCarrierConfigBundle()).when(mCarrierConfigManager)
                 .getConfigForSubId(anyInt(), any());
-        doReturn(mPhone).when(mImsPhone).getDefaultPhone();
+
+        mPassthroughPhone = new GsmCdmaPhone(
+                mContext, mSimulatedCommands, mNotifier, true, 0,
+                PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory,
+                (c, p) -> mImsManager, mFeatureFlags);
+
+        doReturn(mPassthroughPhone).when(mImsPhone).getDefaultPhone();
 
         doReturn(mForegroundCall).when(mImsPhone).getForegroundCall();
         doReturn(mBackgroundCall).when(mImsPhone).getBackgroundCall();

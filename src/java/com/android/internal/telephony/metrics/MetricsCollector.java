@@ -171,19 +171,20 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     private final StatsManager mStatsManager;
     private final VonrHelper mVonrHelper;
     private final AirplaneModeStats mAirplaneModeStats;
+    private final DefaultNetworkMonitor mDefaultNetworkMonitor;
     private final Set<DataCallSessionStats> mOngoingDataCallStats = ConcurrentHashMap.newKeySet();
     private static final Random sRandom = new Random();
 
     public MetricsCollector(Context context, @NonNull FeatureFlags featureFlags) {
         this(context, new PersistAtomsStorage(context),
-                new DeviceStateHelper(context), new VonrHelper(featureFlags));
+                new DeviceStateHelper(context), new VonrHelper(featureFlags), featureFlags);
     }
 
     /** Allows dependency injection. Used during unit tests. */
     @VisibleForTesting
     public MetricsCollector(
             Context context, PersistAtomsStorage storage, DeviceStateHelper deviceStateHelper,
-                    VonrHelper vonrHelper) {
+                    VonrHelper vonrHelper, @NonNull FeatureFlags featureFlags) {
         mStorage = storage;
         mDeviceStateHelper = deviceStateHelper;
         mStatsManager = (StatsManager) context.getSystemService(Context.STATS_MANAGER);
@@ -232,6 +233,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         }
 
         mAirplaneModeStats = new AirplaneModeStats(context);
+        mDefaultNetworkMonitor = new DefaultNetworkMonitor(context, featureFlags);
     }
 
     /**
@@ -360,6 +362,10 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     /** Unregisters a {@link DataCallSessionStats} when it no longer handles an active data call. */
     public void unregisterOngoingDataCallStat(DataCallSessionStats call) {
         mOngoingDataCallStats.remove(call);
+    }
+
+    public DefaultNetworkMonitor getDefaultNetworkMonitor() {
+        return mDefaultNetworkMonitor;
     }
 
     private void concludeDataCallSessionStats() {
@@ -1118,7 +1124,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 roundAndConvertMillisToSeconds(stats.utAvailableMillis),
                 roundAndConvertMillisToSeconds(stats.registeringMillis),
                 roundAndConvertMillisToSeconds(stats.unregisteredMillis),
-                stats.isIwlanCrossSim);
+                stats.isIwlanCrossSim,
+                stats.registeredTimes);
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationTermination termination) {

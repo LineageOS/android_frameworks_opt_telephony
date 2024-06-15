@@ -21,8 +21,9 @@ import static org.junit.Assert.assertTrue;
 
 import android.telephony.RadioAccessFamily;
 import android.telephony.TelephonyManager;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
+
+import androidx.test.filters.SmallTest;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
