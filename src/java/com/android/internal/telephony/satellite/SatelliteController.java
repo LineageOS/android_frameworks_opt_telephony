@@ -1009,6 +1009,7 @@ public class SatelliteController extends Handler {
                     if (argument.enableSatellite) {
                         synchronized (mSatelliteEnabledRequestLock) {
                             mWaitingForRadioDisabled = true;
+                            setDemoModeEnabled(argument.enableDemoMode);
                         }
                         setSettingsKeyForSatelliteMode(SATELLITE_MODE_ENABLED_TRUE);
                         setSettingsKeyToAllowDeviceRotation(SATELLITE_MODE_ENABLED_TRUE);
@@ -3762,7 +3763,6 @@ public class SatelliteController extends Handler {
             if (areAllRadiosDisabled() && (mSatelliteEnabledRequest != null)
                     && mWaitingForRadioDisabled) {
                 plogd("Sending success to callback that sent enable satellite request");
-                setDemoModeEnabled(mSatelliteEnabledRequest.enableDemoMode);
                 mIsEmergency = mSatelliteEnabledRequest.isEmergency;
                 synchronized (mIsSatelliteEnabledLock) {
                     mIsSatelliteEnabled = mSatelliteEnabledRequest.enableSatellite;
