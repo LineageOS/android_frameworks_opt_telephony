@@ -564,6 +564,11 @@ public class EmergencyStateTracker {
         Rlog.i(TAG, "startEmergencyCall: phoneId=" + phone.getPhoneId()
                 + ", callId=" + c.getTelecomCallId());
 
+        if (needToSwitchPhone(phone)) {
+            Rlog.e(TAG, "startEmergencyCall failed. need to switch stacks.");
+            return CompletableFuture.completedFuture(DisconnectCause.EMERGENCY_PERM_FAILURE);
+        }
+
         if (mPhone != null) {
             // Create new future to return as to not interfere with any uncompleted futures.
             // Case1) When 2nd emergency call is initiated during an active call on the same phone.
@@ -2104,5 +2109,64 @@ public class EmergencyStateTracker {
                 || state == android.telecom.Connection.STATE_DISCONNECTED) {
             endNormalRoutingEmergencyCall(c);
         }
+    }
+
+    /**
+     * Determines whether switching stacks is needed or not.
+     *
+     * @param phone the {@code Phone} on which to process the emergency call.
+     * @return true if switching stacks is needed.
+     */
+    @VisibleForTesting
+    public boolean needToSwitchPhone(Phone phone) {
+        int subId = phone.getSubId();
+        int phoneId = phone.getPhoneId();
+
+        if (isSimReady(phoneId, subId)) return false;
+
+        boolean switchPhone = false;
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+            Rlog.i(TAG, "needToSwitchPhone SIM absent");
+            if (phoneId != 0 || isThereOtherPhone(phoneId, true)) {
+                // Prefer default Phone or other Phone with a SIM regardless of lock state.
+                switchPhone = true;
+            }
+        } else {
+            Rlog.i(TAG, "needToSwitchPhone SIM not ready");
+            if ((phoneId == 0 && isThereOtherPhone(phoneId, false))
+                    || (phoneId != 0 && isThereOtherPhone(phoneId, true))) {
+                // If there is another one with a SIM ready, switch Phones.
+                // Otherwise, prefer default Phone if both SIMs are locked.
+                switchPhone = true;
+            }
+        }
+        Rlog.i(TAG, "needToSwitchPhone " + switchPhone);
+        return switchPhone;
+    }
+
+    private boolean isThereOtherPhone(int skipPhoneId, boolean ignoreLockState) {
+        for (Phone phone : mPhoneFactoryProxy.getPhones()) {
+            int phoneId = phone.getPhoneId();
+            if (phoneId == skipPhoneId) {
+                continue;
+            }
+
+            int subId = phone.getSubId();
+            if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+                Rlog.i(TAG, "isThereOtherPhone phoneId=" + phoneId + ", subId=" + subId);
+                continue;
+            }
+            int simState = mTelephonyManagerProxy.getSimState(phoneId);
+            if ((simState == TelephonyManager.SIM_STATE_READY) || (ignoreLockState
+                    && simState != TelephonyManager.SIM_STATE_ABSENT
+                    && simState != TelephonyManager.SIM_STATE_NOT_READY)) {
+                Rlog.i(TAG, "isThereOtherPhone found, ignoreLockState=" + ignoreLockState
+                        + ", phoneId=" + phoneId + ", simState=" + simState);
+                return true;
+            }
+            Rlog.i(TAG, "isThereOtherPhone phoneId=" + phoneId + ", simState=" + simState);
+        }
+
+        return false;
     }
 }
