@@ -1503,6 +1503,14 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * {@code True} enables mms to be attempted on iwlan if possible, even if existing cellular
+     *  networks already supports iwlan.
+     */
+    public boolean isForceIwlanMmsFeatureEnabled() {
+        return mResources.getBoolean(com.android.internal.R.bool.force_iwlan_mms_feature_enabled);
+    }
+
+    /**
      * Log debug messages.
      * @param s debug messages
      */

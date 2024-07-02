@@ -2419,6 +2419,7 @@ public class DataNetworkTest extends TelephonyTest {
     @Test
     public void testMmsCapabilityRemovedWhenMmsPreferredOnIwlan() throws Exception {
         doReturn(true).when(mFeatureFlags).forceIwlanMms();
+        doReturn(true).when(mDataConfigManager).isForceIwlanMmsFeatureEnabled();
         setupDataNetwork();
 
         assertThat(mDataNetworkUT.getNetworkCapabilities()
