@@ -24,6 +24,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.BaseBundle;
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
@@ -1333,8 +1334,8 @@ public final class SmsManager {
                 return;
             }
 
-            iMms.sendMessage(getSubscriptionId(), ActivityThread.currentPackageName(), contentUri,
-                    locationUrl, configOverrides, sentIntent);
+            iMms.sendMessage(getSubscriptionId(), getCallingUserId(), ActivityThread.currentPackageName(),
+                    contentUri, locationUrl, configOverrides, sentIntent);
         } catch (RemoteException e) {
             // Ignore it
         }
@@ -1367,8 +1368,8 @@ public final class SmsManager {
                 return;
             }
             iMms.downloadMessage(
-                    getSubscriptionId(), ActivityThread.currentPackageName(), locationUrl,
-                    contentUri, configOverrides, downloadedIntent);
+                    getSubscriptionId(), getCallingUserId(), ActivityThread.currentPackageName(),
+                    locationUrl, contentUri, configOverrides, downloadedIntent);
         } catch (RemoteException e) {
             // Ignore it
         }
@@ -1445,7 +1446,7 @@ public final class SmsManager {
         try {
             IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
             if (iMms != null) {
-                return iMms.importMultimediaMessage(ActivityThread.currentPackageName(),
+                return iMms.importMultimediaMessage(getCallingUserId(), ActivityThread.currentPackageName(),
                         contentUri, messageId, timestampSecs, seen, read);
             }
         } catch (RemoteException ex) {
@@ -1592,8 +1593,8 @@ public final class SmsManager {
         try {
             IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
             if (iMms != null) {
-                return iMms.addMultimediaMessageDraft(ActivityThread.currentPackageName(),
-                        contentUri);
+                return iMms.addMultimediaMessageDraft(getCallingUserId(),
+                        ActivityThread.currentPackageName(), contentUri);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -1852,4 +1853,11 @@ public final class SmsManager {
         return filtered;
     }
 
+    /**
+     * Retrieves the  calling user id.
+     * @return The id of the calling user.
+     */
+    private int getCallingUserId() {
+        return Binder.getCallingUserHandle().getIdentifier();
+    }
 }
