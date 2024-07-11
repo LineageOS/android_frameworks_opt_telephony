@@ -251,10 +251,11 @@ public class SatelliteSOSMessageRecommender extends Handler {
 
         selectEmergencyCallWaitForConnectionTimeoutDuration();
         if (mEmergencyConnection == null) {
-            handleStateChangedEventForHysteresisTimer();
             registerForInterestedStateChangedEvents();
         }
         mEmergencyConnection = connection;
+        handleStateChangedEventForHysteresisTimer();
+
         synchronized (mLock) {
             mCheckingAccessRestrictionInProgress = false;
             mIsSatelliteAllowedForCurrentLocation = false;
@@ -413,7 +414,6 @@ public class SatelliteSOSMessageRecommender extends Handler {
         for (Phone phone : PhoneFactory.getPhones()) {
             phone.registerForServiceStateChanged(
                     this, EVENT_SERVICE_STATE_CHANGED, null);
-            registerForImsRegistrationStateChanged(phone);
         }
     }
 
@@ -433,7 +433,6 @@ public class SatelliteSOSMessageRecommender extends Handler {
                 SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, mISatelliteProvisionStateCallback);
         for (Phone phone : PhoneFactory.getPhones()) {
             phone.unregisterForServiceStateChanged(this);
-            unregisterForImsRegistrationStateChanged(phone);
         }
     }
 
@@ -525,7 +524,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
     }
 
     private synchronized void handleStateChangedEventForHysteresisTimer() {
-        if (!isCellularAvailable()) {
+        if (!isCellularAvailable() && mEmergencyConnection != null) {
             startTimer();
         } else {
             logv("handleStateChangedEventForHysteresisTimer stopTimer");
