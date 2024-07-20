@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.satellite;
 
+import static android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP;
 import static android.telephony.ServiceState.STATE_EMERGENCY_ONLY;
 import static android.telephony.ServiceState.STATE_IN_SERVICE;
 import static android.telephony.ServiceState.STATE_OUT_OF_SERVICE;
@@ -29,6 +30,7 @@ import static com.android.internal.telephony.satellite.SatelliteController.INVAL
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.app.ActivityOptions;
 import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
@@ -700,10 +702,15 @@ public class SatelliteSOSMessageRecommender extends Handler {
             intent = new Intent(Intent.ACTION_SENDTO, uri);
         } else {
             intent = new Intent(action);
+            intent.addFlags(FLAG_ACTIVITY_CLEAR_TOP);
         }
+        Bundle activityOptions = ActivityOptions.makeBasic()
+                .setPendingIntentBackgroundActivityStartMode(
+                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                .toBundle();
         intent.setComponent(new ComponentName(packageName, className));
         return PendingIntent.getActivity(mContext, 0, intent,
-                PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
+                PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE, activityOptions);
     }
 
     private boolean isEmergencyCallToSatelliteHandoverTypeT911Enforced() {
