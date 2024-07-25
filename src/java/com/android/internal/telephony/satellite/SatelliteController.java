@@ -2269,6 +2269,15 @@ public class SatelliteController extends Handler {
         int error = evaluateOemSatelliteRequestAllowed(true);
         if (error == SATELLITE_RESULT_SUCCESS) {
             mNtnSignalStrengthChangedListeners.put(callback.asBinder(), callback);
+            synchronized (mNtnSignalsStrengthLock) {
+                try {
+                    callback.onNtnSignalStrengthChanged(mNtnSignalStrength);
+                    plogd("registerForNtnSignalStrengthChanged: " + mNtnSignalStrength);
+                } catch (RemoteException ex) {
+                    ploge("registerForNtnSignalStrengthChanged: RemoteException ex="
+                            + ex);
+                }
+            }
         } else {
             throw new RemoteException(new IllegalStateException("registration fails: " + error));
         }

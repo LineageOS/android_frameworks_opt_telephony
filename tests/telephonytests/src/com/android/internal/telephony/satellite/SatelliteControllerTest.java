@@ -2389,6 +2389,10 @@ public class SatelliteControllerTest extends TelephonyTest {
         verifyRegisterForNtnSignalStrengthChanged(SUB_ID, callback,
                 SATELLITE_RESULT_SUCCESS);
         verifyRequestNtnSignalStrength(expectedLevel, SATELLITE_RESULT_SUCCESS);
+        processAllMessages();
+        assertTrue(waitForForEvents(
+                semaphore, 1, "testRegisterForNtnSignalStrengthChanged"));
+        assertEquals(expectedLevel, signalStrength[0].getLevel());
 
         expectedLevel = NTN_SIGNAL_STRENGTH_GOOD;
         sendNtnSignalStrengthChangedEvent(expectedLevel, null);
