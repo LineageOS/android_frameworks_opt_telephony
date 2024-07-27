@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "25418381_97f90b31",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 32245
+      },
+      "writtenOn": "2024-07-27T08:11:58Z",
+      "side": 1,
+      "message": "you should use radio.config@1.0 instead, this was done on 21 QPR2 because 21 QPR2 removed support for radio.config@1.0",
+      "revId": "f25528e0a7b87b76ecb09d87d3146cc5a0b9470b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
