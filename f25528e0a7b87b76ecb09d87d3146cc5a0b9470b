@@ -16,6 +16,23 @@
       "message": "you should use radio.config@1.0 instead, this was done on 21 QPR2 because 21 QPR2 removed support for radio.config@1.0",
       "revId": "f25528e0a7b87b76ecb09d87d3146cc5a0b9470b",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "60335335_02a9087b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 32245
+      },
+      "writtenOn": "2024-07-27T08:12:50Z",
+      "side": 1,
+      "message": "radio.config@1.0 uses HAL_COMMAND_ALLOW_DATA",
+      "revId": "f25528e0a7b87b76ecb09d87d3146cc5a0b9470b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
