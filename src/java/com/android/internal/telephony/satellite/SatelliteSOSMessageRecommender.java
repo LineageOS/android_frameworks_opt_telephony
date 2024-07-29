@@ -705,7 +705,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
             intent.addFlags(FLAG_ACTIVITY_CLEAR_TOP);
         }
         Bundle activityOptions = ActivityOptions.makeBasic()
-                .setPendingIntentBackgroundActivityStartMode(
+                .setPendingIntentCreatorBackgroundActivityStartMode(
                         ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
                 .toBundle();
         intent.setComponent(new ComponentName(packageName, className));
