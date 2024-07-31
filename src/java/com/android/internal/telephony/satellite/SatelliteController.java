@@ -2934,20 +2934,6 @@ public class SatelliteController extends Handler {
     }
 
     /**
-     * Return whether the satellite request is for an emergency or not.
-     *
-     * @return {@code true} if the satellite request is for an emergency and
-     *                      {@code false} otherwise.
-     */
-    public boolean getRequestIsEmergency() {
-        if (mFeatureFlags.carrierRoamingNbIotNtn()) {
-            return mIsEmergency;
-        }
-
-        return false;
-    }
-
-    /**
      * Return capabilities of carrier roaming satellite network.
      *
      * @param phone phone object
