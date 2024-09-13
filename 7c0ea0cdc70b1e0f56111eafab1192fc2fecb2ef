@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9c50fadf_758358a8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 31496
+      },
+      "writtenOn": "2024-09-13T16:35:05Z",
+      "side": 1,
+      "message": "I think if there isn\u0027t any device other than LG relying on this, it can be held back from initial bringup.\n\nAll bootloader unlockable LG devices fall under the \"legacy\" category, and I\u0027m also testing out a RIL wrapper that should get that UNSOL working on LG without framework changes.",
+      "revId": "7c0ea0cdc70b1e0f56111eafab1192fc2fecb2ef",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
