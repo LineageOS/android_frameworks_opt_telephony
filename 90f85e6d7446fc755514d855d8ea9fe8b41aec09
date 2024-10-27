@@ -16,6 +16,24 @@
       "message": "not sure who needs it anymore, qcrild doesn\u0027t need that.",
       "revId": "90f85e6d7446fc755514d855d8ea9fe8b41aec09",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bc0e64bf_6c504dae",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 11883
+      },
+      "writtenOn": "2024-10-27T18:58:45Z",
+      "side": 1,
+      "message": "that was long ago, iirc sm8250 needed it but I hope QCOM fixed it after I added the vts test",
+      "parentUuid": "921e149b_6711a49c",
+      "revId": "90f85e6d7446fc755514d855d8ea9fe8b41aec09",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
