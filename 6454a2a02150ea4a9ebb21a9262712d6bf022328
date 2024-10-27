@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dfe46b78_ea47f5b7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 11883
+      },
+      "writtenOn": "2024-10-27T21:11:12Z",
+      "side": 1,
+      "message": "it\u0027s probably fine, I\u0027d assume most hals would\u0027ve the same check on their side already?",
+      "revId": "6454a2a02150ea4a9ebb21a9262712d6bf022328",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
