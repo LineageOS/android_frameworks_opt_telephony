@@ -1272,7 +1272,7 @@ public class PhoneSwitcher extends Handler {
 
     private void switchPhone(int phoneId, boolean active) {
         PhoneState state = mPhoneStates[phoneId];
-        if (state.active == active) return;
+        if (mHalCommandToUse != HAL_COMMAND_ALLOW_DATA && state.active == active) return;
         state.active = active;
         logl((active ? "activate " : "deactivate ") + phoneId);
         state.lastRequested = System.currentTimeMillis();
