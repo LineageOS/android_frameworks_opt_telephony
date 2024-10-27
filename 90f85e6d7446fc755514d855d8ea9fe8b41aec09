@@ -34,6 +34,24 @@
       "parentUuid": "921e149b_6711a49c",
       "revId": "90f85e6d7446fc755514d855d8ea9fe8b41aec09",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d8636c2c_0c8d674b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10067
+      },
+      "writtenOn": "2024-10-27T19:00:44Z",
+      "side": 1,
+      "message": "8250???? not even my sdm630 needs it.",
+      "parentUuid": "bc0e64bf_6c504dae",
+      "revId": "90f85e6d7446fc755514d855d8ea9fe8b41aec09",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
