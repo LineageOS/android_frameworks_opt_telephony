@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "39049cdf_f1ff1541",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10067
+      },
+      "writtenOn": "2024-10-28T00:28:27Z",
+      "side": 1,
+      "message": "i don\u0027t remember which device i hit this on, but I added log print when testing on nile and i didn\u0027t see it anymore, it\u0027s possible that AOSP fixed it elsewhere.",
+      "revId": "7cac2fae1f3de7e336cd9b4a38e62dc1e53c78b6",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
