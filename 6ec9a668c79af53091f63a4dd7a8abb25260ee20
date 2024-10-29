@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cbc0d80e_ba4937c5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2024-10-29T20:46:02Z",
+      "side": 1,
+      "message": "it\u0027s legacy wrapped devices like Payton/nash that can\u0027t use QCRIL that may still need it.\n\nMarc, can you try on Payton? My Nash\u0027s radio is bungled atm.",
+      "revId": "6ec9a668c79af53091f63a4dd7a8abb25260ee20",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
