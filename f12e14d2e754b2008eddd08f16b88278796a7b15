@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "98789b93_931511ca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2024-10-30T21:04:58Z",
+      "side": 1,
+      "message": "drop it - 1.0 is a thing when wrapped, BUT the only device I have that uses it is lge 8996 which is dead since QPR2 of 21",
+      "revId": "f12e14d2e754b2008eddd08f16b88278796a7b15",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
