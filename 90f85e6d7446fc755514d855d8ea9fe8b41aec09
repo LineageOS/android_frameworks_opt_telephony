@@ -52,6 +52,24 @@
       "parentUuid": "bc0e64bf_6c504dae",
       "revId": "90f85e6d7446fc755514d855d8ea9fe8b41aec09",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "55edaf38_3f5fe178",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2024-10-31T01:14:54Z",
+      "side": 1,
+      "message": "My sdm630 and msm8998 do - At least nash does. I dusted off the production nash, many Nash\u0027s are stuck on 8.9 HW based on the earliest 8998 tags. And Payton is ancient launch 636.\n\nThis won\u0027t work on these devices without this.",
+      "parentUuid": "d8636c2c_0c8d674b",
+      "revId": "90f85e6d7446fc755514d855d8ea9fe8b41aec09",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
