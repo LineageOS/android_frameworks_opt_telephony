@@ -1,4 +1,22 @@
 {
-  "comments": [],
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "90e5ef17_b7f3826b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 26928
+      },
+      "writtenOn": "2024-11-05T08:14:32Z",
+      "side": 1,
+      "message": "signal bar is currently \"empty\" on galaxy a71 (might other galaxies too), this commit has fixed it.",
+      "revId": "16bb44efa31dab4f09c0ce4ae790ed00627433bf",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ],
   "submitRequirementResults": []
 }
