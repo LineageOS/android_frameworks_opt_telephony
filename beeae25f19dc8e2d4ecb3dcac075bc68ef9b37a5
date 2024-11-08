@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "932bea46_c508c490",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 26928
+      },
+      "writtenOn": "2024-11-08T20:00:22Z",
+      "side": 1,
+      "message": "I\u0027ll check the signal with hw/samsung/ril/sehradiomanager tonight (probabily some stuff is missed reuired by that)",
+      "revId": "beeae25f19dc8e2d4ecb3dcac075bc68ef9b37a5",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
