@@ -142,7 +142,9 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
                     .when(phone).isUserDataEnabled();
         }
         mDataEvaluation = new DataEvaluation(DataEvaluation.DataEvaluationReason.EXTERNAL_QUERY);
-        doReturn(mDataEvaluation).when(mDataNetworkController).getInternetEvaluation(anyBoolean());
+        doReturn(mDataEvaluation).when(mDataNetworkController).evaluateNetworkRequest(
+                any(TelephonyNetworkRequest.class),
+                eq(DataEvaluation.DataEvaluationReason.EXTERNAL_QUERY));
         doReturn(new int[]{SUB_1, SUB_2}).when(mSubscriptionManagerService)
                 .getActiveSubIdList(true);
         doAnswer(invocation -> {
@@ -167,6 +169,8 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
                 .getAutoDataSwitchAvailabilityStabilityTimeThreshold();
         doReturn(120000L).when(mDataConfigManager)
                 .getAutoDataSwitchPerformanceStabilityTimeThreshold();
+        doReturn(150000L).when(mDataConfigManager)
+                .getAutoDataSwitchAvailabilitySwitchbackStabilityTimeThreshold();
         doReturn(MAX_RETRY).when(mDataConfigManager).getAutoDataSwitchValidationMaxRetry();
         doReturn(SCORE_TOLERANCE).when(mDataConfigManager).getAutoDataSwitchScoreTolerance();
         doAnswer(invocation -> {
@@ -252,7 +256,9 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         mDataEvaluation.addDataDisallowedReason(DataEvaluation.DataDisallowedReason
                 .NO_SUITABLE_DATA_PROFILE);
         doReturn(mDataEvaluation)
-                .when(mDataNetworkController).getInternetEvaluation(anyBoolean());
+                .when(mDataNetworkController).evaluateNetworkRequest(
+                        any(TelephonyNetworkRequest.class),
+                        eq(DataEvaluation.DataEvaluationReason.EXTERNAL_QUERY));
         mAutoDataSwitchControllerUT.evaluateAutoDataSwitch(EVALUATION_REASON_DATA_SETTINGS_CHANGED);
         processAllFutureMessages();
 
