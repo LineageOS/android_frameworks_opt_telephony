@@ -1157,6 +1157,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
         mDatagramDispatcherUT.handleMessage(
                 mDatagramDispatcherUT.obtainMessage(10 /*EVENT_MT_SMS_POLLING_THROTTLE_TIMED_OUT*/,
                         new AsyncResult(null, null, null)));
+        processAllMessages();
 
         verify(mMockSmsDispatchersController, times(1)).sendMtSmsPollingMessage();
    }
@@ -1205,6 +1206,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
                 R.bool.config_satellite_allow_check_message_in_not_connected, true);
 
         mDatagramDispatcherUT.setDeviceAlignedWithSatellite(true);
+        processAllMessages();
 
         verify(mMockSmsDispatchersController, times(1)).sendMtSmsPollingMessage();
     }
@@ -1231,6 +1233,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
         mDatagramDispatcherUT.onSatelliteModemStateChanged(
                 SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED);
+        processAllMessages();
 
         verify(mMockSmsDispatchersController, times(1)).sendMtSmsPollingMessage();
     }
@@ -1243,6 +1246,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
         mDatagramDispatcherUT.onSatelliteModemStateChanged(
                 SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
+        processAllMessages();
 
         verify(mMockSmsDispatchersController, times(1)).sendMtSmsPollingMessage();
     }
@@ -1255,6 +1259,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
         mDatagramDispatcherUT.onSatelliteModemStateChanged(
                 SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
+        processAllMessages();
 
         verify(mMockSmsDispatchersController, times(1)).sendMtSmsPollingMessage();
     }
@@ -1285,6 +1290,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
         mDatagramDispatcherUT.onSatelliteModemStateChanged(
                 SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
+        processAllMessages();
 
         verify(mMockSmsDispatchersController, times(1)).sendMtSmsPollingMessage();
     }
