@@ -1148,6 +1148,11 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteController1.countOfDatagramTypeKeepAliveFail = 2;
         mSatelliteController1.isProvisioned = true;
         mSatelliteController1.carrierId = 1;
+        mSatelliteController1.countOfSuccessfulLocationQueries = 3;
+        mSatelliteController1.countOfFailedLocationQueries = 5;
+        mSatelliteController1.countOfP2PSmsAvailableNotificationShown = 3;
+        mSatelliteController1.countOfP2PSmsAvailableNotificationRemoved = 5;
+        mSatelliteController1.isNtnOnlyCarrier = false;
 
         mSatelliteController2 = new SatelliteController();
         mSatelliteController2.countOfSatelliteServiceEnablementsSuccess = 2 + 1;
@@ -1177,6 +1182,11 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteController2.countOfDatagramTypeKeepAliveFail = 5;
         mSatelliteController2.isProvisioned = false;
         mSatelliteController2.carrierId = 10;
+        mSatelliteController2.countOfSuccessfulLocationQueries = 30;
+        mSatelliteController2.countOfFailedLocationQueries = 50;
+        mSatelliteController2.countOfP2PSmsAvailableNotificationShown = 30;
+        mSatelliteController2.countOfP2PSmsAvailableNotificationRemoved = 50;
+        mSatelliteController2.isNtnOnlyCarrier = true;
 
         // SatelliteController atom has one data point
         mSatelliteControllers =
@@ -1205,6 +1215,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteSession1.countOfSatelliteNotificationDisplayed = 4;
         mSatelliteSession1.countOfAutoExitDueToScreenOff = 6;
         mSatelliteSession1.countOfAutoExitDueToTnNetwork = 7;
+        mSatelliteSession1.isEmergency = true;
+        mSatelliteSession1.maxInactivityDurationSec = 8;
 
         mSatelliteSession2 = new SatelliteSession();
         mSatelliteSession2.satelliteServiceInitializationResult =
@@ -1227,6 +1239,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteSession2.countOfSatelliteNotificationDisplayed = 40;
         mSatelliteSession2.countOfAutoExitDueToScreenOff = 60;
         mSatelliteSession2.countOfAutoExitDueToTnNetwork = 70;
+        mSatelliteSession2.isEmergency = false;
+        mSatelliteSession2.maxInactivityDurationSec = 80;
 
         mSatelliteSessions =
                 new SatelliteSession[] {
@@ -4370,94 +4384,233 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     public void addSatelliteControllerStats_withExistingEntries() throws Exception {
         createEmptyTestFile();
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
-        mPersistAtomsStorage.addSatelliteControllerStats(mSatelliteController1);
-        mPersistAtomsStorage.addSatelliteControllerStats(mSatelliteController2);
+        mPersistAtomsStorage.addSatelliteControllerStats(copyOf(mSatelliteController1));
+        mPersistAtomsStorage.addSatelliteControllerStats(copyOf(mSatelliteController1));
         mPersistAtomsStorage.incTimeMillis(100L);
 
         SatelliteController expected = new SatelliteController();
         expected.countOfSatelliteServiceEnablementsSuccess =
-                mSatelliteController1.countOfSatelliteServiceEnablementsSuccess
-                        + mSatelliteController2.countOfSatelliteServiceEnablementsSuccess;
+                mSatelliteController1.countOfSatelliteServiceEnablementsSuccess * 2;
         expected.countOfSatelliteServiceEnablementsFail =
-                mSatelliteController1.countOfSatelliteServiceEnablementsFail
-                        + mSatelliteController2.countOfSatelliteServiceEnablementsFail;
+                mSatelliteController1.countOfSatelliteServiceEnablementsFail * 2;
         expected.countOfOutgoingDatagramSuccess =
-                mSatelliteController1.countOfOutgoingDatagramSuccess
-                        + mSatelliteController2.countOfOutgoingDatagramSuccess;
+                mSatelliteController1.countOfOutgoingDatagramSuccess * 2;
         expected.countOfOutgoingDatagramFail =
-                mSatelliteController1.countOfOutgoingDatagramFail
-                        + mSatelliteController2.countOfOutgoingDatagramFail;
+                mSatelliteController1.countOfOutgoingDatagramFail * 2;
         expected.countOfIncomingDatagramSuccess =
-                mSatelliteController1.countOfIncomingDatagramSuccess
-                        + mSatelliteController2.countOfIncomingDatagramSuccess;
+                mSatelliteController1.countOfIncomingDatagramSuccess * 2;
         expected.countOfIncomingDatagramFail =
-                mSatelliteController1.countOfIncomingDatagramFail
-                        + mSatelliteController2.countOfIncomingDatagramFail;
+                mSatelliteController1.countOfIncomingDatagramFail * 2;
         expected.countOfDatagramTypeSosSmsSuccess =
-                mSatelliteController1.countOfDatagramTypeSosSmsSuccess
-                        + mSatelliteController2.countOfDatagramTypeSosSmsSuccess;
+                mSatelliteController1.countOfDatagramTypeSosSmsSuccess * 2;
         expected.countOfDatagramTypeSosSmsFail =
-                mSatelliteController1.countOfDatagramTypeSosSmsFail
-                        + mSatelliteController2.countOfDatagramTypeSosSmsFail;
+                mSatelliteController1.countOfDatagramTypeSosSmsFail * 2;
         expected.countOfDatagramTypeLocationSharingSuccess =
-                mSatelliteController1.countOfDatagramTypeLocationSharingSuccess
-                        + mSatelliteController2.countOfDatagramTypeLocationSharingSuccess;
+                mSatelliteController1.countOfDatagramTypeLocationSharingSuccess * 2;
         expected.countOfDatagramTypeLocationSharingFail =
-                mSatelliteController1.countOfDatagramTypeLocationSharingFail
-                        + mSatelliteController2.countOfDatagramTypeLocationSharingFail;
+                mSatelliteController1.countOfDatagramTypeLocationSharingFail * 2;
         expected.countOfProvisionSuccess =
-                mSatelliteController1.countOfProvisionSuccess
-                        + mSatelliteController2.countOfProvisionSuccess;
+                mSatelliteController1.countOfProvisionSuccess * 2;
         expected.countOfProvisionFail =
-                mSatelliteController1.countOfProvisionFail
-                        + mSatelliteController2.countOfProvisionFail;
+                mSatelliteController1.countOfProvisionFail * 2;
         expected.countOfDeprovisionSuccess =
-                mSatelliteController1.countOfDeprovisionSuccess
-                        + mSatelliteController2.countOfDeprovisionSuccess;
+                mSatelliteController1.countOfDeprovisionSuccess * 2;
         expected.countOfDeprovisionFail =
-                mSatelliteController1.countOfDeprovisionFail
-                        + mSatelliteController2.countOfDeprovisionFail;
+                mSatelliteController1.countOfDeprovisionFail * 2;
         expected.totalServiceUptimeSec =
-                mSatelliteController1.totalServiceUptimeSec
-                        + mSatelliteController2.totalServiceUptimeSec;
+                mSatelliteController1.totalServiceUptimeSec * 2;
         expected.totalBatteryConsumptionPercent =
-                mSatelliteController1.totalBatteryConsumptionPercent
-                        + mSatelliteController2.totalBatteryConsumptionPercent;
+                mSatelliteController1.totalBatteryConsumptionPercent * 2;
         expected.totalBatteryChargedTimeSec =
-                mSatelliteController1.totalBatteryChargedTimeSec
-                        + mSatelliteController2.totalBatteryChargedTimeSec;
+                mSatelliteController1.totalBatteryChargedTimeSec * 2;
         expected.countOfDemoModeSatelliteServiceEnablementsSuccess =
-                mSatelliteController1.countOfDemoModeSatelliteServiceEnablementsSuccess
-                        + mSatelliteController2.countOfDemoModeSatelliteServiceEnablementsSuccess;
+                mSatelliteController1.countOfDemoModeSatelliteServiceEnablementsSuccess * 2;
         expected.countOfDemoModeSatelliteServiceEnablementsFail =
-                mSatelliteController1.countOfDemoModeSatelliteServiceEnablementsFail
-                        + mSatelliteController2.countOfDemoModeSatelliteServiceEnablementsFail;
+                mSatelliteController1.countOfDemoModeSatelliteServiceEnablementsFail * 2;
         expected.countOfDemoModeOutgoingDatagramSuccess =
-                mSatelliteController1.countOfDemoModeOutgoingDatagramSuccess
-                        + mSatelliteController2.countOfDemoModeOutgoingDatagramSuccess;
+                mSatelliteController1.countOfDemoModeOutgoingDatagramSuccess * 2;
         expected.countOfDemoModeOutgoingDatagramFail =
-                mSatelliteController1.countOfDemoModeOutgoingDatagramFail
-                        + mSatelliteController2.countOfDemoModeOutgoingDatagramFail;
+                mSatelliteController1.countOfDemoModeOutgoingDatagramFail * 2;
         expected.countOfDemoModeIncomingDatagramSuccess =
-                mSatelliteController1.countOfDemoModeIncomingDatagramSuccess
-                        + mSatelliteController2.countOfDemoModeIncomingDatagramSuccess;
+                mSatelliteController1.countOfDemoModeIncomingDatagramSuccess * 2;
         expected.countOfDemoModeIncomingDatagramFail =
-                mSatelliteController1.countOfDemoModeIncomingDatagramFail
-                        + mSatelliteController2.countOfDemoModeIncomingDatagramFail;
+                mSatelliteController1.countOfDemoModeIncomingDatagramFail * 2;
         expected.countOfDatagramTypeKeepAliveSuccess =
-                mSatelliteController1.countOfDatagramTypeKeepAliveSuccess
-                        + mSatelliteController2.countOfDatagramTypeKeepAliveSuccess;
+                mSatelliteController1.countOfDatagramTypeKeepAliveSuccess * 2;
         expected.countOfDatagramTypeKeepAliveFail =
-                mSatelliteController1.countOfDatagramTypeKeepAliveFail
-                        + mSatelliteController2.countOfDatagramTypeKeepAliveFail;
-        expected.isProvisioned = mSatelliteController2.isProvisioned;
-        expected.carrierId = mSatelliteController2.carrierId;
+                mSatelliteController1.countOfDatagramTypeKeepAliveFail * 2;
+        expected.isProvisioned = mSatelliteController1.isProvisioned;
+        expected.carrierId = mSatelliteController1.carrierId;
+        expected.countOfSatelliteAllowedStateChangedEvents =
+                mSatelliteController1.countOfSatelliteAllowedStateChangedEvents * 2;
+        expected.countOfSuccessfulLocationQueries =
+                mSatelliteController1.countOfSuccessfulLocationQueries * 2;
+        expected.countOfFailedLocationQueries =
+                mSatelliteController1.countOfFailedLocationQueries * 2;
+        expected.countOfP2PSmsAvailableNotificationShown =
+                mSatelliteController1.countOfP2PSmsAvailableNotificationShown * 2;
+        expected.countOfP2PSmsAvailableNotificationRemoved =
+                mSatelliteController1.countOfP2PSmsAvailableNotificationRemoved * 2;
+        expected.isNtnOnlyCarrier = mSatelliteController1.isNtnOnlyCarrier;
 
         // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         SatelliteController[] output =
                 mPersistAtomsStorage.getSatelliteControllerStats(0L);
-        assertHasStats(output, expected);
+        assertHasStats(output, expected, 1);
+    }
+
+    @Test
+    public void addSatelliteControllerStats_addNewCarrierId() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSatelliteControllerStats(mSatelliteController1);
+        mPersistAtomsStorage.addSatelliteControllerStats(mSatelliteController2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        SatelliteController expected1 = mSatelliteController1;
+        SatelliteController expected2 = mSatelliteController2;
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteController[] output =
+                mPersistAtomsStorage.getSatelliteControllerStats(0L);
+
+        assertHasStats(output, expected1, 1);
+        assertHasStats(output, expected2, 1);
+    }
+
+    @Test
+    public void addSatelliteControllerStats_addNewProvisionId() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSatelliteControllerStats(mSatelliteController1);
+        mPersistAtomsStorage.addSatelliteControllerStats(mSatelliteController2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        SatelliteController expected1 = mSatelliteController1;
+        SatelliteController expected2 = mSatelliteController2;
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteController[] output =
+                mPersistAtomsStorage.getSatelliteControllerStats(0L);
+
+        assertHasStats(output, expected1, 1);
+        assertHasStats(output, expected2, 1);
+    }
+
+    @Test
+    public void addSatelliteControllerStats_addSameDimension() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        SatelliteController satelliteController1 = copyOf(mSatelliteController1);
+        SatelliteController satelliteController2 = copyOf(mSatelliteController2);
+
+        // set same provisioned and carrier id so that they are in same dimension.
+        satelliteController1.isProvisioned = true;
+        satelliteController2.isProvisioned = true;
+        satelliteController1.carrierId = 1589;
+        satelliteController2.carrierId = 1589;
+        satelliteController1.isNtnOnlyCarrier = false;
+        satelliteController2.isNtnOnlyCarrier = false;
+
+        mPersistAtomsStorage.addSatelliteControllerStats(copyOf(satelliteController1));
+        mPersistAtomsStorage.addSatelliteControllerStats(copyOf(satelliteController2));
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        SatelliteController expected = new SatelliteController();
+        expected.countOfSatelliteServiceEnablementsSuccess =
+                satelliteController1.countOfSatelliteServiceEnablementsSuccess
+                        + satelliteController2.countOfSatelliteServiceEnablementsSuccess;
+        expected.countOfSatelliteServiceEnablementsFail =
+                satelliteController1.countOfSatelliteServiceEnablementsFail
+                        + satelliteController2.countOfSatelliteServiceEnablementsFail;
+        expected.countOfOutgoingDatagramSuccess =
+                satelliteController1.countOfOutgoingDatagramSuccess
+                        + satelliteController2.countOfOutgoingDatagramSuccess;
+        expected.countOfOutgoingDatagramFail = satelliteController1.countOfOutgoingDatagramFail
+                + satelliteController2.countOfOutgoingDatagramFail;
+        expected.countOfIncomingDatagramSuccess =
+                satelliteController1.countOfIncomingDatagramSuccess
+                        + satelliteController2.countOfIncomingDatagramSuccess;
+        expected.countOfIncomingDatagramFail = satelliteController1.countOfIncomingDatagramFail
+                + satelliteController2.countOfIncomingDatagramFail;
+        expected.countOfDatagramTypeSosSmsSuccess =
+                satelliteController1.countOfDatagramTypeSosSmsSuccess
+                        + satelliteController2.countOfDatagramTypeSosSmsSuccess;
+        expected.countOfDatagramTypeSosSmsFail = satelliteController1.countOfDatagramTypeSosSmsFail
+                + satelliteController2.countOfDatagramTypeSosSmsFail;
+        expected.countOfDatagramTypeLocationSharingSuccess =
+                satelliteController1.countOfDatagramTypeLocationSharingSuccess
+                        + satelliteController2.countOfDatagramTypeLocationSharingSuccess;
+        expected.countOfDatagramTypeLocationSharingFail =
+                satelliteController1.countOfDatagramTypeLocationSharingFail
+                        + satelliteController2.countOfDatagramTypeLocationSharingFail;
+        expected.countOfProvisionSuccess = satelliteController1.countOfProvisionSuccess
+                + satelliteController2.countOfProvisionSuccess;
+        expected.countOfProvisionFail = satelliteController1.countOfProvisionFail
+                + satelliteController2.countOfProvisionFail;
+        expected.countOfDeprovisionSuccess = satelliteController1.countOfDeprovisionSuccess
+                + satelliteController2.countOfDeprovisionSuccess;
+        expected.countOfDeprovisionFail = satelliteController1.countOfDeprovisionFail
+                + satelliteController2.countOfDeprovisionFail;
+        expected.totalServiceUptimeSec = satelliteController1.totalServiceUptimeSec
+                + satelliteController2.totalServiceUptimeSec;
+        expected.totalBatteryConsumptionPercent =
+                satelliteController1.totalBatteryConsumptionPercent
+                        + satelliteController2.totalBatteryConsumptionPercent;
+        expected.totalBatteryChargedTimeSec = satelliteController1.totalBatteryChargedTimeSec
+                + satelliteController2.totalBatteryChargedTimeSec;
+        expected.countOfDemoModeSatelliteServiceEnablementsSuccess =
+                satelliteController1.countOfDemoModeSatelliteServiceEnablementsSuccess
+                        + satelliteController2.countOfDemoModeSatelliteServiceEnablementsSuccess;
+        expected.countOfDemoModeSatelliteServiceEnablementsFail =
+                satelliteController1.countOfDemoModeSatelliteServiceEnablementsFail
+                        + satelliteController2.countOfDemoModeSatelliteServiceEnablementsFail;
+        expected.countOfDemoModeOutgoingDatagramSuccess =
+                satelliteController1.countOfDemoModeOutgoingDatagramSuccess
+                        + satelliteController2.countOfDemoModeOutgoingDatagramSuccess;
+        expected.countOfDemoModeOutgoingDatagramFail =
+                satelliteController1.countOfDemoModeOutgoingDatagramFail
+                        + satelliteController2.countOfDemoModeOutgoingDatagramFail;
+        expected.countOfDemoModeIncomingDatagramSuccess =
+                satelliteController1.countOfDemoModeIncomingDatagramSuccess
+                        + satelliteController2.countOfDemoModeIncomingDatagramSuccess;
+        expected.countOfDemoModeIncomingDatagramFail =
+                satelliteController1.countOfDemoModeIncomingDatagramFail
+                        + satelliteController2.countOfDemoModeIncomingDatagramFail;
+        expected.countOfDatagramTypeKeepAliveSuccess =
+                satelliteController1.countOfDatagramTypeKeepAliveSuccess
+                        + satelliteController2.countOfDatagramTypeKeepAliveSuccess;
+        expected.countOfDatagramTypeKeepAliveFail =
+                satelliteController1.countOfDatagramTypeKeepAliveFail
+                        + satelliteController2.countOfDatagramTypeKeepAliveFail;
+        expected.isProvisioned = true;
+        expected.carrierId = 1589;
+        expected.countOfSatelliteAllowedStateChangedEvents =
+                satelliteController1.countOfSatelliteAllowedStateChangedEvents
+                        + satelliteController2.countOfSatelliteAllowedStateChangedEvents;
+        expected.countOfSuccessfulLocationQueries =
+                satelliteController1.countOfSuccessfulLocationQueries
+                        + satelliteController2.countOfSuccessfulLocationQueries;
+        expected.countOfFailedLocationQueries = satelliteController1.countOfFailedLocationQueries
+                + satelliteController2.countOfFailedLocationQueries;
+        expected.countOfP2PSmsAvailableNotificationShown =
+                satelliteController1.countOfP2PSmsAvailableNotificationShown
+                        + satelliteController2.countOfP2PSmsAvailableNotificationShown;
+        expected.countOfP2PSmsAvailableNotificationRemoved =
+                satelliteController1.countOfP2PSmsAvailableNotificationRemoved
+                        + satelliteController2.countOfP2PSmsAvailableNotificationRemoved;
+        expected.isNtnOnlyCarrier = false;
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteController[] output =
+                mPersistAtomsStorage.getSatelliteControllerStats(0L);
+
+        assertHasStats(output, expected, 1);
     }
 
     @Test
@@ -4974,43 +5127,56 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     }
 
     @Test
-    public void addCarrierRoamingSatelliteControllerStats_withExistingEntries() throws Exception {
+    public void addCarrierRoamingSatelliteControllerStats_withExistingCarrierId() throws Exception {
         createEmptyTestFile();
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
         mPersistAtomsStorage.addCarrierRoamingSatelliteControllerStats(
-                mCarrierRoamingSatelliteControllerStats1);
+                copyOf(mCarrierRoamingSatelliteControllerStats1));
         mPersistAtomsStorage.addCarrierRoamingSatelliteControllerStats(
-                mCarrierRoamingSatelliteControllerStats2);
+                copyOf(mCarrierRoamingSatelliteControllerStats1));
         mPersistAtomsStorage.incTimeMillis(100L);
 
         CarrierRoamingSatelliteControllerStats expected =
                 new CarrierRoamingSatelliteControllerStats();
-        expected.configDataSource = mCarrierRoamingSatelliteControllerStats2.configDataSource;
+        expected.configDataSource = mCarrierRoamingSatelliteControllerStats1.configDataSource;
         expected.countOfEntitlementStatusQueryRequest =
-                mCarrierRoamingSatelliteControllerStats1.countOfEntitlementStatusQueryRequest
-                        + mCarrierRoamingSatelliteControllerStats2
-                        .countOfEntitlementStatusQueryRequest;
+                mCarrierRoamingSatelliteControllerStats1.countOfEntitlementStatusQueryRequest * 2;
         expected.countOfSatelliteConfigUpdateRequest =
-                mCarrierRoamingSatelliteControllerStats1.countOfSatelliteConfigUpdateRequest
-                        + mCarrierRoamingSatelliteControllerStats2
-                        .countOfSatelliteConfigUpdateRequest;
+                mCarrierRoamingSatelliteControllerStats1.countOfSatelliteConfigUpdateRequest * 2;
         expected.countOfSatelliteNotificationDisplayed =
-                mCarrierRoamingSatelliteControllerStats1.countOfSatelliteNotificationDisplayed
-                + mCarrierRoamingSatelliteControllerStats2
-                        .countOfSatelliteNotificationDisplayed;
+                mCarrierRoamingSatelliteControllerStats1.countOfSatelliteNotificationDisplayed * 2;
         expected.satelliteSessionGapMinSec =
-                mCarrierRoamingSatelliteControllerStats2.satelliteSessionGapMinSec;
+                mCarrierRoamingSatelliteControllerStats1.satelliteSessionGapMinSec;
         expected.satelliteSessionGapAvgSec =
-                mCarrierRoamingSatelliteControllerStats2.satelliteSessionGapAvgSec;
+                mCarrierRoamingSatelliteControllerStats1.satelliteSessionGapAvgSec;
         expected.satelliteSessionGapMaxSec =
-                mCarrierRoamingSatelliteControllerStats2.satelliteSessionGapMaxSec;
-        expected.carrierId = mCarrierRoamingSatelliteControllerStats2.carrierId;
-        expected.isDeviceEntitled = mCarrierRoamingSatelliteControllerStats2.isDeviceEntitled;
-
+                mCarrierRoamingSatelliteControllerStats1.satelliteSessionGapMaxSec;
+        expected.carrierId = mCarrierRoamingSatelliteControllerStats1.carrierId;
+        expected.isDeviceEntitled = mCarrierRoamingSatelliteControllerStats1.isDeviceEntitled;
         verifyCurrentStateSavedToFileOnce();
         CarrierRoamingSatelliteControllerStats[] output =
                 mPersistAtomsStorage.getCarrierRoamingSatelliteControllerStats(0L);
-        assertHasStats(output, expected);
+        assertHasStats(output, expected, 1);
+    }
+
+    @Test
+    public void addCarrierRoamingSatelliteControllerStats_addNewCarrierId() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addCarrierRoamingSatelliteControllerStats(
+                copyOf(mCarrierRoamingSatelliteControllerStats1));
+        mPersistAtomsStorage.addCarrierRoamingSatelliteControllerStats(
+                copyOf(mCarrierRoamingSatelliteControllerStats2));
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        CarrierRoamingSatelliteControllerStats expected1 = mCarrierRoamingSatelliteControllerStats1;
+        CarrierRoamingSatelliteControllerStats expected2 = mCarrierRoamingSatelliteControllerStats2;
+
+        CarrierRoamingSatelliteControllerStats[] output =
+                mPersistAtomsStorage.getCarrierRoamingSatelliteControllerStats(0L);
+
+        assertHasStats(output, expected1, 1);
+        assertHasStats(output, expected2, 1);
     }
 
     @Test
@@ -5816,60 +5982,77 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         assertEquals(expectedCount, actualCount);
     }
 
-    private static void assertHasStats(
-            SatelliteController[] tested,
-            @Nullable SatelliteController expectedStats) {
+    private static void assertHasStats(SatelliteController[] tested,
+            @Nullable SatelliteController expectedStats, int expectedCount) {
         assertNotNull(tested);
-        assertEquals(tested[0].countOfSatelliteServiceEnablementsSuccess,
-                expectedStats.countOfSatelliteServiceEnablementsSuccess);
-        assertEquals(tested[0].countOfSatelliteServiceEnablementsFail,
-                expectedStats.countOfSatelliteServiceEnablementsFail);
-        assertEquals(tested[0].countOfOutgoingDatagramSuccess,
-                expectedStats.countOfOutgoingDatagramSuccess);
-        assertEquals(tested[0].countOfOutgoingDatagramFail,
-                expectedStats.countOfOutgoingDatagramFail);
-        assertEquals(tested[0].countOfIncomingDatagramSuccess,
-                expectedStats.countOfIncomingDatagramSuccess);
-        assertEquals(tested[0].countOfIncomingDatagramFail,
-                expectedStats.countOfIncomingDatagramFail);
-        assertEquals(tested[0].countOfDatagramTypeSosSmsSuccess,
-                expectedStats.countOfDatagramTypeSosSmsSuccess);
-        assertEquals(tested[0].countOfDatagramTypeSosSmsFail,
-                expectedStats.countOfDatagramTypeSosSmsFail);
-        assertEquals(tested[0].countOfDatagramTypeLocationSharingSuccess,
-                expectedStats.countOfDatagramTypeLocationSharingSuccess);
-        assertEquals(tested[0].countOfDatagramTypeLocationSharingFail,
-                expectedStats.countOfDatagramTypeLocationSharingFail);
-        assertEquals(tested[0].totalServiceUptimeSec,
-                expectedStats.totalServiceUptimeSec);
-        assertEquals(tested[0].totalBatteryConsumptionPercent,
-                expectedStats.totalBatteryConsumptionPercent);
-        assertEquals(tested[0].totalBatteryChargedTimeSec,
-                expectedStats.totalBatteryChargedTimeSec);
-        assertEquals(tested[0].countOfDemoModeSatelliteServiceEnablementsSuccess,
-                expectedStats.countOfDemoModeSatelliteServiceEnablementsSuccess);
-        assertEquals(tested[0].countOfDemoModeSatelliteServiceEnablementsFail,
-                expectedStats.countOfDemoModeSatelliteServiceEnablementsFail);
-        assertEquals(tested[0].countOfDemoModeOutgoingDatagramSuccess,
-                expectedStats.countOfDemoModeOutgoingDatagramSuccess);
-        assertEquals(tested[0].countOfDemoModeOutgoingDatagramFail,
-                expectedStats.countOfDemoModeOutgoingDatagramFail);
-        assertEquals(tested[0].countOfDemoModeIncomingDatagramSuccess,
-                expectedStats.countOfDemoModeIncomingDatagramSuccess);
-        assertEquals(tested[0].countOfDemoModeIncomingDatagramFail,
-                expectedStats.countOfDemoModeIncomingDatagramFail);
-        assertEquals(tested[0].countOfDatagramTypeKeepAliveSuccess,
-                expectedStats.countOfDatagramTypeKeepAliveSuccess);
-        assertEquals(tested[0].countOfDatagramTypeKeepAliveFail,
-                expectedStats.countOfDatagramTypeKeepAliveFail);
-        assertEquals(tested[0].countOfAllowedSatelliteAccess,
-                expectedStats.countOfAllowedSatelliteAccess);
-        assertEquals(tested[0].countOfDisallowedSatelliteAccess,
-                expectedStats.countOfDisallowedSatelliteAccess);
-        assertEquals(tested[0].countOfSatelliteAccessCheckFail,
-                expectedStats.countOfSatelliteAccessCheckFail);
-        assertEquals(tested[0].isProvisioned, expectedStats.isProvisioned);
-        assertEquals(tested[0].carrierId, expectedStats.carrierId);
+        int actualCount = 0;
+        for (SatelliteController stats : tested) {
+            if (expectedStats.carrierId == stats.carrierId
+                    && expectedStats.isProvisioned == stats.isProvisioned
+                    && expectedStats.isNtnOnlyCarrier == stats.isNtnOnlyCarrier) {
+                assertEquals(expectedStats.countOfSatelliteServiceEnablementsSuccess,
+                        stats.countOfSatelliteServiceEnablementsSuccess);
+                assertEquals(expectedStats.countOfSatelliteServiceEnablementsFail,
+                        stats.countOfSatelliteServiceEnablementsFail);
+                assertEquals(expectedStats.countOfOutgoingDatagramSuccess,
+                        stats.countOfOutgoingDatagramSuccess);
+                assertEquals(expectedStats.countOfOutgoingDatagramFail,
+                        stats.countOfOutgoingDatagramFail);
+                assertEquals(expectedStats.countOfIncomingDatagramSuccess,
+                        stats.countOfIncomingDatagramSuccess);
+                assertEquals(expectedStats.countOfIncomingDatagramFail,
+                        stats.countOfIncomingDatagramFail);
+                assertEquals(expectedStats.countOfDatagramTypeSosSmsSuccess,
+                        stats.countOfDatagramTypeSosSmsSuccess);
+                assertEquals(expectedStats.countOfDatagramTypeSosSmsFail,
+                        stats.countOfDatagramTypeSosSmsFail);
+                assertEquals(expectedStats.countOfDatagramTypeLocationSharingSuccess,
+                        stats.countOfDatagramTypeLocationSharingSuccess);
+                assertEquals(expectedStats.countOfDatagramTypeLocationSharingFail,
+                        stats.countOfDatagramTypeLocationSharingFail);
+                assertEquals(expectedStats.totalServiceUptimeSec, stats.totalServiceUptimeSec);
+                assertEquals(expectedStats.totalBatteryConsumptionPercent,
+                        stats.totalBatteryConsumptionPercent);
+                assertEquals(expectedStats.totalBatteryChargedTimeSec,
+                        stats.totalBatteryChargedTimeSec);
+                assertEquals(expectedStats.countOfDemoModeSatelliteServiceEnablementsSuccess,
+                        stats.countOfDemoModeSatelliteServiceEnablementsSuccess);
+                assertEquals(expectedStats.countOfDemoModeSatelliteServiceEnablementsFail,
+                        stats.countOfDemoModeSatelliteServiceEnablementsFail);
+                assertEquals(expectedStats.countOfDemoModeOutgoingDatagramSuccess,
+                        stats.countOfDemoModeOutgoingDatagramSuccess);
+                assertEquals(expectedStats.countOfDemoModeOutgoingDatagramFail,
+                        stats.countOfDemoModeOutgoingDatagramFail);
+                assertEquals(expectedStats.countOfDemoModeIncomingDatagramSuccess,
+                        stats.countOfDemoModeIncomingDatagramSuccess);
+                assertEquals(expectedStats.countOfDemoModeIncomingDatagramFail,
+                        stats.countOfDemoModeIncomingDatagramFail);
+                assertEquals(expectedStats.countOfDatagramTypeKeepAliveSuccess,
+                        stats.countOfDatagramTypeKeepAliveSuccess);
+                assertEquals(expectedStats.countOfDatagramTypeKeepAliveFail,
+                        stats.countOfDatagramTypeKeepAliveFail);
+                assertEquals(expectedStats.countOfAllowedSatelliteAccess,
+                        stats.countOfAllowedSatelliteAccess);
+                assertEquals(expectedStats.countOfDisallowedSatelliteAccess,
+                        stats.countOfDisallowedSatelliteAccess);
+                assertEquals(expectedStats.countOfSatelliteAccessCheckFail,
+                        stats.countOfSatelliteAccessCheckFail);
+                assertEquals(expectedStats.isProvisioned, stats.isProvisioned);
+                assertEquals(expectedStats.carrierId, stats.carrierId);
+                assertEquals(expectedStats.countOfSatelliteAllowedStateChangedEvents,
+                        stats.countOfSatelliteAllowedStateChangedEvents);
+                assertEquals(expectedStats.countOfSuccessfulLocationQueries,
+                        stats.countOfSuccessfulLocationQueries);
+                assertEquals(expectedStats.countOfFailedLocationQueries,
+                        stats.countOfFailedLocationQueries);
+                assertEquals(expectedStats.countOfP2PSmsAvailableNotificationShown,
+                        stats.countOfP2PSmsAvailableNotificationShown);
+                assertEquals(expectedStats.countOfP2PSmsAvailableNotificationRemoved,
+                        stats.countOfP2PSmsAvailableNotificationRemoved);
+                actualCount++;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
     }
 
     private static void assertHasStatsAndCount(
@@ -5879,31 +6062,33 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         int actualCount = 0;
         for (SatelliteSession stats : tested) {
             if (stats.satelliteServiceInitializationResult
-                    == expectedStats.satelliteServiceInitializationResult
+                            == expectedStats.satelliteServiceInitializationResult
                     && stats.satelliteTechnology == expectedStats.satelliteTechnology
                     && stats.satelliteServiceTerminationResult
-                        == expectedStats.satelliteServiceTerminationResult
+                            == expectedStats.satelliteServiceTerminationResult
                     && stats.initializationProcessingTimeMillis
-                        == expectedStats.initializationProcessingTimeMillis
+                            == expectedStats.initializationProcessingTimeMillis
                     && stats.terminationProcessingTimeMillis
-                        == expectedStats.terminationProcessingTimeMillis
+                            == expectedStats.terminationProcessingTimeMillis
                     && stats.sessionDurationSeconds == expectedStats.sessionDurationSeconds
                     && stats.countOfOutgoingDatagramSuccess
-                        == expectedStats.countOfOutgoingDatagramSuccess
+                            == expectedStats.countOfOutgoingDatagramSuccess
                     && stats.countOfOutgoingDatagramFailed
-                        == expectedStats.countOfOutgoingDatagramFailed
+                            == expectedStats.countOfOutgoingDatagramFailed
                     && stats.countOfIncomingDatagramSuccess
-                        == expectedStats.countOfIncomingDatagramSuccess
+                            == expectedStats.countOfIncomingDatagramSuccess
                     && stats.countOfIncomingDatagramFailed
-                        == expectedStats.countOfIncomingDatagramFailed
+                            == expectedStats.countOfIncomingDatagramFailed
                     && stats.isDemoMode == expectedStats.isDemoMode
                     && stats.carrierId == expectedStats.carrierId
                     && stats.countOfSatelliteNotificationDisplayed
-                    == expectedStats.countOfSatelliteNotificationDisplayed
+                            == expectedStats.countOfSatelliteNotificationDisplayed
                     && stats.countOfAutoExitDueToScreenOff
-                    == expectedStats.countOfAutoExitDueToScreenOff
+                            == expectedStats.countOfAutoExitDueToScreenOff
                     && stats.countOfAutoExitDueToTnNetwork
-                    == expectedStats.countOfAutoExitDueToTnNetwork) {
+                            == expectedStats.countOfAutoExitDueToTnNetwork
+                    && stats.isEmergency == expectedStats.isEmergency
+                    && stats.maxInactivityDurationSec == expectedStats.maxInactivityDurationSec) {
                 actualCount = stats.count;
             }
         }
@@ -6251,20 +6436,29 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     }
 
     private static void assertHasStats(CarrierRoamingSatelliteControllerStats[] tested,
-            @Nullable CarrierRoamingSatelliteControllerStats expectedStats) {
+            @Nullable CarrierRoamingSatelliteControllerStats expectedStats, int expectedCount) {
         assertNotNull(tested);
-        assertEquals(tested[0].configDataSource, expectedStats.configDataSource);
-        assertEquals(tested[0].countOfEntitlementStatusQueryRequest,
-                expectedStats.countOfEntitlementStatusQueryRequest);
-        assertEquals(tested[0].countOfSatelliteConfigUpdateRequest,
-                expectedStats.countOfSatelliteConfigUpdateRequest);
-        assertEquals(tested[0].countOfSatelliteNotificationDisplayed,
-                expectedStats.countOfSatelliteNotificationDisplayed);
-        assertEquals(tested[0].satelliteSessionGapMinSec, expectedStats.satelliteSessionGapMinSec);
-        assertEquals(tested[0].satelliteSessionGapAvgSec, expectedStats.satelliteSessionGapAvgSec);
-        assertEquals(tested[0].satelliteSessionGapMaxSec, expectedStats.satelliteSessionGapMaxSec);
-        assertEquals(tested[0].carrierId, expectedStats.carrierId);
-        assertEquals(tested[0].isDeviceEntitled, expectedStats.isDeviceEntitled);
+        int count = 0;
+        for (CarrierRoamingSatelliteControllerStats stats : tested) {
+            if (expectedStats.carrierId == stats.carrierId) {
+                assertEquals(expectedStats.configDataSource, stats.configDataSource);
+                assertEquals(expectedStats.countOfEntitlementStatusQueryRequest,
+                        stats.countOfEntitlementStatusQueryRequest);
+                assertEquals(expectedStats.countOfSatelliteConfigUpdateRequest,
+                        stats.countOfSatelliteConfigUpdateRequest);
+                assertEquals(expectedStats.countOfSatelliteNotificationDisplayed,
+                        stats.countOfSatelliteNotificationDisplayed);
+                assertEquals(expectedStats.satelliteSessionGapMinSec,
+                        stats.satelliteSessionGapMinSec);
+                assertEquals(expectedStats.satelliteSessionGapAvgSec,
+                        stats.satelliteSessionGapAvgSec);
+                assertEquals(expectedStats.satelliteSessionGapMaxSec,
+                        stats.satelliteSessionGapMaxSec);
+                assertEquals(expectedStats.isDeviceEntitled, stats.isDeviceEntitled);
+                count++;
+            }
+        }
+        assertEquals(expectedCount, count);
     }
 
     private static void assertHasStatsAndCount(

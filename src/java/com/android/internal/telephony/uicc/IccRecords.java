@@ -36,6 +36,7 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.gsm.SimTlv;
@@ -1300,10 +1301,18 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 return null;
             }
 
+            if (rsp.exception instanceof CommandException commandException) {
+                switch (commandException.getCommandError()) {
+                    case REQUEST_NOT_SUPPORTED:
+                        throw new UnsupportedOperationException(commandException);
+                    default:
+                        // handle other exceptions in the rsp.exception conditional below
+                }
+            }
             if (rsp.exception != null) {
                 loge("getIccSimChallengeResponse exception: " + rsp.exception);
                 //TODO: propagate better exceptions up to the user now that we have them available
-                //in the call stack.
+                //in the call stack (see CommandException switch above).
                 return null;
             }
 

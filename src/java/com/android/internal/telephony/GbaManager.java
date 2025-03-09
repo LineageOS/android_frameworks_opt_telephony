@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.UserIdInt;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -27,6 +28,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.RemoteException;
+import android.os.UserHandle;
 import android.telephony.IBootstrapAuthenticationCallback;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -75,7 +77,8 @@ public class GbaManager {
     private Handler mHandler;
 
     private String mServicePackageName;
-    private String mServicePackageNameOverride;
+    @UserIdInt
+    private int mUserId = UserHandle.USER_SYSTEM;
     private int mReleaseTime;
     private int mRetryTimes = 0;
 
@@ -426,8 +429,9 @@ public class GbaManager {
         try {
             logv("Trying to bind " + servicePackage);
             mServiceConnection = new GbaServiceConnection();
-            if (!mContext.bindService(intent, mServiceConnection,
-                    Context.BIND_AUTO_CREATE | Context.BIND_FOREGROUND_SERVICE)) {
+            if (!mContext.bindServiceAsUser(intent, mServiceConnection,
+                    Context.BIND_AUTO_CREATE | Context.BIND_FOREGROUND_SERVICE,
+                    UserHandle.of(mUserId))) {
                 logd("Cannot bind to the service.");
                 retryBind();
                 return;
@@ -462,12 +466,13 @@ public class GbaManager {
     }
 
     /** override GBA service package name to be connected */
-    public boolean overrideServicePackage(String packageName) {
+    public boolean overrideServicePackage(String packageName, @UserIdInt int userId) {
         synchronized (this) {
-            if (!TextUtils.equals(mServicePackageName, packageName)) {
+            if (!TextUtils.equals(mServicePackageName, packageName) || userId != mUserId) {
                 logv("Service package name is changed from " + mServicePackageName
-                        + " to " + packageName);
+                        + " to " + packageName + ", user id from " + mUserId + " to " + userId);
                 mServicePackageName = packageName;
+                mUserId = userId;
                 if (!mHandler.hasMessages(EVENT_CONFIG_CHANGED)) {
                     mHandler.sendEmptyMessage(EVENT_CONFIG_CHANGED);
                 }

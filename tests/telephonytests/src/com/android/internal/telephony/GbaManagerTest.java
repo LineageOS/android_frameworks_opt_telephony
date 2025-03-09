@@ -41,6 +41,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.RemoteException;
+import android.os.UserHandle;
 import android.telephony.IBootstrapAuthenticationCallback;
 import android.telephony.TelephonyManager;
 import android.telephony.gba.GbaAuthRequest;
@@ -50,8 +51,6 @@ import android.telephony.gba.UaSecurityProtocolIdentifier;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.util.Log;
-
-import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.metrics.RcsStats;
 
@@ -66,7 +65,7 @@ import org.mockito.ArgumentCaptor;
  */
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
-public final class GbaManagerTest {
+public final class GbaManagerTest extends TelephonyTest {
     private static final String LOG_TAG = "GbaManagerTest";
 
     private static final ComponentName TEST_DEFAULT_SERVICE_NAME = new ComponentName(
@@ -91,6 +90,7 @@ public final class GbaManagerTest {
 
     @Before
     public void setUp() throws Exception {
+        super.setUp(getClass().getSimpleName());
         log("setUp");
         mMockContext = mock(Context.class);
         mMockBinder = mock(IBinder.class);
@@ -100,7 +100,8 @@ public final class GbaManagerTest {
         if (Looper.myLooper() == null) {
             Looper.prepare();
         }
-        when(mMockContext.bindService(any(), any(), anyInt())).thenReturn(true);
+        when(mMockContext.bindServiceAsUser(any(), any(), anyInt(), any(UserHandle.class)))
+                .thenReturn(true);
         when(mMockGbaServiceBinder.asBinder()).thenReturn(mMockBinder);
         mTestGbaManager = new GbaManager(mMockContext, TEST_SUB_ID, null, 0, mMockRcsStats);
         mHandler = mTestGbaManager.getHandler();
@@ -109,137 +110,129 @@ public final class GbaManagerTest {
         } catch (Exception e) {
             fail("Unable to create looper from handler.");
         }
+        monitorTestableLooper(mLooper);
     }
 
     @After
     public void tearDown() throws Exception {
         log("tearDown");
         mTestGbaManager.destroy();
-        mTestGbaManager = null;
-        mHandler = null;
-        mLooper.destroy();
-        mLooper = null;
+        super.tearDown();
     }
 
     @Test
-    @SmallTest
     public void testFailOnRequest() throws Exception {
         GbaAuthRequest request = createDefaultRequest();
 
         mTestGbaManager.bootstrapAuthenticationRequest(request);
-        mLooper.processAllMessages();
+        processAllMessages();
 
-        verify(mMockContext, never()).bindService(any(), any(), anyInt());
+        verify(mMockContext, never()).bindServiceAsUser(any(), any(), anyInt(),
+                any(UserHandle.class));
         verify(mMockCallback).onAuthenticationFailure(anyInt(), anyInt());
         assertTrue(!mTestGbaManager.isServiceConnected());
     }
 
     @Test
-    @SmallTest
     public void testBindServiceOnRequest() throws Exception {
-        mTestGbaManager.overrideServicePackage(TEST_DEFAULT_SERVICE_NAME.getPackageName());
+        mTestGbaManager.overrideServicePackage(TEST_DEFAULT_SERVICE_NAME.getPackageName(), 123);
         GbaAuthRequest request = createDefaultRequest();
 
         mTestGbaManager.bootstrapAuthenticationRequest(request);
-        mLooper.processAllMessages();
+        processAllMessages();
         bindAndConnectService(TEST_DEFAULT_SERVICE_NAME);
-        mLooper.processAllMessages();
+        processAllMessages();
 
         verify(mMockGbaServiceBinder).authenticationRequest(any());
         assertTrue(mTestGbaManager.isServiceConnected());
     }
 
     @Test
-    @SmallTest
     public void testFailAndRetryOnRequest() throws RemoteException {
-        when(mMockContext.bindService(any(), any(), anyInt())).thenReturn(false);
-        mTestGbaManager.overrideServicePackage(TEST_DEFAULT_SERVICE_NAME.getPackageName());
+        when(mMockContext.bindServiceAsUser(any(), any(), anyInt(), any(UserHandle.class)))
+                .thenReturn(false);
+        mTestGbaManager.overrideServicePackage(TEST_DEFAULT_SERVICE_NAME.getPackageName(), 123);
         GbaAuthRequest request = createDefaultRequest();
 
         mTestGbaManager.bootstrapAuthenticationRequest(request);
 
         for (int i = 0; i < GbaManager.MAX_RETRY; i++) {
-            mLooper.processAllMessages();
-            verify(mMockContext, times(i + 1)).bindService(any(), any(), anyInt());
-            try {
-                Thread.sleep(GbaManager.RETRY_TIME_MS + 500);
-            } catch (InterruptedException e) {
-            }
+            processAllMessages();
+            verify(mMockContext, times(i + 1)).bindServiceAsUser(any(), any(), anyInt(),
+                    any(UserHandle.class));
+            moveTimeForward(GbaManager.REQUEST_TIMEOUT_MS);
         }
         assertTrue(!mTestGbaManager.isServiceConnected());
-        mLooper.processAllMessages();
+        processAllMessages();
         verify(mMockCallback).onAuthenticationFailure(anyInt(), anyInt());
     }
 
     @Test
-    @SmallTest
     public void testBindServiceWhenPackageNameChanged() {
-        mTestGbaManager.overrideServicePackage(TEST_DEFAULT_SERVICE_NAME.getPackageName());
+        mTestGbaManager.overrideServicePackage(TEST_DEFAULT_SERVICE_NAME.getPackageName(), 123);
         mTestGbaManager.overrideReleaseTime(RELEASE_TIME_60S);
         GbaAuthRequest request = createDefaultRequest();
 
         mTestGbaManager.bootstrapAuthenticationRequest(request);
-        mLooper.processAllMessages();
+        processAllMessages();
         ServiceConnection conn = bindAndConnectService(TEST_DEFAULT_SERVICE_NAME);
-        mTestGbaManager.overrideServicePackage(TEST_SERVICE2_NAME.getPackageName());
+        mTestGbaManager.overrideServicePackage(TEST_SERVICE2_NAME.getPackageName(), 123);
 
         assertEquals(TEST_SERVICE2_NAME.getPackageName(), mTestGbaManager.getServicePackage());
 
-        mLooper.processAllMessages();
+        processAllMessages();
         unbindService(conn);
         bindAndConnectService(TEST_SERVICE2_NAME);
         assertTrue(mTestGbaManager.isServiceConnected());
     }
 
     @Test
-    @SmallTest
     public void testBindServiceWhenReleaseTimeChanged() {
-        mTestGbaManager.overrideServicePackage(TEST_DEFAULT_SERVICE_NAME.getPackageName());
+        mTestGbaManager.overrideServicePackage(TEST_DEFAULT_SERVICE_NAME.getPackageName(), 123);
         mTestGbaManager.overrideReleaseTime(RELEASE_NEVER);
 
         assertEquals(RELEASE_NEVER, mTestGbaManager.getReleaseTime());
-        mLooper.processAllMessages();
+        processAllMessages();
         bindAndConnectService(TEST_DEFAULT_SERVICE_NAME);
 
         assertTrue(mTestGbaManager.isServiceConnected());
     }
 
     @Test
-    @SmallTest
     public void testDontBindServiceWhenPackageNameChanged() {
-        mTestGbaManager.overrideServicePackage(TEST_SERVICE2_NAME.getPackageName());
+        mTestGbaManager.overrideServicePackage(TEST_SERVICE2_NAME.getPackageName(), 123);
 
-        mLooper.processAllMessages();
+        processAllMessages();
 
-        verify(mMockContext, never()).bindService(any(), any(), anyInt());
+        verify(mMockContext, never()).bindServiceAsUser(any(), any(), anyInt(),
+                any(UserHandle.class));
         assertTrue(!mTestGbaManager.isServiceConnected());
     }
 
     @Test
-    @SmallTest
     public void testDontBindServiceWhenReleaseTimeChanged() {
-        mTestGbaManager.overrideServicePackage(TEST_DEFAULT_SERVICE_NAME.getPackageName());
+        mTestGbaManager.overrideServicePackage(TEST_DEFAULT_SERVICE_NAME.getPackageName(), 123);
         mTestGbaManager.overrideReleaseTime(RELEASE_TIME_60S);
 
-        mLooper.processAllMessages();
+        processAllMessages();
 
-        verify(mMockContext, never()).bindService(any(), any(), anyInt());
+        verify(mMockContext, never()).bindServiceAsUser(any(), any(), anyInt(),
+                any(UserHandle.class));
         assertTrue(!mTestGbaManager.isServiceConnected());
     }
 
     @Test
-    @SmallTest
     public void testMetricsGbaEvent() throws Exception {
-        mTestGbaManager.overrideServicePackage(TEST_DEFAULT_SERVICE_NAME.getPackageName());
+        mTestGbaManager.overrideServicePackage(TEST_DEFAULT_SERVICE_NAME.getPackageName(), 123);
         mTestGbaManager.overrideReleaseTime(RELEASE_NEVER);
 
-        mLooper.processAllMessages();
+        processAllMessages();
         bindAndConnectService(TEST_DEFAULT_SERVICE_NAME);
         GbaAuthRequest request = createDefaultRequest();
 
         // Failure case
         mTestGbaManager.bootstrapAuthenticationRequest(request);
-        mLooper.processAllMessages();
+        processAllMessages();
 
         ArgumentCaptor<GbaAuthRequest> captor = ArgumentCaptor.forClass(GbaAuthRequest.class);
         verify(mMockGbaServiceBinder, times(1)).authenticationRequest(captor.capture());
@@ -254,7 +247,7 @@ public final class GbaManagerTest {
 
         // Success case
         mTestGbaManager.bootstrapAuthenticationRequest(request);
-        mLooper.processAllMessages();
+        processAllMessages();
 
         ArgumentCaptor<GbaAuthRequest> captor2 = ArgumentCaptor.forClass(GbaAuthRequest.class);
         verify(mMockGbaServiceBinder, times(2)).authenticationRequest(captor2.capture());
@@ -280,9 +273,10 @@ public final class GbaManagerTest {
                 ArgumentCaptor.forClass(Intent.class);
         ArgumentCaptor<ServiceConnection> serviceCaptor =
                 ArgumentCaptor.forClass(ServiceConnection.class);
-        verify(mMockContext, atLeastOnce()).bindService(intentCaptor.capture(),
+        verify(mMockContext, atLeastOnce()).bindServiceAsUser(intentCaptor.capture(),
                 serviceCaptor.capture(), eq(
-                        Context.BIND_AUTO_CREATE | Context.BIND_FOREGROUND_SERVICE));
+                        Context.BIND_AUTO_CREATE | Context.BIND_FOREGROUND_SERVICE),
+                any(UserHandle.class));
         Intent testIntent = intentCaptor.getValue();
         assertEquals(GbaService.SERVICE_INTERFACE, testIntent.getAction());
         assertEquals(component.getPackageName(), testIntent.getPackage());

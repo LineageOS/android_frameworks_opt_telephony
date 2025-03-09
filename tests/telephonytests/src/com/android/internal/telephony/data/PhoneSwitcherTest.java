@@ -146,7 +146,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
     private AutoDataSwitchController.AutoDataSwitchControllerCallback mAutoDataSwitchCallback;
     private TelephonyDisplayInfo mTelephonyDisplayInfo = new TelephonyDisplayInfo(
             TelephonyManager.NETWORK_TYPE_NR,
-            TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false);
+            TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false, false, false);
     private SubscriptionManagerServiceCallback mSubscriptionManagerServiceCallback;
 
     @Before

@@ -23,6 +23,7 @@ import static com.android.internal.telephony.SmsUsageMonitor.PREMIUM_SMS_PERMISS
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
@@ -45,6 +46,7 @@ import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
 import android.location.Country;
 import android.location.CountryDetector;
+import android.net.Uri;
 import android.os.Binder;
 import android.os.HandlerThread;
 import android.os.Message;
@@ -54,6 +56,7 @@ import android.provider.Settings;
 import android.service.carrier.CarrierMessagingService;
 import android.service.carrier.ICarrierMessagingCallback;
 import android.service.carrier.ICarrierMessagingService;
+import android.telephony.ServiceState;
 import android.telephony.SmsManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -63,6 +66,7 @@ import androidx.test.filters.FlakyTest;
 import androidx.test.filters.MediumTest;
 import androidx.test.filters.SmallTest;
 
+import com.android.internal.R;
 import com.android.internal.telephony.ContextFixture;
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.SMSDispatcher;
@@ -70,6 +74,7 @@ import com.android.internal.telephony.SmsDispatchersController;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.TelephonyTestUtils;
 import com.android.internal.telephony.TestApplication;
+import com.android.internal.telephony.flags.Flags;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.IsimUiccRecords;
 
@@ -313,7 +318,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         // send SMS and check sentIntent
         mReceivedTestIntent = false;
         mGsmSmsDispatcher.sendMultipartText("+123" /*destAddr*/, "222" /*scAddr*/, parts,
-                sentIntents, null, null, null, mCallingUserId, false, -1, false, -1, 0L);
+                sentIntents, null, null, null, mCallingUserId, false, -1, false, -1, 0L, 0L);
 
         waitForMs(500);
         synchronized (mLock) {
@@ -377,23 +382,35 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
                 any(ICarrierMessagingCallback.class));
     }
 
-    @Test
-    @SmallTest
-    @Ignore("b/256282780")
-    public void testSendSmsByCarrierApp() throws Exception {
+    private int sendSmsWithCarrierAppResponse(int carrierAppResultCode) throws Exception {
         mockCarrierApp();
-        mockCarrierAppStubResults(CarrierMessagingService.SEND_STATUS_OK,
-                mICarrierAppMessagingService, true);
+        mockCarrierAppStubResults(carrierAppResultCode, mICarrierAppMessagingService, true);
         registerTestIntentReceiver();
 
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(TestApplication.getAppContext(), 0,
-                new Intent(TEST_INTENT)
-                        .setPackage(TestApplication.getAppContext().getPackageName()),
-                PendingIntent.FLAG_MUTABLE);
+        PendingIntent pendingIntent =
+                PendingIntent.getBroadcast(
+                        TestApplication.getAppContext(),
+                        0,
+                        new Intent(TEST_INTENT)
+                                .setPackage(TestApplication.getAppContext().getPackageName()),
+                        PendingIntent.FLAG_MUTABLE);
         mReceivedTestIntent = false;
 
-        mGsmSmsDispatcher.sendText("6501002000", "121" /*scAddr*/, "test sms",
-                pendingIntent, null, null, null, mCallingUserId, false, -1, false, -1, false, 0L);
+        mGsmSmsDispatcher.sendText(
+                "6501002000",
+                "121" /*scAddr*/,
+                "test sms",
+                pendingIntent,
+                null,
+                null,
+                null,
+                mCallingUserId,
+                false,
+                -1,
+                false,
+                -1,
+                false,
+                0L);
         processAllMessages();
         synchronized (mLock) {
             if (!mReceivedTestIntent) {
@@ -402,11 +419,44 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
             }
             assertEquals(true, mReceivedTestIntent);
             int resultCode = mTestReceiver.getResultCode();
-            assertTrue("Unexpected result code: " + resultCode,
-                    resultCode == SmsManager.RESULT_ERROR_NONE || resultCode == Activity.RESULT_OK);
-            verify(mSimulatedCommandsVerifier, times(0)).sendSMS(anyString(), anyString(),
-                    any(Message.class));
+            verify(mSimulatedCommandsVerifier, times(0))
+                    .sendSMS(anyString(), anyString(), any(Message.class));
+            return resultCode;
         }
+    }
+
+    @Test
+    @SmallTest
+    @Ignore("b/256282780")
+    public void testSendSmsByCarrierApp() throws Exception {
+        int resultCode = sendSmsWithCarrierAppResponse(CarrierMessagingService.SEND_STATUS_OK);
+        assertTrue(
+                "Unexpected result code: " + resultCode,
+                resultCode == SmsManager.RESULT_ERROR_NONE || resultCode == Activity.RESULT_OK);
+    }
+
+    @Test
+    @SmallTest
+    public void testSendSmsByCarrierApp_PermanentFailure() throws Exception {
+        int resultCode = sendSmsWithCarrierAppResponse(CarrierMessagingService.SEND_STATUS_ERROR);
+        assertTrue(
+                "Unexpected result code: " + resultCode,
+                resultCode == SmsManager.RESULT_RIL_GENERIC_ERROR);
+    }
+
+    @Test
+    @SmallTest
+    public void testSendSmsByCarrierApp_FailureWithReason() throws Exception {
+        if (!Flags.temporaryFailuresInCarrierMessagingService()) {
+            return;
+        }
+        doReturn(true).when(mFeatureFlags).temporaryFailuresInCarrierMessagingService();
+        int resultCode =
+                sendSmsWithCarrierAppResponse(
+                        CarrierMessagingService.SEND_STATUS_RESULT_ERROR_NO_SERVICE);
+        assertTrue(
+                "Unexpected result code: " + resultCode,
+                resultCode == SmsManager.RESULT_ERROR_NO_SERVICE);
     }
 
     @Test
@@ -456,7 +506,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
 
         mGsmSmsDispatcher.sendMultipartText("6501002000" /*destAddr*/, "222" /*scAddr*/, parts,
                 withSentIntents ? sentIntents : null, null, null, null, mCallingUserId,
-                false, -1, false, -1, 0L);
+                false, -1, false, -1, 0L, 0L);
     }
 
     @Test
@@ -549,7 +599,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
             messageRef += parts.size();
         }
         mGsmSmsDispatcher.sendMultipartText("6501002000" /*destAddr*/, "222" /*scAddr*/, parts,
-                null, null, null, null, mCallingUserId, false, -1, false, -1, 0L);
+                null, null, null, null, mCallingUserId, false, -1, false, -1, 0L, 0L);
         waitForMs(150);
         ArgumentCaptor<String> pduCaptor = ArgumentCaptor.forClass(String.class);
 
@@ -596,5 +646,54 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
                 any(Message.class));
         byte[] pdu = IccUtils.hexStringToBytes(pduCaptor.getValue());
         assertEquals(0, pdu[1]);
+    }
+
+    @Test
+    public void testSendRawPdu_isMtSmsPollingMessage_doesNotCallOnFailed() throws Exception {
+        setupMockPackagePermissionChecks();
+        mContextFixture.addCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+        // return a fake value to pass getData()
+        HashMap data = new HashMap<String, String>();
+        data.put("pdu", new byte[1]);
+        when(mSmsTracker.getData()).thenReturn(data);
+        when(mSmsTracker.getAppPackageName()).thenReturn("");
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.DEVICE_PROVISIONED, 1);
+        // Set isIms() false
+        doReturn(false).when(mSmsDispatchersController).isIms();
+        mContextFixture.putBooleanResource(
+                R.bool.config_satellite_allow_check_message_in_not_connected, true);
+        // Set ServiceState to OOS
+        doReturn(new ServiceState()).when(mPhone).getServiceState();
+        // Set isMtSmsPollingMessage to true
+        when(mSmsTracker.isMtSmsPollingMessage(any())).thenReturn(true);
+
+        mGsmSmsDispatcher.sendRawPdu(new SMSDispatcher.SmsTracker[] {mSmsTracker});
+        processAllMessages();
+
+        verify(mSmsTracker, times(0)).onFailed(any(), anyInt(), anyInt());
+    }
+
+    @Test
+    public void testSmsTracker_isMtSmsPollingMessage_returnsTrue() throws Exception {
+        String mtSmsPollingText = "mt_sms_polling_text";
+        mContextFixture.putResource(R.string.config_mt_sms_polling_text, mtSmsPollingText);
+        SMSDispatcher.SmsTracker tracker =
+                new SMSDispatcher.SmsTracker("destAddr", 0L, mtSmsPollingText);
+
+        boolean isMtSmsPollingMessage = tracker.isMtSmsPollingMessage(mContext);
+
+        assertTrue(isMtSmsPollingMessage);
+    }
+
+    @Test
+    public void testSmsTracker_isMtSmsPollingMessage_returnsFalse() throws Exception {
+        mContextFixture.putResource(R.string.config_mt_sms_polling_text, "mt_sms_polling_text");
+        SMSDispatcher.SmsTracker tracker =
+                new SMSDispatcher.SmsTracker("destAddr", 0L, "wrong_text");
+
+        boolean isMtSmsPollingMessage = tracker.isMtSmsPollingMessage(mContext);
+
+        assertFalse(isMtSmsPollingMessage);
     }
 }

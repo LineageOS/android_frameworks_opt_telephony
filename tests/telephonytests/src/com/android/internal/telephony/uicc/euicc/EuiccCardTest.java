@@ -109,7 +109,10 @@ public class EuiccCardTest extends TelephonyTest {
             mHandler.removeCallbacksAndMessages(null);
             mHandler = null;
         }
-        mEuiccCard = null;
+        if (mEuiccCard != null) {
+            mEuiccCard.dispose();
+            mEuiccCard = null;
+        }
         super.tearDown();
     }
 
@@ -132,6 +135,7 @@ public class EuiccCardTest extends TelephonyTest {
     @Test
     public void testPassEidInConstructor() {
         mMockIccCardStatus.eid = "1A2B3C4D";
+        mEuiccCard.dispose();
         mEuiccCard = new EuiccCard(mContextFixture.getTestDouble(), mMockCi,
                 mMockIccCardStatus, 0 /* phoneId */, new Object(),
                 IccSlotStatus.MultipleEnabledProfilesMode.NONE);
@@ -154,6 +158,7 @@ public class EuiccCardTest extends TelephonyTest {
     public void testLoadEidAndNotifyRegistrants() {
         int channel = mockLogicalChannelResponses("BF3E065A041A2B3C4D9000");
         mHandler.post(() -> {
+            mEuiccCard.dispose();
             mEuiccCard = new EuiccCard(mContextFixture.getTestDouble(), mMockCi,
                     mMockIccCardStatus, 0 /* phoneId */, new Object(),
                     IccSlotStatus.MultipleEnabledProfilesMode.NONE);

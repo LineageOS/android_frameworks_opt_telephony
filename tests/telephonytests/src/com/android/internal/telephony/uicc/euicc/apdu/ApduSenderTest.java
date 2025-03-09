@@ -16,36 +16,52 @@
 
 package com.android.internal.telephony.uicc.euicc.apdu;
 
+import static com.android.internal.telephony.CommandException.Error.RADIO_NOT_AVAILABLE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.platform.test.flag.junit.SetFlagsRule;
+import android.preference.PreferenceManager;
+import android.telephony.IccOpenLogicalChannelResponse;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
+import androidx.test.InstrumentationRegistry;
+
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.euicc.EuiccSession;
+import com.android.internal.telephony.flags.Flags;
 import com.android.internal.telephony.uicc.IccIoResult;
 import com.android.internal.telephony.uicc.IccUtils;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.InOrder;
+import org.mockito.Mockito;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class ApduSenderTest {
+    @Rule public final SetFlagsRule mSetFlagsRule = new SetFlagsRule();
 
     private static class ResponseCaptor extends ApduSenderResultCallback {
         public byte[] response;
@@ -75,6 +91,13 @@ public class ApduSenderTest {
         }
     }
 
+    private static final int PHONE_ID = 0;
+    private static final String SESSION_ID = "TEST";
+    // keep in sync with ApduSender.mChannelKey
+    private static final String SHARED_PREFS_KEY_CHANNEL_ID = "esim-channel_0";
+    // keep in sync with ApduSender.mChannelResponseKey
+    private static final String SHARED_PREFS_KEY_CHANNEL_RESPONSE = "esim-res-id_0";
+
     // Mocked classes
     private CommandsInterface mMockCi;
 
@@ -82,19 +105,20 @@ public class ApduSenderTest {
     private Handler mHandler;
     private ResponseCaptor mResponseCaptor;
     private byte[] mSelectResponse;
-    private static final String AID = "B2C3D4";
     private ApduSender mSender;
 
     @Before
     public void setUp() {
-        mMockCi = mock(CommandsInterface.class);
-        mHandler = new Handler(Looper.myLooper());
+        mSetFlagsRule.enableFlags(Flags.FLAG_OPTIMIZATION_APDU_SENDER);
 
+        mMockCi = mock(CommandsInterface.class);
+        mLooper = TestableLooper.get(this);
+        mHandler = new Handler(mLooper.getLooper());
         mResponseCaptor = new ResponseCaptor();
         mSelectResponse = null;
 
-        mSender = new ApduSender(mMockCi, AID, false /* supportExtendedApdu */);
-        mLooper = TestableLooper.get(this);
+        mSender = new ApduSender(InstrumentationRegistry.getContext(), PHONE_ID,
+                            mMockCi, ApduSender.ISD_R_AID, false /* supportExtendedApdu */);
     }
 
     @After
@@ -105,6 +129,19 @@ public class ApduSenderTest {
         mResponseCaptor = null;
         mSelectResponse = null;
         mSender = null;
+
+        EuiccSession.get().endSession(SESSION_ID);
+        clearSharedPreferences();
+    }
+
+    @Test
+    public void testWrongAid_throwsIllegalArgumentException() {
+        String wrongAid = "-1";
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            new ApduSender(InstrumentationRegistry.getContext(), 0 /* phoneId= */,
+                            mMockCi, wrongAid, false /* supportExtendedApdu */);
+        });
     }
 
     @Test
@@ -119,7 +156,7 @@ public class ApduSenderTest {
         assertEquals("A1A1A19000", IccUtils.bytesToHexString(mSelectResponse));
         assertNull(mResponseCaptor.response);
         assertNull(mResponseCaptor.exception);
-        verify(mMockCi).iccOpenLogicalChannel(eq(AID), anyInt(), any());
+        verify(mMockCi).iccOpenLogicalChannel(eq(ApduSender.ISD_R_AID), anyInt(), any());
         verify(mMockCi).iccCloseLogicalChannel(eq(channel), eq(true /*isEs10*/), any());
     }
 
@@ -135,7 +172,7 @@ public class ApduSenderTest {
         assertNull("Request provider should not be called when failed to open channel.",
                 mSelectResponse);
         assertTrue(mResponseCaptor.exception instanceof ApduException);
-        verify(mMockCi).iccOpenLogicalChannel(eq(AID), anyInt(), any());
+        verify(mMockCi).iccOpenLogicalChannel(eq(ApduSender.ISD_R_AID), anyInt(), any());
     }
 
     @Test
@@ -149,8 +186,11 @@ public class ApduSenderTest {
         mLooper.processAllMessages();
 
         assertEquals("A1A1A1", IccUtils.bytesToHexString(mResponseCaptor.response));
-        verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
-                eq(3), eq(0), eq("a"), anyBoolean(), any());
+        InOrder inOrder = inOrder(mMockCi);
+        inOrder.verify(mMockCi).iccOpenLogicalChannel(eq(ApduSender.ISD_R_AID), anyInt(), any());
+        inOrder.verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10),
+                eq(1), eq(2), eq(3), eq(0), eq("a"), anyBoolean(), any());
+        inOrder.verify(mMockCi).iccCloseLogicalChannel(eq(channel), eq(true /*isEs10*/), any());
     }
 
     @Test
@@ -169,14 +209,17 @@ public class ApduSenderTest {
         mLooper.processAllMessages();
 
         assertEquals("A4", IccUtils.bytesToHexString(mResponseCaptor.response));
-        verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
-                eq(3), eq(0), eq("a"), anyBoolean(), any());
-        verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
-                eq(3), eq(1), eq("ab"), anyBoolean(), any());
-        verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
-                eq(3), eq(0), eq(""), anyBoolean(), any());
-        verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(0x81), eq(0xE2), eq(0x91),
-                eq(0), eq(2), eq("abcd"), anyBoolean(), any());
+        InOrder inOrder = inOrder(mMockCi);
+        inOrder.verify(mMockCi).iccOpenLogicalChannel(eq(ApduSender.ISD_R_AID), anyInt(), any());
+        inOrder.verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10),
+                eq(1), eq(2), eq(3), eq(0), eq("a"), anyBoolean(), any());
+        inOrder.verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10),
+                eq(1), eq(2), eq(3), eq(1), eq("ab"), anyBoolean(), any());
+        inOrder.verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10),
+                eq(1), eq(2),  eq(3), eq(0), eq(""), anyBoolean(), any());
+        inOrder.verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(0x81),
+                eq(0xE2), eq(0x91), eq(0), eq(2), eq("abcd"), anyBoolean(), any());
+        inOrder.verify(mMockCi).iccCloseLogicalChannel(eq(channel), eq(true /*isEs10*/), any());
     }
 
     @Test
@@ -339,6 +382,158 @@ public class ApduSenderTest {
 
         assertNull("Should not open channel when another one is already opened.", mSelectResponse);
         assertTrue(mResponseCaptor.exception instanceof ApduException);
-        verify(mMockCi, times(1)).iccOpenLogicalChannel(eq(AID), anyInt(), any());
+        verify(mMockCi, times(1)).iccOpenLogicalChannel(eq(ApduSender.ISD_R_AID), anyInt(), any());
+    }
+
+    @Test
+    public void testConstructor_doNotCloseOpenChannelInSharedPreference()
+                  throws InterruptedException {
+        // Open a channel and not close it, by making CI.iccTransmitApduLogicalChannel throw.
+        int channel = LogicalChannelMocker.mockOpenLogicalChannelResponse(mMockCi, "9000");
+        doThrow(new RuntimeException()).when(mMockCi).iccTransmitApduLogicalChannel(
+                eq(channel), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), any(),
+                anyBoolean(), any());
+        mSender.send((selectResponse, requestBuilder) -> requestBuilder.addApdu(
+                10, 1, 2, 3, 0, "a"), mResponseCaptor, mHandler);
+        mLooper.processAllMessages();
+        // Stub close channel
+        reset(mMockCi);
+        LogicalChannelMocker.mockCloseLogicalChannel(mMockCi, channel, /* error= */ null);
+
+        // Call constructor
+        mSender = new ApduSender(InstrumentationRegistry.getContext(), PHONE_ID,
+                            mMockCi, ApduSender.ISD_R_AID, false /* supportExtendedApdu */);
+        mLooper.processAllMessages();
+
+        // The constructor should have closed channel
+        verify(mMockCi, times(0)).iccCloseLogicalChannel(eq(channel), eq(true /*isEs10*/), any());
+        assertEquals(1, getChannelIdFromSharedPreferences());
+    }
+
+    @Test
+    public void testSend_OpenChannelFailedNoSuchElement_useChannelInSharedPreference() {
+        // Open a channel but not close, by making CI.iccTransmitApduLogicalChannel throw.
+        int channel = LogicalChannelMocker.mockOpenLogicalChannelResponse(mMockCi, "9000");
+        doThrow(new RuntimeException()).when(mMockCi).iccTransmitApduLogicalChannel(
+                eq(channel), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), any(),
+                anyBoolean(), any());
+        mSender.send((selectResponse, requestBuilder) -> requestBuilder.addApdu(
+                10, 1, 2, 3, 0, "a"), mResponseCaptor, mHandler);
+        mLooper.processAllMessages();
+        reset(mMockCi);
+        // Constructor fails to close channel
+        LogicalChannelMocker.mockCloseLogicalChannel(
+                mMockCi, channel, new CommandException(RADIO_NOT_AVAILABLE));
+        mSender = new ApduSender(InstrumentationRegistry.getContext(), PHONE_ID,
+                            mMockCi, ApduSender.ISD_R_AID, false /* supportExtendedApdu */);
+        mLooper.processAllMessages();
+        reset(mMockCi);
+        // Stub open channel failure NO_SUCH_ELEMENT
+        LogicalChannelMocker.mockOpenLogicalChannelResponse(mMockCi,
+                new CommandException(CommandException.Error.NO_SUCH_ELEMENT));
+        LogicalChannelMocker.mockSendToLogicalChannel(mMockCi, channel, "A1A1A19000");
+        LogicalChannelMocker.mockCloseLogicalChannel(mMockCi, channel, /* error= */ null);
+
+        mSender.send((selectResponse, requestBuilder) -> requestBuilder.addApdu(
+                10, 1, 2, 3, 0, "a"), mResponseCaptor, mHandler);
+        mLooper.processAllMessages();
+
+        // open channel would fail, and send/close would succeed because of
+        // previous open response saved in sharedPref
+        InOrder inOrder = inOrder(mMockCi);
+        inOrder.verify(mMockCi).iccOpenLogicalChannel(eq(ApduSender.ISD_R_AID), anyInt(), any());
+        inOrder.verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel),
+                 eq(channel | 10), eq(1), eq(2), eq(3), eq(0), eq("a"), anyBoolean(), any());
+        inOrder.verify(mMockCi).iccCloseLogicalChannel(eq(channel), eq(true /*isEs10*/), any());
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testSend_euiccSession_shouldNotCloseChannel()
+            throws InterruptedException {
+        int channel = LogicalChannelMocker.mockOpenLogicalChannelResponse(mMockCi, "9000");
+        LogicalChannelMocker.mockSendToLogicalChannel(mMockCi, channel, "A1A1A19000");
+        LogicalChannelMocker.mockCloseLogicalChannel(mMockCi, channel, /* error= */ null);
+        EuiccSession.get().startSession(SESSION_ID);
+
+        mSender.send((selectResponse, requestBuilder) -> requestBuilder.addApdu(
+                10, 1, 2, 3, 0, "a"), mResponseCaptor, mHandler);
+        mLooper.processAllMessages();
+
+        assertEquals("A1A1A1", IccUtils.bytesToHexString(mResponseCaptor.response));
+        InOrder inOrder = inOrder(mMockCi);
+        inOrder.verify(mMockCi).iccOpenLogicalChannel(eq(ApduSender.ISD_R_AID), anyInt(), any());
+        inOrder.verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10),
+                eq(1), eq(2), eq(3), eq(0), eq("a"), anyBoolean(), any());
+        // No iccCloseLogicalChannel
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testSendTwice_euiccSession_shouldOpenChannelOnceNotCloseChannel()
+            throws InterruptedException {
+        int channel = LogicalChannelMocker.mockOpenLogicalChannelResponse(mMockCi, "9000");
+        LogicalChannelMocker.mockSendToLogicalChannel(
+                    mMockCi, channel, "A1A1A19000", "A1A1A19000");
+        LogicalChannelMocker.mockCloseLogicalChannel(mMockCi, channel, /* error= */ null);
+        EuiccSession.get().startSession(SESSION_ID);
+
+        mSender.send((selectResponse, requestBuilder) -> requestBuilder.addApdu(
+                10, 1, 2, 3, 0, "a"), mResponseCaptor, mHandler);
+        mLooper.processAllMessages();
+        mSender.send((selectResponse, requestBuilder) -> requestBuilder.addApdu(
+                10, 1, 2, 3, 0, "a"), mResponseCaptor, mHandler);
+        mLooper.processAllMessages();
+
+        assertEquals("A1A1A1", IccUtils.bytesToHexString(mResponseCaptor.response));
+        InOrder inOrder = inOrder(mMockCi);
+        // iccOpenLogicalChannel once
+        inOrder.verify(mMockCi).iccOpenLogicalChannel(eq(ApduSender.ISD_R_AID), anyInt(), any());
+        // iccTransmitApduLogicalChannel twice
+        inOrder.verify(mMockCi, times(2)).iccTransmitApduLogicalChannel(eq(channel),
+                 eq(channel | 10), eq(1), eq(2), eq(3), eq(0), eq("a"), anyBoolean(), any());
+        // No iccCloseLogicalChannel
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testSendTwice_thenEndSession() throws InterruptedException {
+        int channel = LogicalChannelMocker.mockOpenLogicalChannelResponse(mMockCi, "9000");
+        LogicalChannelMocker.mockSendToLogicalChannel(mMockCi, channel,
+                "A1A1A19000", "A1A1A19000");
+        LogicalChannelMocker.mockCloseLogicalChannel(mMockCi, channel, /* error= */ null);
+        EuiccSession.get().startSession(SESSION_ID);
+
+        mSender.send((selectResponse, requestBuilder) -> requestBuilder.addApdu(
+                10, 1, 2, 3, 0, "a"), mResponseCaptor, mHandler);
+        mLooper.processAllMessages();
+        mSender.send((selectResponse, requestBuilder) -> requestBuilder.addApdu(
+                10, 1, 2, 3, 0, "a"), mResponseCaptor, mHandler);
+        mLooper.processAllMessages();
+        EuiccSession.get().endSession(SESSION_ID);
+        mLooper.processAllMessages();
+
+        assertEquals("A1A1A1", IccUtils.bytesToHexString(mResponseCaptor.response));
+        InOrder inOrder = inOrder(mMockCi);
+        // iccOpenLogicalChannel once
+        inOrder.verify(mMockCi).iccOpenLogicalChannel(eq(ApduSender.ISD_R_AID), anyInt(), any());
+        // iccTransmitApduLogicalChannel twice
+        inOrder.verify(mMockCi, times(2)).iccTransmitApduLogicalChannel(eq(channel),
+                 eq(channel | 10), eq(1), eq(2), eq(3), eq(0), eq("a"), anyBoolean(), any());
+        // iccCloseLogicalChannel once
+        inOrder.verify(mMockCi).iccCloseLogicalChannel(eq(channel), eq(true /*isEs10*/), any());
+    }
+
+    private int getChannelIdFromSharedPreferences() {
+        return PreferenceManager.getDefaultSharedPreferences(InstrumentationRegistry.getContext())
+                .getInt(SHARED_PREFS_KEY_CHANNEL_ID, -1);
+    }
+
+    private void clearSharedPreferences() {
+        PreferenceManager.getDefaultSharedPreferences(InstrumentationRegistry.getContext())
+                .edit()
+                .remove(SHARED_PREFS_KEY_CHANNEL_ID)
+                .remove(SHARED_PREFS_KEY_CHANNEL_RESPONSE)
+                .apply();
     }
 }

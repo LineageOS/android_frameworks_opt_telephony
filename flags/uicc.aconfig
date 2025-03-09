@@ -49,6 +49,7 @@ flag {
     namespace: "telephony"
     description: "This flag controls the visibility of the setCarrierRestrictionStatus API in carrierRestrictionRules class."
     bug:"342411308"
+    is_exported: true
 }
 
 # OWNER=arunvoddu TARGET=24Q4
@@ -68,4 +69,60 @@ flag {
     namespace: "telephony"
     description: "This flag controls optimization of apdu sender class."
     bug:"335257880"
+}
+
+# OWNER=arunvoddu TARGET=24Q4
+flag {
+    name: "ignore_carrierid_reset_for_sim_removal"
+    namespace: "telephony"
+    description: "This flag controls the carrierId reset while imsi key deletion time upon sim ejection."
+    bug:"366178705"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
+}
+
+# OWNER=jhyoon TARGET=25Q2
+flag {
+    name: "support_isim_record"
+    namespace: "telephony"
+    description: "This flag controls the type of API that retrieves ISIM records, either hidden or system type."
+    bug:"359721349"
+    is_exported: true
+}
+
+# OWNER=jinjeong TARGET=25Q2
+flag {
+    name: "carrier_id_from_carrier_identifier"
+    namespace: "telephony"
+    description: "This flag controls to get a carrier id using a carrier identifier."
+    bug:"378778278"
+    is_exported: true
+}
+
+# OWNER=arunvoddu TARGET=25Q2
+flag {
+    name: "force_imsi_certificate_delete"
+    namespace: "telephony"
+    description: "This flag controls the IMSI certificate delete with out any condition."
+    bug:"235296888"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
+}
+
+# OWNER=jinjeong TARGET=25Q2
+flag {
+    name: "get_group_id_level2"
+    namespace: "telephony"
+    description: "This flag controls to get a group id level2."
+    bug:"381171540"
+}
+
+# OWNER=jinjeong TARGET=25Q2
+flag {
+    name: "action_sim_preference_settings"
+    namespace: "telephony"
+    description: "This flag controls to launch sim preference page in Setting"
+    bug:"381319469"
 }

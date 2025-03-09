@@ -141,6 +141,7 @@ public class EuiccPortTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mHandler.removeCallbacksAndMessages(null);
         mHandler = null;
+        mEuiccPort.dispose();
         mEuiccPort = null;
         super.tearDown();
     }

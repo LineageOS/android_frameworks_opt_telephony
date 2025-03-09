@@ -21,6 +21,7 @@ import android.telephony.CarrierRestrictionRules;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.Rlog;
 
+import com.android.internal.telephony.flags.Flags;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.SimPhonebookRecord;
 
@@ -168,6 +169,7 @@ public class RadioSimProxy extends RadioServiceProxy {
      * @throws RemoteException
      */
     public void getCdmaSubscription(int serial) throws RemoteException {
+        if (Flags.cleanupCdma()) return;
         if (isEmpty()) return;
         if (isAidl()) {
             mSimProxy.getCdmaSubscription(serial);
@@ -182,6 +184,7 @@ public class RadioSimProxy extends RadioServiceProxy {
      * @throws RemoteException
      */
     public void getCdmaSubscriptionSource(int serial) throws RemoteException {
+        if (Flags.cleanupCdma()) return;
         if (isEmpty()) return;
         if (isAidl()) {
             mSimProxy.getCdmaSubscriptionSource(serial);
@@ -631,6 +634,7 @@ public class RadioSimProxy extends RadioServiceProxy {
      * @throws RemoteException
      */
     public void setCdmaSubscriptionSource(int serial, int cdmaSub) throws RemoteException {
+        if (Flags.cleanupCdma()) return;
         if (isEmpty()) return;
         if (isAidl()) {
             mSimProxy.setCdmaSubscriptionSource(serial, cdmaSub);

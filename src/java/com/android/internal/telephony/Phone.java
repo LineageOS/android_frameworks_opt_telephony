@@ -74,6 +74,7 @@ import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
+import android.telephony.satellite.NtnSignalStrength;
 import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Log;
@@ -126,6 +127,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -659,7 +661,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mSmsStorageMonitor = mTelephonyComponentFactory.inject(SmsStorageMonitor.class.getName())
                 .makeSmsStorageMonitor(this, mFeatureFlags);
         mSmsUsageMonitor = mTelephonyComponentFactory.inject(SmsUsageMonitor.class.getName())
-                .makeSmsUsageMonitor(context);
+                .makeSmsUsageMonitor(context, mFeatureFlags);
         mUiccController = UiccController.getInstance();
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mSimActivationTracker = mTelephonyComponentFactory
@@ -1965,6 +1967,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * @return true if this device supports calling, false otherwise.
+     */
+    public boolean hasCalling() {
+        return TelephonyCapabilities.supportsTelephonyCalling(mFeatureFlags, mContext);
+    }
+
+    /**
      * Retrieves the EmergencyNumberTracker of the phone instance.
      */
     public EmergencyNumberTracker getEmergencyNumberTracker() {
@@ -2275,6 +2284,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param response is callback message to report one of TelephonyManager#CDMA_ROAMING_MODE_*
      */
     public void queryCdmaRoamingPreference(Message response) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.queryCdmaRoamingPreference(response);
     }
 
@@ -2284,6 +2294,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param response is callback message to report one of TelephonyManager#CDMA_SUBSCRIPTION_*
      */
     public void queryCdmaSubscriptionMode(Message response) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.getCdmaSubscriptionSource(response);
     }
 
@@ -2321,6 +2332,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param response is callback message
      */
     public void setCdmaRoamingPreference(int cdmaRoamingType, Message response) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.setCdmaRoamingPreference(cdmaRoamingType, response);
     }
 
@@ -2330,6 +2342,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param response is callback message
      */
     public void setCdmaSubscriptionMode(int cdmaSubscriptionType, Message response) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.setCdmaSubscriptionSource(cdmaSubscriptionType, response);
     }
 
@@ -2766,6 +2779,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param workSource calling WorkSource
      */
     public void nvReadItem(int itemID, Message response, WorkSource workSource) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.nvReadItem(itemID, response, workSource);
     }
 
@@ -2780,6 +2794,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void nvWriteItem(int itemID, String itemValue, Message response,
             WorkSource workSource) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.nvWriteItem(itemID, itemValue, response, workSource);
     }
 
@@ -2791,6 +2806,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param response Callback message.
      */
     public void nvWriteCdmaPrl(byte[] preferredRoamingList, Message response) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.nvWriteCdmaPrl(preferredRoamingList, response);
     }
 
@@ -2812,6 +2828,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param response Callback message.
      */
     public void resetModemConfig(Message response) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.nvResetConfig(3 /* factory NV reset */, response);
     }
 
@@ -2821,6 +2838,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param response Callback message.
      */
     public void eraseModemConfig(Message response) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.nvResetConfig(2 /* erase NV */, response);
     }
 
@@ -3502,6 +3520,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param obj User object.
      */
     public void registerForNumberInfo(Handler h, int what, Object obj) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.registerForNumberInfo(h, what, obj);
     }
 
@@ -3512,6 +3531,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForNumberInfo(Handler h) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.unregisterForNumberInfo(h);
     }
 
@@ -3527,6 +3547,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param obj User object.
      */
     public void registerForRedirectedNumberInfo(Handler h, int what, Object obj) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.registerForRedirectedNumberInfo(h, what, obj);
     }
 
@@ -3537,6 +3558,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForRedirectedNumberInfo(Handler h) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.unregisterForRedirectedNumberInfo(h);
     }
 
@@ -3552,6 +3574,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param obj User object.
      */
     public void registerForLineControlInfo(Handler h, int what, Object obj) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.registerForLineControlInfo(h, what, obj);
     }
 
@@ -3562,6 +3585,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForLineControlInfo(Handler h) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.unregisterForLineControlInfo(h);
     }
 
@@ -3577,6 +3601,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param obj User object.
      */
     public void registerFoT53ClirlInfo(Handler h, int what, Object obj) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.registerFoT53ClirlInfo(h, what, obj);
     }
 
@@ -3587,6 +3612,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForT53ClirInfo(Handler h) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.unregisterForT53ClirInfo(h);
     }
 
@@ -3602,6 +3628,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param obj User object.
      */
     public void registerForT53AudioControlInfo(Handler h, int what, Object obj) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.registerForT53AudioControlInfo(h, what, obj);
     }
 
@@ -3612,6 +3639,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForT53AudioControlInfo(Handler h) {
+        if (mFeatureFlags.cleanupCdma()) return;
         mCi.unregisterForT53AudioControlInfo(h);
     }
 
@@ -4067,6 +4095,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Resets the Carrier Keys in the database. This involves 2 steps:
+     * 1. Delete the keys from the database.
+     * 2. Send an intent to download new Certificates.
+     *
+     * @param forceResetAll : Force delete the downloaded key if any.
+     */
+    public void resetCarrierKeysForImsiEncryption(boolean forceResetAll) {
+    }
+
+    /**
      * Return if UT capability of ImsPhone is enabled or not
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
@@ -4140,8 +4178,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
         setRoamingOverrideHelper(gsmRoamingList, GSM_ROAMING_LIST_OVERRIDE_PREFIX, iccId);
         setRoamingOverrideHelper(gsmNonRoamingList, GSM_NON_ROAMING_LIST_OVERRIDE_PREFIX, iccId);
-        setRoamingOverrideHelper(cdmaRoamingList, CDMA_ROAMING_LIST_OVERRIDE_PREFIX, iccId);
-        setRoamingOverrideHelper(cdmaNonRoamingList, CDMA_NON_ROAMING_LIST_OVERRIDE_PREFIX, iccId);
+        if (!mFeatureFlags.cleanupCdma()) {
+            setRoamingOverrideHelper(cdmaRoamingList, CDMA_ROAMING_LIST_OVERRIDE_PREFIX, iccId);
+            setRoamingOverrideHelper(cdmaNonRoamingList, CDMA_NON_ROAMING_LIST_OVERRIDE_PREFIX,
+                    iccId);
+        }
 
         // Refresh.
         ServiceStateTracker tracker = getServiceStateTracker();
@@ -5295,22 +5336,43 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Start callback mode
+     * Start the emergency callback mode
      * @param type for callback mode entry.
+     * @param durationMillis is the number of milliseconds remaining in the emergency callback
+     *                        mode.
      */
-    public void startCallbackMode(@TelephonyManager.EmergencyCallbackModeType int type) {
-        Rlog.d(mLogTag, "startCallbackMode:type=" + type);
-        mNotifier.notifyCallbackModeStarted(this, type);
+    public void startEmergencyCallbackMode(@TelephonyManager.EmergencyCallbackModeType int type,
+            long durationMillis) {
+        if (!mFeatureFlags.emergencyCallbackModeNotification()) return;
+
+        Rlog.d(mLogTag, "startEmergencyCallbackMode:type=" + type);
+        mNotifier.notifyCallbackModeStarted(this, type, durationMillis);
     }
 
     /**
-     * Stop callback mode
+     * Restart the emergency callback mode
+     * @param type for callback mode entry.
+     * @param durationMillis is the number of milliseconds remaining in the emergency callback
+     *                        mode.
+     */
+    public void restartEmergencyCallbackMode(@TelephonyManager.EmergencyCallbackModeType int type,
+            long durationMillis) {
+        if (!mFeatureFlags.emergencyCallbackModeNotification()) return;
+
+        Rlog.d(mLogTag, "restartEmergencyCallbackMode:type=" + type);
+        mNotifier.notifyCallbackModeRestarted(this, type, durationMillis);
+    }
+
+    /**
+     * Stop the emergency callback mode
      * @param type for callback mode exit.
      * @param reason for stopping callback mode.
      */
-    public void stopCallbackMode(@TelephonyManager.EmergencyCallbackModeType int type,
+    public void stopEmergencyCallbackMode(@TelephonyManager.EmergencyCallbackModeType int type,
             @TelephonyManager.EmergencyCallbackModeStopReason int reason) {
-        Rlog.d(mLogTag, "stopCallbackMode:type=" + type + ", reason=" + reason);
+        if (!mFeatureFlags.emergencyCallbackModeNotification()) return;
+
+        Rlog.d(mLogTag, "stopEmergencyCallbackMode:type=" + type + ", reason=" + reason);
         mNotifier.notifyCallbackModeStopped(this, type, reason);
     }
 
@@ -5345,6 +5407,29 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public void notifyCarrierRoamingNtnEligibleStateChanged(boolean eligible) {
         logd("notifyCarrierRoamingNtnEligibleStateChanged eligible:" + eligible);
         mNotifier.notifyCarrierRoamingNtnEligibleStateChanged(this, eligible);
+    }
+
+    /**
+     * Notify external listeners that carrier roaming non-terrestrial available services changed.
+     * @param availableServices The list of the supported services.
+     */
+    public void notifyCarrierRoamingNtnAvailableServicesChanged(
+            @NetworkRegistrationInfo.ServiceType int[] availableServices) {
+        logd("notifyCarrierRoamingNtnAvailableServicesChanged availableServices:"
+                + Arrays.toString(availableServices));
+        mNotifier.notifyCarrierRoamingNtnAvailableServicesChanged(this, availableServices);
+    }
+
+    /**
+     * Notify external listeners that carrier roaming non-terrestrial network
+     * signal strength changed.
+     * @param ntnSignalStrength non-terrestrial network signal strength.
+     */
+    public void notifyCarrierRoamingNtnSignalStrengthChanged(
+            @NonNull NtnSignalStrength ntnSignalStrength) {
+        logd("notifyCarrierRoamingNtnSignalStrengthChanged: ntnSignalStrength="
+                + ntnSignalStrength.getLevel());
+        mNotifier.notifyCarrierRoamingNtnSignalStrengthChanged(this, ntnSignalStrength);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

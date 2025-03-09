@@ -41,6 +41,7 @@ import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
 import android.telephony.satellite.SatelliteManager.SatelliteException;
 import android.telephony.satellite.SatelliteModemEnableRequestAttributes;
+import android.telephony.satellite.SystemSelectionSpecifier;
 import android.telephony.satellite.stub.INtnSignalStrengthConsumer;
 import android.telephony.satellite.stub.ISatellite;
 import android.telephony.satellite.stub.ISatelliteCapabilitiesConsumer;
@@ -103,6 +104,8 @@ public class SatelliteModemInterface {
     @NonNull private final RegistrantList mSatelliteSupportedStateChangedRegistrants =
             new RegistrantList();
     @NonNull private final RegistrantList mSatelliteRegistrationFailureRegistrants =
+            new RegistrantList();
+    @NonNull private final RegistrantList mTerrestrialNetworkAvailableChangedRegistrants =
             new RegistrantList();
 
     private class SatelliteListener extends ISatelliteListener.Stub {
@@ -190,6 +193,11 @@ public class SatelliteModemInterface {
         @Override
         public void onRegistrationFailure(int causeCode) {
             mSatelliteRegistrationFailureRegistrants.notifyResult(causeCode);
+        }
+
+        @Override
+        public void onTerrestrialNetworkAvailableChanged(boolean isAvailable) {
+            mTerrestrialNetworkAvailableChangedRegistrants.notifyResult(isAvailable);
         }
 
         private boolean notifyResultIfExpectedListener() {
@@ -587,6 +595,27 @@ public class SatelliteModemInterface {
     }
 
     /**
+     * Registers for the terrestrial network available changed.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForTerrestrialNetworkAvailableChanged(
+            @NonNull Handler h, int what, @Nullable Object obj) {
+        mTerrestrialNetworkAvailableChangedRegistrants.add(h, what, obj);
+    }
+
+    /**
+     * Unregisters for the terrestrial network available changed.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForTerrestrialNetworkAvailableChanged(@NonNull Handler h) {
+        mTerrestrialNetworkAvailableChangedRegistrants.remove(h);
+    }
+
+    /**
      * Request to enable or disable the satellite service listening mode.
      * Listening mode allows the satellite service to listen for incoming pages.
      *
@@ -652,14 +681,14 @@ public class SatelliteModemInterface {
                 };
 
                 if (mSatelliteController.isDemoModeEnabled()) {
-                    mDemoSimulator.enableCellularModemWhileSatelliteModeIsOn(
+                    mDemoSimulator.enableTerrestrialNetworkScanWhileSatelliteModeIsOn(
                             enabled, errorCallback);
                 } else {
-                    mSatelliteService.enableCellularModemWhileSatelliteModeIsOn(
+                    mSatelliteService.enableTerrestrialNetworkScanWhileSatelliteModeIsOn(
                             enabled, errorCallback);
                 }
             } catch (RemoteException e) {
-                ploge("enableCellularModemWhileSatelliteModeIsOn: RemoteException " + e);
+                ploge("enableTerrestrialNetworkScanWhileSatelliteModeIsOn: RemoteException " + e);
                 if (message != null) {
                     sendMessageWithResult(
                             message, null, SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR);
@@ -1353,6 +1382,42 @@ public class SatelliteModemInterface {
         mIsSatelliteServiceSupported = getSatelliteServiceSupport();
         bindService();
         mExponentialBackoff.start();
+    }
+
+    /**
+     * Request to update system selection channels
+     *
+     * @param systemSelectionSpecifiers system selection specifiers
+     * @param message The Message to send to result of the operation to.
+     */
+    public void updateSystemSelectionChannels(
+            @NonNull List<SystemSelectionSpecifier> systemSelectionSpecifiers,
+            @Nullable Message message) {
+        plogd("updateSystemSelectionChannels: SystemSelectionSpecifier: "
+                + systemSelectionSpecifiers.toString());
+        if (mSatelliteService != null) {
+            try {
+                mSatelliteService.updateSystemSelectionChannels(SatelliteServiceUtils
+                                .toSystemSelectionSpecifier(systemSelectionSpecifiers),
+                        new IIntegerConsumer.Stub() {
+                            @Override
+                            public void accept(int result) {
+                                int error = SatelliteServiceUtils.fromSatelliteError(result);
+                                plogd("updateSystemSelectionChannels: " + error);
+                                Binder.withCleanCallingIdentity(() ->
+                                        sendMessageWithResult(message, null, error));
+                            }
+                        });
+            } catch (RemoteException e) {
+                ploge("updateSystemSelectionChannels: RemoteException " + e);
+                sendMessageWithResult(message, null,
+                        SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR);
+            }
+        } else {
+            ploge("updateSystemSelectionChannels: Satellite service is unavailable.");
+            sendMessageWithResult(message, null,
+                    SatelliteManager.SATELLITE_RESULT_RADIO_NOT_AVAILABLE);
+        }
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)

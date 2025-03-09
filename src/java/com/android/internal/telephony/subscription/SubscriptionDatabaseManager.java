@@ -2121,9 +2121,6 @@ public class SubscriptionDatabaseManager extends Handler {
      * @param capabilities Service capabilities bitmasks
      */
     public void setServiceCapabilities(int subId, int capabilities) {
-        if (!mFeatureFlags.dataOnlyCellularService()) {
-            return;
-        }
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_SERVICE_CAPABILITIES,
                 capabilities, SubscriptionInfoInternal.Builder::setServiceCapabilities);
     }

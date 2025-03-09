@@ -85,7 +85,7 @@ public class RadioOnHelper implements RadioOnStateListener.Callback {
      */
     public void triggerRadioOnAndListen(RadioOnStateListener.Callback callback,
             boolean forEmergencyCall, Phone phoneForEmergencyCall, boolean isTestEmergencyNumber,
-            int emergencyTimeoutIntervalMillis, boolean forNormalRoutingEmergencyCall) {
+            int emergencyTimeoutIntervalMillis) {
         setupListeners();
         mCallback = callback;
         mInProgressListeners.clear();
@@ -102,13 +102,9 @@ public class RadioOnHelper implements RadioOnStateListener.Callback {
             mListeners.get(i).waitForRadioOn(phone, this, forEmergencyCall, forEmergencyCall
                     && phone == phoneForEmergencyCall, timeoutCallbackInterval);
         }
-        powerOnRadio(forEmergencyCall, phoneForEmergencyCall, isTestEmergencyNumber,
-                forNormalRoutingEmergencyCall);
-        if (SatelliteController.getInstance().isSatelliteEnabled()
-                || SatelliteController.getInstance().isSatelliteBeingEnabled()) {
-            // TODO: phoneForEmergencyCall is actually ignored, SatelliteController#mSatelliePhone
-            //  is being used instead.
-            powerOffSatellite(phoneForEmergencyCall);
+        powerOnRadio(forEmergencyCall, phoneForEmergencyCall, isTestEmergencyNumber);
+        if (SatelliteController.getInstance().isSatelliteEnabledOrBeingEnabled()) {
+            powerOffSatellite();
         }
     }
 
@@ -117,25 +113,17 @@ public class RadioOnHelper implements RadioOnStateListener.Callback {
      * get an onServiceStateChanged() callback when the radio successfully comes up.
      */
     private void powerOnRadio(boolean forEmergencyCall, Phone phoneForEmergencyCall,
-            boolean isTestEmergencyNumber, boolean forNormalRoutingEmergencyCall) {
+            boolean isTestEmergencyNumber) {
 
         // Always try to turn on the radio here independent of APM setting - if we got here in the
         // first place, the radio is off independent of APM setting.
         for (Phone phone : PhoneFactory.getPhones()) {
             Rlog.d(TAG, "powerOnRadio, enabling Radio");
             if (isTestEmergencyNumber) {
-                phone.setRadioPowerOnForTestEmergencyCall(
-                        (phone == phoneForEmergencyCall) && !forNormalRoutingEmergencyCall);
+                phone.setRadioPowerOnForTestEmergencyCall(phone == phoneForEmergencyCall);
             } else {
-                if (forNormalRoutingEmergencyCall) {
-                    if (phone.getServiceStateTracker() != null) {
-                        // Clear all radio off reasons to ensure that the radio is turned on for
-                        // normal routing emergency call.
-                        phone.getServiceStateTracker().clearAllRadioOffReasons();
-                    }
-                }
-                phone.setRadioPower(true, forEmergencyCall && !forNormalRoutingEmergencyCall,
-                        (phone == phoneForEmergencyCall) && !forNormalRoutingEmergencyCall, false);
+                phone.setRadioPower(true, forEmergencyCall, phone == phoneForEmergencyCall,
+                        false);
             }
         }
 
@@ -162,7 +150,7 @@ public class RadioOnHelper implements RadioOnStateListener.Callback {
      * Attempt to power off the satellite modem. We'll eventually get an
      * onSatelliteModemStateChanged() callback when the satellite modem is successfully disabled.
      */
-    private void powerOffSatellite(Phone phoneForEmergencyCall) {
+    private void powerOffSatellite() {
         SatelliteController satelliteController = SatelliteController.getInstance();
         satelliteController.requestSatelliteEnabled(
                 false /* enableSatellite */, false /* enableDemoMode */, false /* isEmergency */,

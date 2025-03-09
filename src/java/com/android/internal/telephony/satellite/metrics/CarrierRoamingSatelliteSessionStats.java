@@ -325,13 +325,18 @@ public class CarrierRoamingSatelliteSessionStats {
             return;
         }
         String simCountry = MccTable.countryCodeForMcc(subscriptionInfoInternal.getMcc());
-        String satelliteRegisteredCountry = MccTable.countryCodeForMcc(
-                satelliteRegisteredPlmn.substring(0, 3));
-        if (simCountry.equalsIgnoreCase(satelliteRegisteredCountry)) {
-            mIsNtnRoamingInHomeCountry = false;
-        } else {
-            // If device is connected to roaming non-terrestrial network, update to true.
-            mIsNtnRoamingInHomeCountry = true;
+        mIsNtnRoamingInHomeCountry = true;
+        if (satelliteRegisteredPlmn != null
+                && satelliteRegisteredPlmn.length() >= 3) {
+            String satelliteRegisteredCountry = MccTable.countryCodeForMcc(
+                    satelliteRegisteredPlmn.substring(0, 3));
+            if (simCountry.equalsIgnoreCase(satelliteRegisteredCountry)) {
+                mIsNtnRoamingInHomeCountry = true;
+            } else {
+                // If device is connected to roaming non-terrestrial network, then marking as
+                // roaming in external country
+                mIsNtnRoamingInHomeCountry = false;
+            }
         }
         logd("updateNtnRoamingInHomeCountry: mIsNtnRoamingInHomeCountry="
                 + mIsNtnRoamingInHomeCountry);

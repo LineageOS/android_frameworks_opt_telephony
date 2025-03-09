@@ -89,6 +89,8 @@ import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
+import android.telephony.satellite.ISatelliteModemStateCallback;
+import android.telephony.satellite.SatelliteManager;
 import android.text.TextUtils;
 import android.util.Pair;
 
@@ -185,6 +187,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     private static final String[] CARRIER_CONFIG_PNN = new String[] {
             String.format("%s,%s", HOME_PNN, "short"), "f2,s2"
     };
+    private static final String SATELLITE_DISPLAY_NAME = "SatelliteTest";
 
     private class ServiceStateTrackerTestHandler extends HandlerThread {
 
@@ -390,6 +393,11 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                     15, /* SIGNAL_STRENGTH_GOOD */
                     30  /* SIGNAL_STRENGTH_GREAT */
                 });
+
+        // satellite display name
+        mBundle.putString(
+                CarrierConfigManager.KEY_SATELLITE_DISPLAY_NAME_STRING,
+                SATELLITE_DISPLAY_NAME);
 
         sendCarrierConfigUpdate(PHONE_ID);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
@@ -2983,7 +2991,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(ServiceState.STATE_IN_SERVICE).when(mSST).getCombinedRegState(ss);
 
         // update the spn
-        sst.updateSpnDisplay();
+        sst.updateCarrierDisplayName();
 
         // Plmn should be shown, and the string is "Emergency call only"
         Bundle b = getExtrasFromLastSpnUpdateIntent();
@@ -3005,7 +3013,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst.mSS = ss;
 
         // update the spn
-        sst.updateSpnDisplay();
+        sst.updateCarrierDisplayName();
 
         // Plmn should be shown, and the string is "No service"
         Bundle b = getExtrasFromLastSpnUpdateIntent();
@@ -3026,7 +3034,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst.mSS = ss;
 
         // update the spn
-        sst.updateSpnDisplay();
+        sst.updateCarrierDisplayName();
 
         // Plmn should be shown, and the string is null
         Bundle b = getExtrasFromLastSpnUpdateIntent();
@@ -3049,7 +3057,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(false).when(mPhone).isWifiCallingEnabled();
 
         // update the spn
-        sst.updateSpnDisplay();
+        sst.updateCarrierDisplayName();
 
         // Show both spn & plmn
         String spn = mBundle.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
@@ -3091,7 +3099,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(formats).when(r).getStringArray(anyInt());
 
         // update the spn
-        sst.updateSpnDisplay();
+        sst.updateCarrierDisplayName();
 
         // Only spn should be shown
         String spn = mBundle.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
@@ -3128,7 +3136,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(true).when(mPhone).isImsRegistered();
 
         // update the spn
-        sst.updateSpnDisplay();
+        sst.updateCarrierDisplayName();
 
         // Only spn should be shown
         String spn = mBundle.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
@@ -3161,7 +3169,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(true).when(mPhone).isImsRegistered();
 
         // update the spn
-        sst.updateSpnDisplay();
+        sst.updateCarrierDisplayName();
 
         // Only plmn should be shown
         String plmn = mBundle.getStringArray(CarrierConfigManager.KEY_PNN_OVERRIDE_STRING_ARRAY)[0];
@@ -3187,7 +3195,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(false).when(mPhone).isWifiCallingEnabled();
 
         // update the spn
-        sst.updateSpnDisplay();
+        sst.updateCarrierDisplayName();
 
         // Show both spn & plmn
         String spn = mBundle.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
@@ -3240,7 +3248,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(false).when(mPhone).isWifiCallingEnabled();
 
         // update the spn
-        sst.updateSpnDisplay();
+        sst.updateCarrierDisplayName();
 
         // Plmn should be shown, and the string is "No service"
         Bundle b = getExtrasFromLastSpnUpdateIntent();
@@ -3271,7 +3279,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(true).when(mPhone).isWifiCallingEnabled();
 
         // update the spn
-        sst.updateSpnDisplay();
+        sst.updateCarrierDisplayName();
 
         // Plmn should be shown, and the string is "No service"
         Bundle b = getExtrasFromLastSpnUpdateIntent();
@@ -3303,7 +3311,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(true).when(mPhone).isWifiCallingEnabled();
 
         // update the spn
-        sst.updateSpnDisplay();
+        sst.updateCarrierDisplayName();
 
         // Plmn should be shown, and the string is "No service"
         Bundle b = getExtrasFromLastSpnUpdateIntent();
@@ -3503,7 +3511,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(Arrays.asList("10123")).when(mSatelliteController).getSatellitePlmnsForCarrier(
                 anyInt());
         doReturn(satelliteSupportedServiceList).when(mSatelliteController)
-                .getSupportedSatelliteServices(sst.mSubId, "10123");
+                .getSupportedSatelliteServicesForPlmn(sst.mSubId, "10123");
 
         assertFalse(sst.mSS.isUsingNonTerrestrialNetwork());
 
@@ -3546,4 +3554,70 @@ public class ServiceStateTrackerTest extends TelephonyTest {
             }
         }
     }
+
+    @Test
+    public void testSatelliteModemStateCallback() throws Exception {
+        ArgumentCaptor<ISatelliteModemStateCallback> captor =
+                ArgumentCaptor.forClass(ISatelliteModemStateCallback.class);
+        verify(mSatelliteController, times(1)).registerForSatelliteModemStateChanged(
+                captor.capture());
+        ISatelliteModemStateCallback callback = captor.getValue();
+
+        doReturn(1).when(mSatelliteController).getSelectedSatelliteSubId();
+        doReturn(1).when(mPhone).getSubId();
+
+        mSimulatedCommands.setVoiceRegState(
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING);
+        mSimulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
+        mSimulatedCommands.setDataRegState(
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING);
+        mSimulatedCommands.setDataRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
+        doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mServiceState).getState();
+        doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mServiceState).getDataRegistrationState();
+        sst.mSS = mServiceState;
+
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_ENABLE_CARRIER_DISPLAY_NAME_RESOLVER_BOOL, false);
+        sendCarrierConfigUpdate(PHONE_ID);
+
+        doReturn(true).when(mSatelliteController).isInConnectedState();
+        callback.onSatelliteModemStateChanged(SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        // update the spn
+        sst.updateCarrierDisplayName();
+
+        Bundle b = getExtrasFromLastSpnUpdateIntent();
+        assertThat(b.getString(TelephonyManager.EXTRA_PLMN)).isEqualTo(SATELLITE_DISPLAY_NAME);
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_PLMN)).isTrue();
+
+        // Override operator name to "Satellite" when registration state is IN_SERVICE.
+        mSimulatedCommands.setVoiceRegState(
+                NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        mSimulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        mSimulatedCommands.setDataRegState(
+                NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        mSimulatedCommands.setDataRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        doReturn(ServiceState.STATE_IN_SERVICE).when(mServiceState).getState();
+        doReturn(ServiceState.STATE_IN_SERVICE).when(mServiceState).getDataRegistrationState();
+        doReturn("Skylo Technologies").when(mServiceState).getOperatorAlpha();
+
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_ENABLE_CARRIER_DISPLAY_NAME_RESOLVER_BOOL, false);
+        mBundle.putBoolean(CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL, true);
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_NAME_STRING, "");
+        sendCarrierConfigUpdate(PHONE_ID);
+
+        callback.onSatelliteModemStateChanged(
+                SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        // update the spn
+        sst.updateCarrierDisplayName();
+
+        b = getExtrasFromLastSpnUpdateIntent();
+        assertThat(b.getString(TelephonyManager.EXTRA_PLMN)).isEqualTo(SATELLITE_DISPLAY_NAME);
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_PLMN)).isTrue();
+    }
+
 }

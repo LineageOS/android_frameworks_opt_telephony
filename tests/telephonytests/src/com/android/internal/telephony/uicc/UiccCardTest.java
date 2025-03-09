@@ -69,6 +69,7 @@ public class UiccCardTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mUiccCard.dispose();
         mUiccCard = null;
         mIccIoResult = null;
         super.tearDown();

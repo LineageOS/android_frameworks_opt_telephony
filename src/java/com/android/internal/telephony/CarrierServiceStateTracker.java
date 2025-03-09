@@ -75,7 +75,8 @@ public class CarrierServiceStateTracker extends Handler {
 
 
     @VisibleForTesting
-    public static final String ACTION_NEVER_ASK_AGAIN = "SilenceNoWifiEmrgCallingNotification";
+    public static final String ACTION_NEVER_ASK_AGAIN =
+            "com.android.internal.telephony.action.SILENCE_WIFI_CALLING_NOTIFICATION";
     public final NotificationActionReceiver mActionReceiver = new NotificationActionReceiver();
 
     @VisibleForTesting
@@ -733,6 +734,7 @@ public class CarrierServiceStateTracker extends Handler {
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(ACTION_NEVER_ASK_AGAIN)) {
                 Rlog.i(LOG_TAG, "NotificationActionReceiver: ACTION_NEVER_ASK_AGAIN");
+                dismissEmergencyCallingNotification();
                 // insert a key to silence future notifications
                 SharedPreferences.Editor editor =
                         PreferenceManager.getDefaultSharedPreferences(context).edit();
@@ -741,6 +743,23 @@ public class CarrierServiceStateTracker extends Handler {
                 // Note: If another action is added, unregistering here should be removed. However,
                 // since there is no longer a reason to broadcasts, cleanup mActionReceiver.
                 context.unregisterReceiver(mActionReceiver);
+            }
+        }
+
+        /**
+         * Dismiss the notification when the "Do Not Ask Again" button is clicked
+         */
+        private void dismissEmergencyCallingNotification() {
+            if (!mFeatureFlags.stopSpammingEmergencyNotification()) {
+                return;
+            }
+            try {
+                NotificationType t = mNotificationTypeMap.get(NOTIFICATION_EMERGENCY_NETWORK);
+                if (t != null) {
+                    cancelNotification(t);
+                }
+            } catch (Exception e) {
+                Rlog.e(LOG_TAG, "dismissEmergencyCallingNotification", e);
             }
         }
     }

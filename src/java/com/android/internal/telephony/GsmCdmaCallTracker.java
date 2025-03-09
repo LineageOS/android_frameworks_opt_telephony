@@ -509,7 +509,8 @@ public class GsmCdmaCallTracker extends CallTracker {
                         obtainCompleteMessage());
                     }
                 };
-                EmergencyStateTracker.getInstance().exitEmergencyCallbackMode(onComplete);
+                EmergencyStateTracker.getInstance().exitEmergencyCallbackMode(onComplete,
+                        TelephonyManager.STOP_REASON_OUTGOING_NORMAL_CALL_INITIATED);
             } else {
                 mPhone.exitEmergencyCallbackMode();
                 mPhone.setOnEcbModeExitResponse(this, EVENT_EXIT_ECM_RESPONSE_CDMA, null);

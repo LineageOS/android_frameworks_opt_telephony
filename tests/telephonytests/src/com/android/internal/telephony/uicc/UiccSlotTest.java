@@ -103,6 +103,7 @@ public class UiccSlotTest extends TelephonyTest {
         mTestHandlerThread = null;
         mTestHandler.removeCallbacksAndMessages(null);
         mTestHandler = null;
+        mUiccSlot.dispose();
         mUiccSlot = null;
         super.tearDown();
     }

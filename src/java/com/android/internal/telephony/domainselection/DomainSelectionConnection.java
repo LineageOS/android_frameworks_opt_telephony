@@ -783,6 +783,20 @@ public class DomainSelectionConnection {
             dispose();
             return;
         }
+
+        if (scanType == DomainSelectionService.SCAN_TYPE_FULL_SERVICE) {
+            // Handle as unknown network.
+            EmergencyRegistrationResult result = new EmergencyRegistrationResult(
+                    AccessNetworkConstants.AccessNetworkType.UNKNOWN,
+                    NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN,
+                    NetworkRegistrationInfo.DOMAIN_UNKNOWN, false, false, 0, 0, "", "", "");
+
+            if (mHandler != null) {
+                Message msg = mHandler.obtainMessage(EVENT_EMERGENCY_NETWORK_SCAN_RESULT,
+                        new AsyncResult(null, result, null));
+                msg.sendToTarget();
+            }
+        }
     }
 
     private void onModemReset() {

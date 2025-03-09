@@ -1808,7 +1808,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                                 dialArgs.intentExtras);
                     }
                 };
-                EmergencyStateTracker.getInstance().exitEmergencyCallbackMode(onComplete);
+                EmergencyStateTracker.getInstance().exitEmergencyCallbackMode(onComplete,
+                        TelephonyManager.STOP_REASON_OUTGOING_NORMAL_CALL_INITIATED);
             } else {
                 try {
                     getEcbmInterface().exitEmergencyCallbackMode();
@@ -2895,7 +2896,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         boolean rejectCall = false;
 
         if (mFeatureFlags.preventHangupDuringCallMerge()) {
-            if (imsCall.isCallSessionMergePending()) {
+            if (imsCall != null && imsCall.isCallSessionMergePending()) {
                 if (DBG) log("hangup call failed during call merge");
 
                 throw new CallStateException("can not hangup during call merge");

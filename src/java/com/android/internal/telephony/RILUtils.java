@@ -121,6 +121,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_CELLULA
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_N1_MODE_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_NULL_CIPHER_AND_INTEGRITY_ENABLED;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_SATELLITE_ENABLED_FOR_CARRIER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_SECURITY_ALGORITHMS_UPDATED_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_VONR_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_LAST_CALL_FAIL_CAUSE;
@@ -180,6 +181,8 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_NULL_C
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFERRED_DATA_MODEM;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_RADIO_CAPABILITY;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SATELLITE_ENABLED_FOR_CARRIER;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SATELLITE_PLMN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SECURITY_ALGORITHMS_UPDATED_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SIGNAL_STRENGTH_REPORTING_CRITERIA;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SIM_CARD_POWER;
@@ -384,6 +387,7 @@ import com.android.internal.telephony.cdma.sms.CdmaSmsSubaddress;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.telephony.data.KeepaliveStatus;
 import com.android.internal.telephony.data.KeepaliveStatus.KeepaliveStatusCode;
+import com.android.internal.telephony.flags.Flags;
 import com.android.internal.telephony.imsphone.ImsCallInfo;
 import com.android.internal.telephony.uicc.AdnCapacity;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
@@ -394,6 +398,7 @@ import com.android.internal.telephony.uicc.IccSlotStatus;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.PortUtils;
 import com.android.internal.telephony.uicc.SimPhonebookRecord;
+import com.android.internal.telephony.uicc.SimTypeInfo;
 import com.android.telephony.Rlog;
 
 import java.io.ByteArrayInputStream;
@@ -1169,6 +1174,10 @@ public class RILUtils {
          * 2 - erase NV reset (SCRTN)
          * 3 - factory reset (RTN)
          */
+        if (Flags.cleanupCdma()) {
+            if (resetType == 1) return android.hardware.radio.V1_0.ResetNvType.RELOAD;
+            return -1;
+        }
         switch (resetType) {
             case 1: return android.hardware.radio.V1_0.ResetNvType.RELOAD;
             case 2: return android.hardware.radio.V1_0.ResetNvType.ERASE;
@@ -1189,6 +1198,10 @@ public class RILUtils {
          * 2 - erase NV reset (SCRTN)
          * 3 - factory reset (RTN)
          */
+        if (Flags.cleanupCdma()) {
+            if (resetType == 1) return android.hardware.radio.modem.ResetNvType.RELOAD;
+            return -1;
+        }
         switch (resetType) {
             case 1: return android.hardware.radio.modem.ResetNvType.RELOAD;
             case 2: return android.hardware.radio.modem.ResetNvType.ERASE;
@@ -1684,6 +1697,9 @@ public class RILUtils {
         }
         if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_NR) != 0) {
             raf |= android.hardware.radio.RadioAccessFamily.NR;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_NB_IOT_NTN) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.NB_IOT_NTN;
         }
         return (raf == 0) ? android.hardware.radio.RadioAccessFamily.UNKNOWN : raf;
     }
@@ -2913,6 +2929,7 @@ public class RILUtils {
      */
     public static CellSignalStrengthGsm convertHalGsmSignalStrength(
             android.hardware.radio.V1_0.GsmSignalStrength ss) {
+        if (ss == null) return new CellSignalStrengthGsm();
         CellSignalStrengthGsm ret = new CellSignalStrengthGsm(
                 CellSignalStrength.getRssiDbmFromAsu(ss.signalStrength), ss.bitErrorRate,
                 ss.timingAdvance);
@@ -2930,6 +2947,7 @@ public class RILUtils {
      */
     public static CellSignalStrengthGsm convertHalGsmSignalStrength(
             android.hardware.radio.network.GsmSignalStrength ss) {
+        if (ss == null) return new CellSignalStrengthGsm();
         CellSignalStrengthGsm ret = new CellSignalStrengthGsm(
                 CellSignalStrength.getRssiDbmFromAsu(ss.signalStrength), ss.bitErrorRate,
                 ss.timingAdvance);
@@ -2950,6 +2968,7 @@ public class RILUtils {
     public static CellSignalStrengthCdma convertHalCdmaSignalStrength(
             android.hardware.radio.V1_0.CdmaSignalStrength cdma,
             android.hardware.radio.V1_0.EvdoSignalStrength evdo) {
+        if (cdma == null || evdo == null) return new CellSignalStrengthCdma();
         return new CellSignalStrengthCdma(-cdma.dbm, -cdma.ecio, -evdo.dbm, -evdo.ecio,
                 evdo.signalNoiseRatio);
     }
@@ -2964,6 +2983,7 @@ public class RILUtils {
     public static CellSignalStrengthCdma convertHalCdmaSignalStrength(
             android.hardware.radio.network.CdmaSignalStrength cdma,
             android.hardware.radio.network.EvdoSignalStrength evdo) {
+        if (cdma == null || evdo == null) return new CellSignalStrengthCdma();
         return new CellSignalStrengthCdma(-cdma.dbm, -cdma.ecio, -evdo.dbm, -evdo.ecio,
                 evdo.signalNoiseRatio);
     }
@@ -3427,9 +3447,11 @@ public class RILUtils {
             android.hardware.radio.data.SetupDataCallResult result) {
         if (result == null) return null;
         List<LinkAddress> laList = new ArrayList<>();
-        for (android.hardware.radio.data.LinkAddress la : result.addresses) {
-            laList.add(convertToLinkAddress(la.address, la.addressProperties,
-                    la.deprecationTime, la.expirationTime));
+        if (result.addresses != null) {
+            for (android.hardware.radio.data.LinkAddress la : result.addresses) {
+                laList.add(convertToLinkAddress(la.address, la.addressProperties,
+                        la.deprecationTime, la.expirationTime));
+            }
         }
         List<InetAddress> dnsList = new ArrayList<>();
         if (result.dnses != null) {
@@ -3471,15 +3493,19 @@ public class RILUtils {
             }
         }
         List<QosBearerSession> qosSessions = new ArrayList<>();
-        for (android.hardware.radio.data.QosSession session : result.qosSessions) {
-            qosSessions.add(convertHalQosBearerSession(session));
+        if (result.qosSessions != null) {
+            for (android.hardware.radio.data.QosSession session : result.qosSessions) {
+                qosSessions.add(convertHalQosBearerSession(session));
+            }
         }
         List<TrafficDescriptor> trafficDescriptors = new ArrayList<>();
-        for (android.hardware.radio.data.TrafficDescriptor td : result.trafficDescriptors) {
-            try {
-                trafficDescriptors.add(convertHalTrafficDescriptor(td));
-            } catch (IllegalArgumentException e) {
-                loge("convertHalDataCallResult: Failed to convert traffic descriptor. e=" + e);
+        if (result.trafficDescriptors != null) {
+            for (android.hardware.radio.data.TrafficDescriptor td : result.trafficDescriptors) {
+                try {
+                    trafficDescriptors.add(convertHalTrafficDescriptor(td));
+                } catch (IllegalArgumentException e) {
+                    loge("convertHalDataCallResult: Failed to convert traffic descriptor. e=" + e);
+                }
             }
         }
 
@@ -3659,6 +3685,7 @@ public class RILUtils {
     }
 
     private static Qos convertHalQos(android.hardware.radio.V1_6.Qos qos) {
+        if (qos == null) return null;
         switch (qos.getDiscriminator()) {
             case android.hardware.radio.V1_6.Qos.hidl_discriminator.eps:
                 android.hardware.radio.V1_6.EpsQos eps = qos.eps();
@@ -3674,6 +3701,7 @@ public class RILUtils {
     }
 
     private static Qos convertHalQos(android.hardware.radio.data.Qos qos) {
+        if (qos == null) return null;
         switch (qos.getTag()) {
             case android.hardware.radio.data.Qos.eps:
                 android.hardware.radio.data.EpsQos eps = qos.getEps();
@@ -4132,6 +4160,34 @@ public class RILUtils {
     }
 
     /**
+     * This API is for fallback to support getAllowedCarriers too.
+     *
+     * Convert an array of CarrierInfo defined in
+     * radio/aidl/android/hardware/radio/sim/CarrierInfo.aidl to a list of CarrierIdentifiers.
+     *
+     * @param carrierInfos array of CarrierInfo defined in
+     *                     radio/aidl/android/hardware/radio/sim/CarrierInfo.aidl
+     * @return The converted list of CarrierIdentifiers
+     */
+    public static List<CarrierIdentifier> convertAidlCarrierInfoListToHalCarrierList(
+            android.hardware.radio.sim.CarrierInfo[] carrierInfos) {
+        List<CarrierIdentifier> ret = new ArrayList<>();
+        if (carrierInfos == null) {
+            return ret;
+        }
+        for (android.hardware.radio.sim.CarrierInfo carrierInfo : carrierInfos) {
+            String mcc = carrierInfo.mcc;
+            String mnc = carrierInfo.mnc;
+            String spn = carrierInfo.spn;
+            String imsi = carrierInfo.imsiPrefix;
+            String gid1 = carrierInfo.gid1;
+            String gid2 = carrierInfo.gid2;
+            ret.add(new CarrierIdentifier(mcc, mnc, spn, imsi, gid1, gid2));
+        }
+        return ret;
+    }
+
+    /**
      * Convert the sim policy defined in
      * radio/aidl/android/hardware/radio/sim/SimLockMultiSimPolicy.aidl to the equivalent sim
      * policy defined in android.telephony/CarrierRestrictionRules.MultiSimPolicy
@@ -4191,7 +4247,8 @@ public class RILUtils {
             iccCardStatus.setCardState(cardStatus10.cardState);
             iccCardStatus.setUniversalPinState(cardStatus10.universalPinState);
             iccCardStatus.mGsmUmtsSubscriptionAppIndex = cardStatus10.gsmUmtsSubscriptionAppIndex;
-            iccCardStatus.mCdmaSubscriptionAppIndex = cardStatus10.cdmaSubscriptionAppIndex;
+            iccCardStatus.mCdmaSubscriptionAppIndex =
+                    Flags.cleanupCdma() ? -1 : cardStatus10.cdmaSubscriptionAppIndex;
             iccCardStatus.mImsSubscriptionAppIndex = cardStatus10.imsSubscriptionAppIndex;
             int numApplications = cardStatus10.applications.size();
 
@@ -4261,7 +4318,8 @@ public class RILUtils {
         iccCardStatus.setMultipleEnabledProfilesMode(cardStatus.supportedMepMode);
         iccCardStatus.setUniversalPinState(cardStatus.universalPinState);
         iccCardStatus.mGsmUmtsSubscriptionAppIndex = cardStatus.gsmUmtsSubscriptionAppIndex;
-        iccCardStatus.mCdmaSubscriptionAppIndex = cardStatus.cdmaSubscriptionAppIndex;
+        iccCardStatus.mCdmaSubscriptionAppIndex =
+                Flags.cleanupCdma() ? -1 : cardStatus.cdmaSubscriptionAppIndex;
         iccCardStatus.mImsSubscriptionAppIndex = cardStatus.imsSubscriptionAppIndex;
         iccCardStatus.atr = cardStatus.atr;
         iccCardStatus.iccid = cardStatus.iccid;
@@ -5260,6 +5318,12 @@ public class RILUtils {
                 return "IS_SECURITY_ALGORITHMS_UPDATED_ENABLED";
             case RIL_REQUEST_GET_SIMULTANEOUS_CALLING_SUPPORT:
                 return "GET_SIMULTANEOUS_CALLING_SUPPORT";
+            case RIL_REQUEST_SET_SATELLITE_PLMN:
+                return "SET_SATELLITE_PLMN";
+            case RIL_REQUEST_SET_SATELLITE_ENABLED_FOR_CARRIER:
+                return "SET_SATELLITE_ENABLED_FOR_CARRIER";
+            case RIL_REQUEST_IS_SATELLITE_ENABLED_FOR_CARRIER:
+                return "IS_SATELLITE_ENABLED_FOR_CARRIER";
             default:
                 return "<unknown request " + request + ">";
         }
@@ -5840,6 +5904,23 @@ public class RILUtils {
                 securityAlgorithmUpdate.encryption,
                 securityAlgorithmUpdate.integrity,
                 securityAlgorithmUpdate.isUnprotectedEmergency);
+    }
+
+    /** Convert an AIDL-based SimTypeInfo to its Java wrapper. */
+    public static ArrayList<SimTypeInfo> convertAidlSimTypeInfo(
+            android.hardware.radio.config.SimTypeInfo[] simTypeInfos) {
+        ArrayList<SimTypeInfo> response = new ArrayList<>();
+        if (simTypeInfos == null) {
+            loge("convertAidlSimTypeInfo received NULL simTypeInfos");
+            return response;
+        }
+        for (android.hardware.radio.config.SimTypeInfo simTypeInfo : simTypeInfos) {
+            SimTypeInfo info = new SimTypeInfo();
+            info.mSupportedSimTypes = simTypeInfo.supportedSimTypes;
+            info.setCurrentSimType(simTypeInfo.currentSimType);
+            response.add(info);
+        }
+        return response;
     }
 
     private static void logd(String log) {

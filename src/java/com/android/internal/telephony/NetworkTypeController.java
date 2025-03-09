@@ -22,7 +22,13 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.os.AsyncResult;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.PowerManager;
@@ -170,7 +176,6 @@ public class NetworkTypeController extends StateMachine {
                 @Override
                 public void onQosSessionsChanged(
                         @NonNull List<QosBearerSession> qosBearerSessions) {
-                    if (!mIsTimerResetEnabledOnVoiceQos) return;
                     sendMessage(obtainMessage(EVENT_QOS_SESSION_CHANGED, qosBearerSessions));
                 }
 
@@ -233,6 +238,74 @@ public class NetworkTypeController extends StateMachine {
     private int mLastAnchorNrCellId = PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN;
     private boolean mDoesPccListIndicateIdle = false;
 
+    private boolean mInVoiceCall = false;
+    private boolean mIsSatelliteConstrainedData = false;
+    private boolean mIsSatelliteNetworkCallbackRegistered = false;
+    private ConnectivityManager mConnectivityManager;
+
+    private final ConnectivityManager.NetworkCallback mNetworkCallback =
+            new ConnectivityManager.NetworkCallback() {
+                @Override
+                public void onAvailable(Network network) {
+                    log("On Available: " + network);
+                    if (network != null) {
+                        if (mConnectivityManager != null) {
+                            NetworkCapabilities capabilities =
+                                    mConnectivityManager.getNetworkCapabilities(network);
+                            updateBandwidthConstrainedStatus(capabilities);
+                        } else {
+                            log("network is null");
+                        }
+                    }
+                }
+
+                @Override
+                public void onCapabilitiesChanged(Network network,
+                        NetworkCapabilities networkCapabilities) {
+                    log("onCapabilitiesChanged: " + network);
+                    if (network != null) {
+                        updateBandwidthConstrainedStatus(networkCapabilities);
+                    } else {
+                        log("network is null");
+                    }
+                }
+
+                @Override
+                public void onLost(Network network) {
+                    log("Network Lost");
+                    if (mIsSatelliteConstrainedData) {
+                        mIsSatelliteConstrainedData = false;
+                        mDisplayInfoController.updateTelephonyDisplayInfo();
+                    }
+                }
+            };
+
+    private boolean isBandwidthConstrainedCapabilitySupported(NetworkCapabilities
+            capabilities) {
+        // TODO (b/382002908: Remove try catch exception for
+        //  NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED & replace datautils with
+        //  NetworkCapabilities on api availability at mainline module)
+        try {
+            return capabilities.hasTransport(
+                    NetworkCapabilities.TRANSPORT_SATELLITE) &&
+                    !capabilities.hasCapability(DataUtils.NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED);
+        } catch (Exception ignored) {
+            log("NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED not supported ");
+            return false;
+        }
+    }
+
+    private void updateBandwidthConstrainedStatus(NetworkCapabilities capabilities) {
+        if (capabilities != null) {
+            mIsSatelliteConstrainedData
+                    = isBandwidthConstrainedCapabilitySupported(capabilities);
+            log("satellite constrained data status : " + mIsSatelliteConstrainedData);
+            mDisplayInfoController.updateTelephonyDisplayInfo();
+        } else {
+            log("capabilities is null");
+        }
+    }
+
     /**
      * NetworkTypeController constructor.
      *
@@ -268,6 +341,35 @@ public class NetworkTypeController extends StateMachine {
         sendMessage(EVENT_INITIALIZE);
     }
 
+    public synchronized void registerForSatelliteNetwork() {
+        if (!mIsSatelliteNetworkCallbackRegistered) {
+            mIsSatelliteNetworkCallbackRegistered = true;
+            HandlerThread handlerThread = new HandlerThread("SatelliteDataUsageThread");
+            handlerThread.start();
+            Handler handler = new Handler(handlerThread.getLooper());
+
+            NetworkRequest.Builder builder = new NetworkRequest.Builder();
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+            // TODO (b/382002908: Remove try catch exception for
+            //  NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED & replace datautils with
+            //  NetworkCapabilities on api availability at mainline module)
+            try {
+                builder.removeCapability(DataUtils.NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED);
+            } catch (Exception ignored) {
+                log("NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED not supported ");
+            }
+            mConnectivityManager =
+                    (ConnectivityManager) mPhone.getContext()
+                            .getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (mConnectivityManager != null) {
+                mConnectivityManager.registerBestMatchingNetworkCallback(
+                        builder.build(), mNetworkCallback, handler);
+            } else {
+                loge("network callback not registered");
+            }
+        }
+    }
+
     /**
      * @return The current override network type, used to create TelephonyDisplayInfo in
      * DisplayInfoController.
@@ -285,6 +387,15 @@ public class NetworkTypeController extends StateMachine {
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         return nri == null ? TelephonyManager.NETWORK_TYPE_UNKNOWN
                 : nri.getAccessNetworkTechnology();
+    }
+
+    /**
+     * @return satellite bandwidth constrained connection status, used to create
+     * TelephonyDisplayInfo in DisplayInfoController.
+     *
+     */
+    public boolean getSatelliteConstrainedData() {
+       return mIsSatelliteConstrainedData;
     }
 
     /**
@@ -714,20 +825,21 @@ public class NetworkTypeController extends StateMachine {
                     break;
                 case EVENT_QOS_SESSION_CHANGED:
                     List<QosBearerSession> qosBearerSessions = (List<QosBearerSession>) msg.obj;
-                    boolean inVoiceCall = false;
+                    mInVoiceCall = false;
                     for (QosBearerSession session : qosBearerSessions) {
                         // TS 23.203 23.501 - 1 means conversational voice
-                        if (session.getQos() instanceof EpsQos qos) {
-                            inVoiceCall = qos.getQci() == 1;
-                        } else if (session.getQos() instanceof NrQos qos) {
-                            inVoiceCall = qos.get5Qi() == 1;
-                        }
-                        if (inVoiceCall) {
-                            if (DBG) log("Device in voice call, reset all timers");
-                            resetAllTimers();
-                            transitionToCurrentState();
+                        if (session.getQos() instanceof EpsQos qos && qos.getQci() == 1) {
+                            mInVoiceCall = true;
+                            break;
+                        } else if (session.getQos() instanceof NrQos qos && qos.get5Qi() == 1) {
+                            mInVoiceCall = true;
                             break;
                         }
+                    }
+                    if (mIsTimerResetEnabledOnVoiceQos && mInVoiceCall) {
+                        if (DBG) log("Device in voice call, reset all timers");
+                        resetAllTimers();
+                        transitionToCurrentState();
                     }
                     break;
                 default:
@@ -1371,6 +1483,8 @@ public class NetworkTypeController extends StateMachine {
         if (mIsPrimaryTimerActive) {
             log("Transition without timer from " + getCurrentState().getName() + " to " + destName
                     + " due to existing " + mPrimaryTimerState + " primary timer.");
+        } else if (mIsTimerResetEnabledOnVoiceQos && mInVoiceCall) {
+            log("Skip primary timer to " + destName + " due to in call");
         } else {
             if (DBG) {
                 log("Transition with primary timer from " + mPreviousState + " to " + destName);
@@ -1395,7 +1509,10 @@ public class NetworkTypeController extends StateMachine {
             log("Transition with secondary timer from " + currentName + " to "
                     + destState.getName());
         }
-        if (!mIsDeviceIdleMode && rule != null && rule.getSecondaryTimer(currentName) > 0) {
+        if (mIsTimerResetEnabledOnVoiceQos && mInVoiceCall) {
+            log("Skip secondary timer from " + currentName + " to "
+                    + destState.getName() + " due to in call");
+        } else if (!mIsDeviceIdleMode && rule != null && rule.getSecondaryTimer(currentName) > 0) {
             int duration = rule.getSecondaryTimer(currentName);
             if (mLastShownNrDueToAdvancedBand && mNrAdvancedBandsSecondaryTimer > 0) {
                 duration = mNrAdvancedBandsSecondaryTimer;
@@ -1754,6 +1871,7 @@ public class NetworkTypeController extends StateMachine {
         pw.println("mPrimaryCellChangedWhileIdle=" + mPrimaryCellChangedWhileIdle);
         pw.println("mEnableNrAdvancedWhileRoaming=" + mEnableNrAdvancedWhileRoaming);
         pw.println("mIsDeviceIdleMode=" + mIsDeviceIdleMode);
+        pw.println("mIsTimerResetEnabledOnVoiceQos=" + mIsTimerResetEnabledOnVoiceQos);
         pw.decreaseIndent();
         pw.flush();
     }

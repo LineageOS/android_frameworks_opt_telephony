@@ -301,8 +301,8 @@ public class TelephonyComponentFactory {
         return new SmsStorageMonitor(phone, flags);
     }
 
-    public SmsUsageMonitor makeSmsUsageMonitor(Context context) {
-        return new SmsUsageMonitor(context);
+    public SmsUsageMonitor makeSmsUsageMonitor(Context context, FeatureFlags flags) {
+        return new SmsUsageMonitor(context, flags);
     }
 
     public ServiceStateTracker makeServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci,

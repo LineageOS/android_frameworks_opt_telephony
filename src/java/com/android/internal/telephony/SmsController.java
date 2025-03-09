@@ -276,6 +276,7 @@ public class SmsController extends ISmsImplBase {
         }
         UserHandle callingUser = Binder.getCallingUserHandle();
 
+
         Rlog.d(LOG_TAG, "sendTextForSubscriber caller=" + callingPackage);
 
         if (skipFdnCheck || skipShortCodeCheck) {
@@ -1194,8 +1195,9 @@ public class SmsController extends ISmsImplBase {
         }
 
         // Skip FDN check for emergency numbers
+        if (!TelephonyCapabilities.supportsTelephonyCalling(mFlags, mContext)) return false;
         TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
-        if (tm.isEmergencyNumber(destAddr)) {
+        if (tm != null && tm.isEmergencyNumber(destAddr)) {
             return false;
         }
 

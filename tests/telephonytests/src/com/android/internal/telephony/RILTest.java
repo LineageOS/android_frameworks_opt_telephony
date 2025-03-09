@@ -175,6 +175,7 @@ import android.telephony.data.TrafficDescriptor;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.util.SparseArray;
+import android.view.Display;
 
 import androidx.test.filters.FlakyTest;
 
@@ -312,6 +313,7 @@ public class RILTest extends TelephonyTest {
         } catch (RuntimeException e) {
         }
         Context context = new ContextFixture().getTestDouble();
+        doReturn(Display.DEFAULT_DISPLAY).when(context).getDisplayId();
         doReturn(true).when(mConnectionManager).isNetworkSupported(ConnectivityManager.TYPE_MOBILE);
         doReturn(mConnectionManager).when(context)
             .getSystemService(Context.CONNECTIVITY_SERVICE);

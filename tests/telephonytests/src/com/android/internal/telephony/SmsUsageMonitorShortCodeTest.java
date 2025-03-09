@@ -26,6 +26,8 @@ import static org.junit.Assert.assertEquals;
 
 import android.os.Looper;
 
+import com.android.internal.telephony.flags.FeatureFlagsImpl;
+
 import org.junit.Ignore;
 
 /**
@@ -465,7 +467,8 @@ public class SmsUsageMonitorShortCodeTest {
         if (Looper.myLooper() == null) {
             Looper.prepare();
         }
-        SmsUsageMonitor monitor = new SmsUsageMonitor(TestApplication.getAppContext());
+        SmsUsageMonitor monitor = new SmsUsageMonitor(TestApplication.getAppContext(),
+                new FeatureFlagsImpl());
         for (ShortCodeTest test : sShortCodeTests) {
             assertEquals("country: " + test.countryIso + " number: " + test.address,
                     test.category, monitor.checkDestination(test.address, test.countryIso));

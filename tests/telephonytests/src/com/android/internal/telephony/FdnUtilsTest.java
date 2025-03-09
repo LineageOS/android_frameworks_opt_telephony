@@ -181,4 +181,13 @@ public class FdnUtilsTest {
 
         assertTrue(FdnUtils.isFDN("1234560000@ims.mnc.org", "US", fdnList));
     }
+
+    @Test
+    public void dialStrInNationalFormat_returnsTrue() {
+        ArrayList<AdnRecord> fdnList = initializeFdnList();
+        AdnRecord adnRecord = new AdnRecord(null, "0469887529");
+        fdnList.add(8, adnRecord);
+
+        assertTrue(FdnUtils.isFDN("0469887529", "US", fdnList));
+    }
 }

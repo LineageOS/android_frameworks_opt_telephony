@@ -52,6 +52,7 @@ import static com.android.internal.telephony.subscription.SubscriptionDatabaseMa
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -70,6 +71,7 @@ import static org.mockito.Mockito.verify;
 
 import android.Manifest;
 import android.annotation.NonNull;
+import android.app.ActivityManager;
 import android.app.AppOpsManager;
 import android.app.PropertyInvalidatedCache;
 import android.compat.testing.PlatformCompatChangeRule;
@@ -1123,9 +1125,12 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     public void testGetAccessibleSubscriptionInfoList() {
         doReturn(true).when(mEuiccManager).isEnabled();
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+        UserHandle user = UserHandle.of(ActivityManager.getCurrentUser());
 
         doReturn(true).when(mSubscriptionManager).canManageSubscription(
                 any(SubscriptionInfo.class), eq(CALLING_PACKAGE));
+        doReturn(true).when(mSubscriptionManager).canManageSubscriptionAsUser(
+                any(SubscriptionInfo.class), eq(CALLING_PACKAGE), any(UserHandle.class));
         // FAKE_SUBSCRIPTION_INFO2 is a not eSIM. So the list should be empty.
         assertThat(mSubscriptionManagerServiceUT.getAccessibleSubscriptionInfoList(
                 CALLING_PACKAGE)).isEmpty();
@@ -1138,6 +1143,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         doReturn(false).when(mSubscriptionManager).canManageSubscription(
                 any(SubscriptionInfo.class), eq(CALLING_PACKAGE));
+        doReturn(false).when(mSubscriptionManager).canManageSubscriptionAsUser(
+                any(SubscriptionInfo.class), eq(CALLING_PACKAGE), eq(user));
 
         doReturn(true).when(mEuiccManager).isEnabled();
         assertThat(mSubscriptionManagerServiceUT.getAccessibleSubscriptionInfoList(
@@ -1145,6 +1152,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         doReturn(true).when(mSubscriptionManager).canManageSubscription(
                 any(SubscriptionInfo.class), eq(CALLING_PACKAGE));
+        doReturn(true).when(mSubscriptionManager).canManageSubscriptionAsUser(
+                any(SubscriptionInfo.class), eq(CALLING_PACKAGE), eq(user));
         assertThat(mSubscriptionManagerServiceUT.getAccessibleSubscriptionInfoList(
                 CALLING_PACKAGE)).isEqualTo(List.of(new SubscriptionInfoInternal.Builder(
                         FAKE_SUBSCRIPTION_INFO1).setId(2).build().toSubscriptionInfo()));
@@ -1363,6 +1372,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         doReturn(true).when(mEuiccManager).isEnabled();
         doReturn(true).when(mSubscriptionManager).canManageSubscription(
                 any(SubscriptionInfo.class), eq(CALLING_PACKAGE));
+        UserHandle user = UserHandle.of(ActivityManager.getCurrentUser());
+        doReturn(true).when(mSubscriptionManager).canManageSubscriptionAsUser(
+                any(SubscriptionInfo.class), eq(CALLING_PACKAGE), eq(user));
         assertThat(mSubscriptionManagerServiceUT.getAccessibleSubscriptionInfoList(
                 CALLING_PACKAGE)).isEqualTo(List.of(FAKE_SUBSCRIPTION_INFO1.toSubscriptionInfo()));
         // Test getActiveSubIdList, System
@@ -1499,6 +1511,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         doReturn(true).when(mEuiccManager).isEnabled();
         doReturn(true).when(mSubscriptionManager).canManageSubscription(
                 any(SubscriptionInfo.class), eq(CALLING_PACKAGE));
+        UserHandle user = UserHandle.of(ActivityManager.getCurrentUser());
+        doReturn(true).when(mSubscriptionManager).canManageSubscriptionAsUser(
+                any(SubscriptionInfo.class), eq(CALLING_PACKAGE), eq(user));
         assertThat(mSubscriptionManagerServiceUT.getAccessibleSubscriptionInfoList(
                 CALLING_PACKAGE)).isEqualTo(List.of(FAKE_SUBSCRIPTION_INFO1.toSubscriptionInfo()));
         // Test getActiveSubIdList, System
@@ -3419,5 +3434,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         assertEquals(expectedPlmnList,
                 mSubscriptionManagerServiceUT.getSatelliteEntitlementPlmnList(subId));
+    }
+
+    public void testIsSatelliteProvisionedForNonIpDatagram() {
+        assertFalse(mSubscriptionManagerServiceUT.isSatelliteProvisionedForNonIpDatagram(-1));
     }
 }

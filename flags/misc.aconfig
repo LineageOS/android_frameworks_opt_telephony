@@ -80,15 +80,6 @@ flag {
 
 # OWNER=rambowang TARGET=24Q3
 flag {
-  name: "show_call_id_and_call_waiting_in_additional_settings_menu"
-  is_exported: true
-  namespace: "telephony"
-  description: "Expose carrier config KEY_ADDITIONAL_SETTINGS_CALLER_ID_VISIBILITY_BOOL and KEY_ADDITIONAL_SETTINGS_CALL_WAITING_VISIBILITY_BOOL."
-  bug: "310264981"
-}
-
-# OWNER=rambowang TARGET=24Q3
-flag {
     name: "reset_mobile_network_settings"
     is_exported: true
     namespace: "telephony"
@@ -229,3 +220,29 @@ flag {
     }
 }
 
+# OWNER=jackyu TARGET=25Q2
+flag {
+    name: "power_down_race_fix"
+    namespace: "telephony"
+    description: "Fixed race condition while powering down"
+    bug:"378616116"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
+}
+
+# OWNER=jackyu TARGET=25Q2
+flag {
+    name: "deprecate_cdma"
+    namespace: "telephony"
+    description: "Deprecate CDMA and NV APIS"
+    bug: "379356026"
+}
+
+# OWNER=jackyu TARGET=25Q2
+flag {
+    name: "cleanup_cdma"
+    namespace: "telephony"
+    description: "Disable CDMA and NV backing code"
+    bug: "379356026"
+}

@@ -82,6 +82,7 @@ public class UiccPortTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mUiccPort.dispose();
         mUiccPort = null;
         mIccIoResult = null;
         super.tearDown();

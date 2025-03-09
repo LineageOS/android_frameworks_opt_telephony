@@ -48,6 +48,7 @@ import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
+import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccConstants;
@@ -1511,8 +1512,7 @@ public class IccSmsInterfaceManager {
     @VisibleForTesting
     public void notifyIfOutgoingEmergencySms(String destAddr) {
         Phone[] allPhones = mPhoneFactoryProxy.getPhones();
-        EmergencyNumber emergencyNumber = mPhone.getEmergencyNumberTracker().getEmergencyNumber(
-                destAddr);
+        EmergencyNumber emergencyNumber = getEmergencyNumber(mPhone, destAddr);
         if (emergencyNumber != null) {
             mPhone.notifyOutgoingEmergencySms(emergencyNumber);
         } else if (allPhones.length > 1) {
@@ -1522,14 +1522,20 @@ public class IccSmsInterfaceManager {
                 if (phone.getPhoneId() == mPhone.getPhoneId()) {
                     continue;
                 }
-                emergencyNumber = phone.getEmergencyNumberTracker()
-                        .getEmergencyNumber(destAddr);
+                emergencyNumber = getEmergencyNumber(phone, destAddr);
                 if (emergencyNumber != null) {
                     mPhone.notifyOutgoingEmergencySms(emergencyNumber);
                     break;
                 }
             }
         }
+    }
+
+    private EmergencyNumber getEmergencyNumber(Phone phone, String number) {
+        if (!phone.hasCalling()) return null;
+        EmergencyNumberTracker tracker = phone.getEmergencyNumberTracker();
+        if (tracker == null) return null;
+        return tracker.getEmergencyNumber(number);
     }
 
     private void returnUnspecifiedFailure(PendingIntent pi) {

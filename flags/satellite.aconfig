@@ -41,6 +41,7 @@ flag {
     namespace: "telephony"
     description: "This flag enables satellite carrier roaming to nb iot ntn."
     bug:"348253735"
+    is_exported: true
 }
 
 # OWNER=tnd TARGET=24Q4
@@ -61,4 +62,22 @@ flag {
   metadata {
     purpose: PURPOSE_BUGFIX
   }
+}
+
+# OWNER=amallampati TARGET=25Q2
+flag {
+    name: "satellite_system_apis"
+    is_exported: true
+    namespace: "telephony"
+    description: "Convert hidden SatelliteManager APIs to system APIs."
+    bug:"373436320"
+}
+
+# OWNER=rambowang TARGET=25Q2
+flag {
+  name: "satellite_state_change_listener"
+  namespace: "telephony"
+  description: "Introduce SatelliteManager APIs for carrier apps to monitor satellite state change"
+  bug: "357638490"
+  is_exported: true
 }

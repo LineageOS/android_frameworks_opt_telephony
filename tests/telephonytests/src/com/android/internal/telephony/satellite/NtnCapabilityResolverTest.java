@@ -80,7 +80,7 @@ public class NtnCapabilityResolverTest extends TelephonyTest {
         doReturn(Arrays.asList(SATELLITE_PLMN_ARRAY))
                 .when(mMockSatelliteController).getSatellitePlmnsForCarrier(anyInt());
         doReturn(mSatelliteSupportedServiceList).when(mMockSatelliteController)
-                .getSupportedSatelliteServices(SUB_ID, SATELLITE_PLMN);
+                .getSupportedSatelliteServicesForPlmn(SUB_ID, SATELLITE_PLMN);
     }
 
     @After

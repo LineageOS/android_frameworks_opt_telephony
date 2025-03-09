@@ -1,0 +1,32 @@
+package: "com.android.internal.telephony.flags"
+container: "system"
+
+# OWNER=nharold TARGET=24Q4
+flag {
+    name: "async_init_carrier_privileges_tracker"
+    is_exported: true
+    namespace: "telephony"
+    description: "Offload the heavyweight initialization of CarrierPrivilegesTracker to a worker thread"
+    bug:"357096337"
+}
+
+# OWNER=melhuishj TARGET=25Q1
+flag {
+    name: "cleanup_carrier_app_update_enabled_state_logic"
+    is_exported: true
+    namespace: "telephony"
+    description: "Improve readability of update state logic"
+    bug:"232141900"
+    metadata {
+      purpose: PURPOSE_BUGFIX
+    }
+}
+
+# OWNER=melhuishj TARGET=25Q2
+flag {
+    name: "temporary_failures_in_carrier_messaging_service"
+    is_exported: true
+    namespace: "telephony"
+    description: "Enable temporary failures in CarrierMessagingService"
+    bug:"326610112"
+}

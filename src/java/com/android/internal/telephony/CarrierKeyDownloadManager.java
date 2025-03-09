@@ -146,9 +146,9 @@ public class CarrierKeyDownloadManager extends Handler {
                 .createForSubscriptionId(mPhone.getSubId());
         if (Flags.imsiKeyRetryDownloadOnPhoneUnlock()) {
             mKeyguardManager = mContext.getSystemService(KeyguardManager.class);
-        } else {
-            mUserManager = mContext.getSystemService(UserManager.class);
         }
+        mUserManager = mContext.getSystemService(UserManager.class);
+
         CarrierConfigManager carrierConfigManager = mContext.getSystemService(
                 CarrierConfigManager.class);
         // Callback which directly handle config change should be executed on handler thread
@@ -170,17 +170,29 @@ public class CarrierKeyDownloadManager extends Handler {
                                                 TelephonyManager.class)
                                         .createForSubscriptionId(subId);
                             }
-                            mCarrierId = carrierId;
+                            if (Flags.ignoreCarrieridResetForSimRemoval()) {
+                                if (carrierId > 0) {
+                                    mCarrierId = carrierId;
+                                }
+                            } else {
+                                mCarrierId = carrierId;
+                            }
                             updateSimOperator();
                             // If device is screen locked do not proceed to handle
                             // EVENT_ALARM_OR_CONFIG_CHANGE
-                            if (mKeyguardManager.isDeviceLocked()) {
-                                logd("Device is Locked");
+                            printDeviceLockStatus();
+                            if (Flags.ignoreCarrieridResetForSimRemoval()) {
+                                if (!mUserManager.isUserUnlocked()) {
+                                    mIsRequiredToHandleUnlock = true;
+                                    return;
+                                }
+                            } else if (mKeyguardManager.isDeviceLocked()) {
                                 mIsRequiredToHandleUnlock = true;
-                            } else {
-                                logd("Carrier Config changed: slotIndex=" + slotIndex);
-                                sendEmptyMessage(EVENT_ALARM_OR_CONFIG_CHANGE);
+                                return;
                             }
+                            logd("Carrier Config changed: slotIndex=" + slotIndex);
+                            sendEmptyMessage(EVENT_ALARM_OR_CONFIG_CHANGE);
+
                         }
                     } else {
                         boolean isUserUnlocked = mUserManager.isUserUnlocked();
@@ -197,6 +209,11 @@ public class CarrierKeyDownloadManager extends Handler {
                 });
         }
         mConnectivityManager = mContext.getSystemService(ConnectivityManager.class);
+    }
+
+    private void printDeviceLockStatus() {
+        logd(" Device Status: isDeviceLocked = " + mKeyguardManager.isDeviceLocked()
+                + "  iss User unlocked = " + mUserManager.isUserUnlocked());
     }
 
     // TODO remove this method upon imsiKeyRetryDownloadOnPhoneUnlock enabled.
@@ -307,11 +324,16 @@ public class CarrierKeyDownloadManager extends Handler {
                     if (downloadStartedSuccessfully) {
                         unregisterDefaultNetworkCb(slotIndex);
                     } else {
-                        // If download fails due to the device lock, we will reattempt once the
-                        // device is unlocked.
-                        mIsRequiredToHandleUnlock = mKeyguardManager.isDeviceLocked();
+                        // If download fails due to the device user lock, we will reattempt once
+                        // the device is unlocked.
+                        if (Flags.ignoreCarrieridResetForSimRemoval()) {
+                            mIsRequiredToHandleUnlock = !mUserManager.isUserUnlocked();
+                        } else {
+                            mIsRequiredToHandleUnlock = mKeyguardManager.isDeviceLocked();
+                        }
+
                         loge("hasActiveDataConnection = " + hasActiveDataNetwork
-                                + "    isDeviceLocked = " + mIsRequiredToHandleUnlock);
+                                + "    isDeviceUserLocked = " + mIsRequiredToHandleUnlock);
                         if (!hasActiveDataNetwork) {
                             registerDefaultNetworkCb(slotIndex);
                         }
@@ -538,14 +560,19 @@ public class CarrierKeyDownloadManager extends Handler {
                                 carrierKeyDownloadIdentifier);
                     }
                     parseJsonAndPersistKey(jsonStr, mccMnc, carrierId);
+                    logd("Completed downloading keys");
                 } catch (Exception e) {
                     loge( "Error in download:" + carrierKeyDownloadIdentifier
                             + ". " + e);
                 } finally {
                     mDownloadManager.remove(carrierKeyDownloadIdentifier);
                 }
+            } else {
+                loge("Download Failed reason = " + cursor.getInt(columnIndex)
+                        + "Failed Status reason" + cursor.getInt(
+                        cursor.getColumnIndex(DownloadManager.COLUMN_REASON)));
+                printDeviceLockStatus();
             }
-            logd("Completed downloading keys");
         }
         cursor.close();
     }
@@ -796,6 +823,7 @@ public class CarrierKeyDownloadManager extends Handler {
         } catch (Exception e) {
             loge( "exception trying to download key from url: " + mURL + ",  Exception = "
                     + e.getMessage());
+            printDeviceLockStatus();
             return false;
         }
         return true;

@@ -100,6 +100,9 @@ public class SatelliteStats {
         private final int mCountOfSatelliteAllowedStateChangedEvents;
         private final int mCountOfSuccessfulLocationQueries;
         private final int mCountOfFailedLocationQueries;
+        private final int mCountOfP2PSmsAvailableNotificationShown;
+        private final int mCountOfP2PSmsAvailableNotificationRemoved;
+        private static boolean sIsNtnOnlyCarrier;
 
         private SatelliteControllerParams(Builder builder) {
             this.mCountOfSatelliteServiceEnablementsSuccess =
@@ -162,6 +165,15 @@ public class SatelliteStats {
                     builder.mCountOfSuccessfulLocationQueries;
             this.mCountOfFailedLocationQueries =
                     builder.mCountOfFailedLocationQueries;
+            this.mCountOfP2PSmsAvailableNotificationShown =
+                    builder.mCountOfP2PSmsAvailableNotificationShown;
+            this.mCountOfP2PSmsAvailableNotificationRemoved =
+                    builder.mCountOfP2PSmsAvailableNotificationRemoved;
+
+            // Carrier ID value should be updated only when it is meaningful.
+            if (builder.mIsNtnOnlyCarrier.isPresent()) {
+                this.sIsNtnOnlyCarrier = builder.mIsNtnOnlyCarrier.get();
+            }
         }
 
         public int getCountOfSatelliteServiceEnablementsSuccess() {
@@ -276,11 +288,11 @@ public class SatelliteStats {
             return mCountOfSatelliteAccessCheckFail;
         }
 
-        public boolean isProvisioned() {
+        public static boolean isProvisioned() {
             return sIsProvisioned;
         }
 
-        public int getCarrierId() {
+        public static int getCarrierId() {
             return sCarrierId;
         }
 
@@ -294,6 +306,18 @@ public class SatelliteStats {
 
         public int getCountOfFailedLocationQueries() {
             return mCountOfFailedLocationQueries;
+        }
+
+        public int getCountOfP2PSmsAvailableNotificationShown() {
+            return mCountOfP2PSmsAvailableNotificationShown;
+        }
+
+        public int getCountOfP2PSmsAvailableNotificationRemoved() {
+            return mCountOfP2PSmsAvailableNotificationRemoved;
+        }
+
+        public static boolean isNtnOnlyCarrier() {
+            return sIsNtnOnlyCarrier;
         }
 
         /**
@@ -333,6 +357,9 @@ public class SatelliteStats {
             private int mCountOfSatelliteAllowedStateChangedEvents = 0;
             private int mCountOfSuccessfulLocationQueries = 0;
             private int mCountOfFailedLocationQueries = 0;
+            private int mCountOfP2PSmsAvailableNotificationShown = 0;
+            private int mCountOfP2PSmsAvailableNotificationRemoved = 0;
+            private Optional<Boolean> mIsNtnOnlyCarrier = Optional.empty();
 
             /**
              * Sets countOfSatelliteServiceEnablementsSuccess value of {@link SatelliteController}
@@ -661,6 +688,37 @@ public class SatelliteStats {
             }
 
             /**
+             * Sets countOfP2PSmsAvailableNotificationShown value of {@link SatelliteController}
+             * atom then returns Builder class
+             */
+            public Builder setCountOfP2PSmsAvailableNotificationShown(
+                    int countOfP2PSmsAvailableNotificationShown) {
+                this.mCountOfP2PSmsAvailableNotificationShown =
+                        countOfP2PSmsAvailableNotificationShown;
+                return this;
+            }
+
+            /**
+             * Sets countOfP2PSmsAvailableNotificationRemoved value of {@link SatelliteController}
+             * atom then returns Builder class
+             */
+            public Builder setCountOfP2PSmsAvailableNotificationRemoved(
+                    int countOfP2PSmsAvailableNotificationRemoved) {
+                this.mCountOfP2PSmsAvailableNotificationRemoved =
+                        countOfP2PSmsAvailableNotificationRemoved;
+                return this;
+            }
+
+            /**
+             * Sets isNtnOnlyCarrier value of {@link SatelliteController} atom
+             * then returns Builder class
+             */
+            public Builder setIsNtnOnlyCarrier(boolean isNtnOnlyCarrier) {
+                this.mIsNtnOnlyCarrier = Optional.of(isNtnOnlyCarrier);
+                return this;
+            }
+
+            /**
              * Returns ControllerParams, which contains whole component of
              * {@link SatelliteController} atom
              */
@@ -715,6 +773,11 @@ public class SatelliteStats {
                     + mCountOfSatelliteAllowedStateChangedEvents
                     + ", countOfSuccessfulLocationQueries=" + mCountOfSuccessfulLocationQueries
                     + ", countOfFailedLocationQueries=" + mCountOfFailedLocationQueries
+                    + ", countOfP2PSmsAvailableNotificationShown="
+                    + mCountOfP2PSmsAvailableNotificationShown
+                    + ", countOfP2PSmsAvailableNotificationRemoved="
+                    + mCountOfP2PSmsAvailableNotificationRemoved
+                    + ", isNtnOnlyCarrier=" + sIsNtnOnlyCarrier
                     + ")";
         }
     }
@@ -740,7 +803,9 @@ public class SatelliteStats {
         private final int mCountOfSatelliteNotificationDisplayed;
         private final int mCountOfAutoExitDueToScreenOff;
         private final int mCountOfAutoExitDueToTnNetwork;
-
+        private final boolean mIsEmergency;
+        private final int mMaxInactivityDurationSec;
+        private final boolean mIsNtnOnlyCarrier;
 
         private SatelliteSessionParams(Builder builder) {
             this.mSatelliteServiceInitializationResult =
@@ -762,6 +827,9 @@ public class SatelliteStats {
                     builder.mCountOfSatelliteNotificationDisplayed;
             this.mCountOfAutoExitDueToScreenOff = builder.mCountOfAutoExitDueToScreenOff;
             this.mCountOfAutoExitDueToTnNetwork = builder.mCountOfAutoExitDueToTnNetwork;
+            this.mIsEmergency = builder.mIsEmergency;
+            this.mIsNtnOnlyCarrier = builder.mIsNtnOnlyCarrier;
+            this.mMaxInactivityDurationSec = builder.mMaxInactivityDurationSec;
         }
 
         public int getSatelliteServiceInitializationResult() {
@@ -828,6 +896,18 @@ public class SatelliteStats {
             return mCountOfAutoExitDueToTnNetwork;
         }
 
+        public boolean getIsEmergency() {
+            return mIsEmergency;
+        }
+
+        public boolean isNtnOnlyCarrier() {
+            return mIsNtnOnlyCarrier;
+        }
+
+        public int getMaxInactivityDurationSec() {
+            return mMaxInactivityDurationSec;
+        }
+
         /**
          * A builder class to create {@link SatelliteSessionParams} data structure class
          */
@@ -849,6 +929,9 @@ public class SatelliteStats {
             private int mCountOfSatelliteNotificationDisplayed = -1;
             private int mCountOfAutoExitDueToScreenOff = -1;
             private int mCountOfAutoExitDueToTnNetwork = -1;
+            private boolean mIsEmergency = false;
+            private boolean mIsNtnOnlyCarrier = false;
+            private int mMaxInactivityDurationSec = -1;
 
             /**
              * Sets satelliteServiceInitializationResult value of {@link SatelliteSession}
@@ -967,6 +1050,27 @@ public class SatelliteStats {
                 return this;
             }
 
+            /** Sets whether enabled satellite session is for emergency or not. */
+            public Builder setIsEmergency(boolean isEmergency) {
+                this.mIsEmergency = isEmergency;
+                return this;
+            }
+
+            /**
+             * Sets isNtnOnlyCarrier value of {@link SatelliteSession} atom
+             * then returns Builder class
+            */
+            public Builder setIsNtnOnlyCarrier(boolean isNtnOnlyCarrier) {
+                this.mIsNtnOnlyCarrier = isNtnOnlyCarrier;
+                return this;
+            }
+
+            /** Sets the max user inactivity duration in seconds. */
+            public Builder setMaxInactivityDurationSec(int maxInactivityDurationSec) {
+                this.mMaxInactivityDurationSec = maxInactivityDurationSec;
+                return this;
+            }
+
             /**
              * Returns SessionParams, which contains whole component of
              * {@link SatelliteSession} atom
@@ -997,6 +1101,9 @@ public class SatelliteStats {
                     + mCountOfSatelliteNotificationDisplayed
                     + ", CountOfAutoExitDueToScreenOff" + mCountOfAutoExitDueToScreenOff
                     + ", CountOfAutoExitDueToTnNetwork" + mCountOfAutoExitDueToTnNetwork
+                    + ", IsEmergency=" + mIsEmergency
+                    + ", IsNtnOnlyCarrier=" + mIsNtnOnlyCarrier
+                    + ", MaxInactivityDurationSec=" + mMaxInactivityDurationSec
                     + ")";
         }
     }
@@ -1011,6 +1118,7 @@ public class SatelliteStats {
         private final long mDatagramTransferTimeMillis;
         private final boolean mIsDemoMode;
         private final int mCarrierId;
+        private final boolean mIsNtnOnlyCarrier;
 
         private SatelliteIncomingDatagramParams(Builder builder) {
             this.mResultCode = builder.mResultCode;
@@ -1018,6 +1126,7 @@ public class SatelliteStats {
             this.mDatagramTransferTimeMillis = builder.mDatagramTransferTimeMillis;
             this.mIsDemoMode = builder.mIsDemoMode;
             this.mCarrierId = builder.mCarrierId;
+            this.mIsNtnOnlyCarrier = builder.mIsNtnOnlyCarrier;
         }
 
         public int getResultCode() {
@@ -1040,6 +1149,10 @@ public class SatelliteStats {
             return mCarrierId;
         }
 
+        public boolean isNtnOnlyCarrier() {
+            return mIsNtnOnlyCarrier;
+        }
+
         /**
          * A builder class to create {@link SatelliteIncomingDatagramParams} data structure class
          */
@@ -1049,6 +1162,7 @@ public class SatelliteStats {
             private long mDatagramTransferTimeMillis = -1;
             private boolean mIsDemoMode = false;
             private int mCarrierId = UNKNOWN_CARRIER_ID;
+            private boolean mIsNtnOnlyCarrier = false;
 
             /**
              * Sets resultCode value of {@link SatelliteIncomingDatagram} atom
@@ -1093,6 +1207,15 @@ public class SatelliteStats {
             }
 
             /**
+             * Sets isNtnOnlyCarrier value of {@link SatelliteIncomingDatagram} atom
+             * then returns Builder class
+            */
+            public Builder setIsNtnOnlyCarrier(boolean isNtnOnlyCarrier) {
+                this.mIsNtnOnlyCarrier = isNtnOnlyCarrier;
+                return this;
+            }
+
+            /**
              * Returns IncomingDatagramParams, which contains whole component of
              * {@link SatelliteIncomingDatagram} atom
              */
@@ -1110,6 +1233,7 @@ public class SatelliteStats {
                     + ", datagramTransferTimeMillis=" + mDatagramTransferTimeMillis
                     + ", isDemoMode=" + mIsDemoMode
                     + ", CarrierId=" + mCarrierId
+                    + ", isNtnOnlyCarrier=" + mIsNtnOnlyCarrier
                     + ")";
         }
     }
@@ -1125,6 +1249,7 @@ public class SatelliteStats {
         private final long mDatagramTransferTimeMillis;
         private final boolean mIsDemoMode;
         private final int mCarrierId;
+        private final boolean mIsNtnOnlyCarrier;
 
         private SatelliteOutgoingDatagramParams(Builder builder) {
             this.mDatagramType = builder.mDatagramType;
@@ -1133,6 +1258,7 @@ public class SatelliteStats {
             this.mDatagramTransferTimeMillis = builder.mDatagramTransferTimeMillis;
             this.mIsDemoMode = builder.mIsDemoMode;
             this.mCarrierId = builder.mCarrierId;
+            this.mIsNtnOnlyCarrier = builder.mIsNtnOnlyCarrier;
         }
 
         public int getDatagramType() {
@@ -1159,6 +1285,10 @@ public class SatelliteStats {
             return mCarrierId;
         }
 
+        public boolean isNtnOnlyCarrier() {
+            return mIsNtnOnlyCarrier;
+        }
+
         /**
          * A builder class to create {@link SatelliteOutgoingDatagramParams} data structure class
          */
@@ -1169,6 +1299,7 @@ public class SatelliteStats {
             private long mDatagramTransferTimeMillis = -1;
             private boolean mIsDemoMode = false;
             private int mCarrierId = UNKNOWN_CARRIER_ID;
+            private boolean mIsNtnOnlyCarrier = false;
 
             /**
              * Sets datagramType value of {@link SatelliteOutgoingDatagram} atom
@@ -1222,6 +1353,15 @@ public class SatelliteStats {
             }
 
             /**
+             * Sets isNtnOnlyCarrier value of {@link SatelliteOutgoingDatagram} atom
+             * then returns Builder class
+            */
+            public Builder setIsNtnOnlyCarrier(boolean isNtnOnlyCarrier) {
+                this.mIsNtnOnlyCarrier = isNtnOnlyCarrier;
+                return this;
+            }
+
+            /**
              * Returns OutgoingDatagramParams, which contains whole component of
              * {@link SatelliteOutgoingDatagram} atom
              */
@@ -1240,6 +1380,7 @@ public class SatelliteStats {
                     + ", datagramTransferTimeMillis=" + mDatagramTransferTimeMillis
                     + ", isDemoMode=" + mIsDemoMode
                     + ", CarrierId=" + mCarrierId
+                    + ", isNtnOnlyCarrier=" + mIsNtnOnlyCarrier
                     + ")";
         }
     }
@@ -1254,6 +1395,7 @@ public class SatelliteStats {
         private final boolean mIsProvisionRequest;
         private final boolean mIsCanceled;
         private final int mCarrierId;
+        private final boolean mIsNtnOnlyCarrier;
 
         private SatelliteProvisionParams(Builder builder) {
             this.mResultCode = builder.mResultCode;
@@ -1261,6 +1403,7 @@ public class SatelliteStats {
             this.mIsProvisionRequest = builder.mIsProvisionRequest;
             this.mIsCanceled = builder.mIsCanceled;
             this.mCarrierId = builder.mCarrierId;
+            this.mIsNtnOnlyCarrier = builder.mIsNtnOnlyCarrier;
         }
 
         public int getResultCode() {
@@ -1283,6 +1426,10 @@ public class SatelliteStats {
             return mCarrierId;
         }
 
+        public boolean isNtnOnlyCarrier() {
+            return mIsNtnOnlyCarrier;
+        }
+
         /**
          * A builder class to create {@link SatelliteProvisionParams} data structure class
          */
@@ -1292,6 +1439,7 @@ public class SatelliteStats {
             private boolean mIsProvisionRequest = false;
             private boolean mIsCanceled = false;
             private int mCarrierId = UNKNOWN_CARRIER_ID;
+            private boolean mIsNtnOnlyCarrier = false;
 
             /**
              * Sets resultCode value of {@link SatelliteProvision} atom
@@ -1336,6 +1484,15 @@ public class SatelliteStats {
             }
 
             /**
+             * Sets isNtnOnlyCarrier value of {@link SatelliteProvision} atom
+             * then returns Builder class
+            */
+            public Builder setIsNtnOnlyCarrier(boolean isNtnOnlyCarrier) {
+                this.mIsNtnOnlyCarrier = isNtnOnlyCarrier;
+                return this;
+            }
+
+            /**
              * Returns ProvisionParams, which contains whole component of
              * {@link SatelliteProvision} atom
              */
@@ -1353,6 +1510,7 @@ public class SatelliteStats {
                     + ", isProvisionRequest=" + mIsProvisionRequest
                     + ", isCanceled" + mIsCanceled
                     + ", CarrierId=" + mCarrierId
+                    + ", isNtnOnlyCarrier=" + mIsNtnOnlyCarrier
                     + ")";
         }
     }
@@ -1371,6 +1529,7 @@ public class SatelliteStats {
         private final boolean mIsSatelliteAllowedInCurrentLocation;
         private final boolean mIsWifiConnected;
         private final int mCarrierId;
+        private final boolean mIsNtnOnlyCarrier;
 
         private SatelliteSosMessageRecommenderParams(Builder builder) {
             this.mIsDisplaySosMessageSent = builder.mIsDisplaySosMessageSent;
@@ -1383,6 +1542,7 @@ public class SatelliteStats {
                     builder.mIsSatelliteAllowedInCurrentLocation;
             this.mIsWifiConnected = builder.mIsWifiConnected;
             this.mCarrierId = builder.mCarrierId;
+            this.mIsNtnOnlyCarrier = builder.mIsNtnOnlyCarrier;
         }
 
         public boolean isDisplaySosMessageSent() {
@@ -1421,8 +1581,12 @@ public class SatelliteStats {
             return mCarrierId;
         }
 
+        public boolean isNtnOnlyCarrier() {
+            return mIsNtnOnlyCarrier;
+        }
+
         /**
-         * A builder class to create {@link SatelliteProvisionParams} data structure class
+         * A builder class to create {@link SatelliteSosMessageRecommender} data structure class
          */
         public static class Builder {
             private boolean mIsDisplaySosMessageSent = false;
@@ -1434,7 +1598,7 @@ public class SatelliteStats {
             private boolean mIsSatelliteAllowedInCurrentLocation = false;
             private boolean mIsWifiConnected = false;
             private int mCarrierId = UNKNOWN_CARRIER_ID;
-
+            private boolean mIsNtnOnlyCarrier = false;
 
             /**
              * Sets resultCode value of {@link SatelliteSosMessageRecommender} atom
@@ -1520,6 +1684,15 @@ public class SatelliteStats {
             }
 
             /**
+             * Sets isNtnOnlyCarrier value of {@link SatelliteSosMessageRecommender} atom
+             * then returns Builder class
+            */
+            public Builder setIsNtnOnlyCarrier(boolean isNtnOnlyCarrier) {
+                this.mIsNtnOnlyCarrier = isNtnOnlyCarrier;
+                return this;
+            }
+
+            /**
              * Returns SosMessageRecommenderParams, which contains whole component of
              * {@link SatelliteSosMessageRecommenderParams} atom
              */
@@ -1542,6 +1715,7 @@ public class SatelliteStats {
                     + mIsSatelliteAllowedInCurrentLocation
                     + ", isWifiConnected=" + mIsWifiConnected
                     + ", carrierId=" + mCarrierId
+                    + ", isNtnOnlyCarrier=" + mIsNtnOnlyCarrier
                     + ")";
         }
     }
@@ -2283,6 +2457,7 @@ public class SatelliteStats {
         private final @SatelliteConstants.ConfigDataSource int mConfigDataSource;
         private final int mCarrierId;
         private final int mTriggeringEvent;
+        private final boolean mIsNtnOnlyCarrier;
 
         private SatelliteAccessControllerParams(Builder builder) {
             this.mAccessControlType = builder.mAccessControlType;
@@ -2296,6 +2471,7 @@ public class SatelliteStats {
             this.mConfigDataSource = builder.mConfigDataSource;
             this.mCarrierId = builder.mCarrierId;
             this.mTriggeringEvent = builder.mTriggeringEvent;
+            this.mIsNtnOnlyCarrier = builder.mIsNtnOnlyCarrier;
         }
 
         public @SatelliteConstants.AccessControlType int getAccessControlType() {
@@ -2342,6 +2518,10 @@ public class SatelliteStats {
             return mTriggeringEvent;
         }
 
+        public boolean isNtnOnlyCarrier() {
+            return mIsNtnOnlyCarrier;
+        }
+
         /**
          * A builder class to create {@link SatelliteAccessControllerParams} data structure class
          */
@@ -2358,6 +2538,7 @@ public class SatelliteStats {
             private int mCarrierId = UNKNOWN_CARRIER_ID;
             private @SatelliteConstants.TriggeringEvent int mTriggeringEvent =
                     TRIGGERING_EVENT_UNKNOWN;
+            private boolean mIsNtnOnlyCarrier = false;
 
             /**
              * Sets AccessControlType value of {@link #SatelliteAccessController}
@@ -2433,6 +2614,15 @@ public class SatelliteStats {
             }
 
             /**
+             * Sets isNtnOnlyCarrier value of {@link SatelliteAccessController} atom
+             * then returns Builder class
+            */
+            public Builder setIsNtnOnlyCarrier(boolean isNtnOnlyCarrier) {
+                this.mIsNtnOnlyCarrier = isNtnOnlyCarrier;
+                return this;
+            }
+
+            /**
              * Returns AccessControllerParams, which contains whole component of
              * {@link #SatelliteAccessController} atom
              */
@@ -2456,6 +2646,7 @@ public class SatelliteStats {
                     + ", ConfigDataSource=" + mConfigDataSource
                     + ", CarrierId=" + mCarrierId
                     + ", TriggeringEvent=" + mTriggeringEvent
+                    + ", IsNtnOnlyCarrier=" + mIsNtnOnlyCarrier
                     + ")";
         }
     }
@@ -2505,6 +2696,11 @@ public class SatelliteStats {
                 param.getCountOfSatelliteAllowedStateChangedEvents();
         proto.countOfSuccessfulLocationQueries = param.getCountOfSuccessfulLocationQueries();
         proto.countOfFailedLocationQueries = param.getCountOfFailedLocationQueries();
+        proto.countOfP2PSmsAvailableNotificationShown =
+                param.getCountOfP2PSmsAvailableNotificationShown();
+        proto.countOfP2PSmsAvailableNotificationRemoved =
+                param.getCountOfP2PSmsAvailableNotificationRemoved();
+        proto.isNtnOnlyCarrier = param.isNtnOnlyCarrier();
 
         mAtomsStorage.addSatelliteControllerStats(proto);
     }
@@ -2531,6 +2727,9 @@ public class SatelliteStats {
                 param.getCountOfSatelliteNotificationDisplayed();
         proto.countOfAutoExitDueToScreenOff = param.getCountOfAutoExitDueToScreenOff();
         proto.countOfAutoExitDueToTnNetwork = param.getCountOfAutoExitDueToTnNetwork();
+        proto.isEmergency = param.getIsEmergency();
+        proto.isNtnOnlyCarrier = param.isNtnOnlyCarrier();
+        proto.maxInactivityDurationSec = param.getMaxInactivityDurationSec();
         mAtomsStorage.addSatelliteSessionStats(proto);
     }
 
@@ -2543,6 +2742,7 @@ public class SatelliteStats {
         proto.datagramTransferTimeMillis = param.getDatagramTransferTimeMillis();
         proto.isDemoMode = param.getIsDemoMode();
         proto.carrierId = param.getCarrierId();
+        proto.isNtnOnlyCarrier = param.isNtnOnlyCarrier();
         mAtomsStorage.addSatelliteIncomingDatagramStats(proto);
     }
 
@@ -2556,6 +2756,7 @@ public class SatelliteStats {
         proto.datagramTransferTimeMillis = param.getDatagramTransferTimeMillis();
         proto.isDemoMode = param.getIsDemoMode();
         proto.carrierId = param.getCarrierId();
+        proto.isNtnOnlyCarrier = param.isNtnOnlyCarrier();
         mAtomsStorage.addSatelliteOutgoingDatagramStats(proto);
     }
 
@@ -2567,6 +2768,7 @@ public class SatelliteStats {
         proto.isProvisionRequest = param.getIsProvisionRequest();
         proto.isCanceled = param.getIsCanceled();
         proto.carrierId = param.getCarrierId();
+        proto.isNtnOnlyCarrier = param.isNtnOnlyCarrier();
         mAtomsStorage.addSatelliteProvisionStats(proto);
     }
 
@@ -2583,6 +2785,7 @@ public class SatelliteStats {
         proto.isSatelliteAllowedInCurrentLocation = param.isSatelliteAllowedInCurrentLocation();
         proto.isWifiConnected = param.isWifiConnected();
         proto.carrierId = param.getCarrierId();
+        proto.isNtnOnlyCarrier = param.isNtnOnlyCarrier();
         proto.count = 1;
         mAtomsStorage.addSatelliteSosMessageRecommenderStats(proto);
     }
@@ -2662,6 +2865,7 @@ public class SatelliteStats {
         proto.configDataSource = param.getConfigDataSource();
         proto.carrierId = param.getCarrierId();
         proto.triggeringEvent = param.getTriggeringEvent();
+        proto.isNtnOnlyCarrier = param.isNtnOnlyCarrier();
         mAtomsStorage.addSatelliteAccessControllerStats(proto);
     }
 }

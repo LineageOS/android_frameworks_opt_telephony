@@ -47,6 +47,8 @@ public class AccessControllerMetricsStats {
     private @SatelliteConstants.ConfigDataSource int mConfigDataSource;
     private int mCarrierId;
     private @SatelliteConstants.TriggeringEvent int mTriggeringEvent;
+    private boolean mIsNtnOnlyCarrier;
+
     private AccessControllerMetricsStats() {
         initializeAccessControllerMetricsParam();
     }
@@ -77,6 +79,7 @@ public class AccessControllerMetricsStats {
         mConfigDataSource = CONFIG_DATA_SOURCE_UNKNOWN;
         mCarrierId = UNKNOWN_CARRIER_ID;
         mTriggeringEvent = TRIGGERING_EVENT_UNKNOWN;
+        mIsNtnOnlyCarrier = false;
     }
     /**
      * Sets the Access Control Type for current satellite enablement.
@@ -188,6 +191,16 @@ public class AccessControllerMetricsStats {
         return this;
     }
 
+    /**
+     * Sets the value of isNtnOnlyCarrier for current satellite enablement.
+     * @param isNtnOnlyCarrier {@code true} if the carrier is NTN only carrier.
+    */
+    public AccessControllerMetricsStats setIsNtnOnlyCarrier(boolean isNtnOnlyCarrier) {
+        mIsNtnOnlyCarrier = isNtnOnlyCarrier;
+        logd("setIsNtnOnlyCarrier: isNtnOnlyCarrier = " + mIsNtnOnlyCarrier);
+        return this;
+    }
+
     /** Report the access controller metrics atoms to PersistAtomsStorage in telephony. */
     public void reportAccessControllerMetrics() {
         SatelliteStats.SatelliteAccessControllerParams accessControllerParams =
@@ -203,6 +216,7 @@ public class AccessControllerMetricsStats {
                         .setConfigDatasource(mConfigDataSource)
                         .setCarrierId(mCarrierId)
                         .setTriggeringEvent(mTriggeringEvent)
+                        .setIsNtnOnlyCarrier(mIsNtnOnlyCarrier)
                         .build();
         logd("reportAccessControllerMetrics: " + accessControllerParams.toString());
         SatelliteStats.getInstance().onSatelliteAccessControllerMetrics(accessControllerParams);

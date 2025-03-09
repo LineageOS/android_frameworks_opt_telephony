@@ -1491,14 +1491,18 @@ public class PhoneSwitcher extends Handler {
             mPreferredDataPhoneId = mEmergencyOverride.mPhoneId;
             mLastSwitchPreferredDataReason = DataSwitch.Reason.DATA_SWITCH_REASON_UNKNOWN;
         } else {
-            int imsRegTech = mImsRegTechProvider.get(mContext, mPhoneIdInVoiceCall);
-            if (isAnyVoiceCallActiveOnDevice() && imsRegTech != REGISTRATION_TECH_IWLAN) {
-                if (imsRegTech != REGISTRATION_TECH_CROSS_SIM) {
-                    mPreferredDataPhoneId = shouldSwitchDataDueToInCall()
-                            ? mPhoneIdInVoiceCall : getFallbackDataPhoneIdForInternetRequests();
+            if (isAnyVoiceCallActiveOnDevice()) {
+                int imsRegTech = mImsRegTechProvider.get(mContext, mPhoneIdInVoiceCall);
+                if (imsRegTech != REGISTRATION_TECH_IWLAN) {
+                    if (imsRegTech != REGISTRATION_TECH_CROSS_SIM) {
+                        mPreferredDataPhoneId = shouldSwitchDataDueToInCall()
+                                ? mPhoneIdInVoiceCall : getFallbackDataPhoneIdForInternetRequests();
+                    } else {
+                        logl("IMS call on cross-SIM, skip switching data to phone "
+                                + mPhoneIdInVoiceCall);
+                    }
                 } else {
-                    logl("IMS call on cross-SIM, skip switching data to phone "
-                            + mPhoneIdInVoiceCall);
+                    mPreferredDataPhoneId = getFallbackDataPhoneIdForInternetRequests();
                 }
             } else {
                 mPreferredDataPhoneId = getFallbackDataPhoneIdForInternetRequests();
@@ -1830,16 +1834,18 @@ public class PhoneSwitcher extends Handler {
         if (phone == null) {
             return false;
         }
-
+        Call bgCall = phone.getBackgroundCall();
+        Call fgCall = phone.getForegroundCall();
+        if (bgCall == null || fgCall == null) {
+            return false;
+        }
         // A phone in voice call might trigger data being switched to it.
         // Exclude dialing to give modem time to process an EMC first before dealing with DDS switch
         // Include alerting because modem RLF leads to delay in switch, so carrier required to
         // switch in alerting phase.
         // TODO: check ringing call for vDADA
-        return (!phone.getBackgroundCall().isIdle()
-                && phone.getBackgroundCall().getState() != Call.State.DIALING)
-                || (!phone.getForegroundCall().isIdle()
-                && phone.getForegroundCall().getState() != Call.State.DIALING);
+        return (!bgCall.isIdle() && bgCall.getState() != Call.State.DIALING)
+                || (!fgCall.isIdle() && fgCall.getState() != Call.State.DIALING);
     }
 
     private void updateHalCommandToUse() {

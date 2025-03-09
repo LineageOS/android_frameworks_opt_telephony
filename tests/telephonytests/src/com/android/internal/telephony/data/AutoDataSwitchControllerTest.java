@@ -101,9 +101,11 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mGoodTelephonyDisplayInfo = new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_NR,
-                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED, false /*roaming*/);
+                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED, false /*roaming*/,
+                false/*isNtn*/, false/*isSatelliteConstrainedDataStatus*/);
         mBadTelephonyDisplayInfo = new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_UMTS,
-                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false /*roaming*/);
+                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false /*roaming*/,
+                false/*isNtn*/, false/*isSatelliteConstrainedDataStatus*/);
         mMockedPhoneSwitcherCallback =
                 mock(AutoDataSwitchController.AutoDataSwitchControllerCallback.class);
         mMockedAlarmManager = mock(AlarmManager.class);

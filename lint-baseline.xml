@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 8.4.0-alpha08" type="baseline" client="" dependencies="true" name="" variant="all" version="8.4.0-alpha08">
+
+    <issue
+        id="SimpleManualPermissionEnforcement"
+        message="IEuiccCardController permission check should be converted to @EnforcePermission annotation"
+        errorLine1="        mContext.enforceCallingOrSelfPermission(android.Manifest.permission.DUMP, &quot;Requires DUMP&quot;);"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="frameworks/opt/telephony/src/java/com/android/internal/telephony/euicc/EuiccCardController.java"
+            line="1525"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="SimpleManualPermissionEnforcement"
+        message="IEuiccController permission check can be converted to @EnforcePermission annotation"
+        errorLine1="        mContext.enforceCallingPermission(Manifest.permission.MASTER_CLEAR,"
+        errorLine2="        ^">
+        <location
+            file="frameworks/opt/telephony/src/java/com/android/internal/telephony/euicc/EuiccController.java"
+            line="1679"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="SimpleManualPermissionEnforcement"
+        message="IEuiccController permission check should be converted to @EnforcePermission annotation"
+        errorLine1="        mContext.enforceCallingOrSelfPermission(android.Manifest.permission.DUMP, &quot;Requires DUMP&quot;);"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="frameworks/opt/telephony/src/java/com/android/internal/telephony/euicc/EuiccController.java"
+            line="1812"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="SimpleManualPermissionEnforcement"
+        message="ISub permission check should be converted to @EnforcePermission annotation"
+        errorLine1="        mContext.enforceCallingOrSelfPermission(android.Manifest.permission.DUMP,"
+        errorLine2="        ^">
+        <location
+            file="frameworks/opt/telephony/src/java/com/android/internal/telephony/subscription/SubscriptionManagerService.java"
+            line="4800"
+            column="9"/>
+    </issue>
+
+</issues>

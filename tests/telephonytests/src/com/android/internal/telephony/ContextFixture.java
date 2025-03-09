@@ -241,6 +241,14 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public boolean bindServiceAsUser(
+                Intent serviceIntent,
+                ServiceConnection connection,
+                int flags, UserHandle user) {
+            return bindService(serviceIntent, connection, flags);
+        }
+
+        @Override
         public void unbindService(
                 ServiceConnection connection) {
             IInterface service = mServiceByServiceConnection.remove(connection);

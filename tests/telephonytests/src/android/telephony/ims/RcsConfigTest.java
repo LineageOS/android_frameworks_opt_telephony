@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.telephony.ims;
+package android.telephony.ims;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
@@ -36,6 +36,7 @@ import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.FakeTelephonyProvider;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -174,6 +175,11 @@ public final class RcsConfigTest {
                 mFakeTelephonyProvider);
         when(mContext.getContentResolver()).thenReturn(mContentResolver);
         createFakeSimInfo();
+    }
+
+    @After
+    public void tearDown() {
+        mFakeTelephonyProvider.close();
     }
 
     @Test

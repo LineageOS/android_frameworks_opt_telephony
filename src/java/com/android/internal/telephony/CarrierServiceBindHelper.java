@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.annotation.NonNull;
+import android.app.ActivityManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -161,7 +162,11 @@ public class CarrierServiceBindHelper {
     };
 
     public CarrierServiceBindHelper(Context context) {
-        mContext = context.createContextAsUser(Process.myUserHandle(), 0);
+        mContext =
+                context.createContextAsUser(
+                        Flags.supportCarrierServicesForHsum()
+                        ? UserHandle.of(ActivityManager.getCurrentUser())
+                        : Process.myUserHandle(), 0);
 
         updateBindingsAndSimStates();
 

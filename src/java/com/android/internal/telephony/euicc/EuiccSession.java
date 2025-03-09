@@ -15,6 +15,7 @@
  */
 package com.android.internal.telephony.euicc;
 
+import android.annotation.Nullable;
 import android.util.ArraySet;
 
 import com.android.internal.annotations.GuardedBy;
@@ -85,12 +86,16 @@ public class EuiccSession {
 
     /** Returns {@code true} if there is at least one session ongoing. */
     public boolean hasSession() {
-        boolean hasSession;
-        synchronized(this) {
-            hasSession = !mSessions.isEmpty();
-        }
+        boolean hasSession = hasSessionInternal();
         Rlog.i(TAG, "hasSession: " + hasSession);
         return hasSession;
+    }
+
+    // The bare metal implementation of hasSession() without logging.
+    private boolean hasSessionInternal() {
+        synchronized(this) {
+            return !mSessions.isEmpty();
+        }
     }
 
     /**
@@ -104,7 +109,7 @@ public class EuiccSession {
     public void noteChannelOpen(ApduSender apduSender) {
         Rlog.i(TAG, "noteChannelOpen: " + apduSender);
         synchronized(this) {
-            if (hasSession()) {
+            if (hasSessionInternal()) {
                 mApduSenders.add(apduSender);
             }
         }
@@ -112,19 +117,41 @@ public class EuiccSession {
 
     /**
      * Marks the end of a eUICC transaction session. If this ends the last ongoing session,
-     * try to close the logical channel using the noted {@code apduSender}
+     * try to close the logical channel using the noted {@code apduSender}s
      * (see {@link #noteChannelOpen()}).
      *
      * @param sessionId The session ID.
      */
     public void endSession(String sessionId) {
         Rlog.i(TAG, "endSession: " + sessionId);
+        endSessionInternal(sessionId);
+    }
+
+    /**
+     * Marks the end of all eUICC transaction sessions and close the logical
+     * channels using the noted {@code apduSender}s
+     * (see {@link #noteChannelOpen()}).
+     *
+     * <p>This is useful in global cleanup e.g. when EuiccService
+     * implementation app crashes and indivial {@link #endSession()} calls
+     * won't happen in {@link EuiccConnector}.
+     */
+    public void endAllSessions() {
+        Rlog.i(TAG, "endAllSessions");
+        endSessionInternal(null);
+    }
+
+    // The implementation of endSession(sessionId) or endAllSessions() when the sessionId is null,
+    // without logging.
+    private void endSessionInternal(@Nullable String sessionId) {
         ApduSender[] apduSenders = new ApduSender[0];
         synchronized(this) {
-            boolean sessionRemoved = mSessions.remove(sessionId);
-            // sessionRemoved is false if the `sessionId` was never started or there was
-            // no session at all i.e. `sessions` is empty. Don't bother invoke `apduSender`.
-            if (sessionRemoved && mSessions.isEmpty()) {
+            boolean sessionRemoved = removeOrClear(mSessions, sessionId);
+            // 1. sessionRemoved is false if the `sessionId` was never started or there was
+            // no session. Don't bother invoke `apduSender`.
+            // 2. If some session is removed, and as a result there is no more session, we
+            // can clsoe channels.
+            if (sessionRemoved && !hasSessionInternal()) {
                 // copy mApduSenders to a local variable so we don't call closeAnyOpenChannel()
                 // which can take time in synchronized block.
                 apduSenders = mApduSenders.toArray(apduSenders);
@@ -133,6 +160,21 @@ public class EuiccSession {
         }
         for (ApduSender apduSender : apduSenders) {
             apduSender.closeAnyOpenChannel();
+        }
+    }
+
+    /**
+     * Removes the given element from the set. If the element is null, clears the set.
+     *
+     * @return true if the set changed as a result of the call
+     */
+    private static boolean removeOrClear(Set<String> collection, @Nullable String element) {
+        if (element == null) {
+            boolean collectionChanged = !collection.isEmpty();
+            collection.clear();
+            return collectionChanged;
+        } else {
+            return collection.remove(element);
         }
     }
 

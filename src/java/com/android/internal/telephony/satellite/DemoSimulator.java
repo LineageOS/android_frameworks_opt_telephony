@@ -287,12 +287,12 @@ public class DemoSimulator extends StateMachine {
      *                             and {@code false} to disable
      * @param errorCallback The callback to receive the error code result of the operation.
      */
-    public void enableCellularModemWhileSatelliteModeIsOn(boolean enabled,
+    public void enableTerrestrialNetworkScanWhileSatelliteModeIsOn(boolean enabled,
             @NonNull IIntegerConsumer errorCallback) {
         try {
             errorCallback.accept(SatelliteResult.SATELLITE_RESULT_SUCCESS);
         } catch (RemoteException e) {
-            loge("enableCellularModemWhileSatelliteModeIsOn: RemoteException " + e);
+            loge("enableTerrestrialNetworkScanWhileSatelliteModeIsOn: RemoteException " + e);
         }
     }
 

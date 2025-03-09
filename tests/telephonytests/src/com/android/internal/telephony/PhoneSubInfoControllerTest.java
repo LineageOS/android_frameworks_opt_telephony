@@ -1270,8 +1270,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
         doReturn(refImpuArray).when(mIsimUiccRecords).getIsimImpu();
 
-        List<Uri> impuList = mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG,
-                FEATURE_ID);
+        List<Uri> impuList = mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG);
 
         assertNotNull(impuList);
         assertEquals(refImpuArray.length, impuList.size());
@@ -1288,8 +1287,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         refImpuArray[2] = "tel:+91987754324";
         doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
         doReturn(refImpuArray).when(mIsimUiccRecords).getIsimImpu();
-        List<Uri> impuList = mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG,
-                FEATURE_ID);
+        List<Uri> impuList = mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG);
         assertNotNull(impuList);
         // Null or Empty string cannot be converted to URI
         assertEquals(refImpuArray.length - 2, impuList.size());
@@ -1300,7 +1298,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         doReturn(null).when(mPhone).getIsimRecords();
 
         try {
-            mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG, FEATURE_ID);
+            mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG);
             fail();
         } catch (Exception ex) {
             assertTrue(ex instanceof IllegalStateException);
@@ -1311,32 +1309,121 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
     @Test
     public void getImsPublicUserIdentities_InValidSubIdCheck() {
         try {
-            mPhoneSubInfoControllerUT.getImsPublicUserIdentities(-1, TAG, FEATURE_ID);
+            mPhoneSubInfoControllerUT.getImsPublicUserIdentities(-1, TAG);
             fail();
         } catch (Exception ex) {
             assertTrue(ex instanceof IllegalArgumentException);
-            assertTrue(ex.getMessage().contains("Invalid SubscriptionID"));
+            assertTrue(ex.getMessage().contains("Invalid subscription"));
         }
     }
 
     @Test
     public void getImsPublicUserIdentities_NoReadPrivilegedPermission() {
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
-        String[] refImpuArray = new String[3];
-        refImpuArray[0] = "012345678";
-        refImpuArray[1] = "sip:test@verify.com";
-        refImpuArray[2] = "tel:+91987754324";
-        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
-        doReturn(refImpuArray).when(mIsimUiccRecords).getIsimImpu();
 
-        List<Uri> impuList = mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG,
-                FEATURE_ID);
+        try {
+            mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG);
+            fail();
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getImsPublicUserIdentities"));
+        }
 
-        assertNotNull(impuList);
-        assertEquals(refImpuArray.length, impuList.size());
-        assertEquals(impuList.get(0).toString(), refImpuArray[0]);
-        assertEquals(impuList.get(1).toString(), refImpuArray[1]);
-        assertEquals(impuList.get(2).toString(), refImpuArray[2]);
         mContextFixture.addCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE);
+    }
+
+    @Test
+    public void getImsPcscfAddresses() {
+        String[] preDefinedPcscfs = new String[3];
+        preDefinedPcscfs[0] = "127.0.0.1";
+        preDefinedPcscfs[1] = "192.168.0.1";
+        preDefinedPcscfs[2] = "::1";
+        doReturn(true).when(mFeatureFlags).supportIsimRecord();
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(preDefinedPcscfs).when(mIsimUiccRecords).getIsimPcscf();
+
+        List<String> pcscfAddresses = mPhoneSubInfoControllerUT.getImsPcscfAddresses(0, TAG);
+
+        assertNotNull(pcscfAddresses);
+        assertEquals(preDefinedPcscfs.length, pcscfAddresses.size());
+        assertEquals(preDefinedPcscfs[0], pcscfAddresses.get(0).toString());
+        assertEquals(preDefinedPcscfs[1], pcscfAddresses.get(1).toString());
+        assertEquals(preDefinedPcscfs[2], pcscfAddresses.get(2).toString());
+    }
+
+    @Test
+    public void getImsPcscfAddresses_InvalidPcscf() {
+        String[] preDefinedPcscfs = new String[3];
+        preDefinedPcscfs[0] = null;
+        preDefinedPcscfs[2] = "";
+        preDefinedPcscfs[2] = "::1";
+        doReturn(true).when(mFeatureFlags).supportIsimRecord();
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(preDefinedPcscfs).when(mIsimUiccRecords).getIsimPcscf();
+
+        List<String> pcscfAddresses = mPhoneSubInfoControllerUT.getImsPcscfAddresses(0, TAG);
+
+        assertNotNull(pcscfAddresses);
+        // Null or Empty string is not added to pcscf list
+        assertEquals(preDefinedPcscfs.length - 2, pcscfAddresses.size());
+    }
+
+    @Test
+    public void getImsPcscfAddresses_IsimNotLoadedError() {
+        doReturn(true).when(mFeatureFlags).supportIsimRecord();
+        doReturn(null).when(mPhone).getIsimRecords();
+
+        try {
+            mPhoneSubInfoControllerUT.getImsPcscfAddresses(0, TAG);
+            fail();
+        } catch (Exception ex) {
+            assertTrue(ex instanceof IllegalStateException);
+            assertTrue(ex.getMessage().contains("ISIM is not loaded"));
+        }
+    }
+
+    @Test
+    public void getImsPcscfAddresses_InValidSubIdCheck() {
+        doReturn(true).when(mFeatureFlags).supportIsimRecord();
+
+        try {
+            mPhoneSubInfoControllerUT.getImsPcscfAddresses(-1, TAG);
+            fail();
+        } catch (Exception ex) {
+            assertTrue(ex instanceof IllegalArgumentException);
+            assertTrue(ex.getMessage().contains("Invalid subscription"));
+        }
+    }
+
+    @Test
+    public void getImsPcscfAddresses_NoReadPrivilegedPermission() {
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+        doReturn(true).when(mFeatureFlags).supportIsimRecord();
+
+        try {
+            mPhoneSubInfoControllerUT.getImsPcscfAddresses(0, TAG);
+            fail();
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getImsPcscfAddresses"));
+        }
+
+        mContextFixture.addCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE);
+    }
+
+    @Test
+    public void getImsPcscfAddresses_FlagDisabled() {
+        String[] preDefinedPcscfs = new String[3];
+        preDefinedPcscfs[0] = "127.0.0.1";
+        preDefinedPcscfs[1] = "192.168.0.1";
+        preDefinedPcscfs[2] = "::1";
+        doReturn(false).when(mFeatureFlags).supportIsimRecord();
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(preDefinedPcscfs).when(mIsimUiccRecords).getIsimPcscf();
+
+        List<String> pcscfAddresses = mPhoneSubInfoControllerUT.getImsPcscfAddresses(0, TAG);
+
+        assertNotNull(pcscfAddresses);
+        assertEquals(0, pcscfAddresses.size());
     }
 }

@@ -28,6 +28,8 @@ import android.telephony.RadioAccessSpecifier;
 import android.telephony.Rlog;
 import android.telephony.SignalThresholdInfo;
 
+import com.android.internal.telephony.flags.Flags;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -172,6 +174,7 @@ public class RadioNetworkProxy extends RadioServiceProxy {
      * @throws RemoteException
      */
     public void getCdmaRoamingPreference(int serial) throws RemoteException {
+        if (Flags.cleanupCdma()) return;
         if (isEmpty()) return;
         if (isAidl()) {
             mNetworkProxy.getCdmaRoamingPreference(serial);
@@ -431,6 +434,7 @@ public class RadioNetworkProxy extends RadioServiceProxy {
      * @throws RemoteException
      */
     public void setCdmaRoamingPreference(int serial, int cdmaRoamingType) throws RemoteException {
+        if (Flags.cleanupCdma()) return;
         if (isEmpty()) return;
         if (isAidl()) {
             mNetworkProxy.setCdmaRoamingPreference(serial, cdmaRoamingType);
@@ -976,6 +980,62 @@ public class RadioNetworkProxy extends RadioServiceProxy {
         if (isEmpty()) return;
         if (isAidl()) {
             mNetworkProxy.setSecurityAlgorithmsUpdatedEnabled(serial, enable);
+        }
+        // Only supported on AIDL.
+    }
+
+   /**
+     * Set the non-terrestrial PLMN with lower priority than terrestrial networks.
+     *
+     * @param serial Serial number of request.
+     * @param simSlot Indicates the SIM slot to which this API will be applied. The modem will use
+     *                this information to determine the relevant carrier.
+     * @param carrierPlmnList The list of roaming PLMN used for connecting to satellite networks
+     *                        supported by user subscription.
+     * @param allSatellitePlmnList Modem should use the allSatellitePlmnList to identify satellite
+     *                             PLMNs that are not supported by the carrier and make sure not to
+     *                             attach to them.
+     */
+    public void setSatellitePlmn(int serial, int simSlot, List<String> carrierPlmnList,
+            List<String> allSatellitePlmnList) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            String[] carrierPlmnArray = carrierPlmnList.toArray(new String[0]);
+            String[] allSatellitePlmnArray = allSatellitePlmnList.toArray(new String[0]);
+            mNetworkProxy.setSatellitePlmn(serial, simSlot, carrierPlmnArray,
+                    allSatellitePlmnArray);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Enable or disable satellite in the cellular modem associated with a carrier.
+     *
+     * @param serial Serial number of request.
+     * @param simSlot Indicates the SIM slot to which this API will be applied. The modem will use
+     *                this information to determine the relevant carrier.
+     * @param satelliteEnabled {@code true} to enable satellite, {@code false} to disable satellite.
+     */
+    public void setSatelliteEnabledForCarrier(int serial, int simSlot,
+            boolean satelliteEnabled) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.setSatelliteEnabledForCarrier(serial, simSlot, satelliteEnabled);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Check whether satellite is enabled in the cellular modem associated with a carrier.
+     *
+     * @param serial Serial number of request.
+     * @param simSlot Indicates the SIM slot to which this API will be applied.
+     */
+    public void isSatelliteEnabledForCarrier(int serial, int simSlot)
+            throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.isSatelliteEnabledForCarrier(serial, simSlot);
         }
         // Only supported on AIDL.
     }

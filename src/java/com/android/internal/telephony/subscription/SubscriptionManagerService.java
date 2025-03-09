@@ -27,6 +27,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.RequiresPermission;
 import android.annotation.UserIdInt;
+import android.app.ActivityManager;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.app.compat.CompatChanges;
@@ -720,7 +721,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                     return false;
                 }
             } else {
-                if (!mSubscriptionManager.canManageSubscription(subInfo.toSubscriptionInfo(),
+                if (!canManageSubscription(subInfo.toSubscriptionInfo(),
                         callingPackage)) {
                     loge("checkCarrierPrivilegeOnSubList: cannot manage sub " + subId);
                     return false;
@@ -1450,8 +1451,8 @@ public class SubscriptionManagerService extends ISub.Stub {
             SatelliteController satelliteController = SatelliteController.getInstance();
             boolean isSatelliteEnabledOrBeingEnabled = false;
             if (satelliteController != null) {
-                isSatelliteEnabledOrBeingEnabled = satelliteController.isSatelliteEnabled()
-                        || satelliteController.isSatelliteBeingEnabled();
+                isSatelliteEnabledOrBeingEnabled =
+                        satelliteController.isSatelliteEnabledOrBeingEnabled();
             }
 
             if (!isSatelliteEnabledOrBeingEnabled) {
@@ -1838,37 +1839,35 @@ public class SubscriptionManagerService extends ISub.Stub {
                     + " newSetting=" + SubscriptionManager.usageSettingToString(newUsageSetting));
         }
 
-        if (mFeatureFlags.dataOnlyCellularService()) {
-            final int[] servicesFromCarrierConfig =
-                    config.getIntArray(
-                            CarrierConfigManager.KEY_CELLULAR_SERVICE_CAPABILITIES_INT_ARRAY);
-            int serviceBitmasks = 0;
-            boolean allServicesAreValid = true;
-            // Check if all services from carrier config are valid before setting to db
-            if (servicesFromCarrierConfig == null) {
-                allServicesAreValid = false;
-            } else {
-                for (int service : servicesFromCarrierConfig) {
-                    if (service < SubscriptionManager.SERVICE_CAPABILITY_VOICE
-                            || service > SubscriptionManager.SERVICE_CAPABILITY_MAX) {
-                        allServicesAreValid = false;
-                        break;
-                    } else {
-                        serviceBitmasks |= SubscriptionManager.serviceCapabilityToBitmask(service);
-                    }
+        final int[] servicesFromCarrierConfig =
+                config.getIntArray(
+                        CarrierConfigManager.KEY_CELLULAR_SERVICE_CAPABILITIES_INT_ARRAY);
+        int serviceBitmasks = 0;
+        boolean allServicesAreValid = true;
+        // Check if all services from carrier config are valid before setting to db
+        if (servicesFromCarrierConfig == null) {
+            allServicesAreValid = false;
+        } else {
+            for (int service : servicesFromCarrierConfig) {
+                if (service < SubscriptionManager.SERVICE_CAPABILITY_VOICE
+                        || service > SubscriptionManager.SERVICE_CAPABILITY_MAX) {
+                    allServicesAreValid = false;
+                    break;
+                } else {
+                    serviceBitmasks |= SubscriptionManager.serviceCapabilityToBitmask(service);
                 }
             }
-            // In case we get invalid service override, fall back to default value.
-            // DO NOT throw exception which will crash phone process.
-            if (!allServicesAreValid) {
-                serviceBitmasks = SubscriptionManager.getAllServiceCapabilityBitmasks();
-            }
+        }
+        // In case we get invalid service override, fall back to default value.
+        // DO NOT throw exception which will crash phone process.
+        if (!allServicesAreValid) {
+            serviceBitmasks = SubscriptionManager.getAllServiceCapabilityBitmasks();
+        }
 
-            if (serviceBitmasks != subInfo.getServiceCapabilities()) {
-                log("updateSubscriptionByCarrierConfig: serviceCapabilities updated from "
-                        + subInfo.getServiceCapabilities() + " to " + serviceBitmasks);
-                mSubscriptionDatabaseManager.setServiceCapabilities(subId, serviceBitmasks);
-            }
+        if (serviceBitmasks != subInfo.getServiceCapabilities()) {
+            log("updateSubscriptionByCarrierConfig: serviceCapabilities updated from "
+                    + subInfo.getServiceCapabilities() + " to " + serviceBitmasks);
+            mSubscriptionDatabaseManager.setServiceCapabilities(subId, serviceBitmasks);
         }
     }
 
@@ -2268,7 +2267,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         return getSubscriptionInfoStreamAsUser(BINDER_WRAPPER.getCallingUserHandle())
                 .map(SubscriptionInfoInternal::toSubscriptionInfo)
                 .filter(subInfo -> subInfo.isEmbedded()
-                        && mSubscriptionManager.canManageSubscription(subInfo, callingPackage))
+                        && canManageSubscription(subInfo, callingPackage))
                 .sorted(Comparator.comparing(SubscriptionInfo::getSimSlotIndex)
                         .thenComparing(SubscriptionInfo::getSubscriptionId))
                 .collect(Collectors.toList());
@@ -2994,7 +2993,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         return mSubscriptionDatabaseManager.getAllSubscriptions().stream()
                 .map(SubscriptionInfoInternal::toSubscriptionInfo)
                 .filter(info -> groupUuid.equals(info.getGroupUuid())
-                        && (mSubscriptionManager.canManageSubscription(info, callingPackage)
+                        && (canManageSubscription(info, callingPackage)
                         || TelephonyPermissions.checkCallingOrSelfReadPhoneStateNoThrow(
                                 mContext, info.getSubscriptionId(), callingPackage,
                         callingFeatureId, "getSubscriptionsInGroup")))
@@ -4722,6 +4721,9 @@ public class SubscriptionManagerService extends ISub.Stub {
     public boolean isSatelliteProvisionedForNonIpDatagram(int subId) {
         SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager.getSubscriptionInfoInternal(
                 subId);
+        if (subInfo == null) {
+            return false;
+        }
 
         return subInfo.getIsSatelliteProvisionedForNonIpDatagram() == 1;
     }
@@ -4901,6 +4903,15 @@ public class SubscriptionManagerService extends ISub.Stub {
         }
 
         return cardNumber;
+    }
+
+    private boolean canManageSubscription(SubscriptionInfo subInfo, String packageName) {
+        if (Flags.hsumPackageManager() && UserManager.isHeadlessSystemUserMode()) {
+            return mSubscriptionManager.canManageSubscriptionAsUser(subInfo, packageName,
+                    UserHandle.of(ActivityManager.getCurrentUser()));
+        } else {
+            return mSubscriptionManager.canManageSubscription(subInfo, packageName);
+        }
     }
 
     /**

@@ -18,6 +18,8 @@ package com.android.internal.telephony;
 
 import android.annotation.NonNull;
 import android.compat.annotation.UnsupportedAppUsage;
+import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.SystemProperties;
 
@@ -208,5 +210,15 @@ public class TelephonyCapabilities {
         if (vendorApiLevel < Build.VERSION_CODES.VANILLA_ICE_CREAM) return false;
 
         return featureFlags.minimalTelephonyCdmCheck();
+    }
+
+    /**
+     * @return true if this device supports telephony calling, false if it does not.
+     */
+    public static boolean supportsTelephonyCalling(@NonNull FeatureFlags featureFlags,
+            Context context) {
+        if (!TelephonyCapabilities.minimalTelephonyCdmCheck(featureFlags)) return true;
+        return context.getPackageManager().hasSystemFeature(
+                PackageManager.FEATURE_TELEPHONY_CALLING);
     }
 }

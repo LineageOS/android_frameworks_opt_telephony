@@ -225,8 +225,6 @@ public class DataEvaluation {
         SIM_LOADED(true),
         /** SIM is removed. */
         SIM_REMOVAL(true),
-        /** SIM is disabled. */
-        SIM_DISABLED(true),
         /** Data profiles changed. */
         DATA_PROFILES_CHANGED(true),
         /** When service state changes.(For now only considering data RAT and data registration). */

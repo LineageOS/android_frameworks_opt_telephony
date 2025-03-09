@@ -108,9 +108,9 @@ public class ImsServiceControllerCompatTest extends ImsTestBase {
         mMmTelCompatAdapterSpy = spy(new MmTelFeatureCompatAdapter(mMockContext, SLOT_0,
                 mMockMmTelInterfaceAdapter));
         mTestImsServiceController = new ImsServiceControllerCompat(mMockContext, mTestComponentName,
-                mMockCallbacks, mHandler, REBIND_RETRY, mRepo,
+                 mMockCallbacks, mHandler, REBIND_RETRY, mRepo,
                 (a, b, c) -> mMmTelCompatAdapterSpy);
-        when(mMockContext.bindService(any(), any(), anyInt())).thenReturn(true);
+        when(mMockContext.bindServiceAsUser(any(), any(), anyInt(), any())).thenReturn(true);
         when(mMockServiceControllerBinder.createMMTelFeature(anyInt()))
                 .thenReturn(mMockRemoteMMTelFeature);
         when(mMockRemoteMMTelFeature.getConfigInterface()).thenReturn(mMockImsConfig);
@@ -146,8 +146,8 @@ public class ImsServiceControllerCompatTest extends ImsTestBase {
         verify(mMockServiceControllerBinder).createMMTelFeature(SLOT_0);
         verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_0),
                 eq(ImsFeature.FEATURE_MMTEL), any());
-        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
-                eq(mTestImsServiceController));
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(SUB_1),
+                eq(ImsFeature.FEATURE_MMTEL), eq(mTestImsServiceController));
         validateMmTelFeatureContainerExists(SLOT_0);
         // Remove the feature
         conn.onBindingDied(mTestComponentName);
@@ -191,8 +191,9 @@ public class ImsServiceControllerCompatTest extends ImsTestBase {
             SparseIntArray slotIdToSubIdMap) {
         ArgumentCaptor<ServiceConnection> serviceCaptor =
                 ArgumentCaptor.forClass(ServiceConnection.class);
-        assertTrue(mTestImsServiceController.bind(testFeatures, slotIdToSubIdMap));
-        verify(mMockContext).bindService(any(), serviceCaptor.capture(), anyInt());
+        assertTrue(mTestImsServiceController.bind(mContext.getUser(), testFeatures,
+                slotIdToSubIdMap));
+        verify(mMockContext).bindServiceAsUser(any(), serviceCaptor.capture(), anyInt(), any());
         return serviceCaptor.getValue();
     }
 }

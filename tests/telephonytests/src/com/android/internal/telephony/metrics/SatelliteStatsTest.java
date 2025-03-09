@@ -107,6 +107,9 @@ public class SatelliteStatsTest extends TelephonyTest {
                         .setCountOfDisallowedSatelliteAccess(2)
                         .setCountOfSatelliteAccessCheckFail(3)
                         .setIsProvisioned(true)
+                        .setCountOfP2PSmsAvailableNotificationShown(3)
+                        .setCountOfP2PSmsAvailableNotificationRemoved(3)
+                        .setIsNtnOnlyCarrier(false)
                         .build();
 
         mSatelliteStats.onSatelliteControllerMetrics(param);
@@ -170,7 +173,14 @@ public class SatelliteStatsTest extends TelephonyTest {
                 stats.countOfDisallowedSatelliteAccess);
         assertEquals(param.getCountOfSatelliteAccessCheckFail(),
                 stats.countOfSatelliteAccessCheckFail);
-        assertEquals(param.isProvisioned(), stats.isProvisioned);
+        assertEquals(SatelliteStats.SatelliteControllerParams.isProvisioned(), stats.isProvisioned);
+        assertEquals(SatelliteStats.SatelliteControllerParams.getCarrierId(), stats.carrierId);
+        assertEquals(param.getCountOfP2PSmsAvailableNotificationShown(),
+                stats.countOfP2PSmsAvailableNotificationShown);
+        assertEquals(param.getCountOfP2PSmsAvailableNotificationRemoved(),
+                stats.countOfP2PSmsAvailableNotificationRemoved);
+        assertEquals(SatelliteStats.SatelliteControllerParams.isNtnOnlyCarrier(),
+                stats.isNtnOnlyCarrier);
 
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
@@ -239,6 +249,12 @@ public class SatelliteStatsTest extends TelephonyTest {
                         .setCountOfIncomingDatagramFailed(0)
                         .setIsDemoMode(false)
                         .setMaxNtnSignalStrengthLevel(NTN_SIGNAL_STRENGTH_GOOD)
+                        .setCarrierId(1589)
+                        .setCountOfSatelliteNotificationDisplayed(5)
+                        .setCountOfAutoExitDueToScreenOff(7)
+                        .setCountOfAutoExitDueToTnNetwork(3)
+                        .setIsEmergency(true)
+                        .setMaxInactivityDurationSec(10)
                         .build();
 
         mSatelliteStats.onSatelliteSessionMetrics(param);
@@ -262,6 +278,13 @@ public class SatelliteStatsTest extends TelephonyTest {
         assertEquals(param.getCountOfIncomingDatagramFailed(), stats.countOfIncomingDatagramFailed);
         assertEquals(param.getIsDemoMode(), stats.isDemoMode);
         assertEquals(param.getMaxNtnSignalStrengthLevel(), stats.maxNtnSignalStrengthLevel);
+        assertEquals(param.getCarrierId(), stats.carrierId);
+        assertEquals(param.getCountOfSatelliteNotificationDisplayed(),
+                stats.countOfSatelliteNotificationDisplayed);
+        assertEquals(param.getCountOfAutoExitDueToScreenOff(), stats.countOfAutoExitDueToScreenOff);
+        assertEquals(param.getCountOfAutoExitDueToTnNetwork(), stats.countOfAutoExitDueToTnNetwork);
+        assertEquals(param.getIsEmergency(), stats.isEmergency);
+        assertEquals(param.getMaxInactivityDurationSec(), stats.maxInactivityDurationSec);
 
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }

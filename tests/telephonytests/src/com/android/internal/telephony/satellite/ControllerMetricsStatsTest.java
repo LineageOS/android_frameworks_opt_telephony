@@ -180,7 +180,7 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mCountOfIncomingDatagramFail);
         assertEquals(0, mTestStats.mCountOfDatagramTypeSosSmsSuccess);
         assertEquals(0, mTestStats.mCountOfDatagramTypeSosSmsFail);
-        assertEquals(10, mTestStats.mCountOfDatagramTypeLocationSharingSuccess);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeLocationSharingSuccess);
         assertEquals(0, mTestStats.mCountOfDatagramTypeLocationSharingFail);
         assertEquals(0, mTestStats.mCountOfProvisionSuccess);
         assertEquals(0, mTestStats.mCountOfProvisionFail);
@@ -282,7 +282,7 @@ public class ControllerMetricsStatsTest extends TelephonyTest {
         assertEquals(0, mTestStats.mCountOfDatagramTypeSosSmsSuccess);
         assertEquals(0, mTestStats.mCountOfDatagramTypeSosSmsFail);
         assertEquals(0, mTestStats.mCountOfDatagramTypeLocationSharingSuccess);
-        assertEquals(10, mTestStats.mCountOfDatagramTypeLocationSharingFail);
+        assertEquals(0, mTestStats.mCountOfDatagramTypeLocationSharingFail);
         assertEquals(0, mTestStats.mCountOfProvisionSuccess);
         assertEquals(0, mTestStats.mCountOfProvisionFail);
         assertEquals(0, mTestStats.mCountOfDeprovisionSuccess);

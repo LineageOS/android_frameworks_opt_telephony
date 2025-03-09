@@ -366,9 +366,8 @@ public class SimultaneousCallingTracker {
             SubscriptionInfo subInfo =
                     SubscriptionManagerService.getInstance().getSubscriptionInfo(subId);
 
-            if (mFeatureFlags.dataOnlyCellularService() &&
-                    subId > SubscriptionManager.INVALID_SUBSCRIPTION_ID && subInfo != null &&
-                    subInfo.getServiceCapabilities()
+            if (subId > SubscriptionManager.INVALID_SUBSCRIPTION_ID && subInfo != null
+                    && subInfo.getServiceCapabilities()
                             .contains(SubscriptionManager.SERVICE_CAPABILITY_VOICE)) {
                 Log.v(LOG_TAG, "generateVoiceCapablePhoneMapBasedOnUserAssociation: adding "
                         + "phoneId = " + phone.getPhoneId());

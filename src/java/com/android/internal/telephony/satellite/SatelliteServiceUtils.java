@@ -36,13 +36,16 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.satellite.AntennaPosition;
+import android.telephony.satellite.EarfcnRange;
 import android.telephony.satellite.NtnSignalStrength;
 import android.telephony.satellite.PointingInfo;
 import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
+import android.telephony.satellite.SatelliteInfo;
 import android.telephony.satellite.SatelliteManager;
 import android.telephony.satellite.SatelliteModemEnableRequestAttributes;
 import android.telephony.satellite.SatelliteSubscriptionInfo;
+import android.telephony.satellite.SystemSelectionSpecifier;
 import android.telephony.satellite.stub.NTRadioTechnology;
 import android.telephony.satellite.stub.SatelliteModemState;
 import android.telephony.satellite.stub.SatelliteResult;
@@ -363,6 +366,29 @@ public class SatelliteServiceUtils {
     }
 
     /**
+     * Check if the subscription ID is a NTN only subscription ID.
+     *
+     * @return {@code true} if the subscription ID is a NTN only subscription ID,
+     * {@code false} otherwise.
+    */
+    public static boolean isNtnOnlySubscriptionId(int subId) {
+        SubscriptionManagerService subscriptionManagerService =
+            SubscriptionManagerService.getInstance();
+        if (subscriptionManagerService == null) {
+            logd("isNtnOnlySubscriptionId: subscriptionManagerService is null");
+            return false;
+        }
+
+        SubscriptionInfo subInfo = subscriptionManagerService.getSubscriptionInfo(subId);
+        if (subInfo == null) {
+            logd("isNtnOnlySubscriptionId: subInfo is null for subId=" + subId);
+            return false;
+        }
+
+        return subInfo.isOnlyNonTerrestrialNetwork();
+    }
+
+    /**
      * Expected format of the input dictionary bundle is:
      * <ul>
      *     <li>Key: PLMN string.</li>
@@ -540,6 +566,100 @@ public class SatelliteServiceUtils {
         }
 
         return mcc + mnc;
+    }
+
+    @NonNull
+    private static android.telephony.satellite.stub
+            .SystemSelectionSpecifier convertSystemSelectionSpecifierToHALFormat(
+            @NonNull SystemSelectionSpecifier systemSelectionSpecifier) {
+        android.telephony.satellite.stub.SystemSelectionSpecifier convertedSpecifier =
+                new android.telephony.satellite.stub.SystemSelectionSpecifier();
+
+        convertedSpecifier.mMccMnc = systemSelectionSpecifier.getMccMnc();
+        convertedSpecifier.mBands = systemSelectionSpecifier.getBands();
+        convertedSpecifier.mEarfcs = systemSelectionSpecifier.getEarfcns();
+        SatelliteInfo[] satelliteInfos = systemSelectionSpecifier.getSatelliteInfos()
+                .toArray(new SatelliteInfo[0]);
+        android.telephony.satellite.stub.SatelliteInfo[] halSatelliteInfos =
+                new android.telephony.satellite.stub.SatelliteInfo[satelliteInfos.length];
+        for (int i = 0; i < satelliteInfos.length; i++) {
+            halSatelliteInfos[i] = new android.telephony.satellite.stub.SatelliteInfo();
+
+            halSatelliteInfos[i].id = new android.telephony.satellite.stub.UUID();
+            halSatelliteInfos[i].id.mostSigBits =
+                    satelliteInfos[i].getSatelliteId().getMostSignificantBits();
+            halSatelliteInfos[i].id.leastSigBits =
+                    satelliteInfos[i].getSatelliteId().getLeastSignificantBits();
+
+            halSatelliteInfos[i].position =
+                    new android.telephony.satellite.stub.SatellitePosition();
+            halSatelliteInfos[i].position.longitudeDegree =
+                    satelliteInfos[i].getSatellitePosition().getLongitudeDegrees();
+            halSatelliteInfos[i].position.altitudeKm =
+                    satelliteInfos[i].getSatellitePosition().getAltitudeKm();
+
+            halSatelliteInfos[i].bands = satelliteInfos[i].getBands().stream().mapToInt(
+                    Integer::intValue).toArray();
+
+            List<EarfcnRange> earfcnRangeList = satelliteInfos[i].getEarfcnRanges();
+            halSatelliteInfos[i].earfcnRanges =
+                    new android.telephony.satellite.stub.EarfcnRange[earfcnRangeList.size()];
+            for (int j = 0; j < earfcnRangeList.size(); j++) {
+                halSatelliteInfos[i].earfcnRanges[j] =
+                        new android.telephony.satellite.stub.EarfcnRange();
+                halSatelliteInfos[i].earfcnRanges[j].startEarfcn = earfcnRangeList.get(
+                        j).getStartEarfcn();
+                halSatelliteInfos[i].earfcnRanges[j].endEarfcn = earfcnRangeList.get(
+                        j).getEndEarfcn();
+            }
+        }
+        convertedSpecifier.satelliteInfos = halSatelliteInfos;
+        convertedSpecifier.tagIds = systemSelectionSpecifier.getTagIds();
+        return convertedSpecifier;
+    }
+
+    /**
+     * Convert SystemSelectionSpecifier from framework definition to service definition
+     * @param systemSelectionSpecifier The SystemSelectionSpecifier from the framework.
+     * @return The converted SystemSelectionSpecifier for the satellite service.
+     */
+    @NonNull
+    public static List<android.telephony.satellite.stub
+            .SystemSelectionSpecifier> toSystemSelectionSpecifier(
+            @NonNull List<SystemSelectionSpecifier> systemSelectionSpecifier) {
+        return systemSelectionSpecifier.stream().map(
+                SatelliteServiceUtils::convertSystemSelectionSpecifierToHALFormat).collect(
+                Collectors.toList());
+    }
+
+    /**
+     * Expected format of the input dictionary bundle is:
+     * <ul>
+     *     <li>Key: Regional satellite config Id string.</li>
+     *     <li>Value: Integer arrays of earfcns in the corresponding regions."</li>
+     * </ul>
+     * @return The map of earfcns with key: regional satellite config Id,
+     * value: set of earfcns in the corresponding regions.
+     */
+    @NonNull
+    public static Map<String, Set<Integer>> parseRegionalSatelliteEarfcns(
+            @Nullable PersistableBundle earfcnsBundle) {
+        Map<String, Set<Integer>> earfcnsMap = new HashMap<>();
+        if (earfcnsBundle == null || earfcnsBundle.isEmpty()) {
+            logd("parseRegionalSatelliteEarfcns: earfcnsBundle is null or empty");
+            return earfcnsMap;
+        }
+
+        for (String configId : earfcnsBundle.keySet()) {
+            Set<Integer> earfcnsSet = new HashSet<>();
+            for (int earfcn : earfcnsBundle.getIntArray(configId)) {
+                earfcnsSet.add(earfcn);
+            }
+            logd("parseRegionalSatelliteEarfcns: configId = " + configId + ", earfcns ="
+                    + earfcnsSet.stream().map(String::valueOf).collect(joining(",")));
+            earfcnsMap.put(configId, earfcnsSet);
+        }
+        return earfcnsMap;
     }
 
     private static void logd(@NonNull String log) {

@@ -723,6 +723,9 @@ message SatelliteController {
     optional int32 count_of_satellite_allowed_state_changed_events = 31;
     optional int32 count_of_successful_location_queries = 32;
     optional int32 count_of_failed_location_queries = 33;
+    optional int32 count_of_p2p_sms_available_notification_shown = 34;
+    optional int32 count_of_p2p_sms_available_notification_removed = 35;
+    optional bool is_ntn_only_carrier = 36;
 }
 
 message SatelliteSession {
@@ -743,6 +746,9 @@ message SatelliteSession {
     optional int32 count_of_satellite_notification_displayed = 15;
     optional int32 count_of_auto_exit_due_to_screen_off = 16;
     optional int32 count_of_auto_exit_due_to_tn_network = 17;
+    optional bool is_emergency = 18;
+    optional bool is_ntn_only_carrier = 19;
+    optional int32 max_inactivity_duration_sec = 20;
 }
 
 message SatelliteIncomingDatagram {
@@ -751,6 +757,7 @@ message SatelliteIncomingDatagram {
     optional int64 datagram_transfer_time_millis = 3;
     optional bool is_demo_mode = 4;
     optional int32 carrier_id = 5;
+    optional bool is_ntn_only_carrier = 6;
 }
 
 message SatelliteOutgoingDatagram {
@@ -760,6 +767,7 @@ message SatelliteOutgoingDatagram {
     optional int64 datagram_transfer_time_millis = 4;
     optional bool is_demo_mode = 5;
     optional int32 carrier_id = 6;
+    optional bool is_ntn_only_carrier = 7;
 }
 
 message SatelliteProvision {
@@ -768,6 +776,7 @@ message SatelliteProvision {
     optional bool is_provision_request = 3;
     optional bool is_canceled = 4;
     optional int32 carrier_id = 5;
+    optional bool is_ntn_only_carrier = 6;
 }
 
 message SatelliteSosMessageRecommender {
@@ -781,6 +790,7 @@ message SatelliteSosMessageRecommender {
     optional bool is_satellite_allowed_in_current_location = 8;
     optional bool is_wifi_connected = 9;
     optional int32 carrier_id = 10;
+    optional bool is_ntn_only_carrier = 11;
 }
 
 message DataNetworkValidation {
@@ -851,4 +861,5 @@ message SatelliteAccessController {
     optional int32 config_data_source = 9;
     optional int32 carrier_id = 10;
     optional int32 triggering_event = 11;
+    optional bool is_ntn_only_carrier = 12;
 }

@@ -749,10 +749,12 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         @Override
         public boolean processMessage(Message message) {
             if (message.what == CMD_SERVICE_DISCONNECTED) {
+                EuiccSession.get().endAllSessions();
                 mEuiccService = null;
                 transitionTo(mDisconnectedState);
                 return HANDLED;
             } else if (message.what == CMD_LINGER_TIMEOUT) {
+                EuiccSession.get().endAllSessions();
                 unbind();
                 transitionTo(mAvailableState);
                 return HANDLED;

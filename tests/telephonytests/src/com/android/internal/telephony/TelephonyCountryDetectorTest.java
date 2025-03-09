@@ -112,26 +112,27 @@ public class TelephonyCountryDetectorTest extends TelephonyTest {
         when(mSST2.getLocaleTracker()).thenReturn(mMockLocaleTracker2);
         when(mMockLocaleTracker2.getCurrentCountry()).thenReturn("");
 
-        when(mConnectivityManager.getActiveNetwork()).thenReturn(mMockNetwork);
         mNetworkCapabilities = new NetworkCapabilities();
         mNetworkCapabilities.setTransportType(NetworkCapabilities.TRANSPORT_WIFI, true);
         mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET, true);
-        when(mConnectivityManager.getNetworkCapabilities(any(Network.class)))
-                .thenReturn(mNetworkCapabilities);
+        mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED, true);
 
         when(mLocationManager.getProviders(true)).thenReturn(Arrays.asList("TEST_PROVIDER"));
 
         when(mMockFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
         mCountryDetectorUT = new TestTelephonyCountryDetector(
                 mLooper, mContext, mLocationManager, mConnectivityManager, mMockFeatureFlags);
+        verify(mConnectivityManager).registerNetworkCallback(
+                any(NetworkRequest.class), mNetworkCallbackCaptor.capture());
+        mNetworkCallbackCaptor.getValue().onAvailable(mMockNetwork);
+        mNetworkCallbackCaptor.getValue().onCapabilitiesChanged(mMockNetwork, mNetworkCapabilities);
+        mTestableLooper.processAllMessages();
         if (isGeoCoderImplemented()) {
             verify(mLocationManager).requestLocationUpdates(anyString(), anyLong(), anyFloat(),
                     mLocationListenerCaptor.capture());
             verify(mLocationManager).getProviders(true);
             verify(mLocationManager).getLastKnownLocation(anyString());
         }
-        verify(mConnectivityManager).registerNetworkCallback(
-                any(NetworkRequest.class), mNetworkCallbackCaptor.capture());
     }
 
     @After
@@ -285,7 +286,7 @@ public class TelephonyCountryDetectorTest extends TelephonyTest {
 
         // Wi-fi is not available
         clearInvocations(mLocationManager);
-        mNetworkCapabilities.setTransportType(NetworkCapabilities.TRANSPORT_WIFI, false);
+        mNetworkCapabilities.setTransportType(NetworkCapabilities.TRANSPORT_WIFI, true);
         mNetworkCallbackCaptor.getValue().onLost(mMockNetwork);
         mTestableLooper.processAllMessages();
         verify(mLocationManager, never()).removeUpdates(any(LocationListener.class));
@@ -294,6 +295,9 @@ public class TelephonyCountryDetectorTest extends TelephonyTest {
         clearInvocations(mLocationManager);
         mNetworkCapabilities.setTransportType(NetworkCapabilities.TRANSPORT_WIFI, true);
         mNetworkCallbackCaptor.getValue().onAvailable(mMockNetwork);
+        mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET, true);
+        mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED, true);
+        mNetworkCallbackCaptor.getValue().onCapabilitiesChanged(mMockNetwork, mNetworkCapabilities);
         mTestableLooper.processAllMessages();
         // Location updates were already requested
         verify(mLocationManager, never()).requestLocationUpdates(anyString(), anyLong(), anyFloat(),
@@ -301,7 +305,10 @@ public class TelephonyCountryDetectorTest extends TelephonyTest {
 
         // Make Wi-fi not available and reset the quota
         clearInvocations(mLocationManager);
-        mNetworkCapabilities.setTransportType(NetworkCapabilities.TRANSPORT_WIFI, false);
+        mNetworkCapabilities.setTransportType(NetworkCapabilities.TRANSPORT_WIFI, true);
+        mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET, true);
+        mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED, false);
+        mNetworkCallbackCaptor.getValue().onCapabilitiesChanged(mMockNetwork, mNetworkCapabilities);
         mTestableLooper.moveTimeForward(
                 TestTelephonyCountryDetector.getLocationUpdateRequestQuotaResetTimeoutMillis());
         mTestableLooper.processAllMessages();
@@ -311,6 +318,9 @@ public class TelephonyCountryDetectorTest extends TelephonyTest {
         clearInvocations(mLocationManager);
         mNetworkCapabilities.setTransportType(NetworkCapabilities.TRANSPORT_WIFI, true);
         mNetworkCallbackCaptor.getValue().onAvailable(mMockNetwork);
+        mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET, true);
+        mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED, true);
+        mNetworkCallbackCaptor.getValue().onCapabilitiesChanged(mMockNetwork, mNetworkCapabilities);
         mTestableLooper.processAllMessages();
         verify(mLocationManager).requestLocationUpdates(anyString(), anyLong(), anyFloat(),
                 any(LocationListener.class));
@@ -324,16 +334,20 @@ public class TelephonyCountryDetectorTest extends TelephonyTest {
         verify(mLocationManager, never()).requestLocationUpdates(anyString(), anyLong(), anyFloat(),
                 any(LocationListener.class));
 
-        // Wi-fi becomes not available
+        // Wi-fi lost
         clearInvocations(mLocationManager);
-        mNetworkCapabilities.setTransportType(NetworkCapabilities.TRANSPORT_WIFI, false);
-        mNetworkCallbackCaptor.getValue().onUnavailable();
+        mNetworkCapabilities.setTransportType(NetworkCapabilities.TRANSPORT_WIFI, true);
+        mNetworkCallbackCaptor.getValue().onLost(mMockNetwork);
         mTestableLooper.processAllMessages();
         verify(mLocationManager).removeUpdates(any(LocationListener.class));
     }
 
     @Test
     public void testRegisterUnregisterForWifiConnectivityStateChanged() {
+        // Set Wi-Fi unavailable.
+        mNetworkCallbackCaptor.getValue().onLost(mMockNetwork);
+        mTestableLooper.processAllMessages();
+
         WifiConnectivityStateChangedListener listener = new WifiConnectivityStateChangedListener(
                 mLooper);
 
@@ -344,17 +358,61 @@ public class TelephonyCountryDetectorTest extends TelephonyTest {
         clearInvocations(mLocationManager);
         mNetworkCapabilities.setTransportType(NetworkCapabilities.TRANSPORT_WIFI, true);
         mNetworkCallbackCaptor.getValue().onAvailable(mMockNetwork);
+        mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET, true);
+        mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED, true);
+        mNetworkCallbackCaptor.getValue().onCapabilitiesChanged(mMockNetwork, mNetworkCapabilities);
         mTestableLooper.processAllMessages();
         assertTrue(listener.getIsWifiConnected());
 
-        // Wi-fi becomes not available
+        // Wi-fi lost
         clearInvocations(mLocationManager);
-        mNetworkCapabilities.setTransportType(NetworkCapabilities.TRANSPORT_WIFI, false);
-        mNetworkCallbackCaptor.getValue().onUnavailable();
+        mNetworkCapabilities.setTransportType(NetworkCapabilities.TRANSPORT_WIFI, true);
+        mNetworkCallbackCaptor.getValue().onLost(mMockNetwork);
         mTestableLooper.processAllMessages();
         assertFalse(listener.getIsWifiConnected());
 
         mCountryDetectorUT.unregisterForWifiConnectivityStateChanged(listener);
+    }
+
+    @Test
+    public void testReflectWifiConnectedStatusChanged() {
+        // 1. Wi-Fi is turned off, network capability is not available.
+        mNetworkCallbackCaptor.getValue().onLost(mMockNetwork);
+        mNetworkCapabilities = new NetworkCapabilities();
+        mNetworkCapabilities.setTransportType(NetworkCapabilities.TRANSPORT_WIFI, true);
+        mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET, false);
+        mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED, false);
+        mNetworkCallbackCaptor.getValue().onCapabilitiesChanged(mMockNetwork, mNetworkCapabilities);
+        mTestableLooper.processAllMessages();
+        assertFalse(mCountryDetectorUT.isWifiNetworkConnected());
+
+        // 2. Wi-Fi is turned on, but network capability has not been updated.
+        mNetworkCallbackCaptor.getValue().onAvailable(mMockNetwork);
+        mTestableLooper.processAllMessages();
+        assertFalse(mCountryDetectorUT.isWifiNetworkConnected());
+
+        // 3. Network capability has been updated, not some of them still false.
+        mNetworkCapabilities = new NetworkCapabilities();
+        mNetworkCapabilities.setTransportType(NetworkCapabilities.TRANSPORT_WIFI, true);
+        mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET, true);
+        mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED, false);
+        mNetworkCallbackCaptor.getValue().onCapabilitiesChanged(mMockNetwork, mNetworkCapabilities);
+        mTestableLooper.processAllMessages();
+        assertFalse(mCountryDetectorUT.isWifiNetworkConnected());
+
+        // 4. Network capability has been updated to validated.
+        mNetworkCapabilities = new NetworkCapabilities();
+        mNetworkCapabilities.setTransportType(NetworkCapabilities.TRANSPORT_WIFI, true);
+        mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET, true);
+        mNetworkCapabilities.setCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED, true);
+        mNetworkCallbackCaptor.getValue().onCapabilitiesChanged(mMockNetwork, mNetworkCapabilities);
+        mTestableLooper.processAllMessages();
+        assertTrue(mCountryDetectorUT.isWifiNetworkConnected());
+
+        // 5. Wi-Fi is turned off.
+        mNetworkCallbackCaptor.getValue().onLost(mMockNetwork);
+        mTestableLooper.processAllMessages();
+        assertFalse(mCountryDetectorUT.isWifiNetworkConnected());
     }
 
     private static boolean isGeoCoderImplemented() {

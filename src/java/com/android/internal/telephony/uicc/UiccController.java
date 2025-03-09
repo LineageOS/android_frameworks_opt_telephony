@@ -80,6 +80,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -162,8 +163,7 @@ public class UiccController extends Handler {
     // this needs to be here, because on bootup we dont know which index maps to which UiccSlot
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CommandsInterface[] mCis;
-    @VisibleForTesting
-    public UiccSlot[] mUiccSlots;
+    private UiccSlot[] mUiccSlots;
     private int[] mPhoneIdToSlotId;
     private boolean mIsSlotStatusSupported = true;
 
@@ -487,6 +487,27 @@ public class UiccController extends Handler {
                 return mUiccSlots[slotId];
             }
             return null;
+        }
+    }
+
+    /**
+     * Set UiccSlot object for a specific physical slot index on the device.
+     *
+     * This is only supposed to be used internally and by unit tests.
+     *
+     * @param slotId Slot index
+     * @param slot Slot object
+     */
+    @VisibleForTesting
+    public void setUiccSlot(int slotId, @NonNull UiccSlot slot) {
+        synchronized (mLock) {
+            if (!isValidSlotIndex(slotId)) {
+                throw new ArrayIndexOutOfBoundsException("Invalid slot index: " + slotId);
+            }
+            if (mUiccSlots[slotId] != null) {
+                mUiccSlots[slotId].dispose();
+            }
+            mUiccSlots[slotId] = Objects.requireNonNull(slot);
         }
     }
 
@@ -1076,7 +1097,7 @@ public class UiccController extends Handler {
                 log("Creating mUiccSlots[" + slotId + "]; mUiccSlots.length = "
                         + mUiccSlots.length);
             }
-            mUiccSlots[slotId] = new UiccSlot(mContext, true);
+            setUiccSlot(slotId, new UiccSlot(mContext, true));
         }
 
         mUiccSlots[slotId].update(mCis[index], status, index, slotId);
@@ -1353,7 +1374,7 @@ public class UiccController extends Handler {
                 if (VDBG) {
                     log("Creating mUiccSlot[" + i + "]; mUiccSlots.length = " + mUiccSlots.length);
                 }
-                mUiccSlots[i] = new UiccSlot(mContext, isActive);
+                setUiccSlot(i, new UiccSlot(mContext, isActive));
             }
 
             if (isActive) { // check isActive flag so that we don't have to iterate through all
@@ -1801,6 +1822,17 @@ public class UiccController extends Handler {
                     Collectors.toList());
         }
         return mCardStrings;
+    }
+
+    /**
+     * Release resources. Must be called each time this class is used.
+     */
+    @VisibleForTesting
+    public void dispose() {
+        for (var slot : mUiccSlots) {
+            slot.dispose();
+        }
+        mUiccSlots = null;
     }
 
     public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {

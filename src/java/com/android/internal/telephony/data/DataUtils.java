@@ -287,6 +287,8 @@ public class DataUtils {
             case NetworkCapabilities.NET_CAPABILITY_VSIM -> ApnSetting.TYPE_VSIM;
             case NetworkCapabilities.NET_CAPABILITY_BIP -> ApnSetting.TYPE_BIP;
             case NetworkCapabilities.NET_CAPABILITY_RCS -> ApnSetting.TYPE_RCS;
+            case NetworkCapabilities.NET_CAPABILITY_OEM_PAID -> ApnSetting.TYPE_OEM_PAID;
+            case NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE -> ApnSetting.TYPE_OEM_PRIVATE;
             default -> ApnSetting.TYPE_NONE;
         };
     }
@@ -315,6 +317,8 @@ public class DataUtils {
             case ApnSetting.TYPE_VSIM -> NetworkCapabilities.NET_CAPABILITY_VSIM;
             case ApnSetting.TYPE_ENTERPRISE -> NetworkCapabilities.NET_CAPABILITY_ENTERPRISE;
             case ApnSetting.TYPE_RCS -> NetworkCapabilities.NET_CAPABILITY_RCS;
+            case ApnSetting.TYPE_OEM_PAID -> NetworkCapabilities.NET_CAPABILITY_OEM_PAID;
+            case ApnSetting.TYPE_OEM_PRIVATE -> NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE;
             default -> -1;
         };
     }

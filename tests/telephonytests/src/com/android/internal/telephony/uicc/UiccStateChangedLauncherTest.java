@@ -51,6 +51,8 @@ public class UiccStateChangedLauncherTest extends TelephonyTest {
     private static final int CARD_COUNT = 1;
     private static final String PROVISIONING_PACKAGE_NAME = "test.provisioning.package";
 
+    private UiccCard mUiccCardToDispose;
+
     // Mocked classes
     private Resources mResources;
 
@@ -77,6 +79,9 @@ public class UiccStateChangedLauncherTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         super.tearDown();
+
+        if (mUiccCardToDispose != null) mUiccCardToDispose.dispose();
+        mUiccCardToDispose = null;
     }
 
     @Test @SmallTest
@@ -99,7 +104,7 @@ public class UiccStateChangedLauncherTest extends TelephonyTest {
         msg.what = integerArgumentCaptor.getValue();
 
         // The first broadcast should be sent after initialization.
-        UiccCard card = new UiccCard(mContext, mSimulatedCommands,
+        UiccCard card = mUiccCardToDispose = new UiccCard(mContext, mSimulatedCommands,
                 makeCardStatus(CardState.CARDSTATE_PRESENT), 0 /* phoneId */, new Object(),
                 IccSlotStatus.MultipleEnabledProfilesMode.NONE);
         when(UiccController.getInstance().getUiccCardForPhone(0)).thenReturn(card);

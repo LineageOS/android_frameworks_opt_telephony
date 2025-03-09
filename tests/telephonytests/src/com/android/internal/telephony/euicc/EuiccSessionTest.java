@@ -103,6 +103,7 @@ public class EuiccSessionTest extends TelephonyTest {
 
     private EuiccSession mEuiccSession;
     @Mock private ApduSender mApduSender;
+    @Mock private ApduSender mApduSender2;
 
     @Before
     public void setUp() throws Exception {
@@ -114,6 +115,7 @@ public class EuiccSessionTest extends TelephonyTest {
     public void startOneSession_featureDisabled_noop() throws Exception {
         mEuiccSession.startSession(SESSION_ID_1);
         mEuiccSession.noteChannelOpen(mApduSender);
+        mEuiccSession.noteChannelOpen(mApduSender2);
 
         assertThat(mEuiccSession.hasSession()).isFalse();
 
@@ -121,6 +123,7 @@ public class EuiccSessionTest extends TelephonyTest {
 
         assertThat(mEuiccSession.hasSession()).isFalse();
         verify(mApduSender, never()).closeAnyOpenChannel();
+        verify(mApduSender2, never()).closeAnyOpenChannel();
     }
 
     @Test
@@ -128,6 +131,7 @@ public class EuiccSessionTest extends TelephonyTest {
     public void startOneSession_endSession_hasSession() throws Exception {
         mEuiccSession.startSession(SESSION_ID_1);
         mEuiccSession.noteChannelOpen(mApduSender);
+        mEuiccSession.noteChannelOpen(mApduSender2);
 
         assertThat(mEuiccSession.hasSession()).isTrue();
 
@@ -140,6 +144,7 @@ public class EuiccSessionTest extends TelephonyTest {
 
         assertThat(mEuiccSession.hasSession()).isFalse();
         verify(mApduSender).closeAnyOpenChannel();
+        verify(mApduSender2).closeAnyOpenChannel();
     }
 
     @Test
@@ -164,13 +169,44 @@ public class EuiccSessionTest extends TelephonyTest {
 
     @Test
     @EnableFlags(Flags.FLAG_OPTIMIZATION_APDU_SENDER)
-    public void noteChannelOpen_noSession_noop() throws Exception {
+    public void startTwoSessions_endAllSessions_hasSession() throws Exception {
+        mEuiccSession.startSession(SESSION_ID_1);
+        mEuiccSession.noteChannelOpen(mApduSender);
+        mEuiccSession.startSession(SESSION_ID_2);
+        mEuiccSession.noteChannelOpen(mApduSender2);
+
+        assertThat(mEuiccSession.hasSession()).isTrue();
+
+        mEuiccSession.endAllSessions();
+
+        assertThat(mEuiccSession.hasSession()).isFalse();
+        verify(mApduSender).closeAnyOpenChannel();
+        verify(mApduSender2).closeAnyOpenChannel();
+    }
+
+    @Test
+    @EnableFlags(Flags.FLAG_OPTIMIZATION_APDU_SENDER)
+    public void noteChannelOpen_noSession_endSession_noop() throws Exception {
         // noteChannelOpen called without a session started
         mEuiccSession.noteChannelOpen(mApduSender);
 
         assertThat(mEuiccSession.hasSession()).isFalse();
 
         mEuiccSession.endSession(SESSION_ID_1);
+
+        assertThat(mEuiccSession.hasSession()).isFalse();
+        verify(mApduSender, never()).closeAnyOpenChannel();
+    }
+
+    @Test
+    @EnableFlags(Flags.FLAG_OPTIMIZATION_APDU_SENDER)
+    public void endAllSessions_noSession_endAllSessions_noOp() throws Exception {
+        // noteChannelOpen called without a session started
+        mEuiccSession.noteChannelOpen(mApduSender);
+
+        assertThat(mEuiccSession.hasSession()).isFalse();
+
+        mEuiccSession.endAllSessions();
 
         assertThat(mEuiccSession.hasSession()).isFalse();
         verify(mApduSender, never()).closeAnyOpenChannel();

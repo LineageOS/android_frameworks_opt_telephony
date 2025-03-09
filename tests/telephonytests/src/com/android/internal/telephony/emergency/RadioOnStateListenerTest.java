@@ -104,7 +104,7 @@ public class RadioOnStateListenerTest extends TelephonyTest {
      */
     @Test
     public void testRegisterForSatelliteCallback() {
-        doReturn(true).when(mSatelliteController).isSatelliteEnabled();
+        doReturn(true).when(mSatelliteController).isSatelliteEnabledOrBeingEnabled();
         mListener.waitForRadioOn(mMockPhone, mCallback, false, false, 0);
 
         waitForHandlerAction(mListener.getHandler(), TIMEOUT_MS);
@@ -229,7 +229,7 @@ public class RadioOnStateListenerTest extends TelephonyTest {
 
     @Test
     public void testTimeout_RetryFailure_WithSatellite() {
-        doReturn(true).when(mSatelliteController).isSatelliteEnabled();
+        doReturn(true).when(mSatelliteController).isSatelliteEnabledOrBeingEnabled();
         ServiceState state = new ServiceState();
         state.setState(ServiceState.STATE_POWER_OFF);
         when(mMockPhone.getState()).thenReturn(PhoneConstants.State.IDLE);

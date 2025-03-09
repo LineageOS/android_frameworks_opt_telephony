@@ -134,7 +134,6 @@ public class SimultaneousCallingTrackerTest extends TelephonyTest {
                 .getSubscriptionInfo(any(Integer.class));
         doReturn(RIL.RADIO_HAL_VERSION_2_2).when(mMockRadioConfigProxy).getVersion();
         doReturn(true).when(mFeatureFlags).simultaneousCallingIndications();
-        doReturn(true).when(mFeatureFlags).dataOnlyCellularService();
         mMockRegistryManager = mContext.getSystemService(TelephonyRegistryManager.class);
     }
 

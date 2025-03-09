@@ -177,7 +177,6 @@ public class PersistAtomsStorage {
 
     /** Maximum number of Satellite relevant stats to store between pulls. */
     private final int mMaxNumSatelliteStats;
-    private final int mMaxNumSatelliteControllerStats = 1;
     private final int mMaxNumCarrierRoamingSatelliteSessionStats = 1;
 
     /** Maximum number of data network validation to store during pulls. */
@@ -710,76 +709,78 @@ public class PersistAtomsStorage {
 
     /** Adds a new {@link SatelliteController} to the storage. */
     public synchronized void addSatelliteControllerStats(SatelliteController stats) {
-        // SatelliteController is a single data point
-        SatelliteController[] atomArray = mAtoms.satelliteController;
-        if (atomArray == null || atomArray.length == 0) {
-            atomArray = new SatelliteController[] {new SatelliteController()};
+        // find existing satellite controller atom with same carrier ID.
+        SatelliteController existingStats = find(stats);
+        if (existingStats != null) {
+            existingStats.countOfSatelliteServiceEnablementsSuccess
+                    += stats.countOfSatelliteServiceEnablementsSuccess;
+            existingStats.countOfSatelliteServiceEnablementsFail
+                    += stats.countOfSatelliteServiceEnablementsFail;
+            existingStats.countOfOutgoingDatagramSuccess
+                    += stats.countOfOutgoingDatagramSuccess;
+            existingStats.countOfOutgoingDatagramFail
+                    += stats.countOfOutgoingDatagramFail;
+            existingStats.countOfIncomingDatagramSuccess
+                    += stats.countOfIncomingDatagramSuccess;
+            existingStats.countOfIncomingDatagramFail
+                    += stats.countOfIncomingDatagramFail;
+            existingStats.countOfDatagramTypeSosSmsSuccess
+                    += stats.countOfDatagramTypeSosSmsSuccess;
+            existingStats.countOfDatagramTypeSosSmsFail
+                    += stats.countOfDatagramTypeSosSmsFail;
+            existingStats.countOfDatagramTypeLocationSharingSuccess
+                    += stats.countOfDatagramTypeLocationSharingSuccess;
+            existingStats.countOfDatagramTypeLocationSharingFail
+                    += stats.countOfDatagramTypeLocationSharingFail;
+            existingStats.countOfProvisionSuccess
+                    += stats.countOfProvisionSuccess;
+            existingStats.countOfProvisionFail
+                    += stats.countOfProvisionFail;
+            existingStats.countOfDeprovisionSuccess
+                    += stats.countOfDeprovisionSuccess;
+            existingStats.countOfDeprovisionFail
+                    += stats.countOfDeprovisionFail;
+            existingStats.totalServiceUptimeSec
+                    += stats.totalServiceUptimeSec;
+            existingStats.totalBatteryConsumptionPercent
+                    += stats.totalBatteryConsumptionPercent;
+            existingStats.totalBatteryChargedTimeSec
+                    += stats.totalBatteryChargedTimeSec;
+            existingStats.countOfDemoModeSatelliteServiceEnablementsSuccess
+                    += stats.countOfDemoModeSatelliteServiceEnablementsSuccess;
+            existingStats.countOfDemoModeSatelliteServiceEnablementsFail
+                    += stats.countOfDemoModeSatelliteServiceEnablementsFail;
+            existingStats.countOfDemoModeOutgoingDatagramSuccess
+                    += stats.countOfDemoModeOutgoingDatagramSuccess;
+            existingStats.countOfDemoModeOutgoingDatagramFail
+                    += stats.countOfDemoModeOutgoingDatagramFail;
+            existingStats.countOfDemoModeIncomingDatagramSuccess
+                    += stats.countOfDemoModeIncomingDatagramSuccess;
+            existingStats.countOfDemoModeIncomingDatagramFail
+                    += stats.countOfDemoModeIncomingDatagramFail;
+            existingStats.countOfDatagramTypeKeepAliveSuccess
+                    += stats.countOfDatagramTypeKeepAliveSuccess;
+            existingStats.countOfDatagramTypeKeepAliveFail
+                    += stats.countOfDatagramTypeKeepAliveFail;
+            existingStats.countOfAllowedSatelliteAccess += stats.countOfAllowedSatelliteAccess;
+            existingStats.countOfDisallowedSatelliteAccess
+                    += stats.countOfDisallowedSatelliteAccess;
+            existingStats.countOfSatelliteAccessCheckFail += stats.countOfSatelliteAccessCheckFail;
+            // Does not update isProvisioned and carrierId due to they are dimension fields.
+            existingStats.countOfSatelliteAllowedStateChangedEvents
+                    += stats.countOfSatelliteAllowedStateChangedEvents;
+            existingStats.countOfSuccessfulLocationQueries +=
+                    stats.countOfSuccessfulLocationQueries;
+            existingStats.countOfFailedLocationQueries += stats.countOfFailedLocationQueries;
+            existingStats.countOfP2PSmsAvailableNotificationShown
+                    += stats.countOfP2PSmsAvailableNotificationShown;
+            existingStats.countOfP2PSmsAvailableNotificationRemoved
+                    += stats.countOfP2PSmsAvailableNotificationRemoved;
+            // Does not update isNtnOnlyCarrier due to it is a dimension field.
+        } else {
+            mAtoms.satelliteController = insertAtRandomPlace(mAtoms.satelliteController, stats,
+                    mMaxNumSatelliteStats);
         }
-
-        SatelliteController atom = atomArray[0];
-        atom.countOfSatelliteServiceEnablementsSuccess
-                += stats.countOfSatelliteServiceEnablementsSuccess;
-        atom.countOfSatelliteServiceEnablementsFail
-                += stats.countOfSatelliteServiceEnablementsFail;
-        atom.countOfOutgoingDatagramSuccess
-                += stats.countOfOutgoingDatagramSuccess;
-        atom.countOfOutgoingDatagramFail
-                += stats.countOfOutgoingDatagramFail;
-        atom.countOfIncomingDatagramSuccess
-                += stats.countOfIncomingDatagramSuccess;
-        atom.countOfIncomingDatagramFail
-                += stats.countOfIncomingDatagramFail;
-        atom.countOfDatagramTypeSosSmsSuccess
-                += stats.countOfDatagramTypeSosSmsSuccess;
-        atom.countOfDatagramTypeSosSmsFail
-                += stats.countOfDatagramTypeSosSmsFail;
-        atom.countOfDatagramTypeLocationSharingSuccess
-                += stats.countOfDatagramTypeLocationSharingSuccess;
-        atom.countOfDatagramTypeLocationSharingFail
-                += stats.countOfDatagramTypeLocationSharingFail;
-        atom.countOfProvisionSuccess
-                += stats.countOfProvisionSuccess;
-        atom.countOfProvisionFail
-                += stats.countOfProvisionFail;
-        atom.countOfDeprovisionSuccess
-                += stats.countOfDeprovisionSuccess;
-        atom.countOfDeprovisionFail
-                += stats.countOfDeprovisionFail;
-        atom.totalServiceUptimeSec
-                += stats.totalServiceUptimeSec;
-        atom.totalBatteryConsumptionPercent
-                += stats.totalBatteryConsumptionPercent;
-        atom.totalBatteryChargedTimeSec
-                += stats.totalBatteryChargedTimeSec;
-        atom.countOfDemoModeSatelliteServiceEnablementsSuccess
-                += stats.countOfDemoModeSatelliteServiceEnablementsSuccess;
-        atom.countOfDemoModeSatelliteServiceEnablementsFail
-                += stats.countOfDemoModeSatelliteServiceEnablementsFail;
-        atom.countOfDemoModeOutgoingDatagramSuccess
-                += stats.countOfDemoModeOutgoingDatagramSuccess;
-        atom.countOfDemoModeOutgoingDatagramFail
-                += stats.countOfDemoModeOutgoingDatagramFail;
-        atom.countOfDemoModeIncomingDatagramSuccess
-                += stats.countOfDemoModeIncomingDatagramSuccess;
-        atom.countOfDemoModeIncomingDatagramFail
-                += stats.countOfDemoModeIncomingDatagramFail;
-        atom.countOfDatagramTypeKeepAliveSuccess
-                += stats.countOfDatagramTypeKeepAliveSuccess;
-        atom.countOfDatagramTypeKeepAliveFail
-                += stats.countOfDatagramTypeKeepAliveFail;
-        atom.countOfAllowedSatelliteAccess += stats.countOfAllowedSatelliteAccess;
-        atom.countOfDisallowedSatelliteAccess += stats.countOfDisallowedSatelliteAccess;
-        atom.countOfSatelliteAccessCheckFail += stats.countOfSatelliteAccessCheckFail;
-
-        atom.isProvisioned = stats.isProvisioned;
-        atom.carrierId = stats.carrierId;
-
-        atom.countOfSatelliteAllowedStateChangedEvents
-                += stats.countOfSatelliteAllowedStateChangedEvents;
-        atom.countOfSuccessfulLocationQueries += stats.countOfSuccessfulLocationQueries;
-        atom.countOfFailedLocationQueries += stats.countOfFailedLocationQueries;
-
-        mAtoms.satelliteController = atomArray;
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
 
@@ -861,26 +862,25 @@ public class PersistAtomsStorage {
     /** Adds a new {@link CarrierRoamingSatelliteControllerStats} to the storage. */
     public synchronized void addCarrierRoamingSatelliteControllerStats(
             CarrierRoamingSatelliteControllerStats stats) {
-        // CarrierRoamingSatelliteController is a single data point
-        CarrierRoamingSatelliteControllerStats[] atomArray =
-                mAtoms.carrierRoamingSatelliteControllerStats;
-        if (atomArray == null || atomArray.length == 0) {
-            atomArray = new CarrierRoamingSatelliteControllerStats[] {new
-                    CarrierRoamingSatelliteControllerStats()};
+        CarrierRoamingSatelliteControllerStats existingStats = find(stats);
+        if (existingStats != null) {
+            existingStats.countOfEntitlementStatusQueryRequest +=
+                    stats.countOfEntitlementStatusQueryRequest;
+            existingStats.countOfSatelliteConfigUpdateRequest +=
+                    stats.countOfSatelliteConfigUpdateRequest;
+            existingStats.countOfSatelliteNotificationDisplayed +=
+                    stats.countOfSatelliteNotificationDisplayed;
+            existingStats.satelliteSessionGapMinSec = stats.satelliteSessionGapMinSec;
+            existingStats.satelliteSessionGapAvgSec = stats.satelliteSessionGapAvgSec;
+            existingStats.satelliteSessionGapMaxSec = stats.satelliteSessionGapMaxSec;
+            // Does not update configDataSource, carrierId, isDeviceEntitled, due to  they are
+            // dimension fields.
+            existingStats.isDeviceEntitled = stats.isDeviceEntitled;
+        } else {
+            mAtoms.carrierRoamingSatelliteControllerStats = insertAtRandomPlace(
+                    mAtoms.carrierRoamingSatelliteControllerStats, stats, mMaxNumSatelliteStats);
         }
 
-        CarrierRoamingSatelliteControllerStats atom = atomArray[0];
-        atom.configDataSource = stats.configDataSource;
-        atom.countOfEntitlementStatusQueryRequest += stats.countOfEntitlementStatusQueryRequest;
-        atom.countOfSatelliteConfigUpdateRequest += stats.countOfSatelliteConfigUpdateRequest;
-        atom.countOfSatelliteNotificationDisplayed += stats.countOfSatelliteNotificationDisplayed;
-        atom.satelliteSessionGapMinSec = stats.satelliteSessionGapMinSec;
-        atom.satelliteSessionGapAvgSec = stats.satelliteSessionGapAvgSec;
-        atom.satelliteSessionGapMaxSec = stats.satelliteSessionGapMaxSec;
-        atom.carrierId = stats.carrierId;
-        atom.isDeviceEntitled = stats.isDeviceEntitled;
-
-        mAtoms.carrierRoamingSatelliteControllerStats = atomArray;
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
 
@@ -1827,7 +1827,7 @@ public class PersistAtomsStorage {
             atoms.outgoingShortCodeSms = sanitizeAtoms(atoms.outgoingShortCodeSms,
                     OutgoingShortCodeSms.class, mMaxOutgoingShortCodeSms);
             atoms.satelliteController = sanitizeAtoms(atoms.satelliteController,
-                            SatelliteController.class, mMaxNumSatelliteControllerStats);
+                            SatelliteController.class, mMaxNumSatelliteStats);
             atoms.satelliteSession = sanitizeAtoms(atoms.satelliteSession,
                     SatelliteSession.class, mMaxNumSatelliteStats);
             atoms.satelliteIncomingDatagram = sanitizeAtoms(atoms.satelliteIncomingDatagram,
@@ -1850,7 +1850,7 @@ public class PersistAtomsStorage {
                     mMaxNumSatelliteStats);
             atoms.carrierRoamingSatelliteControllerStats = sanitizeAtoms(
                     atoms.carrierRoamingSatelliteControllerStats,
-                    CarrierRoamingSatelliteControllerStats.class, mMaxNumSatelliteControllerStats);
+                    CarrierRoamingSatelliteControllerStats.class, mMaxNumSatelliteStats);
             atoms.satelliteEntitlement = sanitizeAtoms(atoms.satelliteEntitlement,
                     SatelliteEntitlement.class, mMaxNumSatelliteStats);
             atoms.satelliteConfigUpdater = sanitizeAtoms(atoms.satelliteConfigUpdater,
@@ -2346,7 +2346,9 @@ public class PersistAtomsStorage {
                     && stats.countOfSatelliteNotificationDisplayed
                     == key.countOfSatelliteNotificationDisplayed
                     && stats.countOfAutoExitDueToScreenOff == key.countOfAutoExitDueToScreenOff
-                    && stats.countOfAutoExitDueToTnNetwork == key.countOfAutoExitDueToTnNetwork) {
+                    && stats.countOfAutoExitDueToTnNetwork == key.countOfAutoExitDueToTnNetwork
+                    && stats.isEmergency == key.isEmergency
+                    && stats.maxInactivityDurationSec == key.maxInactivityDurationSec) {
                 return stats;
             }
         }
@@ -2366,6 +2368,8 @@ public class PersistAtomsStorage {
                     && stats.cellularServiceState == key.cellularServiceState
                     && stats.isMultiSim == key.isMultiSim
                     && stats.recommendingHandoverType == key.recommendingHandoverType
+                    && stats.isSatelliteAllowedInCurrentLocation
+                    == key.isSatelliteAllowedInCurrentLocation
                     && stats.isWifiConnected == key.isWifiConnected
                     && stats.carrierId == key.carrierId) {
                 return stats;
@@ -2385,6 +2389,38 @@ public class PersistAtomsStorage {
                     && stats.signalStrength == key.signalStrength
                     && stats.validationResult == key.validationResult
                     && stats.handoverAttempted == key.handoverAttempted) {
+                return stats;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the SatelliteController atom with the matching `carrier_id`, `is_provisioned`, and
+     * `is_ntn_only_carrier` values, or {@code null} if does not exist.
+     */
+    private @Nullable SatelliteController find(SatelliteController key) {
+        for (SatelliteController stats : mAtoms.satelliteController) {
+            if (stats.carrierId == key.carrierId
+                    && stats.isProvisioned == key.isProvisioned
+                    && stats.isNtnOnlyCarrier == key.isNtnOnlyCarrier) {
+                return stats;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns CarrierRoamingSatelliteControllerStats atom that has same carrier_id value or
+     * {@code null} if does not exist.
+     */
+    private @Nullable CarrierRoamingSatelliteControllerStats find(
+            CarrierRoamingSatelliteControllerStats key) {
+        for (CarrierRoamingSatelliteControllerStats stats :
+                mAtoms.carrierRoamingSatelliteControllerStats) {
+            if (stats.carrierId == key.carrierId
+                    && stats.configDataSource == key.configDataSource
+                    && stats.isDeviceEntitled == key.isDeviceEntitled) {
                 return stats;
             }
         }

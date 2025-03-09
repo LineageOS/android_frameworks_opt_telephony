@@ -220,8 +220,9 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         // Capture CarrierConfigChangeListener to emulate the carrier config change notification
         ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
                 ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
-        CarrierPrivilegesTracker cpt = new CarrierPrivilegesTracker(mTestableLooper.getLooper(),
-                mPhone, mContext, mFeatureFlags);
+        CarrierPrivilegesTracker cpt =
+                new CarrierPrivilegesTracker(
+                        mTestableLooper.getLooper(), mPhone, mContext, mFeatureFlags);
         verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
                 listenerArgumentCaptor.capture());
         mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(0);

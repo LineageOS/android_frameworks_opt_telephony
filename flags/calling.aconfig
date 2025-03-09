@@ -62,3 +62,23 @@ flag {
         purpose: PURPOSE_BUGFIX
     }
 }
+
+# OWNER=yongnamcha TARGET=25Q2
+flag {
+    name: "emergency_callback_mode_notification"
+    namespace: "telephony"
+    description: "Used to notify the emergency callback mode for call/SMS to other applications."
+    bug:"359064059"
+    is_exported: true
+}
+
+# OWNER=sewookseo TARGET=25Q2
+flag {
+    name: "pass_copied_call_state_list"
+    namespace: "telephony"
+    description: "To prevent passing the TelephonyRegistry's original instance to listeners in the same process"
+    bug:"379126049"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
+}

@@ -202,8 +202,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         tracker.onSent(mContext);
                         mTrackers.remove(token);
                         mPhone.notifySmsSent(tracker.mDestAddress);
-                        mSmsDispatchersController.notifySmsSent(
-                                tracker.mDestAddress, tracker.mMessageId, true,
+                        mSmsDispatchersController.notifySmsSent(tracker, true,
                                 tracker.isSinglePartOrLastPart(), true /*success*/);
                         break;
                     case ImsSmsImplBase.SEND_STATUS_ERROR:

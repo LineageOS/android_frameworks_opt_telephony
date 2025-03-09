@@ -888,11 +888,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
         doReturn(new SubscriptionInfoInternal.Builder().setId(1).build())
                 .when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
-
         doReturn(true).when(mFeatureFlags).carrierEnabledSatelliteFlag();
         doReturn(true).when(mFeatureFlags).satelliteInternet();
-        doReturn(true).when(mFeatureFlags).simDisabledGracefulTearDown();
-
         when(mContext.getPackageManager()).thenReturn(mMockPackageManager);
         doReturn(true).when(mMockPackageManager).hasSystemFeature(anyString());
 
@@ -2481,7 +2478,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Change data network type to NR
         doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_NR,
-                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false))
+                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false, false, false))
                 .when(mDisplayInfoController).getTelephonyDisplayInfo();
         dataNetwork.sendMessage(13/*EVENT_DISPLAY_INFO_CHANGED*/);
         processAllMessages();
@@ -2524,7 +2521,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Change data network type to NR
         doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_NR,
-                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false))
+                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false, false, false))
                 .when(mDisplayInfoController).getTelephonyDisplayInfo();
         dataNetwork.sendMessage(13/*EVENT_DISPLAY_INFO_CHANGED*/);
         processAllMessages();
@@ -2580,7 +2577,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Change data network type to NR
         doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_NR,
-                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false))
+                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false, false, false))
                 .when(mDisplayInfoController).getTelephonyDisplayInfo();
         dataNetwork.sendMessage(13/*EVENT_DISPLAY_INFO_CHANGED*/);
         processAllMessages();
@@ -4311,7 +4308,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testImsGracefulTearDownSimRemoval() throws Exception {
+    public void testImsGracefulTearDown() throws Exception {
         setImsRegistered(true);
         setRcsRegistered(true);
 
@@ -4333,52 +4330,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // SIM removal
         mDataNetworkControllerUT.obtainMessage(9/*EVENT_SIM_STATE_CHANGED*/,
                 TelephonyManager.SIM_STATE_ABSENT, 0).sendToTarget();
-        processAllMessages();
-
-        // Make sure data network enters disconnecting state
-        ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
-                ArgumentCaptor.forClass(PreciseDataConnectionState.class);
-        verify(mPhone).notifyDataConnection(pdcsCaptor.capture());
-        PreciseDataConnectionState pdcs = pdcsCaptor.getValue();
-        assertThat(pdcs.getState()).isEqualTo(TelephonyManager.DATA_DISCONNECTING);
-
-        // IMS de-registered. Now data network is safe to be torn down.
-        Mockito.clearInvocations(mPhone);
-        setImsRegistered(false);
-        setRcsRegistered(false);
-        processAllMessages();
-
-        // All data should be disconnected.
-        verifyAllDataDisconnected();
-        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
-        verify(mPhone).notifyDataConnection(pdcsCaptor.capture());
-        pdcs = pdcsCaptor.getValue();
-        assertThat(pdcs.getState()).isEqualTo(TelephonyManager.DATA_DISCONNECTED);
-    }
-
-    @Test
-    public void testImsGracefulTearDownSimDisabled() throws Exception {
-        setImsRegistered(true);
-        setRcsRegistered(true);
-
-        NetworkCapabilities netCaps = new NetworkCapabilities();
-        netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
-        netCaps.maybeMarkCapabilitiesRestricted();
-        netCaps.setRequestorPackageName(FAKE_MMTEL_PACKAGE);
-
-        NetworkRequest nativeNetworkRequest = new NetworkRequest(netCaps,
-                ConnectivityManager.TYPE_MOBILE, ++mNetworkRequestId, NetworkRequest.Type.REQUEST);
-        TelephonyNetworkRequest networkRequest = new TelephonyNetworkRequest(
-                nativeNetworkRequest, mPhone, mFeatureFlags);
-
-        mDataNetworkControllerUT.addNetworkRequest(networkRequest);
-
-        processAllMessages();
-        Mockito.clearInvocations(mPhone);
-
-        // SIM disabled
-        mDataNetworkControllerUT.obtainMessage(9/*EVENT_SIM_STATE_CHANGED*/,
-                TelephonyManager.SIM_STATE_NOT_READY, 0).sendToTarget();
         processAllMessages();
 
         // Make sure data network enters disconnecting state

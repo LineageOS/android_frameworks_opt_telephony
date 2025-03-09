@@ -391,6 +391,13 @@ public class UiccSlot extends Handler {
         }
     }
 
+    /**
+     * Release resources. Must be called each time this class is used.
+     */
+    public void dispose() {
+        nullifyUiccCard(false);
+    }
+
     public boolean isStateUnknown() {
         // CardState is not specific to any port index, use default port.
         CardState cardState = mCardState.get(TelephonyManager.DEFAULT_PORT_INDEX);

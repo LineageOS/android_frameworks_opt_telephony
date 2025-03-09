@@ -15,8 +15,6 @@
  */
 package com.android.internal.telephony.uicc;
 
-import static junit.framework.Assert.fail;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -131,6 +129,7 @@ public class UiccControllerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        if (mUiccControllerUT != null) mUiccControllerUT.dispose();
         mUiccControllerUT = null;
         super.tearDown();
     }
@@ -145,6 +144,7 @@ public class UiccControllerTest extends TelephonyTest {
                 com.android.internal.R.array.non_removable_euicc_slots,
                 nonRemovableEuiccSlots);
         replaceInstance(UiccController.class, "mInstance", null, null);
+        mUiccControllerUT.dispose();
         mUiccControllerUT = UiccController.make(mContext, mFeatureFlags);
         processAllMessages();
     }
@@ -250,7 +250,7 @@ public class UiccControllerTest extends TelephonyTest {
         mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
 
         // Mock out UiccSlots
-        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
+        mUiccControllerUT.setUiccSlot(0, mMockSlot);
         doReturn(mMockCard).when(mMockSlot).getUiccCard();
         doReturn(mMockPort).when(mMockCard).getUiccPort(0);
         doReturn("A1B2C3D4").when(mMockPort).getIccId();
@@ -296,7 +296,7 @@ public class UiccControllerTest extends TelephonyTest {
         mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
 
         // Mock out UiccSlots
-        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
+        mUiccControllerUT.setUiccSlot(0, mMockSlot);
         doReturn(true).when(mMockSlot).isEuicc();
 
         // simulate slot status loaded so that the UiccController sets the card ID
@@ -323,7 +323,7 @@ public class UiccControllerTest extends TelephonyTest {
         mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
 
         // Mock out UiccSlots
-        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
+        mUiccControllerUT.setUiccSlot(0, mMockSlot);
         doReturn(true).when(mMockSlot).isEuicc();
 
         // simulate slot status loaded so that the UiccController sets the card ID
@@ -351,7 +351,7 @@ public class UiccControllerTest extends TelephonyTest {
         mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
 
         // Mock out UiccSlots
-        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
+        mUiccControllerUT.setUiccSlot(0, mMockSlot);
         doReturn(false).when(mMockSlot).isEuicc();
         doReturn(mMockCard).when(mMockSlot).getUiccCard();
         doReturn("ASDF1234").when(mMockCard).getCardId();
@@ -402,7 +402,7 @@ public class UiccControllerTest extends TelephonyTest {
         mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
 
         // Mock out UiccSlots
-        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
+        mUiccControllerUT.setUiccSlot(0, mMockSlot);
         doReturn(false).when(mMockSlot).isEuicc();
         doReturn(mMockCard).when(mMockSlot).getUiccCard();
         doReturn("ASDF1234").when(mMockCard).getCardId();
@@ -453,7 +453,7 @@ public class UiccControllerTest extends TelephonyTest {
         mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
 
         // Mock out UiccSlots
-        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
+        mUiccControllerUT.setUiccSlot(0, mMockSlot);
         doReturn(true).when(mMockSlot).isEuicc();
         doReturn(null).when(mMockSlot).getUiccCard();
         doReturn(false).when(mMockSlot).isRemovable();
@@ -499,21 +499,17 @@ public class UiccControllerTest extends TelephonyTest {
      * The default eUICC should not be the removable slot if there is a built-in eUICC.
      */
     @Test
-    public void testDefaultEuiccIsNotRemovable() {
-        try {
-            reconfigureSlots(2, new int[]{ 1 } /* non-removable slot */);
-        } catch (Exception e) {
-            fail("Unable to reconfigure slots.");
-        }
+    public void testDefaultEuiccIsNotRemovable() throws Exception {
+        reconfigureSlots(2, new int[]{ 1 } /* non-removable slot */);
 
         // Give UiccController a real context so it can use shared preferences
         mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
 
         // Mock out UiccSlots so that [0] is a removable eUICC and [1] is built-in
-        mUiccControllerUT.mUiccSlots[0] = mMockRemovableEuiccSlot;
+        mUiccControllerUT.setUiccSlot(0, mMockRemovableEuiccSlot);
         doReturn(true).when(mMockRemovableEuiccSlot).isEuicc();
         doReturn(true).when(mMockRemovableEuiccSlot).isRemovable();
-        mUiccControllerUT.mUiccSlots[1] = mMockSlot;
+        mUiccControllerUT.setUiccSlot(1, mMockSlot);
         doReturn(true).when(mMockSlot).isEuicc();
         doReturn(false).when(mMockSlot).isRemovable();
 
@@ -550,21 +546,17 @@ public class UiccControllerTest extends TelephonyTest {
      * not depend on the order of the slots.
      */
     @Test
-    public void testDefaultEuiccIsNotRemovable_swapSlotOrder() {
-        try {
-            reconfigureSlots(2, new int[]{ 0 } /* non-removable slot */);
-        } catch (Exception e) {
-            fail("Unable to reconfigure slots.");
-        }
+    public void testDefaultEuiccIsNotRemovable_swapSlotOrder() throws Exception {
+        reconfigureSlots(2, new int[]{ 0 } /* non-removable slot */);
 
         // Give UiccController a real context so it can use shared preferences
         mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
 
         // Mock out UiccSlots so that [0] is a built-in eUICC and [1] is removable
-        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
+        mUiccControllerUT.setUiccSlot(0, mMockSlot);
         doReturn(true).when(mMockSlot).isEuicc();
         doReturn(false).when(mMockSlot).isRemovable();
-        mUiccControllerUT.mUiccSlots[1] = mMockRemovableEuiccSlot;
+        mUiccControllerUT.setUiccSlot(1, mMockRemovableEuiccSlot);
         doReturn(true).when(mMockRemovableEuiccSlot).isEuicc();
         doReturn(true).when(mMockRemovableEuiccSlot).isRemovable();
 
@@ -603,21 +595,17 @@ public class UiccControllerTest extends TelephonyTest {
      * the removable eUICC.
      */
     @Test
-    public void testDefaultEuiccIsNotRemovable_EuiccIsInactive() {
-        try {
-            reconfigureSlots(2, new int[]{ 1 } /* non-removable slot */);
-        } catch (Exception e) {
-            fail();
-        }
+    public void testDefaultEuiccIsNotRemovable_EuiccIsInactive() throws Exception {
+        reconfigureSlots(2, new int[]{ 1 } /* non-removable slot */);
 
         // Give UiccController a real context so it can use shared preferences
         mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
 
         // Mock out UiccSlots. Slot 0 is inactive here.
-        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
+        mUiccControllerUT.setUiccSlot(0, mMockSlot);
         doReturn(true).when(mMockSlot).isEuicc();
         doReturn(false).when(mMockSlot).isRemovable();
-        mUiccControllerUT.mUiccSlots[1] = mMockRemovableEuiccSlot;
+        mUiccControllerUT.setUiccSlot(1, mMockRemovableEuiccSlot);
         doReturn(true).when(mMockRemovableEuiccSlot).isEuicc();
         doReturn(true).when(mMockRemovableEuiccSlot).isRemovable();
 
@@ -669,7 +657,7 @@ public class UiccControllerTest extends TelephonyTest {
         mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
 
         // Mock out UiccSlots
-        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
+        mUiccControllerUT.setUiccSlot(0, mMockSlot);
         doReturn(true).when(mMockSlot).isEuicc();
         doReturn(null).when(mMockSlot).getUiccCard();
         //doReturn("123451234567890").when(mMockSlot).getIccId();

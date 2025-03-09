@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.satellite;
 
+import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_CHECK_PENDING_INCOMING_SMS;
 import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_KEEP_ALIVE;
 import static android.telephony.satellite.SatelliteManager.DATAGRAM_TYPE_UNKNOWN;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE;
@@ -282,7 +283,7 @@ public class DatagramController {
             mSendDatagramTransferState = datagramTransferState;
             mSendPendingCount = sendPendingCount;
             mSendErrorCode = errorCode;
-            notifyDatagramTransferStateChangedToSessionController();
+            notifyDatagramTransferStateChangedToSessionController(mDatagramType);
             mPointingAppController.updateSendDatagramTransferState(mSendSubId, mDatagramType,
                     mSendDatagramTransferState, mSendPendingCount, mSendErrorCode);
             retryPollPendingDatagramsInDemoMode();
@@ -311,21 +312,23 @@ public class DatagramController {
      * @param receivePendingCount The number of datagrams that are currently pending to be received.
      * @param errorCode If datagram transfer failed, the reason for failure.
      */
-    public void updateReceiveStatus(int subId,
+    public void updateReceiveStatus(int subId, @SatelliteManager.DatagramType int datagramType,
             @SatelliteManager.SatelliteDatagramTransferState int datagramTransferState,
             int receivePendingCount, int errorCode) {
         synchronized (mLock) {
             plogd("updateReceiveStatus"
                     + " subId: " + subId
+                    + " datagramType: " + datagramType
                     + " datagramTransferState: " + datagramTransferState
                     + " receivePendingCount: " + receivePendingCount + " errorCode: " + errorCode);
 
             mReceiveSubId = subId;
+            mDatagramType = datagramType;
             mReceiveDatagramTransferState = datagramTransferState;
             mReceivePendingCount = receivePendingCount;
             mReceiveErrorCode = errorCode;
 
-            notifyDatagramTransferStateChangedToSessionController();
+            notifyDatagramTransferStateChangedToSessionController(mDatagramType);
             mPointingAppController.updateReceiveDatagramTransferState(mReceiveSubId,
                     mReceiveDatagramTransferState, mReceivePendingCount, mReceiveErrorCode);
             retryPollPendingDatagramsInDemoMode();
@@ -365,6 +368,24 @@ public class DatagramController {
     }
 
     /**
+     * Notify SMS received.
+     *
+     * @param subId The subId of the subscription used to receive SMS
+     */
+    public void onSmsReceived(int subId) {
+        // To keep exist notification flow, need to call with each state.
+        updateReceiveStatus(subId, SatelliteManager.DATAGRAM_TYPE_SMS,
+                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING,
+                getReceivePendingCount(), SatelliteManager.SATELLITE_RESULT_SUCCESS);
+        updateReceiveStatus(subId, SatelliteManager.DATAGRAM_TYPE_SMS,
+                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_SUCCESS,
+                getReceivePendingCount(), SatelliteManager.SATELLITE_RESULT_SUCCESS);
+        updateReceiveStatus(subId, SatelliteManager.DATAGRAM_TYPE_SMS,
+                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
+                getReceivePendingCount(), SatelliteManager.SATELLITE_RESULT_SUCCESS);
+    }
+
+    /**
      * Set whether the device is aligned with the satellite.
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
@@ -397,6 +418,15 @@ public class DatagramController {
             }
             if (datagramType == DATAGRAM_TYPE_KEEP_ALIVE
                     && mSatelltieModemState == SATELLITE_MODEM_STATE_NOT_CONNECTED) {
+                return false;
+            }
+            boolean allowCheckMessageInNotConnected =
+                    mContext.getResources().getBoolean(
+                            R.bool.config_satellite_allow_check_message_in_not_connected);
+            if (datagramType == DATAGRAM_TYPE_CHECK_PENDING_INCOMING_SMS
+                    && mSatelltieModemState == SATELLITE_MODEM_STATE_NOT_CONNECTED
+                    && allowCheckMessageInNotConnected
+                    && mFeatureFlags.carrierRoamingNbIotNtn()) {
                 return false;
             }
             if (mSatelltieModemState != SATELLITE_MODEM_STATE_CONNECTED
@@ -565,14 +595,16 @@ public class DatagramController {
         return (DEBUG || SystemProperties.getBoolean(ALLOW_MOCK_MODEM_PROPERTY, false));
     }
 
-    private void notifyDatagramTransferStateChangedToSessionController() {
+    private void notifyDatagramTransferStateChangedToSessionController(int datagramType) {
         SatelliteSessionController sessionController = SatelliteSessionController.getInstance();
         if (sessionController == null) {
             ploge("notifyDatagramTransferStateChangeToSessionController: SatelliteSessionController"
                     + " is not initialized yet");
         } else {
-            sessionController.onDatagramTransferStateChanged(
-                    mSendDatagramTransferState, mReceiveDatagramTransferState);
+            synchronized (mLock) {
+                sessionController.onDatagramTransferStateChanged(
+                        mSendDatagramTransferState, mReceiveDatagramTransferState, datagramType);
+            }
         }
     }
 
@@ -616,7 +648,7 @@ public class DatagramController {
                     }
                 };
                 pollPendingSatelliteDatagrams(
-                        SatelliteController.getInstance().getHighestPrioritySubscrption(),
+                        SatelliteController.getInstance().getSelectedSatelliteSubId(),
                         internalCallback);
             }
         }

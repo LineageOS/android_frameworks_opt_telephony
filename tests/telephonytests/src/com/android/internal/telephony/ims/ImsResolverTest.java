@@ -27,6 +27,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -46,6 +47,7 @@ import android.os.Bundle;
 import android.os.Looper;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
+import android.os.UserHandle;
 import android.os.UserManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.TelephonyManager;
@@ -69,8 +71,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.stubbing.Answer;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -95,13 +99,14 @@ public class ImsResolverTest extends ImsTestBase {
             "TestCarrier2Pkg", "Carrier2ImsService");
 
     private static final int NUM_MAX_SLOTS = 2;
-    private static final String TAG = ImsResolverTest.class.getSimpleName();
+    private static final UserHandle TEST_USER_HANDLE = UserHandle.of(Integer.MAX_VALUE);
 
     // Mocked classes
     Context mMockContext;
     PackageManager mMockPM;
     ImsResolver.SubscriptionManagerProxy mTestSubscriptionManagerProxy;
     ImsResolver.TelephonyManagerProxy mTestTelephonyManagerProxy;
+    ImsResolver.ActivityManagerProxy mTestActivityManagerProxy;
     CarrierConfigManager mMockCarrierConfigManager;
     UserManager mMockUserManager;
     ImsResolver.ImsDynamicQueryManagerFactory mMockQueryManagerFactory;
@@ -112,6 +117,7 @@ public class ImsResolverTest extends ImsTestBase {
     private BroadcastReceiver mTestPackageBroadcastReceiver;
     private BroadcastReceiver mTestCarrierConfigReceiver;
     private BroadcastReceiver mTestBootCompleteReceiver;
+    private BroadcastReceiver mTestUserChangedReceiver;
     private ImsServiceFeatureQueryManager.Listener mDynamicQueryListener;
     private PersistableBundle[] mCarrierConfigs;
     private FeatureFlags mFeatureFlags;
@@ -124,12 +130,14 @@ public class ImsResolverTest extends ImsTestBase {
         mMockPM = mock(PackageManager.class);
         mTestSubscriptionManagerProxy = mock(ImsResolver.SubscriptionManagerProxy.class);
         mTestTelephonyManagerProxy = mock(ImsResolver.TelephonyManagerProxy.class);
+        mTestActivityManagerProxy = mock(ImsResolver.ActivityManagerProxy.class);
         mMockCarrierConfigManager = mock(CarrierConfigManager.class);
         mMockUserManager = mock(UserManager.class);
         mMockQueryManagerFactory = mock(ImsResolver.ImsDynamicQueryManagerFactory.class);
         mMockQueryManager = mock(ImsServiceFeatureQueryManager.class);
         mMockRepo = mock(ImsFeatureBinderRepository.class);
         mFeatureFlags = mock(FeatureFlags.class);
+        when(mFeatureFlags.imsResolverUserAware()).thenReturn(true);
     }
 
     @After
@@ -411,7 +419,7 @@ public class ImsResolverTest extends ImsTestBase {
 
         ArgumentCaptor<SparseIntArray> arrayCaptor =
                         ArgumentCaptor.forClass(SparseIntArray.class);
-        verify(controller).bind(eq(features), arrayCaptor.capture());
+        verify(controller).bind(eq(mContext.getUser()), eq(features), arrayCaptor.capture());
         SparseIntArray slotIdToSubIdMap = arrayCaptor.getValue();
         SparseIntArray compareMap = new SparseIntArray();
         compareMap.put(0, 0);
@@ -469,11 +477,14 @@ public class ImsResolverTest extends ImsTestBase {
         when(mMockQueryManager.isQueryInProgress()).thenReturn(false);
         setupDynamicQueryFeatures(TEST_CARRIER_2_DEFAULT_NAME, featuresAll, 1);
 
-        verify(deviceController).bind(eq(featuresDevice), any(SparseIntArray.class));
+        verify(deviceController).bind(eq(mContext.getUser()), eq(featuresDevice),
+                any(SparseIntArray.class));
         verify(deviceController, never()).unbind();
-        verify(carrierController1).bind(eq(featuresMmTel), any(SparseIntArray.class));
+        verify(carrierController1).bind(eq(mContext.getUser()), eq(featuresMmTel),
+                any(SparseIntArray.class));
         verify(carrierController1, never()).unbind();
-        verify(carrierController2).bind(eq(featuresRcs), any(SparseIntArray.class));
+        verify(carrierController2).bind(eq(mContext.getUser()), eq(featuresRcs),
+                any(SparseIntArray.class));
         verify(carrierController2, never()).unbind();
         assertEquals(TEST_CARRIER_DEFAULT_NAME, carrierController1.getComponentName());
         assertEquals(TEST_CARRIER_2_DEFAULT_NAME, carrierController2.getComponentName());
@@ -521,11 +532,14 @@ public class ImsResolverTest extends ImsTestBase {
         when(mMockQueryManager.isQueryInProgress()).thenReturn(false);
         setupDynamicQueryFeatures(TEST_CARRIER_2_DEFAULT_NAME, allFeatures, 1);
 
-        verify(deviceController, never()).bind(any(), any(SparseIntArray.class));
+        verify(deviceController, never()).bind(eq(mContext.getUser()), any(),
+                any(SparseIntArray.class));
         verify(deviceController, never()).unbind();
-        verify(carrierController1).bind(eq(featuresMmTel), any(SparseIntArray.class));
+        verify(carrierController1).bind(eq(mContext.getUser()), eq(featuresMmTel),
+                any(SparseIntArray.class));
         verify(carrierController1, never()).unbind();
-        verify(carrierController2).bind(eq(featuresRcs), any(SparseIntArray.class));
+        verify(carrierController2).bind(eq(mContext.getUser()), eq(featuresRcs),
+                any(SparseIntArray.class));
         verify(carrierController2, never()).unbind();
         assertEquals(TEST_CARRIER_DEFAULT_NAME, carrierController1.getComponentName());
         assertEquals(TEST_CARRIER_2_DEFAULT_NAME, carrierController2.getComponentName());
@@ -553,7 +567,7 @@ public class ImsResolverTest extends ImsTestBase {
         startBindCarrierConfigAlreadySet();
         setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, features, 1);
 
-        verify(controller).bind(eq(features), any(SparseIntArray.class));
+        verify(controller).bind(eq(mContext.getUser()), eq(features), any(SparseIntArray.class));
         verify(controller, never()).unbind();
         assertEquals(TEST_CARRIER_DEFAULT_NAME, controller.getComponentName());
     }
@@ -582,7 +596,7 @@ public class ImsResolverTest extends ImsTestBase {
         // We will not bind with FEATURE_EMERGENCY_MMTEL
         features.remove(new ImsFeatureConfiguration.FeatureSlotPair(0,
                 ImsFeature.FEATURE_EMERGENCY_MMTEL));
-        verify(controller).bind(eq(features), any(SparseIntArray.class));
+        verify(controller).bind(eq(mContext.getUser()), eq(features), any(SparseIntArray.class));
         verify(controller, never()).unbind();
         assertEquals(TEST_CARRIER_DEFAULT_NAME, controller.getComponentName());
     }
@@ -606,20 +620,23 @@ public class ImsResolverTest extends ImsTestBase {
         setupPackageQuery(info);
         ImsServiceController deviceController1 = mock(ImsServiceController.class);
         ImsServiceController deviceController2 = mock(ImsServiceController.class);
-        setImsServiceControllerFactory(deviceController1, deviceController2, null, null);
+        setImsServiceControllerDDCFactory(deviceController1, deviceController2, null);
         // Bind using default features
         startBindNoCarrierConfig(1);
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureSet1 =
                 convertToHashSet(featuresController1, 0);
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureSet2 =
                 convertToHashSet(featuresController2, 0);
-        verify(deviceController1).bind(eq(featureSet1), any(SparseIntArray.class));
-        verify(deviceController2).bind(eq(featureSet2), any(SparseIntArray.class));
+        verify(deviceController1).bind(eq(mContext.getUser()), eq(featureSet1),
+                any(SparseIntArray.class));
+        verify(deviceController2).bind(eq(mContext.getUser()), eq(featureSet2),
+                any(SparseIntArray.class));
         // simulate ImsServiceController binding and setup
-        mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.FEATURE_EMERGENCY_MMTEL,
+        mTestImsResolver.imsServiceFeatureCreated(0, 0, ImsFeature.FEATURE_EMERGENCY_MMTEL,
                 deviceController1);
-        mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.FEATURE_MMTEL, deviceController1);
-        mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.FEATURE_RCS, deviceController2);
+        mTestImsResolver.imsServiceFeatureCreated(0, 0, ImsFeature.FEATURE_MMTEL,
+                deviceController1);
+        mTestImsResolver.imsServiceFeatureCreated(0, 0, ImsFeature.FEATURE_RCS, deviceController2);
 
         mTestImsResolver.enableIms(0 /*slotId*/);
         // Verify enableIms is only called once per controller.
@@ -651,7 +668,7 @@ public class ImsResolverTest extends ImsTestBase {
         // Bind without emergency calling
         startBindCarrierConfigAlreadySet();
         setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, features, 1);
-        verify(controller).bind(eq(features), any(SparseIntArray.class));
+        verify(controller).bind(eq(mContext.getUser()), eq(features), any(SparseIntArray.class));
         verify(controller, never()).unbind();
         assertEquals(TEST_CARRIER_DEFAULT_NAME, controller.getComponentName());
 
@@ -686,8 +703,8 @@ public class ImsResolverTest extends ImsTestBase {
         startBindCarrierConfigAlreadySet();
 
         processAllMessages();
-        verify(mMockQueryManager, never()).startQuery(any(), any());
-        verify(controller, never()).bind(any(), any(SparseIntArray.class));
+        verify(mMockQueryManager, never()).startQuery(any(), any(), any());
+        verify(controller, never()).bind(any(), any(), any(SparseIntArray.class));
         verify(controller, never()).unbind();
     }
 
@@ -719,7 +736,7 @@ public class ImsResolverTest extends ImsTestBase {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureSet = convertToHashSet(features, 0);
         ArgumentCaptor<SparseIntArray> arrayCaptor =
                         ArgumentCaptor.forClass(SparseIntArray.class);
-        verify(controller).bind(eq(featureSet), arrayCaptor.capture());
+        verify(controller).bind(eq(mContext.getUser()), eq(featureSet), arrayCaptor.capture());
         SparseIntArray slotIdToSubIdMap = arrayCaptor.getValue();
         SparseIntArray compareMap = new SparseIntArray();
         compareMap.put(0, 0);
@@ -729,7 +746,7 @@ public class ImsResolverTest extends ImsTestBase {
         }
 
         verify(controller, never()).unbind();
-        verify(mMockQueryManager, never()).startQuery(any(), any());
+        verify(mMockQueryManager, never()).startQuery(any(), any(), any());
         assertEquals(TEST_DEVICE_DEFAULT_NAME, controller.getComponentName());
     }
 
@@ -763,7 +780,7 @@ public class ImsResolverTest extends ImsTestBase {
         featureSet.addAll(convertToHashSet(features, 1));
         ArgumentCaptor<SparseIntArray> arrayCaptor =
                         ArgumentCaptor.forClass(SparseIntArray.class);
-        verify(controller).bind(eq(featureSet), arrayCaptor.capture());
+        verify(controller).bind(eq(mContext.getUser()), eq(featureSet), arrayCaptor.capture());
         SparseIntArray slotIdToSubIdMap = arrayCaptor.getValue();
         assertEquals(slotIdToSubIdMap.size(), 2);
         SparseIntArray compareMap = new SparseIntArray();
@@ -774,7 +791,7 @@ public class ImsResolverTest extends ImsTestBase {
             assertEquals(slotIdToSubIdMap.get(i), compareMap.get(i));
         }
         verify(controller, never()).unbind();
-        verify(mMockQueryManager, never()).startQuery(any(), any());
+        verify(mMockQueryManager, never()).startQuery(any(), any(), any());
         assertEquals(TEST_DEVICE_DEFAULT_NAME, controller.getComponentName());
 
         // Change number of SIMs and verify the features in the ImsServiceController are changed
@@ -823,7 +840,7 @@ public class ImsResolverTest extends ImsTestBase {
 
         ArgumentCaptor<SparseIntArray> arrayCaptor =
                         ArgumentCaptor.forClass(SparseIntArray.class);
-        verify(controller).bind(eq(featureSet), arrayCaptor.capture());
+        verify(controller).bind(eq(mContext.getUser()), eq(featureSet), arrayCaptor.capture());
         SparseIntArray slotIdToSubIdMap = arrayCaptor.getValue();
         assertEquals(slotIdToSubIdMap.size(), 1);
         SparseIntArray compareMap = new SparseIntArray();
@@ -833,7 +850,7 @@ public class ImsResolverTest extends ImsTestBase {
             assertEquals(slotIdToSubIdMap.get(i), compareMap.get(i));
         }
         verify(controller, never()).unbind();
-        verify(mMockQueryManager, never()).startQuery(any(), any());
+        verify(mMockQueryManager, never()).startQuery(any(), any(), any());
         assertEquals(TEST_DEVICE_DEFAULT_NAME, controller.getComponentName());
 
         // Change number of SIMs and verify the features in the ImsServiceController are changed
@@ -895,17 +912,19 @@ public class ImsResolverTest extends ImsTestBase {
         processAllMessages();
         // ensure that startQuery was called
         verify(mMockQueryManager, times(1)).startQuery(eq(TEST_DEVICE_DEFAULT_NAME),
-                any(String.class));
+                any(UserHandle.class), any(String.class));
 
         verify(mMockQueryManager, times(1)).startQuery(eq(TEST_DEVICE2_DEFAULT_NAME),
-                any(String.class));
+                any(UserHandle.class), any(String.class));
 
         mDynamicQueryListener.onComplete(TEST_DEVICE_DEFAULT_NAME, deviceFeatures1);
         mDynamicQueryListener.onComplete(TEST_DEVICE2_DEFAULT_NAME, deviceFeatures2);
         processAllMessages();
 
-        verify(deviceController, times(2)).bind(eq(deviceFeatures1), any(SparseIntArray.class));
-        verify(deviceController2, times(1)).bind(eq(deviceFeatures2), any(SparseIntArray.class));
+        verify(deviceController, times(2)).bind(eq(mContext.getUser()), eq(deviceFeatures1),
+                any(SparseIntArray.class));
+        verify(deviceController2, times(1)).bind(eq(mContext.getUser()), eq(deviceFeatures2),
+                any(SparseIntArray.class));
     }
 
     /**
@@ -942,7 +961,8 @@ public class ImsResolverTest extends ImsTestBase {
         setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 1);
 
         // Verify that all features that have been defined for the carrier override are bound
-        verify(carrierController).bind(eq(carrierFeatures), any(SparseIntArray.class));
+        verify(carrierController).bind(eq(mContext.getUser()), eq(carrierFeatures),
+                any(SparseIntArray.class));
         verify(carrierController, never()).unbind();
         assertEquals(TEST_CARRIER_DEFAULT_NAME, carrierController.getComponentName());
         // Verify that all features that are not defined in the carrier override are bound in the
@@ -950,7 +970,8 @@ public class ImsResolverTest extends ImsTestBase {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> deviceFeatureSet =
                 convertToHashSet(deviceFeatures, 0);
         deviceFeatureSet.removeAll(carrierFeatures);
-        verify(deviceController).bind(eq(deviceFeatureSet), any(SparseIntArray.class));
+        verify(deviceController).bind(eq(mContext.getUser()), eq(deviceFeatureSet),
+                any(SparseIntArray.class));
         verify(deviceController, never()).unbind();
         assertEquals(TEST_DEVICE_DEFAULT_NAME, deviceController.getComponentName());
 
@@ -1006,7 +1027,8 @@ public class ImsResolverTest extends ImsTestBase {
         setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 1);
 
         // Verify that all features that have been defined for the carrier override are bound
-        verify(carrierController).bind(eq(carrierFeatures), any(SparseIntArray.class));
+        verify(carrierController).bind(eq(mContext.getUser()), eq(carrierFeatures),
+                any(SparseIntArray.class));
         verify(carrierController, never()).unbind();
         assertEquals(TEST_CARRIER_DEFAULT_NAME, carrierController.getComponentName());
         // Verify that all features that are not defined in the carrier override are bound in the
@@ -1015,7 +1037,8 @@ public class ImsResolverTest extends ImsTestBase {
                 convertToHashSet(deviceFeatures, 0);
         deviceFeatureSet.addAll(convertToHashSet(deviceFeatures, 1));
         deviceFeatureSet.removeAll(carrierFeatures);
-        verify(deviceController).bind(eq(deviceFeatureSet), any(SparseIntArray.class));
+        verify(deviceController).bind(eq(mContext.getUser()), eq(deviceFeatureSet),
+                any(SparseIntArray.class));
         verify(deviceController, never()).unbind();
         assertEquals(TEST_DEVICE_DEFAULT_NAME, deviceController.getComponentName());
 
@@ -1062,9 +1085,9 @@ public class ImsResolverTest extends ImsTestBase {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureSet = convertToHashSet(features, 0);
         // There is no carrier override set, so make sure that the ImsServiceController binds
         // to all SIMs.
-        verify(controller).bind(eq(featureSet), any(SparseIntArray.class));
+        verify(controller).bind(eq(mContext.getUser()), eq(featureSet), any(SparseIntArray.class));
         verify(controller, never()).unbind();
-        verify(mMockQueryManager, never()).startQuery(any(), any());
+        verify(mMockQueryManager, never()).startQuery(any(), any(), any());
         assertEquals(TEST_DEVICE_DEFAULT_NAME, controller.getComponentName());
     }
 
@@ -1100,7 +1123,8 @@ public class ImsResolverTest extends ImsTestBase {
         setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 1);
 
         // Verify that all features that have been defined for the carrier override are bound
-        verify(carrierController).bind(eq(carrierFeatures), any(SparseIntArray.class));
+        verify(carrierController).bind(eq(mContext.getUser()), eq(carrierFeatures),
+                any(SparseIntArray.class));
         verify(carrierController, never()).unbind();
         assertEquals(TEST_CARRIER_DEFAULT_NAME, carrierController.getComponentName());
         // Verify that all features that are not defined in the carrier override are bound in the
@@ -1108,7 +1132,8 @@ public class ImsResolverTest extends ImsTestBase {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> deviceFeatureSet =
                 convertToHashSet(deviceFeatures, 0);
         deviceFeatureSet.removeAll(carrierFeatures);
-        verify(deviceController).bind(eq(deviceFeatureSet), any(SparseIntArray.class));
+        verify(deviceController).bind(eq(mContext.getUser()), eq(deviceFeatureSet),
+                any(SparseIntArray.class));
         verify(deviceController, never()).unbind();
         assertEquals(TEST_DEVICE_DEFAULT_NAME, deviceController.getComponentName());
     }
@@ -1127,11 +1152,11 @@ public class ImsResolverTest extends ImsTestBase {
 
         // Callback from mock ImsServiceControllers
         // All features on slot 1 should be the device default
-        mTestImsResolver.imsServiceFeatureCreated(1, ImsFeature.FEATURE_MMTEL, deviceController);
-        mTestImsResolver.imsServiceFeatureCreated(1, ImsFeature.FEATURE_RCS, deviceController);
-        mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.FEATURE_MMTEL, deviceController);
+        mTestImsResolver.imsServiceFeatureCreated(1, 1, ImsFeature.FEATURE_MMTEL, deviceController);
+        mTestImsResolver.imsServiceFeatureCreated(1, 1, ImsFeature.FEATURE_RCS, deviceController);
+        mTestImsResolver.imsServiceFeatureCreated(0, 0, ImsFeature.FEATURE_MMTEL, deviceController);
         // The carrier override contains this feature
-        mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.FEATURE_RCS, carrierController);
+        mTestImsResolver.imsServiceFeatureCreated(0, 0, ImsFeature.FEATURE_RCS, carrierController);
     }
 
     /**
@@ -1155,7 +1180,7 @@ public class ImsResolverTest extends ImsTestBase {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureSet =
                 convertToHashSet(features, 0);
         featureSet.addAll(convertToHashSet(features, 1));
-        verify(controller).bind(eq(featureSet), any(SparseIntArray.class));
+        verify(controller).bind(eq(mContext.getUser()), eq(featureSet), any(SparseIntArray.class));
 
         // add RCS to features list
         Set<String> newFeatures = new HashSet<>(features);
@@ -1191,7 +1216,7 @@ public class ImsResolverTest extends ImsTestBase {
         setupPackageQuery(info);
         ImsServiceController deviceController1 = mock(ImsServiceController.class);
         ImsServiceController deviceController2 = mock(ImsServiceController.class);
-        setImsServiceControllerFactory(deviceController1, deviceController2, null, null);
+        setImsServiceControllerDDCFactory(deviceController1, deviceController2, null);
         // Bind using default features
         startBindNoCarrierConfig(2);
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureSet1 =
@@ -1200,8 +1225,10 @@ public class ImsResolverTest extends ImsTestBase {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureSet2 =
                 convertToHashSet(featuresController2, 0);
         featureSet2.addAll(convertToHashSet(featuresController2, 1));
-        verify(deviceController1).bind(eq(featureSet1), any(SparseIntArray.class));
-        verify(deviceController2).bind(eq(featureSet2), any(SparseIntArray.class));
+        verify(deviceController1).bind(eq(mContext.getUser()), eq(featureSet1),
+                any(SparseIntArray.class));
+        verify(deviceController2).bind(eq(mContext.getUser()), eq(featureSet2),
+                any(SparseIntArray.class));
 
         // add RCS to features list for device 1
         Set<String> newFeatures1 = new HashSet<>(featuresController1);
@@ -1239,7 +1266,7 @@ public class ImsResolverTest extends ImsTestBase {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureSet =
                 convertToHashSet(features, 0);
         featureSet.addAll(convertToHashSet(features, 1));
-        verify(controller).bind(eq(featureSet), any(SparseIntArray.class));
+        verify(controller).bind(eq(mContext.getUser()), eq(featureSet), any(SparseIntArray.class));
 
         // add RCS to features list
         Set<String> newFeatures = new HashSet<>(features);
@@ -1288,7 +1315,8 @@ public class ImsResolverTest extends ImsTestBase {
         setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 1);
 
         // Verify that all features that have been defined for the carrier override are bound
-        verify(carrierController).bind(eq(carrierFeatures), any(SparseIntArray.class));
+        verify(carrierController).bind(eq(mContext.getUser()), eq(carrierFeatures),
+                any(SparseIntArray.class));
         verify(carrierController, never()).unbind();
         assertEquals(TEST_CARRIER_DEFAULT_NAME, carrierController.getComponentName());
         // Verify that all features that are not defined in the carrier override are bound in the
@@ -1297,7 +1325,8 @@ public class ImsResolverTest extends ImsTestBase {
                 convertToHashSet(deviceFeatures, 1);
         deviceFeatureSet.addAll(convertToHashSet(deviceFeatures, 0));
         deviceFeatureSet.removeAll(carrierFeatures);
-        verify(deviceController).bind(eq(deviceFeatureSet), any(SparseIntArray.class));
+        verify(deviceController).bind(eq(mContext.getUser()), eq(deviceFeatureSet),
+                any(SparseIntArray.class));
         verify(deviceController, never()).unbind();
         assertEquals(TEST_DEVICE_DEFAULT_NAME, deviceController.getComponentName());
 
@@ -1356,13 +1385,13 @@ public class ImsResolverTest extends ImsTestBase {
         ImsServiceController deviceController1 = mock(ImsServiceController.class);
         ImsServiceController deviceController2 = mock(ImsServiceController.class);
         ImsServiceController carrierController = mock(ImsServiceController.class);
-        setImsServiceControllerFactory(deviceController1, deviceController2, carrierController,
-                null);
+        setImsServiceControllerDDCFactory(deviceController1, deviceController2, carrierController);
 
         startBindCarrierConfigAlreadySet();
         setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 1);
         // Verify that all features that have been defined for the carrier override are bound
-        verify(carrierController).bind(eq(carrierFeatures), any(SparseIntArray.class));
+        verify(carrierController).bind(eq(mContext.getUser()), eq(carrierFeatures),
+                any(SparseIntArray.class));
         verify(carrierController, never()).unbind();
         assertEquals(TEST_CARRIER_DEFAULT_NAME, carrierController.getComponentName());
         // Verify that all features that are not defined in the carrier override are bound in the
@@ -1370,13 +1399,16 @@ public class ImsResolverTest extends ImsTestBase {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> deviceFeatureSet1 =
                 convertToHashSet(deviceFeatures1, 1);
         deviceFeatureSet1.removeAll(carrierFeatures);
-        verify(deviceController1).bind(eq(deviceFeatureSet1), any(SparseIntArray.class));
+        verify(deviceController1).bind(eq(mContext.getUser()), eq(deviceFeatureSet1),
+                any(SparseIntArray.class));
         verify(deviceController1, never()).unbind();
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> deviceFeatureSet2 =
                 convertToHashSet(deviceFeatures2, 0);
         deviceFeatureSet2.addAll(convertToHashSet(deviceFeatures2, 1));
+        deviceFeatureSet2.addAll(convertToHashSet(deviceFeatures2, 1));
         deviceFeatureSet2.removeAll(carrierFeatures);
-        verify(deviceController2).bind(eq(deviceFeatureSet2), any(SparseIntArray.class));
+        verify(deviceController2).bind(eq(mContext.getUser()), eq(deviceFeatureSet2),
+                any(SparseIntArray.class));
         verify(deviceController2, never()).unbind();
         assertEquals(TEST_DEVICE_DEFAULT_NAME, deviceController1.getComponentName());
         assertEquals(TEST_DEVICE2_DEFAULT_NAME, deviceController2.getComponentName());
@@ -1392,7 +1424,7 @@ public class ImsResolverTest extends ImsTestBase {
         verify(carrierController).changeImsServiceFeatures(eq(carrierFeatures),
                 any(SparseIntArray.class));
         deviceFeatureSet1.removeAll(carrierFeatures);
-        verify(deviceController1, times(2)).changeImsServiceFeatures(eq(deviceFeatureSet1),
+        verify(deviceController1).changeImsServiceFeatures(eq(deviceFeatureSet1),
                 any(SparseIntArray.class));
         deviceFeatureSet2.removeAll(carrierFeatures);
         verify(deviceController2).changeImsServiceFeatures(eq(deviceFeatureSet2),
@@ -1429,7 +1461,8 @@ public class ImsResolverTest extends ImsTestBase {
         startBindCarrierConfigAlreadySet();
         setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 1);
         // Verify that all features that have been defined for the carrier override are bound
-        verify(carrierController).bind(eq(carrierFeatures), any(SparseIntArray.class));
+        verify(carrierController).bind(eq(mContext.getUser()), eq(carrierFeatures),
+                any(SparseIntArray.class));
         verify(carrierController, never()).unbind();
         assertEquals(TEST_CARRIER_DEFAULT_NAME, carrierController.getComponentName());
         // Verify that all features that are not defined in the carrier override are bound in the
@@ -1438,7 +1471,8 @@ public class ImsResolverTest extends ImsTestBase {
                 convertToHashSet(deviceFeatures, 1);
         deviceFeatureSet.addAll(convertToHashSet(deviceFeatures, 0));
         deviceFeatureSet.removeAll(carrierFeatures);
-        verify(deviceController).bind(eq(deviceFeatureSet), any(SparseIntArray.class));
+        verify(deviceController).bind(eq(mContext.getUser()), eq(deviceFeatureSet),
+                any(SparseIntArray.class));
         verify(deviceController, never()).unbind();
         assertEquals(TEST_DEVICE_DEFAULT_NAME, deviceController.getComponentName());
 
@@ -1497,14 +1531,20 @@ public class ImsResolverTest extends ImsTestBase {
         setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 1);
 
         // Verify that all features that have been defined for the carrier override are bound
-        verify(carrierController).bind(eq(carrierFeatures), any(SparseIntArray.class));
+        verify(carrierController).bind(eq(mContext.getUser()), eq(carrierFeatures),
+                any(SparseIntArray.class));
         // device features change
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> deviceFeatureSet =
                 convertToHashSet(deviceFeatures, 1);
         deviceFeatureSet.addAll(convertToHashSet(deviceFeatures, 0));
         deviceFeatureSet.removeAll(carrierFeatures);
-        verify(deviceController).changeImsServiceFeatures(eq(deviceFeatureSet),
-                any(SparseIntArray.class));
+        if (mFeatureFlags.imsResolverUserAware()) {
+            verify(deviceController).changeImsServiceFeatures(eq(deviceFeatureSet),
+                    any(SparseIntArray.class));
+        } else {
+            verify(deviceController).bind(eq(mContext.getUser()), eq(deviceFeatureSet),
+                    any(SparseIntArray.class));
+        }
     }
 
     /**
@@ -1644,7 +1684,8 @@ public class ImsResolverTest extends ImsTestBase {
         assertNotNull(mTestImsResolver.getImsServiceInfoFromCache(
                 TEST_CARRIER_DEFAULT_NAME.getPackageName()));
         // Verify that carrier 2 is bound
-        verify(carrierController2).bind(eq(carrierFeatures2), any(SparseIntArray.class));
+        verify(carrierController2).bind(eq(mContext.getUser()), eq(carrierFeatures2),
+                any(SparseIntArray.class));
         assertNotNull(mTestImsResolver.getImsServiceInfoFromCache(
                 TEST_CARRIER_2_DEFAULT_NAME.getPackageName()));
         // device features change to accommodate for the features carrier 2 lacks
@@ -1692,7 +1733,8 @@ public class ImsResolverTest extends ImsTestBase {
         setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 1);
 
         // Verify that all features that have been defined for the carrier override are bound
-        verify(carrierController).bind(eq(carrierFeatures), any(SparseIntArray.class));
+        verify(carrierController).bind(eq(mContext.getUser()), eq(carrierFeatures),
+                any(SparseIntArray.class));
         // device features change
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> deviceFeatureSet =
                 convertToHashSet(deviceFeatures, 1);
@@ -1733,13 +1775,15 @@ public class ImsResolverTest extends ImsTestBase {
         setupDynamicQueryFeaturesFailure(TEST_CARRIER_DEFAULT_NAME, 1);
 
         // Verify that a bind never occurs for the carrier controller.
-        verify(carrierController, never()).bind(any(), any(SparseIntArray.class));
+        verify(carrierController, never()).bind(eq(mContext.getUser()), any(),
+                any(SparseIntArray.class));
         verify(carrierController, never()).unbind();
         // Verify that all features are used to bind to the device ImsService since the carrier
         // ImsService failed to bind properly.
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> deviceFeatureSet =
                 convertToHashSet(deviceFeatures, 0);
-        verify(deviceController).bind(eq(deviceFeatureSet), any(SparseIntArray.class));
+        verify(deviceController).bind(eq(mContext.getUser()), eq(deviceFeatureSet),
+                any(SparseIntArray.class));
         verify(deviceController, never()).unbind();
         assertEquals(TEST_DEVICE_DEFAULT_NAME, deviceController.getComponentName());
     }
@@ -1774,18 +1818,21 @@ public class ImsResolverTest extends ImsTestBase {
         setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 1);
 
         // Verify that a bind never occurs for the carrier controller.
-        verify(carrierController).bind(eq(carrierFeatures), any(SparseIntArray.class));
+        verify(carrierController).bind(eq(mContext.getUser()), eq(carrierFeatures),
+                any(SparseIntArray.class));
         verify(carrierController, never()).unbind();
         // Verify that all features that are not defined in the carrier override are bound in the
         // device controller (including emergency voice for slot 0)
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> deviceFeatureSet =
                 convertToHashSet(deviceFeatures, 0);
         deviceFeatureSet.removeAll(carrierFeatures);
-        verify(deviceController).bind(eq(deviceFeatureSet), any(SparseIntArray.class));
+        verify(deviceController).bind(eq(mContext.getUser()), eq(deviceFeatureSet),
+                any(SparseIntArray.class));
         verify(deviceController, never()).unbind();
         assertEquals(TEST_DEVICE_DEFAULT_NAME, deviceController.getComponentName());
 
-        mTestImsResolver.imsServiceBindPermanentError(TEST_CARRIER_DEFAULT_NAME);
+        mTestImsResolver.imsServiceBindPermanentError(TEST_CARRIER_DEFAULT_NAME,
+                mContext.getUser());
         processAllMessages();
         verify(carrierController).unbind();
         // Verify that the device ImsService features are changed to include the ones previously
@@ -1815,7 +1862,7 @@ public class ImsResolverTest extends ImsTestBase {
         setupPackageQuery(info);
         ImsServiceController deviceController1 = mock(ImsServiceController.class);
         ImsServiceController deviceController2 = mock(ImsServiceController.class);
-        setImsServiceControllerFactory(deviceController1, deviceController2, null, null);
+        setImsServiceControllerDDCFactory(deviceController1, deviceController2, null);
 
         startBindNoCarrierConfig(1);
         processAllMessages();
@@ -1825,11 +1872,12 @@ public class ImsResolverTest extends ImsTestBase {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureResultSet =
                 convertToHashSet(featureResult, 0);
         featureResultSet.addAll(convertToHashSet(featureResult, 1));
-        verify(deviceController1).bind(eq(featureResultSet), any(SparseIntArray.class));
+        verify(deviceController1).bind(eq(mContext.getUser()), eq(featureResultSet),
+                any(SparseIntArray.class));
         verify(deviceController1, never()).unbind();
-        verify(deviceController2, never()).bind(any(), any(SparseIntArray.class));
+        verify(deviceController2, never()).bind(any(), any(), any(SparseIntArray.class));
         verify(deviceController2, never()).unbind();
-        verify(mMockQueryManager, never()).startQuery(any(), any());
+        verify(mMockQueryManager, never()).startQuery(any(), any(), any());
         assertEquals(TEST_DEVICE_DEFAULT_NAME, deviceController1.getComponentName());
     }
 
@@ -1852,7 +1900,7 @@ public class ImsResolverTest extends ImsTestBase {
         setupPackageQuery(info);
         ImsServiceController deviceController1 = mock(ImsServiceController.class);
         ImsServiceController deviceController2 = mock(ImsServiceController.class);
-        setImsServiceControllerFactory(deviceController1, deviceController2, null, null);
+        setImsServiceControllerDDCFactory(deviceController1, deviceController2, null);
 
         startBindNoCarrierConfig(1);
         processAllMessages();
@@ -1862,11 +1910,12 @@ public class ImsResolverTest extends ImsTestBase {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureResultSet =
                 convertToHashSet(featureResult, 0);
         featureResultSet.addAll(convertToHashSet(featureResult, 1));
-        verify(deviceController1).bind(eq(featureResultSet), any(SparseIntArray.class));
+        verify(deviceController1).bind(eq(mContext.getUser()), eq(featureResultSet),
+                any(SparseIntArray.class));
         verify(deviceController1, never()).unbind();
-        verify(deviceController2, never()).bind(any(), any(SparseIntArray.class));
+        verify(deviceController2, never()).bind(any(), any(), any(SparseIntArray.class));
         verify(deviceController2, never()).unbind();
-        verify(mMockQueryManager, never()).startQuery(any(), any());
+        verify(mMockQueryManager, never()).startQuery(any(), any(), any());
         assertEquals(TEST_DEVICE_DEFAULT_NAME, deviceController1.getComponentName());
     }
 
@@ -1893,7 +1942,7 @@ public class ImsResolverTest extends ImsTestBase {
         setupPackageQuery(info);
         ImsServiceController deviceController1 = mock(ImsServiceController.class);
         ImsServiceController deviceController2 = mock(ImsServiceController.class);
-        setImsServiceControllerFactory(deviceController1, deviceController2, null, null);
+        setImsServiceControllerDDCFactory(deviceController1, deviceController2, null);
 
         startBindNoCarrierConfig(1);
         processAllMessages();
@@ -1904,11 +1953,13 @@ public class ImsResolverTest extends ImsTestBase {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureSet2 =
                 convertToHashSet(features2, 0);
         featureSet2.addAll(convertToHashSet(features2, 1));
-        verify(deviceController1).bind(eq(featureSet1), any(SparseIntArray.class));
+        verify(deviceController1).bind(eq(mContext.getUser()), eq(featureSet1),
+                any(SparseIntArray.class));
         verify(deviceController1, never()).unbind();
-        verify(deviceController2).bind(eq(featureSet2), any(SparseIntArray.class));
+        verify(deviceController2).bind(eq(mContext.getUser()), eq(featureSet2),
+                any(SparseIntArray.class));
         verify(deviceController2, never()).unbind();
-        verify(mMockQueryManager, never()).startQuery(any(), any());
+        verify(mMockQueryManager, never()).startQuery(any(), any(), any());
         assertEquals(TEST_DEVICE_DEFAULT_NAME, deviceController1.getComponentName());
         assertEquals(TEST_DEVICE2_DEFAULT_NAME, deviceController2.getComponentName());
     }
@@ -1934,16 +1985,134 @@ public class ImsResolverTest extends ImsTestBase {
         setupPackageQuery(info);
         ImsServiceController deviceController1 = mock(ImsServiceController.class);
         ImsServiceController deviceController2 = mock(ImsServiceController.class);
-        setImsServiceControllerFactory(deviceController1, deviceController2, null, null);
+        setImsServiceControllerDDCFactory(deviceController1, deviceController2, null);
 
         startBindNoCarrierConfig(1);
         processAllMessages();
 
-        verify(deviceController1, never()).bind(any(), any(SparseIntArray.class));
+        verify(deviceController1, never()).bind(any(), any(), any(SparseIntArray.class));
         verify(deviceController1, never()).unbind();
-        verify(deviceController2, never()).bind(any(), any(SparseIntArray.class));
+        verify(deviceController2, never()).bind(any(), any(), any(SparseIntArray.class));
         verify(deviceController2, never()).unbind();
-        verify(mMockQueryManager, never()).startQuery(any(), any());
+        verify(mMockQueryManager, never()).startQuery(any(), any(), any());
+    }
+
+    /**
+     * Change the current active user while having ImsServices in system user. The ImsService config
+     * should not change.
+     */
+    @Test
+    @SmallTest
+    public void testChangeCurrentUserServicesInSystem() throws RemoteException {
+        if (!mFeatureFlags.imsResolverUserAware()) {
+            return;
+        }
+        setupResolver(1 /*numSlots*/, TEST_DEVICE_DEFAULT_NAME.getPackageName(),
+                TEST_DEVICE_DEFAULT_NAME.getPackageName());
+        List<ResolveInfo> info = new ArrayList<>();
+        Set<String> deviceFeatures = new HashSet<>();
+        deviceFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
+        deviceFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
+        // Set the carrier override package for slot 0
+        setConfigCarrierStringMmTelRcs(0, TEST_CARRIER_DEFAULT_NAME.getPackageName());
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> carrierFeatures = new HashSet<>();
+        // Carrier service doesn't support the voice feature.
+        carrierFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(0, ImsFeature.FEATURE_RCS));
+        info.add(getResolveInfo(TEST_DEVICE_DEFAULT_NAME, deviceFeatures, true));
+        info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, new HashSet<>(), true));
+        // Use device default package, which will load the ImsService that the device provides
+        setupPackageQuery(info);
+
+        ImsServiceController deviceController = mock(ImsServiceController.class);
+        ImsServiceController carrierController = mock(ImsServiceController.class);
+        setImsServiceControllerFactory(deviceController, carrierController);
+
+        startBindCarrierConfigAlreadySet();
+        setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 1);
+
+        // Perform a user switch
+        userChanged(TEST_USER_HANDLE);
+        setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 2);
+
+
+        // Verify that all features that have been defined for the device/carrier override are bound
+        // and are not changed when the user changes.
+        verify(carrierController).bind(eq(mContext.getUser()), eq(carrierFeatures),
+                any(SparseIntArray.class));
+        verify(carrierController, atLeastOnce()).changeImsServiceFeatures(eq(carrierFeatures),
+                any(SparseIntArray.class));
+        verify(carrierController, never()).unbind();
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> deviceFeatureSet =
+                convertToHashSet(deviceFeatures, 0);
+        deviceFeatureSet.removeAll(carrierFeatures);
+        verify(deviceController).bind(eq(mContext.getUser()), eq(deviceFeatureSet),
+                any(SparseIntArray.class));
+        verify(deviceController, atLeastOnce()).changeImsServiceFeatures(eq(deviceFeatureSet),
+                any(SparseIntArray.class));
+        verify(deviceController, never()).unbind();
+    }
+
+    /**
+     * Change the current active user while having a carrier ImsService installed for second user.
+     * The features should change when the current user changes to the second user and back.
+     */
+    @Test
+    @SmallTest
+    public void testChangeCurrentUserCarrierInSecondUser() throws RemoteException {
+        if (!mFeatureFlags.imsResolverUserAware()) {
+            return;
+        }
+        setupResolver(1 /*numSlots*/, TEST_DEVICE_DEFAULT_NAME.getPackageName(),
+                TEST_DEVICE_DEFAULT_NAME.getPackageName());
+        Set<String> deviceFeatures = new HashSet<>();
+        deviceFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
+        deviceFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
+        // Set the carrier override package for slot 0
+        setConfigCarrierStringMmTelRcs(0, TEST_CARRIER_DEFAULT_NAME.getPackageName());
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> carrierFeatures = new HashSet<>();
+        // Carrier service doesn't support the voice feature.
+        carrierFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(0, ImsFeature.FEATURE_RCS));
+        // Use device default package, which will load the ImsService that the device provides
+        setupPackageQuery(Collections.singletonList(
+                getResolveInfo(TEST_DEVICE_DEFAULT_NAME, deviceFeatures, true)));
+        setupPackageQueryForUser(Collections.singletonList(
+                        getResolveInfo(TEST_CARRIER_DEFAULT_NAME, new HashSet<>(), true)),
+                TEST_USER_HANDLE);
+
+        ImsServiceController deviceController = mock(ImsServiceController.class);
+        ImsServiceController carrierController = mock(ImsServiceController.class);
+        setImsServiceControllerFactory(deviceController, carrierController);
+
+        startBindCarrierConfigAlreadySet();
+
+        verify(carrierController, never()).bind(eq(mContext.getUser()), any(),
+                any(SparseIntArray.class));
+        verify(deviceController).bind(eq(mContext.getUser()),
+                eq(convertToHashSet(deviceFeatures, 0)), any(SparseIntArray.class));
+
+        // Perform a user switch
+        setBoundImsServiceControllerUser(carrierController, TEST_USER_HANDLE);
+        userChanged(TEST_USER_HANDLE);
+        setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 1);
+
+
+        // Verify the carrier controller was bound only when the user changed
+        verify(carrierController).bind(eq(TEST_USER_HANDLE), eq(carrierFeatures),
+                any(SparseIntArray.class));
+        verify(carrierController, never()).changeImsServiceFeatures(eq(carrierFeatures),
+                any(SparseIntArray.class));
+        verify(carrierController, never()).unbind();
+
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> deviceFeatureSet =
+                convertToHashSet(deviceFeatures, 0);
+        deviceFeatureSet.removeAll(carrierFeatures);
+        verify(deviceController).changeImsServiceFeatures(eq(deviceFeatureSet),
+                any(SparseIntArray.class));
+        verify(deviceController, never()).unbind();
+    }
+
+    private void setCurrentUser(UserHandle handle) {
+        when(mTestActivityManagerProxy.getCurrentUser()).thenReturn(handle);
     }
 
     private void setupResolver(int numSlots, String deviceMmTelPkgName,
@@ -1970,12 +2139,15 @@ public class ImsResolverTest extends ImsTestBase {
             when(mTestTelephonyManagerProxy.getSimState(any(Context.class), eq(i))).thenReturn(
                     TelephonyManager.SIM_STATE_READY);
         }
+        when(mMockContext.getUser()).thenReturn(mContext.getUser());
+        when(mTestActivityManagerProxy.getCurrentUser()).thenReturn(mContext.getUser());
 
         mTestImsResolver = new ImsResolver(mMockContext, deviceMmTelPkgName, deviceRcsPkgName,
                 numSlots, mMockRepo, Looper.myLooper(), mFeatureFlags);
 
         mTestImsResolver.setSubscriptionManagerProxy(mTestSubscriptionManagerProxy);
         mTestImsResolver.setTelephonyManagerProxy(mTestTelephonyManagerProxy);
+        mTestImsResolver.setActivityManagerProxy(mTestActivityManagerProxy);
         when(mMockQueryManagerFactory.create(any(Context.class),
                 any(ImsServiceFeatureQueryManager.Listener.class))).thenReturn(mMockQueryManager);
         mTestImsResolver.setImsDynamicQueryManagerFactory(mMockQueryManagerFactory);
@@ -1983,24 +2155,55 @@ public class ImsResolverTest extends ImsTestBase {
     }
 
     private void setupPackageQuery(List<ResolveInfo> infos) {
-        // Only return info if not using the compat argument
-        when(mMockPM.queryIntentServicesAsUser(
+        doAnswer((Answer<List<ResolveInfo>>) invocation -> {
+            Intent intent = (Intent) invocation.getArguments()[0];
+            String pkg = intent.getPackage();
+            if (pkg == null) {
+                return infos;
+            } else {
+                for (ResolveInfo info : infos) {
+                    if (pkg.equals(info.serviceInfo.packageName)) {
+                        return Collections.singletonList(info);
+                    }
+                }
+            }
+            return Collections.emptyList();
+        }).when(mMockPM).queryIntentServicesAsUser(
+                // Only return info if not using the compat argument
                 argThat(argument -> ImsService.SERVICE_INTERFACE.equals(argument.getAction())),
-                anyInt(), any())).thenReturn(infos);
+                anyInt(), any());
+    }
+
+    private void setupPackageQueryForUser(List<ResolveInfo> infos, UserHandle user) {
+        doAnswer((Answer<List<ResolveInfo>>) invocation -> {
+            Intent intent = (Intent) invocation.getArguments()[0];
+            String pkg = intent.getPackage();
+            if (pkg == null) {
+                return infos;
+            } else {
+                for (ResolveInfo info : infos) {
+                    if (pkg.equals(info.serviceInfo.packageName)) {
+                        return Collections.singletonList(info);
+                    }
+                }
+            }
+            return Collections.emptyList();
+        }).when(mMockPM).queryIntentServicesAsUser(
+                // Only return info if not using the compat argument
+                argThat(argument -> ImsService.SERVICE_INTERFACE.equals(argument.getAction())),
+                anyInt(), eq(user));
     }
 
     private void setupPackageQuery(ComponentName name, Set<String> features,
             boolean isPermissionGranted) {
         List<ResolveInfo> info = new ArrayList<>();
         info.add(getResolveInfo(name, features, isPermissionGranted));
-        // Only return info if not using the compat argument
-        when(mMockPM.queryIntentServicesAsUser(
-                argThat(argument -> ImsService.SERVICE_INTERFACE.equals(argument.getAction())),
-                anyInt(), any())).thenReturn(info);
+        setupPackageQuery(info);
     }
 
     private ImsServiceController setupController() {
         ImsServiceController controller = mock(ImsServiceController.class);
+        when(controller.getBoundUser()).thenReturn(mContext.getUser());
         mTestImsResolver.setImsServiceControllerFactory(
                 new ImsResolver.ImsServiceControllerFactory() {
                     @Override
@@ -2028,15 +2231,25 @@ public class ImsResolverTest extends ImsTestBase {
         processAllMessages();
         ArgumentCaptor<BroadcastReceiver> receiversCaptor =
                 ArgumentCaptor.forClass(BroadcastReceiver.class);
-        verify(mMockContext, times(3)).registerReceiver(receiversCaptor.capture(), any());
-        mTestPackageBroadcastReceiver = receiversCaptor.getAllValues().get(0);
-        mTestCarrierConfigReceiver = receiversCaptor.getAllValues().get(1);
-        mTestBootCompleteReceiver = receiversCaptor.getAllValues().get(2);
+        if (!mFeatureFlags.imsResolverUserAware()) {
+            verify(mMockContext, times(3)).registerReceiver(receiversCaptor.capture(), any());
+            mTestPackageBroadcastReceiver = receiversCaptor.getAllValues().get(0);
+            mTestCarrierConfigReceiver = receiversCaptor.getAllValues().get(1);
+            mTestBootCompleteReceiver = receiversCaptor.getAllValues().get(2);
+        } else {
+            verify(mMockContext, times(4)).registerReceiver(receiversCaptor.capture(), any());
+            mTestPackageBroadcastReceiver = receiversCaptor.getAllValues().get(0);
+            mTestUserChangedReceiver = receiversCaptor.getAllValues().get(1);
+            mTestCarrierConfigReceiver = receiversCaptor.getAllValues().get(2);
+            mTestBootCompleteReceiver = receiversCaptor.getAllValues().get(3);
+
+        }
         ArgumentCaptor<ImsServiceFeatureQueryManager.Listener> queryManagerCaptor =
                 ArgumentCaptor.forClass(ImsServiceFeatureQueryManager.Listener.class);
         verify(mMockQueryManagerFactory).create(any(Context.class), queryManagerCaptor.capture());
         mDynamicQueryListener = queryManagerCaptor.getValue();
-        when(mMockQueryManager.startQuery(any(ComponentName.class), any(String.class)))
+        when(mMockQueryManager.startQuery(any(ComponentName.class), any(UserHandle.class),
+                any(String.class)))
                 .thenReturn(true);
         processAllMessages();
     }
@@ -2050,10 +2263,18 @@ public class ImsResolverTest extends ImsTestBase {
         processAllMessages();
         ArgumentCaptor<BroadcastReceiver> receiversCaptor =
                 ArgumentCaptor.forClass(BroadcastReceiver.class);
-        verify(mMockContext, times(3)).registerReceiver(receiversCaptor.capture(), any());
-        mTestPackageBroadcastReceiver = receiversCaptor.getAllValues().get(0);
-        mTestCarrierConfigReceiver = receiversCaptor.getAllValues().get(1);
-        mTestBootCompleteReceiver = receiversCaptor.getAllValues().get(2);
+        if (!mFeatureFlags.imsResolverUserAware()) {
+            verify(mMockContext, times(3)).registerReceiver(receiversCaptor.capture(), any());
+            mTestPackageBroadcastReceiver = receiversCaptor.getAllValues().get(0);
+            mTestCarrierConfigReceiver = receiversCaptor.getAllValues().get(1);
+            mTestBootCompleteReceiver = receiversCaptor.getAllValues().get(2);
+        } else {
+            verify(mMockContext, times(4)).registerReceiver(receiversCaptor.capture(), any());
+            mTestPackageBroadcastReceiver = receiversCaptor.getAllValues().get(0);
+            mTestUserChangedReceiver = receiversCaptor.getAllValues().get(1);
+            mTestCarrierConfigReceiver = receiversCaptor.getAllValues().get(2);
+            mTestBootCompleteReceiver = receiversCaptor.getAllValues().get(3);
+        }
         ArgumentCaptor<ImsServiceFeatureQueryManager.Listener> queryManagerCaptor =
                 ArgumentCaptor.forClass(ImsServiceFeatureQueryManager.Listener.class);
         verify(mMockQueryManagerFactory).create(any(Context.class), queryManagerCaptor.capture());
@@ -2069,7 +2290,8 @@ public class ImsResolverTest extends ImsTestBase {
             HashSet<ImsFeatureConfiguration.FeatureSlotPair> features, int times) {
         processAllMessages();
         // ensure that startQuery was called
-        verify(mMockQueryManager, times(times)).startQuery(eq(name), any(String.class));
+        verify(mMockQueryManager, times(times)).startQuery(eq(name), any(UserHandle.class),
+                any(String.class));
         mDynamicQueryListener.onComplete(name, features);
         processAllMessages();
     }
@@ -2078,7 +2300,8 @@ public class ImsResolverTest extends ImsTestBase {
             HashSet<ImsFeatureConfiguration.FeatureSlotPair> features, int times) {
         processAllFutureMessages();
         // ensure that startQuery was called
-        verify(mMockQueryManager, times(times)).startQuery(eq(name), any(String.class));
+        verify(mMockQueryManager, times(times)).startQuery(eq(name), any(UserHandle.class),
+                any(String.class));
         mDynamicQueryListener.onComplete(name, features);
         processAllMessages();
     }
@@ -2086,8 +2309,19 @@ public class ImsResolverTest extends ImsTestBase {
     private void setupDynamicQueryFeaturesFailure(ComponentName name, int times) {
         processAllMessages();
         // ensure that startQuery was called
-        verify(mMockQueryManager, times(times)).startQuery(eq(name), any(String.class));
-        mDynamicQueryListener.onPermanentError(name);
+        verify(mMockQueryManager, times(times)).startQuery(eq(name), any(UserHandle.class),
+                any(String.class));
+        mDynamicQueryListener.onPermanentError(name, mContext.getUser());
+        processAllMessages();
+    }
+
+    public void userChanged(UserHandle newUser) {
+        setCurrentUser(newUser);
+        // Tell the package manager that a new device feature is installed
+        Intent userSwitchedIntent = new Intent();
+        userSwitchedIntent.setAction(Intent.ACTION_USER_SWITCHED);
+        userSwitchedIntent.putExtra(Intent.EXTRA_USER, newUser);
+        mTestUserChangedReceiver.onReceive(null, userSwitchedIntent);
         processAllMessages();
     }
 
@@ -2110,7 +2344,14 @@ public class ImsResolverTest extends ImsTestBase {
         processAllMessages();
     }
 
+    private void setBoundImsServiceControllerUser(ImsServiceController controller,
+            UserHandle handle) {
+        when(controller.getBoundUser()).thenReturn(handle);
+    }
+
     private void setImsServiceControllerFactory(Map<String, ImsServiceController> controllerMap) {
+        controllerMap.values()
+                .forEach(c -> setBoundImsServiceControllerUser(c, mContext.getUser()));
         mTestImsResolver.setImsServiceControllerFactory(
                 new ImsResolver.ImsServiceControllerFactory() {
                     @Override
@@ -2129,6 +2370,8 @@ public class ImsResolverTest extends ImsTestBase {
 
     private void setImsServiceControllerFactory(ImsServiceController deviceController,
             ImsServiceController carrierController) {
+        setBoundImsServiceControllerUser(deviceController, mContext.getUser());
+        setBoundImsServiceControllerUser(carrierController, mContext.getUser());
         mTestImsResolver.setImsServiceControllerFactory(
                 new ImsResolver.ImsServiceControllerFactory() {
                     @Override
@@ -2156,6 +2399,9 @@ public class ImsResolverTest extends ImsTestBase {
 
     private void setImsServiceControllerFactory(ImsServiceController deviceController,
             ImsServiceController carrierController1, ImsServiceController carrierController2) {
+        setBoundImsServiceControllerUser(deviceController, mContext.getUser());
+        setBoundImsServiceControllerUser(carrierController1, mContext.getUser());
+        setBoundImsServiceControllerUser(carrierController2, mContext.getUser());
         mTestImsResolver.setImsServiceControllerFactory(
                 new ImsResolver.ImsServiceControllerFactory() {
                     @Override
@@ -2185,9 +2431,13 @@ public class ImsResolverTest extends ImsTestBase {
                 });
     }
 
-    private void setImsServiceControllerFactory(ImsServiceController deviceController1,
-            ImsServiceController deviceController2, ImsServiceController carrierController1,
-            ImsServiceController carrierController2) {
+    private void setImsServiceControllerDDCFactory(ImsServiceController deviceController1,
+            ImsServiceController deviceController2, ImsServiceController carrierController1) {
+        setBoundImsServiceControllerUser(deviceController1, mContext.getUser());
+        setBoundImsServiceControllerUser(deviceController2, mContext.getUser());
+        if (carrierController1 != null) {
+            setBoundImsServiceControllerUser(carrierController1, mContext.getUser());
+        }
         mTestImsResolver.setImsServiceControllerFactory(
                 new ImsResolver.ImsServiceControllerFactory() {
                     @Override
@@ -2211,10 +2461,6 @@ public class ImsResolverTest extends ImsTestBase {
                                 componentName.getPackageName())) {
                             when(carrierController1.getComponentName()).thenReturn(componentName);
                             return carrierController1;
-                        } else if (TEST_CARRIER_2_DEFAULT_NAME.getPackageName().equals(
-                                componentName.getPackageName())) {
-                            when(carrierController2.getComponentName()).thenReturn(componentName);
-                            return carrierController2;
                         }
                         return null;
                     }

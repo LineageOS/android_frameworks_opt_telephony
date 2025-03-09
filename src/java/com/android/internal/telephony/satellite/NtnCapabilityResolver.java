@@ -52,7 +52,8 @@ public class NtnCapabilityResolver {
                 logd("Registered to satellite PLMN " + satellitePlmn);
                 networkRegistrationInfo.setIsNonTerrestrialNetwork(true);
                 networkRegistrationInfo.setAvailableServices(
-                        satelliteController.getSupportedSatelliteServices(subId, satellitePlmn));
+                        satelliteController.getSupportedSatelliteServicesForPlmn(
+                                subId, satellitePlmn));
                 break;
             }
         }

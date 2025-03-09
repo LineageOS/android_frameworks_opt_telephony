@@ -33,6 +33,8 @@ import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.flags.FeatureFlagsImpl;
 import com.android.telephony.Rlog;
 
+import dalvik.system.CloseGuard;
+
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -46,6 +48,7 @@ public class UiccPort {
     // The lock object is created by UiccSlot that owns this UiccCard - this is to share the lock
     // between UiccSlot, UiccCard, EuiccCard, UiccPort, EuiccPort and UiccProfile for now.
     protected final Object mLock;
+    private final CloseGuard mCloseGuard = CloseGuard.get();
 
     private String mIccid;
     protected String mCardId;
@@ -68,6 +71,7 @@ public class UiccPort {
         if (DBG) log("Creating");
         mPhoneId = phoneId;
         mLock = lock;
+        mCloseGuard.open("cleanup");
         update(c, ci, ics, uiccCard);
     }
 
@@ -97,6 +101,7 @@ public class UiccPort {
     public void dispose() {
         synchronized (mLock) {
             if (DBG) log("Disposing Port");
+            mCloseGuard.close();
             if (mUiccProfile != null) {
                 mUiccProfile.dispose();
             }
@@ -106,9 +111,14 @@ public class UiccPort {
     }
 
     @Override
-    protected void finalize() {
+    protected void finalize() throws Throwable {
         if (DBG) log("UiccPort finalized");
-        cleanupOpenLogicalChannelRecordsIfNeeded();
+        try {
+            if (mCloseGuard != null) mCloseGuard.warnIfOpen();
+            cleanupOpenLogicalChannelRecordsIfNeeded();
+        } finally {
+            super.finalize();
+        }
     }
 
     /**
@@ -440,7 +450,13 @@ public class UiccPort {
      * removal or modem reset. The obsoleted records may trigger a redundant release of logical
      * channel that may have been assigned to other client.
      */
+    @SuppressWarnings("GuardedBy")
     private void cleanupOpenLogicalChannelRecordsIfNeeded() {
+        // This check may raise GuardedBy warning, but we need it as long as this method is called
+        // from finalize(). We can remove it from there once UiccPort is fully protected against
+        // resource leak (e.g. with CloseGuard) and all (direct and indirect) users are fixed.
+        if (mOpenChannelRecords == null) return;
+
         synchronized (mOpenChannelRecords) {
             for (OpenLogicalChannelRecord record : mOpenChannelRecords) {
                 if (DBG) log("Clean up " + record);

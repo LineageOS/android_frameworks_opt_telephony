@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
@@ -111,6 +110,7 @@ public class TelephonyCountryDetector extends Handler {
     @GuardedBy("mLock")
     private boolean mIsCountryCodesOverridden = false;
     private final RegistrantList mCountryCodeChangedRegistrants = new RegistrantList();
+    private boolean mIsWifiNetworkConnected = false;
 
     private FeatureFlags mFeatureFlags = null;
 
@@ -298,7 +298,7 @@ public class TelephonyCountryDetector extends Handler {
                 handleNetworkCountryCodeChangedEvent((NetworkCountryCodeInfo) msg.obj);
                 break;
             case EVENT_WIFI_CONNECTIVITY_STATE_CHANGED:
-                handleEventWifiConnectivityStateChanged();
+                handleEventWifiConnectivityStateChanged((boolean) msg.obj);
                 break;
             case EVENT_LOCATION_UPDATE_REQUEST_QUOTA_RESET:
                 evaluateRequestingLocationUpdates();
@@ -490,9 +490,19 @@ public class TelephonyCountryDetector extends Handler {
         }
     }
 
-    private void handleEventWifiConnectivityStateChanged() {
-        mWifiConnectivityStateChangedRegistrantList.notifyResult(isWifiNetworkConnected());
+    private void handleEventWifiConnectivityStateChanged(boolean connected) {
+        logd("handleEventWifiConnectivityStateChanged: " + connected);
+        evaluateNotifyWifiConnectivityStateChangedEvent(connected);
         evaluateRequestingLocationUpdates();
+    }
+
+    private void evaluateNotifyWifiConnectivityStateChangedEvent(boolean connected) {
+        if (connected != mIsWifiNetworkConnected) {
+            mIsWifiNetworkConnected = connected;
+            mWifiConnectivityStateChangedRegistrantList.notifyResult(mIsWifiNetworkConnected);
+            logd("evaluateNotifyWifiConnectivityStateChangedEvent: wifi connectivity state has "
+                    + "changed to " + connected);
+        }
     }
 
     private void setLocationCountryCode(@NonNull Pair<String, Long> countryCodeInfo) {
@@ -526,25 +536,23 @@ public class TelephonyCountryDetector extends Handler {
     private void registerForWifiConnectivityStateChanged() {
         logd("registerForWifiConnectivityStateChanged");
         NetworkRequest.Builder builder = new NetworkRequest.Builder();
-        builder.addTransportType(NetworkCapabilities.TRANSPORT_WIFI);
+        builder.addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
         ConnectivityManager.NetworkCallback networkCallback =
                 new ConnectivityManager.NetworkCallback() {
                     @Override
-                    public void onAvailable(Network network) {
-                        logd("Wifi network available: " + network);
-                        sendRequestAsync(EVENT_WIFI_CONNECTIVITY_STATE_CHANGED, null);
+                    public void onCapabilitiesChanged(Network network,
+                            NetworkCapabilities networkCapabilities) {
+                        logd("onCapabilitiesChanged: " + networkCapabilities);
+                        sendRequestAsync(EVENT_WIFI_CONNECTIVITY_STATE_CHANGED,
+                                isInternetAvailable(networkCapabilities));
                     }
 
                     @Override
                     public void onLost(Network network) {
                         logd("Wifi network lost: " + network);
-                        sendRequestAsync(EVENT_WIFI_CONNECTIVITY_STATE_CHANGED, null);
-                    }
-
-                    @Override
-                    public void onUnavailable() {
-                        logd("Wifi network unavailable");
-                        sendRequestAsync(EVENT_WIFI_CONNECTIVITY_STATE_CHANGED, null);
+                        sendRequestAsync(EVENT_WIFI_CONNECTIVITY_STATE_CHANGED, false);
                     }
                 };
         mConnectivityManager.registerNetworkCallback(builder.build(), networkCallback);
@@ -560,15 +568,20 @@ public class TelephonyCountryDetector extends Handler {
 
     /**
      * Check whether Wi-Fi network is connected or not.
-     * @return {@code true} is Wi-Fi is connected, {@code false} otherwise.
+     * @return {@code true} is Wi-Fi is connected, and internet is available, {@code false}
+     * otherwise.
      */
     public boolean isWifiNetworkConnected() {
-        Network activeNetwork = mConnectivityManager.getActiveNetwork();
-        NetworkCapabilities networkCapabilities =
-                mConnectivityManager.getNetworkCapabilities(activeNetwork);
-        return networkCapabilities != null
-                && networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-                && networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        logd("isWifiNetworkConnected: " + mIsWifiNetworkConnected);
+        return mIsWifiNetworkConnected;
+    }
+
+    private boolean isInternetAvailable(NetworkCapabilities networkCapabilities) {
+        boolean isWifiConnected =
+                networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                && networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+        logd("isWifiConnected: " + isWifiConnected);
+        return isWifiConnected;
     }
 
     /**

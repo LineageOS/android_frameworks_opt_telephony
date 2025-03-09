@@ -190,7 +190,7 @@ public class CarrierDisplayNameResolver {
     }
 
     /** Get the resolved carrier display name. */
-    public CarrierDisplayNameData getCarrierDisplayNameData() {
+    public @NonNull CarrierDisplayNameData getCarrierDisplayNameData() {
         resolveCarrierDisplayName();
         return mCarrierDisplayNameData;
     }

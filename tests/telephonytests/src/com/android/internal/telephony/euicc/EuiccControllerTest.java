@@ -1906,6 +1906,8 @@ public class EuiccControllerTest extends TelephonyTest {
 
         when(mSubscriptionManager.canManageSubscription(subInfo, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
+        when(mSubscriptionManager.canManageSubscriptionAsUser(eq(subInfo), eq(PACKAGE_NAME), any()))
+                .thenReturn(hasPrivileges);
         when(mSubscriptionManager.getActiveSubscriptionInfoList(anyBoolean())).thenReturn(
                 Collections.singletonList(subInfo));
     }
@@ -1943,8 +1945,12 @@ public class EuiccControllerTest extends TelephonyTest {
                 .build();
         when(mSubscriptionManager.canManageSubscription(subInfo1, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
+        when(mSubscriptionManager.canManageSubscriptionAsUser(eq(subInfo1), eq(PACKAGE_NAME),
+                any())).thenReturn(hasPrivileges);
         when(mSubscriptionManager.canManageSubscription(subInfo2, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
+        when(mSubscriptionManager.canManageSubscriptionAsUser(eq(subInfo2), eq(PACKAGE_NAME),
+                any())).thenReturn(hasPrivileges);
         ArrayList<SubscriptionInfo> subInfos = new ArrayList<>(Arrays.asList(subInfo1, subInfo2));
         when(mSubscriptionManager.getActiveSubscriptionInfoList(anyBoolean())).thenReturn(subInfos);
     }
@@ -1963,8 +1969,12 @@ public class EuiccControllerTest extends TelephonyTest {
                 .build();
         when(mSubscriptionManager.canManageSubscription(subInfo1, PACKAGE_NAME)).thenReturn(
                 false);
+        when(mSubscriptionManager.canManageSubscriptionAsUser(eq(subInfo1), eq(PACKAGE_NAME),
+                any())).thenReturn(false);
         when(mSubscriptionManager.canManageSubscription(subInfo2, PACKAGE_NAME)).thenReturn(
                 true);
+        when(mSubscriptionManager.canManageSubscriptionAsUser(eq(subInfo2), eq(PACKAGE_NAME),
+                any())).thenReturn(true);
         ArrayList<SubscriptionInfo> subInfos = new ArrayList<>(Arrays.asList(subInfo1, subInfo2));
         when(mSubscriptionManager.getActiveSubscriptionInfoList(anyBoolean())).thenReturn(subInfos);
     }
@@ -1979,6 +1989,8 @@ public class EuiccControllerTest extends TelephonyTest {
                 .build();
         when(mSubscriptionManager.canManageSubscription(subInfo, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
+        when(mSubscriptionManager.canManageSubscriptionAsUser(eq(subInfo), eq(PACKAGE_NAME), any()))
+                .thenReturn(hasPrivileges);
         when(mSubscriptionManager.getAvailableSubscriptionInfoList()).thenReturn(
                 Collections.singletonList(subInfo));
     }

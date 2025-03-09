@@ -1044,7 +1044,8 @@ public class NetworkTypeControllerTest extends TelephonyTest {
             doReturn(new TelephonyDisplayInfo(
                     mNetworkTypeController.getDataNetworkType(),
                     mNetworkTypeController.getOverrideNetworkType(),
-                    false)).when(mDisplayInfoController).getTelephonyDisplayInfo();
+                    false, false, false))
+                    .when(mDisplayInfoController).getTelephonyDisplayInfo();
             return null;
         }).when(mDisplayInfoController).updateTelephonyDisplayInfo();
         mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()

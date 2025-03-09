@@ -196,4 +196,11 @@ public class FakeTelephonyProvider extends MockContentProvider {
                 selectionArgs);
         return count;
     }
+
+    /**
+     * Release resources. Must be called each time this class is used.
+     */
+    public void close() {
+        mDbHelper.close();
+    }
 }

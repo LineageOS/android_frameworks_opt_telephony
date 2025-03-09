@@ -137,3 +137,32 @@ flag {
         purpose: PURPOSE_BUGFIX
     }
 }
+
+# OWNER=breadley TARGET=25Q1
+flag {
+    name: "ims_resolver_user_aware"
+    namespace: "telephony"
+    description: "When enabled, it makes ImsResolver mult-user aware for configurations like HSUM."
+    bug:"371272669"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+    }
+}
+
+# OWNER=meghapatil TARGET=25Q2
+flag {
+    name: "support_sms_over_ims_apis"
+    namespace: "telephony"
+    description: "Used to expose SMS related hidden APIs for SMS over IMS to public API."
+    bug:"359721349"
+    is_exported: true
+}
+
+# OWNER=jhyoon TARGET=25Q2
+flag {
+    name: "support_ims_mmtel_interface"
+    namespace: "telephony"
+    description: "This flag controls the type of API regarding MmTelFeature, either hidden or system type."
+    bug:"359721349"
+    is_exported: true
+}

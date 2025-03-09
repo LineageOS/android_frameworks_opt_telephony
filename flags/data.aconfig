@@ -121,14 +121,11 @@ flag {
   }
 }
 
-# OWNER=jackyu TARGET=25Q1
+# OWNER=jackyu TARGET=25Q2
 flag {
-  name: "sim_disabled_graceful_tear_down"
+  name: "oem_paid_private"
   namespace: "telephony"
-  description: "Gracefully tear down the networks when SIM is disabled."
-  bug: "362372940"
-  metadata {
-    purpose: PURPOSE_BUGFIX
-  }
+  description: "Support OEM_PAID and OEM_PRIVATE networks"
+  bug: "366194627"
+  is_exported: true
 }
-
