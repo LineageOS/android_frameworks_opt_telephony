@@ -1151,6 +1151,19 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * Defines the threshold for switching data back to the default SIM when both SIMs are out of
+     * service, in milliseconds.
+     * If the current data is on the backup SIM and both SIMs remain out of service for this
+     * duration, data will be switched back to the default SIM.
+     * A value of 0 means an immediate switch. If the value is negative, the threshold defined by
+     * {@link #getAutoDataSwitchAvailabilityStabilityTimeThreshold()} will be used instead.
+     */
+    public long getAutoDataSwitchAvailabilitySwitchbackStabilityTimeThreshold() {
+        return mResources.getInteger(com.android.internal.R.integer
+                .auto_data_switch_availability_switchback_stability_time_threshold_millis);
+    }
+
+    /**
      * Get the TCP config string, used by {@link LinkProperties#setTcpBufferSizes(String)}.
      * The config string will have the following form, with values in bytes:
      * "read_min,read_default,read_max,write_min,write_default,write_max"

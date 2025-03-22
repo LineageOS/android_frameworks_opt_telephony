@@ -268,7 +268,8 @@ public class CellularNetworkValidator {
 
         mNetworkCallback = new ConnectivityNetworkCallback(subId);
 
-        mConnectivityManager.requestNetwork(createNetworkRequest(), mNetworkCallback, mHandler);
+        mConnectivityManager.requestNetwork(
+                createNetworkRequest(subId), mNetworkCallback, mHandler);
         mHandler.postDelayed(() -> onValidationTimeout(subId), timeoutInMs);
     }
 
@@ -309,13 +310,22 @@ public class CellularNetworkValidator {
         return mState != STATE_IDLE;
     }
 
-    private NetworkRequest createNetworkRequest() {
-        return new NetworkRequest.Builder()
+    private NetworkRequest createNetworkRequest(int subId) {
+        NetworkRequest.Builder req = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
                 .setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
-                        .setSubscriptionId(mSubId).build())
-                .build();
+                        .setSubscriptionId(subId).build());
+
+        // Satellite is considered valid as long as it can serve restricted requests.
+        Phone target = PhoneFactory.getPhone(SubscriptionManager.getPhoneId(subId));
+        boolean isSatellite = target != null
+                && target.getServiceState().isUsingNonTerrestrialNetwork();
+        if (isSatellite) {
+            req.addTransportType(NetworkCapabilities.TRANSPORT_SATELLITE)
+                    .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+        }
+        return req.build();
     }
 
     private synchronized void reportValidationResult(boolean passed, int subId) {
