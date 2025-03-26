@@ -614,7 +614,6 @@ public class SatelliteController extends Handler {
     private List<SatelliteSubscriberProvisionStatus> mLastEvaluatedSubscriberProvisionStatus =
             new ArrayList<>();
     // The ID of the satellite subscription that has highest priority and is provisioned.
-    @GuardedBy("mSatelliteTokenProvisionedLock")
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected int mSelectedSatelliteSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     // The last ICC ID that framework configured to modem.
@@ -7332,6 +7331,7 @@ public class SatelliteController extends Handler {
      */
     public void requestSatelliteSubscriberProvisionStatus(@NonNull ResultReceiver result) {
         if (!mFeatureFlags.carrierRoamingNbIotNtn()) {
+            logd("requestSatelliteSubscriberProvisionStatus: carrierRoamingNbIotNtn is disabled");
             result.send(SATELLITE_RESULT_REQUEST_NOT_SUPPORTED, null);
             return;
         }
@@ -7397,10 +7397,8 @@ public class SatelliteController extends Handler {
     }
 
     public int getSelectedSatelliteSubId() {
-        synchronized (mSatelliteTokenProvisionedLock) {
-            plogd("getSelectedSatelliteSubId: subId=" + mSelectedSatelliteSubId);
-            return mSelectedSatelliteSubId;
-        }
+        plogd("getSelectedSatelliteSubId: subId=" + mSelectedSatelliteSubId);
+        return mSelectedSatelliteSubId;
     }
 
     /**
@@ -7762,15 +7760,13 @@ public class SatelliteController extends Handler {
 
     /** Return the carrier ID of the binding satellite subscription. */
     public int getSatelliteCarrierId() {
-        synchronized (mSatelliteTokenProvisionedLock) {
-            SubscriptionInfo subInfo = mSubscriptionManagerService.getSubscriptionInfo(
-                    mSelectedSatelliteSubId);
-            if (subInfo == null) {
-                logd("getSatelliteCarrierId: returns UNKNOWN_CARRIER_ID");
-                return UNKNOWN_CARRIER_ID;
-            }
-            return subInfo.getCarrierId();
+        SubscriptionInfo subInfo = mSubscriptionManagerService.getSubscriptionInfo(
+            mSelectedSatelliteSubId);
+        if (subInfo == null) {
+            logd("getSatelliteCarrierId: returns UNKNOWN_CARRIER_ID");
+            return UNKNOWN_CARRIER_ID;
         }
+        return subInfo.getCarrierId();
     }
 
     /**
