@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2025 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -178,7 +179,7 @@ public class CarrierServiceStateTracker extends Handler {
             mPhone.getContext().registerReceiver(
                     mActionReceiver,
                     new IntentFilter(ACTION_NEVER_ASK_AGAIN),
-                    Context.RECEIVER_NOT_EXPORTED);
+                    Context.RECEIVER_EXPORTED);
         }
     }
 
