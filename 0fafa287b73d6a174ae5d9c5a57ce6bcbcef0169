@@ -50,6 +50,24 @@
       "message": "https://cs.android.com/android/platform/superproject/main/+/main:frameworks/opt/telephony/src/java/com/android/internal/telephony/CarrierServiceStateTracker.java;l\u003d723?q\u003dACTION_NEVER_ASK_AGAIN\u0026ss\u003dandroid%2Fplatform%2Fsuperproject%2Fmain\n\ndid google really turn on the flag without translations?",
       "revId": "0fafa287b73d6a174ae5d9c5a57ce6bcbcef0169",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "97aed705_d605ebf2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 13028
+      },
+      "writtenOn": "2025-04-18T22:07:14Z",
+      "side": 1,
+      "message": "You\u0027re free to try another solution. I made sure that the receiver is registered, but it\u0027s never called. Only way I could make it work was this way\n\nAlso, yes, that feature is enabled and the string js hardcoded",
+      "parentUuid": "31d2a440_535d8eeb",
+      "revId": "0fafa287b73d6a174ae5d9c5a57ce6bcbcef0169",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
