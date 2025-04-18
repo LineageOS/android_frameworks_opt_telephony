@@ -33,6 +33,23 @@
       "message": "the action is sent within the app so NOT_EXPORTED should work?",
       "revId": "0fafa287b73d6a174ae5d9c5a57ce6bcbcef0169",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d3a4b78c_0773cb59",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 11883
+      },
+      "writtenOn": "2025-04-18T16:25:52Z",
+      "side": 1,
+      "message": "https://cs.android.com/android/platform/superproject/main/+/main:frameworks/opt/telephony/src/java/com/android/internal/telephony/CarrierServiceStateTracker.java;l\u003d723?q\u003dACTION_NEVER_ASK_AGAIN\u0026ss\u003dandroid%2Fplatform%2Fsuperproject%2Fmain\n\ndid google really turn on the flag without translations?",
+      "revId": "0fafa287b73d6a174ae5d9c5a57ce6bcbcef0169",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
