@@ -23,7 +23,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioAttributes;
-import android.net.Uri;
 import android.provider.Settings;
 import android.telephony.SubscriptionManager;
 
@@ -138,7 +137,6 @@ public class NotificationChannelController {
 
     /**
      * migrate deprecated voicemail notification settings to initial notification channel settings
-     * {@link VoicemailNotificationSettingsUtil#getRingTonePreference(Context)}}
      * {@link VoicemailNotificationSettingsUtil#getVibrationPreference(Context)}
      * notification settings are based on subId, only migrate if sub id matches.
      * otherwise fallback to predefined voicemail channel settings.
@@ -151,10 +149,6 @@ public class NotificationChannelController {
                 NotificationManager.IMPORTANCE_DEFAULT);
         voiceMailChannel.enableVibration(
                 VoicemailNotificationSettingsUtil.getVibrationPreference(context));
-        Uri sound = VoicemailNotificationSettingsUtil.getRingTonePreference(context);
-        voiceMailChannel.setSound(
-                (sound == null) ? Settings.System.DEFAULT_NOTIFICATION_URI : sound,
-                new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build());
         context.getSystemService(NotificationManager.class)
                 .createNotificationChannel(voiceMailChannel);
     }
