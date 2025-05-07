@@ -1580,7 +1580,8 @@ public class DataNetworkController extends Handler {
      * @return The data evaluation result.
      */
     @NonNull
-    private DataEvaluation evaluateNetworkRequest(
+    @VisibleForTesting
+    public DataEvaluation evaluateNetworkRequest(
             @NonNull TelephonyNetworkRequest networkRequest, DataEvaluationReason reason) {
         DataEvaluation evaluation = new DataEvaluation(reason);
         int transport = mAccessNetworksManager.getPreferredTransportByNetworkCapability(
@@ -2235,6 +2236,9 @@ public class DataNetworkController extends Handler {
             }
             // When the device is on satellite, internet with restricted capabilities always honor
             // soft disallowed reasons and not respected as restricted request
+            // Note - ping test are performed with restricted request on satellite assuming they cannot
+            // bypass any checks. If below is removed, reevaluate the ping request in
+            // CellularNetworkValidator and the getInternetEvaluation in AutoDataSwitchController
             return !(mServiceState.isUsingNonTerrestrialNetwork()
                     && networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET));
 
