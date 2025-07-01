@@ -22,6 +22,7 @@ import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListCon
 import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.LANGUAGE_SELECTION_EVENT;
 import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.USER_ACTIVITY_EVENT;
 
+import android.app.KeyguardManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.res.Resources.NotFoundException;
@@ -95,6 +96,7 @@ public class CommandParamsFactory extends Handler {
             UUID.fromString("c2b85688-516e-11ee-be56-0242ac120002");
     public static final String NPE_WHEN_CALLED_SEND_CMD_PARAMS_ERROR_MSG =
             "mCaller[RilMessageDecoder] is Null when called SendCmdParams";
+    private Context mContext;
     /**
      * Returns a singleton instance of CommandParamsFactory
      * @param caller Class used for queuing raw ril messages, decoding them into
@@ -116,6 +118,7 @@ public class CommandParamsFactory extends Handler {
 
     private CommandParamsFactory(RilMessageDecoder caller, IccFileHandler fh, Context context) {
         mCaller = caller;
+        mContext = context;
         mIconLoader = IconLoader.getInstance(this, fh);
         try {
             mNoAlphaUsrCnf = context.getResources().getBoolean(
@@ -888,7 +891,12 @@ public class CommandParamsFactory extends Handler {
      */
     private boolean processLaunchBrowser(CommandDetails cmdDet,
             List<ComprehensionTlv> ctlvs) throws ResultException {
-
+        KeyguardManager keyguardManager = mContext.getSystemService(KeyguardManager.class);
+        if (keyguardManager != null && keyguardManager.isDeviceLocked()) {
+            CatLog.d(this, "The device is locked, cannot launch the Browser");
+            throw new ResultException(ResultCode.LAUNCH_BROWSER_ERROR,
+                    "The device is locked, unable to process the command.");
+        }
         CatLog.d(this, "process LaunchBrowser");
 
         TextMessage confirmMsg = new TextMessage();
