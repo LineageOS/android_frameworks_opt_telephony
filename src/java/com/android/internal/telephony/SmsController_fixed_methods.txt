@@ -1,0 +1,68 @@
+    @Override
+    public void sendStoredText(int subId, String callingPkg, String callingAttributionTag,
+            Uri messageUri, String scAddress, PendingIntent sentIntent,
+            PendingIntent deliveryIntent) {
+        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
+        UserHandle callingUser = Binder.getCallingUserHandle();
+        int uid = Binder.getCallingUid();
+        if (!getCallingPackage().equals(callingPkg)) {
+            throw new SecurityException("sendStoredText: Package " + callingPkg
+                    + "does not belong to " + uid);
+        }
+        Rlog.d(LOG_TAG, "sendStoredText caller=" + callingPkg);
+
+        String destAddr = getDestAddress(iccSmsIntMgr, messageUri);
+        // Check if user is associated with the subscription
+        if (!TelephonyPermissions.checkSubscriptionAssociatedWithUser(mContext, subId,
+            callingUser, destAddr)) {
+            TelephonyUtils.showSwitchToManagedProfileDialogIfAppropriate(mContext, subId,
+                uid, callingPkg);
+            Rlog.d(LOG_TAG, "sendStoredText: user is not associated with subscription subId="
+                + subId + " callingUser=" + callingUser);
+            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_USER_NOT_ALLOWED);
+            return;
+        }
+
+        if (iccSmsIntMgr != null) {
+            iccSmsIntMgr.sendStoredText(callingPkg, callingUser.getIdentifier(),
+                    callingAttributionTag, messageUri, scAddress, sentIntent, deliveryIntent);
+        } else {
+            Rlog.e(LOG_TAG, "sendStoredText iccSmsIntMgr is null for subscription: " + subId);
+            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
+        }
+    }
+
+    @Override
+    public void sendStoredMultipartText(int subId, String callingPkg, String callingAttributionTag,
+            Uri messageUri, String scAddress, List<PendingIntent> sentIntents,
+            List<PendingIntent> deliveryIntents) {
+        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
+        UserHandle callingUser = Binder.getCallingUserHandle();
+        int uid = Binder.getCallingUid();
+        if (!getCallingPackage().equals(callingPkg)) {
+            throw new SecurityException("sendStoredMultipartText: Package " + callingPkg
+                    + " does not belong to " + uid);
+        }
+        Rlog.d(LOG_TAG, "sendStoredMultipartText caller=" + callingPkg);
+
+        String destAddr = getDestAddress(iccSmsIntMgr, messageUri);
+        // Check if user is associated with the subscription
+        if (!TelephonyPermissions.checkSubscriptionAssociatedWithUser(mContext, subId,
+            callingUser, destAddr)) {
+            TelephonyUtils.showSwitchToManagedProfileDialogIfAppropriate(mContext, subId,
+                uid, callingPkg);
+            Rlog.d(LOG_TAG, "sendStoredMultipartText: user is not associated with subscription"
+                + " subId=" + subId + " callingUser=" + callingUser);
+            sendErrorInPendingIntents(sentIntents, SmsManager.RESULT_USER_NOT_ALLOWED);
+            return;
+        }
+
+        if (iccSmsIntMgr != null) {
+            iccSmsIntMgr.sendStoredMultipartText(callingPkg, callingUser.getIdentifier(),
+                    callingAttributionTag, messageUri, scAddress, sentIntents, deliveryIntents);
+        } else {
+            Rlog.e(LOG_TAG, "sendStoredMultipartText iccSmsIntMgr is null for subscription: "
+                    + subId);
+            sendErrorInPendingIntents(sentIntents, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
+        }
+    }
