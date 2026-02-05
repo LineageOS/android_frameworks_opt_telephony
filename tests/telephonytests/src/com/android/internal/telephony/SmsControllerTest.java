@@ -336,4 +336,62 @@ public class SmsControllerTest extends TelephonyTest {
                         eq("1234"), isNull(), eq("text"), isNull(), isNull(), eq(false), eq(0L),
                         eq(true), anyInt());
     }
+
+    @Test
+    public void sendStoredText_associatedUser_sendsSms() {
+        int subId = 1;
+        doReturn(new String[]{"hi", "1234"}).when(mIccSmsInterfaceManager).loadTextAndAddress(
+            any(), any());
+        doReturn(true).when(mSubscriptionManager)
+            .isSubscriptionAssociatedWithUser(eq(subId), any());
+
+        mSmsControllerUT.sendStoredText(subId, mCallingPackage, null, null, null, null, null);
+
+        verify(mIccSmsInterfaceManager).sendStoredText(eq(mCallingPackage),
+            eq(mCallingUserId), isNull(), any(), isNull(), isNull(), isNull(), anyInt());
+    }
+
+    @Test
+    public void sendStoredText_notAssociatedUser_fails() {
+        int subId = 1;
+        doReturn(new String[]{"hi", "1234"}).when(mIccSmsInterfaceManager).loadTextAndAddress(
+            any(), any());
+        doReturn(false).when(mSubscriptionManager)
+            .isSubscriptionAssociatedWithUser(eq(subId), any());
+
+        mSmsControllerUT.sendStoredText(subId, mCallingPackage, null, null, null, null, null);
+
+        verify(mIccSmsInterfaceManager, never()).sendStoredText(any(), anyInt(), any(),
+            any(), any(), any(), any(), anyInt());
+    }
+
+    @Test
+    public void sendStoredMultipartText_associatedUser_sendsSms() {
+        int subId = 1;
+        doReturn(new String[]{"hi", "1234"}).when(mIccSmsInterfaceManager).loadTextAndAddress(
+            any(), any());
+        doReturn(true).when(mSubscriptionManager)
+            .isSubscriptionAssociatedWithUser(eq(subId), any());
+
+        mSmsControllerUT.sendStoredMultipartText(subId, mCallingPackage, null,
+            null, null, null, null);
+
+        verify(mIccSmsInterfaceManager).sendStoredMultipartText(eq(mCallingPackage),
+            eq(mCallingUserId), isNull(), any(), isNull(), isNull(), isNull(), anyInt());
+    }
+
+    @Test
+    public void sendStoredMultipartText_notAssociatedUser_fails() {
+        int subId = 1;
+        doReturn(new String[]{"hi", "1234"}).when(mIccSmsInterfaceManager).loadTextAndAddress(
+            any(), any());
+        doReturn(false).when(mSubscriptionManager)
+            .isSubscriptionAssociatedWithUser(eq(subId), any());
+
+        mSmsControllerUT.sendStoredMultipartText(subId, mCallingPackage, null,
+            null, null, null, null);
+
+        verify(mIccSmsInterfaceManager, never()).sendStoredMultipartText(any(), anyInt(), any(),
+            any(), any(), any(), any(), anyInt());
+    }
 }

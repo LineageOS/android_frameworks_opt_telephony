@@ -31,6 +31,7 @@ import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.app.compat.CompatChanges;
 import android.compat.annotation.UnsupportedAppUsage;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -748,6 +749,18 @@ public class SmsController extends ISmsImplBase {
         }
         Rlog.d(LOG_TAG, "sendStoredText caller=" + callingPkg);
 
+        String destAddr = getDestAddress(iccSmsIntMgr, messageUri);
+        // Check if user is associated with the subscription
+        if (!TelephonyPermissions.checkSubscriptionAssociatedWithUser(mContext, subId,
+            callingUser, destAddr)) {
+            TelephonyUtils.showSwitchToManagedProfileDialogIfAppropriate(mContext, subId,
+                uid, callingPkg);
+            Rlog.d(LOG_TAG, "sendStoredText: user is not associated with subscription subId="
+                + subId + " callingUser=" + callingUser);
+            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_USER_NOT_ALLOWED);
+            return;
+        }
+
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendStoredText(callingPkg, callingUser.getIdentifier(),
                     callingAttributionTag, messageUri, scAddress, sentIntent, deliveryIntent, uid);
@@ -771,6 +784,18 @@ public class SmsController extends ISmsImplBase {
         }
         Rlog.d(LOG_TAG, "sendStoredMultipartText caller=" + callingPkg);
 
+        String destAddr = getDestAddress(iccSmsIntMgr, messageUri);
+        // Check if user is associated with the subscription
+        if (!TelephonyPermissions.checkSubscriptionAssociatedWithUser(mContext, subId,
+            callingUser, destAddr)) {
+            TelephonyUtils.showSwitchToManagedProfileDialogIfAppropriate(mContext, subId,
+                uid, callingPkg);
+            Rlog.d(LOG_TAG, "sendStoredMultipartText: user is not associated with subscription"
+                + " subId=" + subId + " callingUser=" + callingUser);
+            sendErrorInPendingIntents(sentIntents, SmsManager.RESULT_USER_NOT_ALLOWED);
+            return;
+        }
+
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendStoredMultipartText(callingPkg, callingUser.getIdentifier(),
                     callingAttributionTag, messageUri, scAddress, sentIntents, deliveryIntents,
@@ -780,6 +805,24 @@ public class SmsController extends ISmsImplBase {
                     + subId);
             sendErrorInPendingIntents(sentIntents, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
         }
+    }
+
+    @Nullable
+    private String getDestAddress(IccSmsInterfaceManager iccSmsIntMgr, Uri messageUri) {
+        if (iccSmsIntMgr == null) {
+            Rlog.d(LOG_TAG, "getDestAddress - iccSmsIntMgr is null");
+            return null;
+        }
+
+        ContentResolver resolver = mContext.getContentResolver();
+        String[] textAndAddress = iccSmsIntMgr.loadTextAndAddress(resolver, messageUri);
+
+        if (textAndAddress == null) {
+            Rlog.d(LOG_TAG, "getDestAddress - textAndAddress is null");
+            return null;
+        }
+
+        return textAndAddress[1];
     }
 
     @Override
