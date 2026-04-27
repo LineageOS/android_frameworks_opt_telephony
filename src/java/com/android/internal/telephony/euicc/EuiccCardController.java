@@ -414,9 +414,17 @@ public class EuiccCardController extends IEuiccCardController.Stub {
 
         String iccId = null;
         boolean isValidSlotPort = false;
+
+        // Avoid NPE for legacy euicc devices
+        UiccSlot mUiccSlot = getUiccSlotForEmbeddedCard(cardId);
+        if (mUiccSlot != null && mUiccSlot.isValidPortIndex(portIndex)) {
+            isValidSlotPort = true;
+            iccId = mUiccSlot.getIccId(portIndex);
+        }
+
         // get the iccid whether or not the port is active
         for (UiccSlot slot : mUiccController.getUiccSlots()) {
-            if (slot.getEid().equals(cardId)) {
+            if (slot != null && TextUtils.equals(slot.getEid(), cardId)) {
                 // find the matching slot. first validate if the passing port index is valid.
                 if (slot.isValidPortIndex(portIndex)) {
                     isValidSlotPort = true;
