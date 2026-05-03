@@ -70,6 +70,23 @@
       "parentUuid": "3014b8f5_58830fdd",
       "revId": "b04e9a0cc087e2aa11bd06afe5a94afdec906251",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "27016930_9b2fe2bc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2026-05-03T20:44:56Z",
+      "side": 1,
+      "message": "@kailua@project2by2.jp please leave CR+1/V+1 votes based on what you said above.",
+      "revId": "b04e9a0cc087e2aa11bd06afe5a94afdec906251",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
