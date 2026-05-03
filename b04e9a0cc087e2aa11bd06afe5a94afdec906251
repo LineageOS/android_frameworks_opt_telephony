@@ -52,6 +52,24 @@
       "parentUuid": "b8e1ee49_2cbfae2d",
       "revId": "b04e9a0cc087e2aa11bd06afe5a94afdec906251",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b6260694_71e82e55",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 34106
+      },
+      "writtenOn": "2026-05-03T13:37:56Z",
+      "side": 1,
+      "message": "Yes, it does.  Successfully switched to eSIM after this commit. otherwise eSIM switch not working",
+      "parentUuid": "3014b8f5_58830fdd",
+      "revId": "b04e9a0cc087e2aa11bd06afe5a94afdec906251",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
