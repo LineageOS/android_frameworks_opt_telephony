@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "15562ee5_84e8471f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 32245
+      },
+      "writtenOn": "2026-05-03T12:11:03Z",
+      "side": 1,
+      "message": "does radio.config@1.0-1 even support eSIM at all..?\n\nalso i\u0027m wondering where you\u0027re testing this on, if it\u0027s Mi8937/Mi439 then you\u0027re welcome to upload the device tree side patch :p",
+      "revId": "b04e9a0cc087e2aa11bd06afe5a94afdec906251",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
