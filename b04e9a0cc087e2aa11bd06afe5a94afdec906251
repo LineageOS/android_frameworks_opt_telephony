@@ -34,6 +34,24 @@
       "parentUuid": "15562ee5_84e8471f",
       "revId": "b04e9a0cc087e2aa11bd06afe5a94afdec906251",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3014b8f5_58830fdd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 32245
+      },
+      "writtenOn": "2026-05-03T13:25:08Z",
+      "side": 1,
+      "message": "so... does eSIM actually work on that device? is there any hacks needed too?",
+      "parentUuid": "b8e1ee49_2cbfae2d",
+      "revId": "b04e9a0cc087e2aa11bd06afe5a94afdec906251",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
