@@ -105,6 +105,23 @@
       "parentUuid": "b6260694_71e82e55",
       "revId": "b04e9a0cc087e2aa11bd06afe5a94afdec906251",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fcb778fd_c0a58cb6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 34106
+      },
+      "writtenOn": "2026-05-04T05:17:30Z",
+      "side": 1,
+      "message": "Tested on Rakuten Mini (c330ae) on LineageOS 22.2",
+      "revId": "b04e9a0cc087e2aa11bd06afe5a94afdec906251",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
