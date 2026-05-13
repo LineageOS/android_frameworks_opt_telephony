@@ -122,6 +122,23 @@
       "message": "Tested on Rakuten Mini (c330ae) on LineageOS 22.2",
       "revId": "b04e9a0cc087e2aa11bd06afe5a94afdec906251",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d2812813_1589e1d9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 32245
+      },
+      "writtenOn": "2026-05-13T19:09:31Z",
+      "side": 1,
+      "message": "thank you very much, with this change eSIM is working **FINE** on a device that never had eSIM support officially lol",
+      "revId": "b04e9a0cc087e2aa11bd06afe5a94afdec906251",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ],
   "submitRequirementResults": [
