@@ -41,8 +41,6 @@ import static com.android.internal.telephony.subscription.SubscriptionDatabaseMa
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_NATIVE_ACCESS_RULES2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_PHONE_NUMBER1;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_PHONE_NUMBER2;
-import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_RCS_CONFIG1;
-import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_RCS_CONFIG2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_SATELLITE_ENTITLEMENT_PLMNS1;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_SATELLITE_IS_ONLY_NTN_DISABLED;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_SUBSCRIPTION_INFO1;
@@ -101,7 +99,6 @@ import android.test.mock.MockContentResolver;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.util.ArraySet;
-import android.util.Base64;
 
 import com.android.internal.R;
 import com.android.internal.telephony.ContextFixture;
@@ -2109,26 +2106,21 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     public void testSetGetRcsConfig() {
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
 
+        // COLUMN_RCS_CONFIG is no longer in the DIRECT_ACCESS_SUBSCRIPTION_COLUMNS whitelist.
+        // It should always throw SecurityException when accessed through getSubscriptionProperty
+        // or setSubscriptionProperty.
         assertThrows(SecurityException.class, () ->
                 mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
                         SimInfo.COLUMN_RCS_CONFIG, CALLING_PACKAGE, CALLING_FEATURE));
 
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
-        assertThat(mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
-                SimInfo.COLUMN_RCS_CONFIG, CALLING_PACKAGE, CALLING_FEATURE))
-                .isEqualTo(Base64.encodeToString(FAKE_RCS_CONFIG1, Base64.DEFAULT));
-
-        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
-                .setSubscriptionProperty(1, SimInfo.COLUMN_RCS_CONFIG, "0"));
+        assertThrows(SecurityException.class, () ->
+                mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                        SimInfo.COLUMN_RCS_CONFIG, CALLING_PACKAGE, CALLING_FEATURE));
 
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
-
-        // COLUMN_RCS_CONFIG
-        mSubscriptionManagerServiceUT.setSubscriptionProperty(1,
-                SimInfo.COLUMN_RCS_CONFIG,
-                Base64.encodeToString(FAKE_RCS_CONFIG2, Base64.DEFAULT));
-        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
-                .getRcsConfig()).isEqualTo(FAKE_RCS_CONFIG2);
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setSubscriptionProperty(1, SimInfo.COLUMN_RCS_CONFIG, "0"));
     }
 
     @Test

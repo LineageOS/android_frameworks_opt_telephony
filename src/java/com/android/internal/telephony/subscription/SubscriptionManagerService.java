@@ -186,7 +186,6 @@ public class SubscriptionManagerService extends ISub.Stub {
             SimInfo.COLUMN_ENABLED_MOBILE_DATA_POLICIES,
             SimInfo.COLUMN_IMS_RCS_UCE_ENABLED,
             SimInfo.COLUMN_CROSS_SIM_CALLING_ENABLED,
-            SimInfo.COLUMN_RCS_CONFIG,
             SimInfo.COLUMN_ALLOWED_NETWORK_TYPES_FOR_REASONS,
             SimInfo.COLUMN_D2D_STATUS_SHARING,
             SimInfo.COLUMN_VOIMS_OPT_IN_STATUS,
