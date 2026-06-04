@@ -16,6 +16,23 @@
       "message": "given surrounding code, and the fact it compiles, no reason to believe this won\u0027t act the same.",
       "revId": "21e2e9fc3cf0992bd91863aa33784ec5b24a806a",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7cb4a933_ce6badfa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 34106
+      },
+      "writtenOn": "2026-06-04T02:45:33Z",
+      "side": 1,
+      "message": "Sorry for very late reply. Works fine on Rakuten Mini with lineage-23.2, k4.19",
+      "revId": "21e2e9fc3cf0992bd91863aa33784ec5b24a806a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ],
   "submitRequirementResults": [
