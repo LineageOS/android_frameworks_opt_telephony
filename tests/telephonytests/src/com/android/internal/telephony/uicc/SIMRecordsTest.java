@@ -1034,4 +1034,109 @@ public class SIMRecordsTest extends TelephonyTest {
         }
         assertEquals("Service Unbound", condition.expected(), condition.actual());
     }
+
+    @Test
+    public void testEfCfisTooShortDoesNotCrash() {
+        // Mock EF_CFIS to return a 1-byte array (record size 1), which is invalid
+        // per spec (TS 51.011 requires 16 bytes).
+        doAnswer(
+                invocation -> {
+                    Message response = invocation.getArgument(2); // Message is at index 2
+                    AsyncResult.forMessage(response, new byte[]{0x01}, null);
+                    response.sendToTarget();
+                    return null;
+                }
+        ).when(mFhMock).loadEFLinearFixed(eq(SIMRecords.EF_CFIS), anyInt(), any(Message.class));
+
+        // Mock EF_CFF_CPHS to return valid data (1 byte) to isolate EF_CFIS failure
+        doAnswer(
+                invocation -> {
+                    Message response = invocation.getArgument(1);
+                    AsyncResult.forMessage(response, new byte[]{0x00}, null);
+                    response.sendToTarget();
+                    return null;
+                }
+        ).when(mFhMock).loadEFTransparent(eq(SIMRecords.EF_CFF_CPHS), any(Message.class));
+
+        // Set state to trigger onAllRecordsLoaded() when the event completes
+        setProtectedField(mSIMRecordsUT, "mRecordsRequested", true);
+        setProtectedField(mSIMRecordsUT, "mRecordsToLoad", 1);
+
+        // Trigger the record loading by sending the event directly to the handler.
+        // This simulates the completion of the EF_CFIS load.
+        Message msg = mSIMRecordsUT.obtainMessage(SIMRecords.EVENT_GET_CFIS_DONE);
+        AsyncResult.forMessage(msg, new byte[]{0x01}, null);
+        mSIMRecordsUT.handleMessage(msg);
+        mTestLooper.dispatchAll();
+
+        // If the bug is present, the looper dispatch above will throw
+        // ArrayIndexOutOfBoundsException when mSIMRecordsUT attempts to access
+        // mEfCfis[1] in setVoiceCallForwardingFlagFromSimRecords().
+        //
+        // If the fix is applied, it will handle it gracefully and not crash.
+        // We verify that the forwarding status is set to UNKNOWN (-1) since both
+        // EF_CFIS and EF_CFF are invalid/missing.
+        assertEquals(IccRecords.CALL_FORWARDING_STATUS_UNKNOWN,
+                mSIMRecordsUT.getVoiceCallForwardingFlag());
+    }
+
+    @Test
+    public void testEfCffEmptyDoesNotCrash() {
+        // Mock EF_CFIS to fail/be invalid so the code falls back to EF_CFF
+        doAnswer(
+                invocation -> {
+                    Message response = invocation.getArgument(2);
+                    AsyncResult.forMessage(response, null, new RuntimeException("Simulated error"));
+                    response.sendToTarget();
+                    return null;
+                }
+        ).when(mFhMock).loadEFLinearFixed(eq(SIMRecords.EF_CFIS), anyInt(), any(Message.class));
+
+        // Mock EF_CFF_CPHS to return 0 bytes (invalid, spec requires >= 1 byte)
+        doAnswer(
+                invocation -> {
+                    Message response = invocation.getArgument(1);
+                    AsyncResult.forMessage(response, new byte[0], null); // 0 bytes!
+                    response.sendToTarget();
+                    return null;
+                }
+        ).when(mFhMock).loadEFTransparent(eq(SIMRecords.EF_CFF_CPHS), any(Message.class));
+
+        // Set state to trigger onAllRecordsLoaded() when the event completes
+        setProtectedField(mSIMRecordsUT, "mRecordsRequested", true);
+        setProtectedField(mSIMRecordsUT, "mRecordsToLoad", 1);
+
+        // Trigger the CFF load completion
+        Message msg = mSIMRecordsUT.obtainMessage(SIMRecords.EVENT_GET_CFF_DONE);
+        AsyncResult.forMessage(msg, new byte[0], null);
+        mSIMRecordsUT.handleMessage(msg);
+        mTestLooper.dispatchAll();
+
+        // If the bug is present, this will throw ArrayIndexOutOfBoundsException
+        // when attempting to access mEfCff[0] in setVoiceCallForwardingFlagFromSimRecords().
+        //
+        // If fixed, it will complete without crashing.
+    }
+
+    private void setProtectedField(Object obj, String fieldName, Object value) {
+        try {
+            Class<?> clazz = obj.getClass();
+            java.lang.reflect.Field field = null;
+            while (clazz != null) {
+                try {
+                    field = clazz.getDeclaredField(fieldName);
+                    break;
+                } catch (NoSuchFieldException e) {
+                    clazz = clazz.getSuperclass();
+                }
+            }
+            if (field == null) {
+                throw new NoSuchFieldException(fieldName);
+            }
+            field.setAccessible(true);
+            field.set(obj, value);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
