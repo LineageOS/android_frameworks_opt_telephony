@@ -176,11 +176,13 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_SET_MBDN_DONE = 20 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_SMS_ON_SIM = 21 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_GET_SMS_DONE = 22 + SIM_RECORD_EVENT_BASE;
-    private static final int EVENT_GET_CFF_DONE = 24 + SIM_RECORD_EVENT_BASE;
+    @VisibleForTesting
+    static final int EVENT_GET_CFF_DONE = 24 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_SET_CPHS_MAILBOX_DONE = 25 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_GET_INFO_CPHS_DONE = 26 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_SET_MSISDN_DONE = 30 + SIM_RECORD_EVENT_BASE;
-    private static final int EVENT_GET_CFIS_DONE = 32 + SIM_RECORD_EVENT_BASE;
+    @VisibleForTesting
+    static final int EVENT_GET_CFIS_DONE = 32 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_GET_CSP_CPHS_DONE = 33 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_GET_GID1_DONE = 34 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_GET_GID2_DONE = 36 + SIM_RECORD_EVENT_BASE;
@@ -484,7 +486,9 @@ public class SIMRecords extends IccRecords {
 
     // Validate data is not null and not empty.
     private boolean validEfCfis(byte[] data) {
-        if (data != null) {
+        if (data != null && data.length >= 16) {
+            // EF_CFIS record size is 16 bytes per TS 51.011 Section 10.3.46.
+            // We must have at least 16 bytes to safely read and write all fields (up to offset 15).
             if (data[0] < 1 || data[0] > 4) {
                 // The MSP (Multiple Subscriber Profile) byte should be between
                 // 1 and 4 according to ETSI TS 131 102 v11.3.0 section 4.2.64.
@@ -589,7 +593,7 @@ public class SIMRecords extends IccRecords {
                         + " invalid mEfCfis=" + IccUtils.bytesToHexString(mEfCfis));
             }
 
-            if (mEfCff != null) {
+            if (mEfCff != null && mEfCff.length > 0) {
                 if (enable) {
                     mEfCff[0] = (byte) ((mEfCff[0] & CFF_LINE1_RESET)
                             | CFF_UNCONDITIONAL_ACTIVE);
@@ -1527,7 +1531,7 @@ public class SIMRecords extends IccRecords {
             // Refer TS 51.011 Section 10.3.46 for the content description
             mCallForwardingStatus = (mEfCfis[1] & 0x01);
             log("EF_CFIS: callForwardingEnabled=" + mCallForwardingStatus);
-        } else if (mEfCff != null) {
+        } else if (mEfCff != null && mEfCff.length > 0) {
             mCallForwardingStatus =
                     ((mEfCff[0] & CFF_LINE1_MASK) == CFF_UNCONDITIONAL_ACTIVE) ?
                             CALL_FORWARDING_STATUS_ENABLED : CALL_FORWARDING_STATUS_DISABLED;
