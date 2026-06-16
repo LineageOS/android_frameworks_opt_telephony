@@ -31,6 +31,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -65,6 +66,7 @@ import com.android.ims.ImsManager;
 import com.android.internal.telephony.FakeSmsContentProvider;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.InboundSmsTracker;
+import com.android.internal.telephony.WapPushOverSms;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SmsBroadcastUndelivered;
 import com.android.internal.telephony.SmsHeader;
@@ -1352,6 +1354,83 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         // There should not happen the invocation for below method, nor exception
         verify(mContext, never()).startActivityAsUser(any(Intent.class), any(UserHandle.class));
+    }
+
+    @Test
+    @MediumTest
+    public void testBroadcastSms_nullTracker_failsGracefully() {
+        transitionFromStartupToIdle();
+
+        mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_BROADCAST_SMS, null);
+        processAllMessages();
+
+        // Should return to IdleState
+        assertEquals("IdleState", getCurrentState().getName());
+    }
+
+    @Test
+    @MediumTest
+    public void testBroadcastSms_RuntimeExceptionInDecoder_deletesTracker() throws Exception {
+        transitionFromStartupToIdle();
+
+        // Mock WapPushOverSms to throw RuntimeException
+        WapPushOverSms mockWapPush = Mockito.mock(WapPushOverSms.class);
+        doThrow(new RuntimeException("Test Exception"))
+                .when(mockWapPush)
+                .dispatchWapPdu(any(), any(), any(), any(), anyInt(), anyLong());
+
+        java.lang.reflect.Field field = InboundSmsHandler.class.getDeclaredField("mWapPush");
+        field.setAccessible(true);
+        field.set(mGsmInboundSmsHandler, mockWapPush);
+
+        // Create WAP tracker
+        InboundSmsTracker wapTracker = new InboundSmsTracker(
+                mContext,
+                mSmsPdu, /* pdu */
+                System.currentTimeMillis(), /* timestamp */
+                SmsHeader.PORT_WAP_PUSH, /* destPort */
+                true, /* is3gpp2 */
+                false, /* is3gpp2WapPdu */
+                "1234567890", /* address */
+                "1234567890", /* displayAddress */
+                mMessageBody, /* messageBody */
+                false, /* isClass0 */
+                mSubId0,
+                InboundSmsHandler.SOURCE_NOT_INJECTED);
+
+        // Insert tracker to database so it exists when we try to delete it
+        ContentValues values = wapTracker.getContentValues();
+        values.put("pdu", com.android.internal.util.HexDump.toHexString(mSmsPdu));
+        Uri newUri = mContentResolver.insert(sRawUri, values);
+        long rowId = android.content.ContentUris.parseId(newUri);
+        wapTracker.setDeleteWhere(
+                InboundSmsHandler.SELECT_BY_ID, new String[]{Long.toString(rowId)});
+
+        // Mock the makeInboundSmsTracker to return our wapTracker
+        doReturn(wapTracker).when(mTelephonyComponentFactory)
+                .makeInboundSmsTracker(any(Context.class), nullable(byte[].class), anyLong(),
+                        anyInt(), anyBoolean(),
+                        anyBoolean(), nullable(String.class), nullable(String.class),
+                        nullable(String.class), anyBoolean(), anyInt(), anyInt());
+
+        // Assert tracker is in database before
+        try (Cursor cursorBefore = mContentProvider.query(
+                sRawUri, null, "deleted=0", null, null)) {
+            assertEquals(1, cursorBefore.getCount());
+        }
+
+        // Send EVENT_BROADCAST_SMS
+        mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_BROADCAST_SMS, wapTracker);
+        processAllMessages();
+
+        // Assert tracker is deleted from database
+        try (Cursor cursorAfter = mContentProvider.query(
+                sRawUri, null, "deleted=0", null, null)) {
+            assertEquals(0, cursorAfter.getCount());
+        }
+
+        // Should return to IdleState
+        assertEquals("IdleState", getCurrentState().getName());
     }
 }
 
