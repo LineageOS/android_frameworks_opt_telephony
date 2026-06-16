@@ -22,6 +22,7 @@ import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.isNull;
 import static org.mockito.Mockito.mock;
@@ -176,5 +177,74 @@ public class WapPushOverSmsTest extends TelephonyTest {
 
         mWapPushOverSmsUT.dispatchWapPdu(pdu, null, mInboundSmsHandler, null, 0, 0L);
         assertEquals(2, WapPushCache.size());
+    }
+
+    @Test @SmallTest
+    public void testDispatchWapPdu_malformedHeaderLength_failsGracefully() {
+        doReturn(true).when(mWspTypeDecoder).decodeUintvarInteger(anyInt());
+        doReturn(4294967295L).when(mWspTypeDecoder).getValue32();
+        doReturn(2).when(mWspTypeDecoder).getDecodedDataLength();
+
+        byte[] pdu = {
+                (byte) 0xFF,
+                (byte) 0x06,
+                (byte) 0x8F, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0x7F
+        };
+
+        assertEquals(Telephony.Sms.Intents.RESULT_SMS_GENERIC_ERROR,
+                mWapPushOverSmsUT.dispatchWapPdu(pdu, null, mInboundSmsHandler, null, 0, 0L));
+    }
+
+    @Test @SmallTest
+    public void testDispatchWapPdu_headerLengthExceedsPdu_failsGracefully() {
+        doReturn(true).when(mWspTypeDecoder).decodeUintvarInteger(anyInt());
+        doReturn(200L).when(mWspTypeDecoder).getValue32();
+        doReturn(2).when(mWspTypeDecoder).getDecodedDataLength();
+
+        byte[] pdu = {
+                (byte) 0xFF,
+                (byte) 0x06,
+                (byte) 0xC8, (byte) 0x00
+        };
+
+        assertEquals(Telephony.Sms.Intents.RESULT_SMS_GENERIC_ERROR,
+                mWapPushOverSmsUT.dispatchWapPdu(pdu, null, mInboundSmsHandler, null, 0, 0L));
+    }
+
+    @Test @SmallTest
+    public void testIsWapPushForMms_malformedHeaderLength_returnsFalse() {
+        doReturn(true).when(mWspTypeDecoder).decodeUintvarInteger(anyInt());
+        doReturn(4294967295L).when(mWspTypeDecoder).getValue32();
+        doReturn(2).when(mWspTypeDecoder).getDecodedDataLength();
+
+        byte[] pdu = {
+                (byte) 0xFF,
+                (byte) 0x06,
+                (byte) 0x8F, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0x7F
+        };
+
+        org.junit.Assert.assertFalse(mWapPushOverSmsUT.isWapPushForMms(pdu, mInboundSmsHandler));
+    }
+
+    @Test @SmallTest
+    public void testDispatchWapPdu_RuntimeExceptionInDecoder_failsGracefully() {
+        doReturn(true).when(mWspTypeDecoder).decodeUintvarInteger(anyInt());
+        doThrow(new RuntimeException("Test exception"))
+                .when(mWspTypeDecoder).decodeContentType(anyInt());
+        doReturn((long) 2).when(mWspTypeDecoder).getValue32();
+        doReturn(2).when(mWspTypeDecoder).getDecodedDataLength();
+
+        byte[] pdu = {
+                (byte) 0xFF,
+                (byte) 0x06,
+                (byte) 0xFF,
+                (byte) 0xFF,
+                (byte) 0xFF,
+                (byte) 0xFF,
+                (byte) 0xFF
+        };
+
+        assertEquals(Telephony.Sms.Intents.RESULT_SMS_GENERIC_ERROR,
+                mWapPushOverSmsUT.dispatchWapPdu(pdu, null, mInboundSmsHandler, null, 0, 0L));
     }
 }

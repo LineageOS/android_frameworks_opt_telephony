@@ -306,10 +306,10 @@ public class WapPushOverSms implements ServiceConnection {
             result.intentData = intentData;
             result.contentTypeParameters = pduDecoder.getContentParameters();
             result.statusCode = Activity.RESULT_OK;
-        } catch (ArrayIndexOutOfBoundsException aie) {
+        } catch (RuntimeException e) {
             // 0-byte WAP PDU or other unexpected WAP PDU contents can easily throw this;
             // log exception string without stack trace and return false.
-            Rlog.e(TAG, "ignoring dispatchWapPdu() array index exception: " + aie);
+            Rlog.e(TAG, "ignoring decodeWapPdu() runtime exception: " + e);
             result.statusCode = Intents.RESULT_SMS_GENERIC_ERROR;
         }
         return result;
