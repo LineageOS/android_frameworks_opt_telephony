@@ -557,7 +557,19 @@ public abstract class InboundSmsHandler extends StateMachine {
                 case EVENT_BROADCAST_SMS:
                     // if any broadcasts were sent, transition to waiting state
                     InboundSmsTracker inboundSmsTracker = (InboundSmsTracker) msg.obj;
-                    if (processMessagePart(inboundSmsTracker)) {
+                    boolean success = false;
+                    if (inboundSmsTracker != null) {
+                        try {
+                            success = processMessagePart(inboundSmsTracker);
+                        } catch (RuntimeException e) {
+                            loge("Exception delivering message part", e);
+                            deleteFromRawTable(inboundSmsTracker.getDeleteWhere(),
+                                    inboundSmsTracker.getDeleteWhereArgs(), MARK_DELETED);
+                        }
+                    } else {
+                        loge("EVENT_BROADCAST_SMS with null inboundSmsTracker");
+                    }
+                    if (success) {
                         sendMessage(obtainMessage(EVENT_UPDATE_TRACKER, msg.obj));
                         transitionTo(mWaitingState);
                     } else {
