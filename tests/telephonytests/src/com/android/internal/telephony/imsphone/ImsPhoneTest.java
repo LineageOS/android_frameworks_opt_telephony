@@ -22,6 +22,7 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyChar;
 import static org.mockito.Matchers.anyInt;
@@ -639,4 +640,21 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(messageNotification,
                 intent.getValue().getStringExtra(Phone.EXTRA_KEY_NOTIFICATION_MESSAGE));
     }
+
+    @Test
+    @SmallTest
+    public void testHandleUssdRequestWithInCallMmiCode() throws Exception {
+        doReturn(Call.State.INCOMING).when(mRingingCall).getState();
+        android.os.ResultReceiver mockCallback =
+                org.mockito.Mockito.mock(android.os.ResultReceiver.class);
+        try {
+            mImsPhoneUT.handleUssdRequest("2", mockCallback);
+            fail("Expected CallStateException");
+        } catch (CallStateException e) {
+            assertEquals(Phone.CS_FALLBACK, e.getMessage());
+        }
+        // It should NOT call acceptCall because wrappedCallback is not null
+        verify(mImsCT, never()).acceptCall(anyInt());
+    }
 }
+
