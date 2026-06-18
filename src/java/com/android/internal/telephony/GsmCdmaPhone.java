@@ -1494,7 +1494,7 @@ public class GsmCdmaPhone extends Phone {
 
         if (isPhoneTypeGsm()) {
             // handle in-call MMI first if applicable
-            if (handleInCallMmiCommands(newDialString)) {
+            if (wrappedCallback == null && handleInCallMmiCommands(newDialString)) {
                 return null;
             }
 

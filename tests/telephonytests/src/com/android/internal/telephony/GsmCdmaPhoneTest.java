@@ -1509,4 +1509,24 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         doReturn(GsmCdmaCall.State.IDLE).when(mGsmCdmaCall).getState();
         replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
     }
+
+    @Test
+    @SmallTest
+    public void testHandleUssdRequestWithInCallMmiCode() throws Exception {
+        replaceInstance(GsmCdmaPhone.class, "mCT", mPhoneUT, mCT);
+        replaceInstance(Phone.class, "mImsPhone", mPhoneUT, null);
+
+        mCT.mForegroundCall = mGsmCdmaCall;
+        mCT.mBackgroundCall = mGsmCdmaCall;
+        mCT.mRingingCall = mGsmCdmaCall;
+        doReturn(GsmCdmaCall.State.INCOMING).when(mGsmCdmaCall).getState();
+
+        android.os.ResultReceiver mockCallback =
+                org.mockito.Mockito.mock(android.os.ResultReceiver.class);
+        boolean handled = mPhoneUT.handleUssdRequest("2", mockCallback);
+
+        assertTrue(handled);
+        // Verify we NEVER triggered GsmCdmaCallTracker.acceptCall
+        verify(mCT, never()).acceptCall();
+    }
 }
