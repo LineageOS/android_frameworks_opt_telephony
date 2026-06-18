@@ -1002,7 +1002,7 @@ public class ImsPhone extends ImsPhoneBase {
         String newDialString = PhoneNumberUtils.stripSeparators(dialString);
 
         // If not emergency number, handle in-call MMI first if applicable
-        if (!dialArgs.isEmergency) {
+        if (!dialArgs.isEmergency && wrappedCallback == null) {
             if (mFeatureFlags.ignoreIncallMmiForEmergency() && mCT.isInEmergencyCall()) {
                 logd("dialInternal: ignore InCall MMI command during emergency call");
                 return null;
