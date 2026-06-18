@@ -996,7 +996,8 @@ public class ImsPhone extends ImsPhoneBase {
         String newDialString = PhoneNumberUtils.stripSeparators(dialString);
 
         // If not emergency number, handle in-call MMI first if applicable
-        if (!dialArgs.isEmergency && handleInCallMmiCommands(newDialString)) {
+        if (!dialArgs.isEmergency && wrappedCallback == null
+                && handleInCallMmiCommands(newDialString)) {
             return null;
         }
 
