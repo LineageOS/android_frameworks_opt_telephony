@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e97b70f2_18118697",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2026-06-24T04:24:30Z",
+      "side": 1,
+      "message": "CDMA - so 3G IMS SMS?... Is this still a thing people use?",
+      "revId": "0df96c966d88b598bb7b57814d4a321a22aa0847",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
