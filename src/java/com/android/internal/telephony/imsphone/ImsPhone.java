@@ -2766,7 +2766,7 @@ public class ImsPhone extends ImsPhoneBase {
                         loge("setPhoneNumberForSourceIms: PhoneNumberManager return error "
                                 + result.getErrorCode());
                     }
-                } catch (IllegalArgumentException e) {
+                } catch (RuntimeException e) {
                     loge("setPhoneNumberForSourceIms: failed to parse phone number, " + e);
                 }
             } else {
@@ -2849,7 +2849,7 @@ public class ImsPhone extends ImsPhoneBase {
             // "Global number" should be in E.164 format starting with "+" e.g. "+447539447777"
             return intermediate.filter(ssp -> ssp != null && ssp.startsWith("+"))
                     // Remove whatever after "@" for sip URI
-                    .map(ssp -> ssp.split("@")[0])
+                    .map(ssp -> ssp.split("@", 2)[0])
                     // Returns the first winner
                     .findFirst()
                     .orElse(null);
@@ -2857,7 +2857,7 @@ public class ImsPhone extends ImsPhoneBase {
             // non global number format
             return intermediate.filter(ssp -> ssp != null)
                     // Remove whatever after "@" for sip URI
-                    .map(ssp -> ssp.split("@")[0])
+                    .map(ssp -> ssp.split("@", 2)[0])
                     // regular expression, allow only number
                     .filter(ssp -> ssp.matches("^[0-9]+$"))
                     // Returns the first winner
