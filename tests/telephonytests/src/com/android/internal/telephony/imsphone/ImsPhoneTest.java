@@ -1124,6 +1124,14 @@ public class ImsPhoneTest extends TelephonyTest {
 
         verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
 
+        // 5. Malformed URI (sip:@); do not set
+        associatedUris = new Uri[] {
+            Uri.parse("sip:@")
+        };
+        mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
+
+        verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
+
         // Clean up
         mContextFixture.addCallingOrSelfPermission("");
     }
@@ -1265,6 +1273,15 @@ public class ImsPhoneTest extends TelephonyTest {
             mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
         } catch (Exception IllegalArgumentException) {
             throw new AssertionError("not expected exception", IllegalArgumentException);
+        }
+
+        // set throw RuntimeException for mock
+        doThrow(new NullPointerException("test"))
+            .when(mPhoneNumberManager).parsePhoneNumber(any(), any());
+        try {
+            mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
+        } catch (Exception e) {
+            throw new AssertionError("not expected exception", e);
         }
 
         // put input with null
