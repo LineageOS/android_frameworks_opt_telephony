@@ -402,6 +402,9 @@ public class SmsUsageMonitor {
      */
     public int checkDestination(String destAddress, String countryIso) {
         synchronized (mSettingsObserverHandler) {
+            if (destAddress != null && destAddress.startsWith("+")) {
+                destAddress = destAddress.substring(1);
+            }
             TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
             // always allow emergency numbers
             if (tm.isEmergencyNumber(destAddress)) {

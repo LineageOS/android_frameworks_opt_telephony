@@ -444,6 +444,11 @@ public class SmsUsageMonitorShortCodeTest {
             new ShortCodeTest("us", "21472", SMS_CATEGORY_PREMIUM_SHORT_CODE),
             new ShortCodeTest("us", "23333", SMS_CATEGORY_PREMIUM_SHORT_CODE),
             new ShortCodeTest("us", "99807", SMS_CATEGORY_PREMIUM_SHORT_CODE),
+            new ShortCodeTest("us", "+20433", SMS_CATEGORY_PREMIUM_SHORT_CODE),
+            new ShortCodeTest("us", "+20000", SMS_CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
+            new ShortCodeTest("al", "+15191", SMS_CATEGORY_PREMIUM_SHORT_CODE),
+            new ShortCodeTest("am", "+101", SMS_CATEGORY_FREE_SHORT_CODE),
+            new ShortCodeTest("sg", "+74688", SMS_CATEGORY_STANDARD_SHORT_CODE),
 
             // generic rules for other countries: 5 digits or less considered potential short code
             new ShortCodeTest("zz", "2000000", SMS_CATEGORY_NOT_SHORT_CODE),
