@@ -386,6 +386,9 @@ public class SmsUsageMonitor {
      */
     public int checkDestination(String destAddress, String countryIso) {
         synchronized (mSettingsObserverHandler) {
+            if (destAddress != null && destAddress.startsWith("+")) {
+                destAddress = destAddress.substring(1);
+            }
             // always allow emergency numbers
             if (PhoneNumberUtils.isEmergencyNumber(destAddress, countryIso)) {
                 if (DBG) Rlog.d(TAG, "isEmergencyNumber");
