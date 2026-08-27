@@ -16,6 +16,24 @@
       "message": "CDMA - so 3G IMS SMS?... Is this still a thing people use?",
       "revId": "0df96c966d88b598bb7b57814d4a321a22aa0847",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d20d2a3b_bd3bd18d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2026-08-27T23:23:21Z",
+      "side": 1,
+      "message": "The fix is still valid, not sure if it still affects real life usecases but it\u0027s pretty small. Nothing changed here compared to previous version.",
+      "parentUuid": "e97b70f2_18118697",
+      "revId": "0df96c966d88b598bb7b57814d4a321a22aa0847",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
