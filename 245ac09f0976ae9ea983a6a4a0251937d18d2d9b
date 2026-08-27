@@ -16,6 +16,24 @@
       "message": "does anyone still use this?\n\nNone of my devices...",
       "revId": "245ac09f0976ae9ea983a6a4a0251937d18d2d9b",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "428adf5f_883a5a50",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2026-08-27T23:25:21Z",
+      "side": 1,
+      "message": "sdm660, sm6125",
+      "parentUuid": "4dc92f6e_78c0a38f",
+      "revId": "245ac09f0976ae9ea983a6a4a0251937d18d2d9b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
