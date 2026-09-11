@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad6a2193_ed46e69f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2026-09-11T04:07:20Z",
+      "side": 1,
+      "message": "found out, gem is config@1.0 and SIM + eSIM, so, I can in fact check this one off.",
+      "revId": "5bb062f6072290847295f16ade270b6149dc7e92",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
