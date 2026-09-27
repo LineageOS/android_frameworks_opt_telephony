@@ -3113,6 +3113,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void sendDialerSpecialCode(String code) {
         if (!TextUtils.isEmpty(code)) {
+            // Some dialers pass the full *#*#<code>#*#* sequence, strip it.
+            if (code.length() > 8 && code.startsWith("*#*#") && code.endsWith("#*#*")) {
+                code = code.substring(4, code.length() - 4);
+            }
+
             final BroadcastOptions options = BroadcastOptions.makeBasic();
             options.setBackgroundActivityStartsAllowed(true);
             Intent intent = new Intent(TelephonyIntents.SECRET_CODE_ACTION,
