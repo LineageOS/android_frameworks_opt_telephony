@@ -28,6 +28,7 @@ import android.content.res.Resources;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
+import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -68,6 +69,8 @@ import java.util.stream.Collectors;
 public class UiccSlot extends Handler {
     private static final String TAG = "UiccSlot";
     private static final boolean DBG = true;
+    private static final boolean MEP_MODE_FROM_SLOT_STATUS = SystemProperties.getBoolean(
+            "ro.telephony.uicc.mep_mode_from_slot_status", false);
 
     public static final String EXTRA_ICC_CARD_ADDED =
             "com.android.internal.telephony.uicc.ICC_CARD_ADDED";
@@ -136,7 +139,7 @@ public class UiccSlot extends Handler {
             parseAtr(ics.atr);
             mIsRemovable = isSlotRemovable(slotIndex);
             // Update supported MEP mode in IccCardStatus if the CardState is present.
-            if (ics.mCardState.isCardPresent()) {
+            if (ics.mCardState.isCardPresent() && !keepSlotStatusMepMode(ics)) {
                 updateSupportedMepMode(ics.mSupportedMepMode);
             }
 
@@ -296,6 +299,13 @@ public class UiccSlot extends Handler {
                 mUiccCard.updateSupportedMepMode(getSupportedMepMode());
             }
         }
+    }
+
+    private boolean keepSlotStatusMepMode(IccCardStatus ics) {
+        return MEP_MODE_FROM_SLOT_STATUS
+                && ics.mSupportedMepMode == MultipleEnabledProfilesMode.NONE
+                && mSupportedMepMode.isMepMode()
+                && mAtr != null && mAtr.isMultipleEnabledProfilesSupported();
     }
 
     private void updateSupportedMepMode(MultipleEnabledProfilesMode mode) {
