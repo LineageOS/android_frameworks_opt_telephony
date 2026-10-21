@@ -18,6 +18,7 @@ package com.android.internal.telephony.uicc.euicc.apdu;
 
 import android.os.AsyncResult;
 import android.os.Message;
+import android.os.SystemProperties;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
@@ -37,6 +38,9 @@ public class TransmitApduLogicalChannelInvocation
         extends AsyncMessageInvocation<ApduCommand, IccIoResult> {
     private static final String LOG_TAG = "TransApdu";
     private static final int SW1_ERROR = 0x6F;
+    private static final int MAX_ISO_LOGICAL_CHANNEL = 19;
+    private static final boolean SESSION_ID_LOGICAL_CHANNELS = SystemProperties.getBoolean(
+            "ro.telephony.euicc.session_id_logical_channels", false);
 
     private final CommandsInterface mCi;
 
@@ -47,7 +51,9 @@ public class TransmitApduLogicalChannelInvocation
     @Override
     protected void sendRequestMessage(ApduCommand command, Message msg) {
         Rlog.v(LOG_TAG, "Send: " + command);
-        mCi.iccTransmitApduLogicalChannel(command.channel, command.cla | command.channel,
+        int cla = SESSION_ID_LOGICAL_CHANNELS && command.channel > MAX_ISO_LOGICAL_CHANNEL
+                ? command.cla : command.cla | command.channel;
+        mCi.iccTransmitApduLogicalChannel(command.channel, cla,
                 command.ins, command.p1, command.p2, command.p3, command.cmdHex, command.isEs10,
                 msg);
     }
