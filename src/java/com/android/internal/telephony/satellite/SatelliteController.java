@@ -1017,6 +1017,9 @@ public class SatelliteController extends Handler {
         }
     }
 
+    /** False on devices without satellite hardware: skip the per-state-change work and logs. */
+    private boolean mHasSatelliteFeature = true;
+
     /**
      * Create a SatelliteController to act as a backend service of
      * {@link android.telephony.satellite.SatelliteManager}
@@ -1032,6 +1035,8 @@ public class SatelliteController extends Handler {
 
         mPersistentLogger = SatelliteServiceUtils.getPersistentLogger(context);
         mContext = context;
+        mHasSatelliteFeature = context.getPackageManager().hasSystemFeature(
+                PackageManager.FEATURE_TELEPHONY_SATELLITE);
         mFeatureFlags = featureFlags;
         Phone phone = SatelliteServiceUtils.getPhone();
         setSatellitePhone(phone);
@@ -1244,6 +1249,9 @@ public class SatelliteController extends Handler {
      */
     @Nullable
     public SatelliteConfig getSatelliteConfig() {
+        if (!mHasSatelliteFeature) {
+            return null;
+        }
         SatelliteConfigParser satelliteConfigParser = getSatelliteConfigParser();
         if (satelliteConfigParser == null) {
             Log.v(TAG, "satelliteConfigParser is not ready");
@@ -3673,6 +3681,9 @@ public class SatelliteController extends Handler {
      */
     @SatelliteManager.SatelliteResult public int registerForSatelliteModemStateChanged(
             @NonNull ISatelliteModemStateCallback callback) {
+        if (!mHasSatelliteFeature) {
+            return SatelliteManager.SATELLITE_RESULT_REQUEST_NOT_SUPPORTED;
+        }
         plogd("registerForSatelliteModemStateChanged: add Listeners for ModemState");
         mSatelliteRegistrationFailureListeners.put(callback.asBinder(), callback);
         mTerrestrialNetworkAvailableChangedListeners.put(callback.asBinder(), callback);
@@ -3696,6 +3707,9 @@ public class SatelliteController extends Handler {
      */
     public void unregisterForModemStateChanged(
             @NonNull ISatelliteModemStateCallback callback) {
+        if (!mHasSatelliteFeature) {
+            return;
+        }
         if (mSatelliteSessionController != null) {
             mSatelliteSessionController.unregisterForSatelliteModemStateChanged(callback);
         } else {
@@ -8202,6 +8216,9 @@ public class SatelliteController extends Handler {
     }
 
     private void updateLastNotifiedNtnEligibilityAndNotify(boolean currentNtnEligibility) {
+        if (!mHasSatelliteFeature) {
+            return;
+        }
         Phone satellitePhone = getSatellitePhone();
         if (satellitePhone == null) {
             ploge("notifyNtnEligibility: mSatellitePhone is null");
