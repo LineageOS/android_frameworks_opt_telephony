@@ -1014,7 +1014,17 @@ public class SatelliteController extends Handler {
         if (sInstance == null) {
             sInstance = new SatelliteController(
                     context, WorkerThread.get().getLooper(), featureFlags);
+            sInstance.post(sInstance::resolveSupportWithoutVendorService);
         }
+    }
+
+    private void resolveSupportWithoutVendorService() {
+        if (getIsSatelliteSupported() != null
+                || mSatelliteModemInterface.isSatelliteServiceSupported()) {
+            return;
+        }
+        plogd("resolveSupportWithoutVendorService: no satellite vendor service is configured");
+        updateSatelliteSupportedState(false);
     }
 
     /**
